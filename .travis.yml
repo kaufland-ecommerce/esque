@@ -1,0 +1,42 @@
+dist: xenial
+language: python
+cache: pip
+env:
+- TEST_CMD="pytest tests/ --integration"
+before_install:
+- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
+- mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
+- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
+- nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
+- scripts/wait-for-it.sh localhost:9092 # Kafka
+- scripts/wait-for-it.sh localhost:2181 # Zookeeper
+
+install:
+- pip install coverage coveralls flake8 pipenv
+- pipenv install --system --dev --deploy
+script:
+- "$TEST_CMD"
+after_success:
+- coveralls
+notifications:
+  on_success: change
+  on_failure: always
+  slack:
+    secure: T5LQ2G7Btdep65P3ByYyJ/nupP42sIwzIry6Q0cUyoUvJ8PFLGNuPYii8AxyBHKpjuI2UuuMsk3WiuxThjWnBxIYY/mjwl5NDCQjDiNPTtzcYZ46jtgoO3MXxZfaCO9Syg55dTwHSHp6FIY8eYyg4asuhGIwWxGUUrZs36p+t/FsBz030uhjtJpU8VwAduTUkRJzDjJoACOlw91CJjltaF42ByF2oNZElJs7CJmyktanjzCMzecA2Twltr2iCAvOoHuuRC7oTQ6N59T0PqLsYvj9JYc1HW1rVEdxIKxFAYnzSAooXTUb3Znax83zSOKAxLyj91b9J3B0+1yNBMDrBkbyak4XgVUu3hTaqwNiEt7lbBDy25zt0D+4EcS3Y2we3bjqQrNU7Prwb5SlGCJ0AO+Y/vozDGxXUciDZd6Sjb/V0kt0eMy7jvmctFiOBu5FbpxzJzPZleg6LsmLzaCAiyzBQuY5DhMvxNHQZbpiyc9Djq3hrrkPvNFkQn/uwcS7+bquYtSCiSI+KRadCM2BntobFGWtke5aSiXQw4MSnUPCido7IVGhBEBRubFC7uZu3n5OmWcYrEs9RZl/NbkknrsN/RMtbmP0pPvn2nbSIWdWkTGUjO5m14PiTCPKGWm/LVi4Jc/JONJqYAadLGlUDwk94ViONebqGktDw6s0fz0=
+matrix:
+  include:
+  - name: black
+    python: 3.7
+    env:
+    - TEST_CMD="black --check --verbose ."
+  - name: flake8
+    python: 3.7
+    env:
+    - TEST_CMD="flake8 esque/*.py"
+  - name: '3.6'
+    python: 3.6
+  - name: '3.7'
+    python: 3.7
+
+
+

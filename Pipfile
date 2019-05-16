@@ -1,0 +1,15 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+kafkaesque = {path = ".",editable = true,extras = ["test", "dev"]}
+
+[packages]
+
+[requires]
+python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true
