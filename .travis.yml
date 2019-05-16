@@ -4,13 +4,14 @@ cache: pip
 env:
 - TEST_CMD="pytest tests/ --integration"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
+- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O
+  kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
+- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties
+  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- scripts/wait-for-it.sh localhost:9092 # Kafka
-- scripts/wait-for-it.sh localhost:2181 # Zookeeper
-
+- scripts/wait-for-it.sh localhost:9092
+- scripts/wait-for-it.sh localhost:2181
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
@@ -37,6 +38,10 @@ matrix:
     python: 3.6
   - name: '3.7'
     python: 3.7
-
-
-
+deploy:
+  provider: pypi
+  user: real.digital
+  on:
+    tags: true
+  password:
+    secure: L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WHRahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPkdwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs=
