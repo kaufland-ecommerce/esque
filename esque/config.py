@@ -27,6 +27,11 @@ def config_path() -> Path:
     return config_dir() / "esque.cfg"
 
 
+def sample_config_path() -> Path:
+    sample_path = Path(__file__).parent.parent / "config" / "sample_config.cfg"
+    return sample_path
+
+
 class Config:
     def __init__(self):
         self._cfg = configparser.ConfigParser()

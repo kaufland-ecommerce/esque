@@ -1,7 +1,9 @@
 from time import sleep
 
 import click
+from click import version_option
 
+from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
