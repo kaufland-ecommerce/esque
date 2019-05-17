@@ -42,9 +42,7 @@ setup(
     author_email="opensource@real-digital.de",
     packages=find_packages(exclude=["tests", "tests.*"]),
     entry_points={"console_scripts": ["esque=esque.cli.commands:esque"]},
-    package_data={
-        'config': ['sample_config.cfg']
-    },
+    package_data={"config": ["sample_config.cfg"]},
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
@@ -52,10 +50,10 @@ setup(
     include_package_data=True,
     license="MIT",
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'Topic :: Software Development :: Build Tools',
-        'License :: OSI Approved :: MIT License',
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Topic :: Software Development :: Build Tools",
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],

@@ -35,7 +35,9 @@ class State(object):
                 self._cluster = Cluster()
             return self._cluster
         except NoBrokersAvailableError:
-            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
+            raise ClickException(
+                f"Could not reach Kafka Brokers {self.config.bootstrap_servers}"
+            )
 
 
 pass_state = make_pass_decorator(State, ensure=True)
