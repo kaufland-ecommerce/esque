@@ -6,11 +6,10 @@ env:
 before_install:
 - wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
+- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- scripts/wait-for-it.sh localhost:9092 # Kafka
-- scripts/wait-for-it.sh localhost:2181 # Zookeeper
-
+- scripts/wait-for-it.sh localhost:9092
+- scripts/wait-for-it.sh localhost:2181
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
@@ -19,10 +18,11 @@ script:
 after_success:
 - coveralls
 notifications:
-  on_success: change
-  on_failure: always
   slack:
-    secure: T5LQ2G7Btdep65P3ByYyJ/nupP42sIwzIry6Q0cUyoUvJ8PFLGNuPYii8AxyBHKpjuI2UuuMsk3WiuxThjWnBxIYY/mjwl5NDCQjDiNPTtzcYZ46jtgoO3MXxZfaCO9Syg55dTwHSHp6FIY8eYyg4asuhGIwWxGUUrZs36p+t/FsBz030uhjtJpU8VwAduTUkRJzDjJoACOlw91CJjltaF42ByF2oNZElJs7CJmyktanjzCMzecA2Twltr2iCAvOoHuuRC7oTQ6N59T0PqLsYvj9JYc1HW1rVEdxIKxFAYnzSAooXTUb3Znax83zSOKAxLyj91b9J3B0+1yNBMDrBkbyak4XgVUu3hTaqwNiEt7lbBDy25zt0D+4EcS3Y2we3bjqQrNU7Prwb5SlGCJ0AO+Y/vozDGxXUciDZd6Sjb/V0kt0eMy7jvmctFiOBu5FbpxzJzPZleg6LsmLzaCAiyzBQuY5DhMvxNHQZbpiyc9Djq3hrrkPvNFkQn/uwcS7+bquYtSCiSI+KRadCM2BntobFGWtke5aSiXQw4MSnUPCido7IVGhBEBRubFC7uZu3n5OmWcYrEs9RZl/NbkknrsN/RMtbmP0pPvn2nbSIWdWkTGUjO5m14PiTCPKGWm/LVi4Jc/JONJqYAadLGlUDwk94ViONebqGktDw6s0fz0=
+    rooms:
+      - secure: XyYngWgCIHTAF5LNarBdEA56rJvVzm8epTf3eyw40iKZcLnn/UKOxzCO6m+oo9yers1kfrUOUfrDIYjEQJoqldTh+ocLB4O0t+y+03qkie2va/ZHP4cmRl6KpAH5jM94zJfPhBAPZ2m57B/qFuAIZZmyn8mq0FTfmksKNvDbE5e8eBVu2rLsmdRQ6hkztCncwefwDHQ19k1S5Br2O/q8qekUNQRtKeGCgia4Rk1xptN9qccWzVV8426M3FdnttNSv7gO86J7OF+t3RWoow3kzCLrFFF2A+s9/NNbCL3sc6cDIjMOx4yig2b764ApUH4VrGXGF2FbeuEly7C8mR8ciunzzOAC08xpwzTae9gics9iqp7u23q5DD3dywYwApcG3jPShShP/3zdSU+MnC9r/YM+IwZdNFPo/Wqz9eTiNs7SVwCCeWdluT4iV24bGciVIye3OCseLmR/LmNnrLsGMGyTeKSwfr08RIlIqIL+DtsdIHS7Xdl3l9wNPVxLDp2yopI/0JS/85x5snaXS3nTAFefOhrqFWOhw5NCuCjRPB2njo3tpBB25TRsr2bvaSZ5nJRk1Uh+tbzayAyNPXQmxGre5j3mR5lm00CofMj8809bdaFFHqPl+L88p0Y6gn8Jc2pFKYcguc91jQhTU9KiP/QDaUb9K/TJlW1Pe2egK50=
+    on_success: change
+    on_failure: always
 matrix:
   include:
   - name: black
@@ -32,11 +32,15 @@ matrix:
   - name: flake8
     python: 3.7
     env:
-    - TEST_CMD="flake8 esque/*.py"
+    - TEST_CMD="flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
     python: 3.7
-
-
-
+deploy:
+  provider: pypi
+  user: real.digital
+  on:
+    tags: true
+  password:
+    secure: L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WHRahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPkdwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs=
