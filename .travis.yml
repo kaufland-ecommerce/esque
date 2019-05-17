@@ -4,9 +4,11 @@ cache: pip
 env:
 - TEST_CMD="pytest tests/ --integration"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
+- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O
+  kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties &"
+- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties
+  &"
 - nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
 - scripts/wait-for-it.sh localhost:9092
 - scripts/wait-for-it.sh localhost:2181
@@ -21,13 +23,7 @@ notifications:
   on_success: change
   on_failure: always
   slack:
-    secure: "\
-    T5LQ2G7Btdep65P3ByYyJ/nupP42sIwzIry6Q0cUyoUvJ8PFLGNuPYii8AxyBHKpjuI2UuuMsk3WiuxThjWnBxIYY/mjwl5NDCQjDiNPTtzcYZ46jt\
-    goO3MXxZfaCO9Syg55dTwHSHp6FIY8eYyg4asuhGIwWxGUUrZs36p+t/FsBz030uhjtJpU8VwAduTUkRJzDjJoACOlw91CJjltaF42ByF2oNZElJs7\
-    CJmyktanjzCMzecA2Twltr2iCAvOoHuuRC7oTQ6N59T0PqLsYvj9JYc1HW1rVEdxIKxFAYnzSAooXTUb3Znax83zSOKAxLyj91b9J3B0+1yNBMDrBk\
-    byak4XgVUu3hTaqwNiEt7lbBDy25zt0D+4EcS3Y2we3bjqQrNU7Prwb5SlGCJ0AO+Y/vozDGxXUciDZd6Sjb/V0kt0eMy7jvmctFiOBu5FbpxzJzPZ\
-    leg6LsmLzaCAiyzBQuY5DhMvxNHQZbpiyc9Djq3hrrkPvNFkQn/uwcS7+bquYtSCiSI+KRadCM2BntobFGWtke5aSiXQw4MSnUPCido7IVGhBEBRub\
-    FC7uZu3n5OmWcYrEs9RZl/NbkknrsN/RMtbmP0pPvn2nbSIWdWkTGUjO5m14PiTCPKGWm/LVi4Jc/JONJqYAadLGlUDwk94ViONebqGktDw6s0fz0="
+    secure: Ivf4u9F5eLSyjoXaJXZiVUjDMNvqJBKSHk+0IDRwLs7jmdbboKRYSj/Vmho8aYk50uKiiB0XpJSz0sB6M6HtnrDTMjDBRW/M2ye/2WKPLell972XNe6r4DvjdunXq3iOWmmoIroExyEBYWD/H/0K8bfeTra9AjeIF7fnHvNeZNCeIMCEPDys9qooe4WorWDoPtvIvo1KKD/5rNtejkuflFqNcqpxx3W5oz2BM0vbd3JWjm66WGTQuXnygvCm5ixXopNXZwhJf3vf9K5q8tGPdpx782tXqT6lgWLeZ9a48xlYsNJOW8/YXP7CpGOPig3yxhiA0Amc7nXKxAMaWCuGD6BzGBSpCv2U/U5g+EKsDgVrq5rObl74xqI85zmL7p1txIJ3DgRgBH1BaIEQF9+gV8M3aLboPcn5Lx3d8qNqpcuZ/PzZmGGxefVgcHFs0G6AyAuJSpZMEQo6reXAHc+d4DTc4wo1GdAio8N6OCNbJHmGlVlcF+lC7RKCG0vXJN0FH8fzAeeY6Hrva9sUoKqs6Isbb3pKzEHomYgyH6J8lk0kqIQsxn8spKumwJMEWHPkthofPKGnDrsEmNqf17/Gl3a1FOf1U6e9jdG95A09/6iKbcsTN+KKKdqnjMJg1xLfqWTTH6k/yWLVygoyXiUpMcAnWjDwBfic89mNjzl0ikQ=
 matrix:
   include:
   - name: black
@@ -48,10 +44,4 @@ deploy:
   on:
     tags: true
   password:
-    secure: "\
-    L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p\
-    0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WH\
-    RahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/\
-    4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1\
-    CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPk\
-    dwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs="
+    secure: L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WHRahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPkdwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs=
