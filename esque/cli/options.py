@@ -19,8 +19,7 @@ class State(object):
             self.config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
-            if not config_dir().exists():
-                config_dir().mkdir()
+            config_dir().mkdir(exist_ok=True)
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
                 copyfile(sample_config_path().as_posix(), config_path())
             if ensure_approval("Do you want to modify the config file now?"):
