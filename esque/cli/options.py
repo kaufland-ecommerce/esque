@@ -1,4 +1,4 @@
-from pathlib import Path
+import sys
 from shutil import copyfile
 
 import click
@@ -19,12 +19,13 @@ class State(object):
             self.config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
+            if not config_dir().exists():
+                config_dir().mkdir()
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
-                if not config_dir().exists():
-                    config_dir().mkdir()
-                copyfile(sample_config_path(), config_path())
-            self.config = Config()
-
+                copyfile(sample_config_path().as_posix(), config_path())
+            if ensure_approval("Do you want to modify the config file now?"):
+                click.edit(filename=config_path().as_posix())
+            sys.exit(0)
         self._cluster = None
 
     @property
