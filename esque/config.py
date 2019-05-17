@@ -27,6 +27,11 @@ def config_path() -> Path:
     return config_dir() / "esque.cfg"
 
 
+def sample_config_path() -> Path:
+    sample_path = Path(__file__).parent.parent / "config" / "sample_config.cfg"
+    return sample_path
+
+
 class Config:
     def __init__(self):
         self._cfg = configparser.ConfigParser()
@@ -37,13 +42,7 @@ class Config:
 
     @property
     def available_contexts(self):
-        return sorted(
-            [
-                key.split(".")[1]
-                for key in self._cfg.keys()
-                if key.startswith("Context.")
-            ]
-        )
+        return sorted([key.split(".")[1] for key in self._cfg.keys() if key.startswith("Context.")])
 
     @property
     def current_context(self):
@@ -56,8 +55,7 @@ class Config:
     @property
     def current_context_dict(self) -> Dict[str, Any]:
         return {
-            option: self._cfg.get(self._current_section, option)
-            for option in self._cfg.options(self._current_section)
+            option: self._cfg.get(self._current_section, option) for option in self._cfg.options(self._current_section)
         }
 
     @property
@@ -81,20 +79,13 @@ class Config:
     @property
     def bootstrap_servers(self):
         if self.bootstrap_domain:
-            return [
-                f"{host_name}.{self.bootstrap_domain}:{self.bootstrap_port}"
-                for host_name in self.bootstrap_hosts
-            ]
-        return [
-            f"{host_name}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts
-        ]
+            return [f"{host_name}.{self.bootstrap_domain}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
+        return [f"{host_name}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
 
     def context_switch(self, context: str):
         click.echo((f"Switched to context: {context}"))
         if context not in self.available_contexts:
-            raise ContextNotDefinedException(
-                f"{context} not defined in {config_path()}"
-            )
+            raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._update_config("Context", "current", context)
 
     def _update_config(self, section: str, key: str, value: str):
@@ -106,37 +97,19 @@ class Config:
         return {"hosts": ",".join(self.bootstrap_servers)}
 
     def create_confluent_config(
-        self,
-        *,
-        debug: bool = False,
-        ssl: bool = False,
-        auth: Optional[Tuple[str, str]] = None,
+        self, *, debug: bool = False, ssl: bool = False, auth: Optional[Tuple[str, str]] = None
     ) -> Dict[str, str]:
 
-        base_config = {
-            "bootstrap.servers": ",".join(self.bootstrap_servers),
-            "security.protocol": "PLAINTEXT",
-        }
+        base_config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": "PLAINTEXT"}
         config = base_config.copy()
         if debug:
             config.update({"debug": "all", "log_level": "2"})
 
         if ssl:
-            config.update(
-                {
-                    "ssl.ca.location": "/etc/ssl/certs/GlobalSign_Root_CA.pem",
-                    "security.protocol": "SSL",
-                }
-            )
+            config.update({"ssl.ca.location": "/etc/ssl/certs/GlobalSign_Root_CA.pem", "security.protocol": "SSL"})
 
         if auth:
             user, pw = auth
-            config.update(
-                {
-                    "sasl.mechanisms": "SCRAM-SHA-512",
-                    "sasl.username": user,
-                    "sasl.password": pw,
-                }
-            )
+            config.update({"sasl.mechanisms": "SCRAM-SHA-512", "sasl.username": user, "sasl.password": pw})
             config["security.protocol"] = "SASL_" + config["security.protocol"]
         return config

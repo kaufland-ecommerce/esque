@@ -7,7 +7,7 @@ from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
-from esque.config import Config, config_dir, config_path
+from esque.config import Config, config_dir, config_path, sample_config_path
 from esque.errors import ConfigNotExistsException
 
 
@@ -22,10 +22,7 @@ class State(object):
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
                 if not config_dir().exists():
                     config_dir().mkdir()
-                copyfile(
-                    Path(__file__).parent.parent.parent / "sample_config.cfg",
-                    config_path(),
-                )
+                copyfile(sample_config_path(), config_path())
             self.config = Config()
 
         self._cluster = None
@@ -37,9 +34,7 @@ class State(object):
                 self._cluster = Cluster()
             return self._cluster
         except NoBrokersAvailableError:
-            raise ClickException(
-                f"Could not reach Kafka Brokers {self.config.bootstrap_servers}"
-            )
+            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
 
 
 pass_state = make_pass_decorator(State, ensure=True)
