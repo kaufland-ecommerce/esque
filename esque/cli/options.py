@@ -1,4 +1,4 @@
-from pathlib import Path
+import sys
 from shutil import copyfile
 
 import click
@@ -7,7 +7,7 @@ from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
-from esque.config import Config, config_dir, config_path
+from esque.config import Config, config_dir, config_path, sample_config_path
 from esque.errors import ConfigNotExistsException
 
 
@@ -19,15 +19,12 @@ class State(object):
             self.config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
+            config_dir().mkdir(exist_ok=True)
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
-                if not config_dir().exists():
-                    config_dir().mkdir()
-                copyfile(
-                    Path(__file__).parent.parent.parent / "sample_config.cfg",
-                    config_path(),
-                )
-            self.config = Config()
-
+                copyfile(sample_config_path().as_posix(), config_path())
+            if ensure_approval("Do you want to modify the config file now?"):
+                click.edit(filename=config_path().as_posix())
+            sys.exit(0)
         self._cluster = None
 
     @property
