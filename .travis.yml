@@ -32,7 +32,7 @@ matrix:
   - name: flake8
     python: 3.7
     env:
-    - TEST_CMD="flake8 esque/*.py"
+    - TEST_CMD="flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
