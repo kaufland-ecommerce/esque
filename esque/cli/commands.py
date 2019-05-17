@@ -19,6 +19,7 @@ from esque.topic import TopicController
 
 
 @click.group(help="(Kafka-)esque.")
+@version_option(__version__)
 def esque():
     pass
 
