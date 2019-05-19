@@ -17,15 +17,7 @@ from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
 from esque.topic import Topic
 
-TEST_CONFIG = """
-[Context]
-current = local
-
-[Context.local]
-bootstrap_hosts = localhost
-bootstrap_port = 9092
-security_protocol = PLAINTEXT
-"""
+SAMPLE_CONFIG_PATH: Path = Path(__file__).parent.parent / "config" / "sample_config.cfg"
 
 
 def pytest_addoption(parser):
@@ -34,6 +26,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="run integration tests",
+    )
+    parser.addoption(
+        "--local",
+        action="store_true",
+        default=False,
+        help="run against the 'local' context of the sample config instead of the default 'docker' context for CI",
     )
 
 
@@ -50,17 +48,17 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture()
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(TEST_CONFIG, encoding="UTF-8")
+    fn.write_text(SAMPLE_CONFIG_PATH.read_text(), encoding="UTF-8")
     mocker.patch("esque.config.config_path", return_value=fn)
     yield fn
 
 
 @pytest.fixture()
-def test_config(test_config_path):
-    config = Config()
-    # if os.getenv("ESQUE_TEST_ENV") == "ci":
-    #     config.context_switch("ci")
-    yield config
+def test_config(test_config_path, request):
+    esque_config = Config()
+    if request.config.getoption("--local"):
+        esque_config.context_switch("local")
+    yield esque_config
 
 
 @pytest.fixture()
@@ -122,7 +120,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+        partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
 ):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
@@ -162,7 +160,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
+        consumer: confluent_kafka.Consumer, filled_topic, consumer_group
 ):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
