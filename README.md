@@ -10,7 +10,7 @@ Some stuff is hard, and that is okay, but listing your kafka topics shouldn't.
 
 While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
 We can't recount how often we wrote Slack messages asking for the script to check the status of topics or consumergroups.
-This is partly (but not only) due to a fragmented and unclear definition of tooling, APIs for kafka.
+This is partly (but not only) due to a fragmented and unclear definition of tooling and APIs for kafka.
 
 `esque` tries to become a human-friendly point of first contact for your kafka cluster by exposing a `kubectl`-like interface to it.
 
