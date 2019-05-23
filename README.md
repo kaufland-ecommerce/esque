@@ -1,4 +1,4 @@
-# esque - a kafka tool.
+# esque - an operational kafka tool.
 
 [![pypi Version](https://img.shields.io/pypi/v/esque.svg)](https://pypi.org/project/esque/) [![Python Versions](https://img.shields.io/pypi/pyversions/esque.svg)](https://pypi.org/project/esque/) [![Build Status](https://travis-ci.org/real-digital/esque.svg?branch=master)](https://travis-ci.org/real-digital/esque) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -6,7 +6,7 @@ In the Kafka world nothing is easy, but `esque` (pronounced esk) is an attempt a
 
 ## Why should you care?
 
-Some stuff is hard, and that is okay, but listing your kafka topics shouldn't.
+Some stuff is hard, and that is okay, listing your kafka topics shouldn't be.
 
 While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
 We can't recount how often we wrote Slack messages asking for the script to check the status of topics or consumergroups.
