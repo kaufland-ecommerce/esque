@@ -2,7 +2,7 @@
 
 [![pypi Version](https://img.shields.io/pypi/v/esque.svg)](https://pypi.org/project/esque/) [![Python Versions](https://img.shields.io/pypi/pyversions/esque.svg)](https://pypi.org/project/esque/) [![Build Status](https://travis-ci.org/real-digital/esque.svg?branch=master)](https://travis-ci.org/real-digital/esque) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-In the Kafka world nothing is easy, but `esque` is an attempt at it.
+In the Kafka world nothing is easy, but `esque` (pronounced esk) is an attempt at it.
 
 ## Why should you care?
 
@@ -12,7 +12,16 @@ While adopting kafka at real.digital we noticed the immense entry barrier it pos
 We can't recount how often we wrote Slack messages asking for the script to check the status of topics or consumergroups.
 This is partly (but not only) due to a fragmented and unclear definition of tooling, APIs for kafka.
 
-`esque` tries to become a point of first contact for your kafka cluster by exposing a `kubectl`-like interface to it.
+`esque` tries to become a human-friendly point of first contact for your kafka cluster by exposing a `kubectl`-like interface to it.
+
+## Main Features
+
+* List Resources (Topics, Consumergroups, Brokers)
+* Get detailed Overviews of Resources (Topics, Consumergroups, Brokers)
+* Create/Delete Topics
+* Context Switch (Easily Switch between pre-defined Clusters)
+* Kafka Ping (Test roundtrip time to your kafka cluster)
+* and many more planned...
 
 ## Installation and Usage
 
