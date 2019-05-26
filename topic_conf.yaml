@@ -1,0 +1,15 @@
+topics:
+  - name: pg-idealo-best_unit_with_prediction
+    replication_factor: 3
+    num_partitions: 50
+  - name: shop-product_export_best_unit
+    replication_factor: 3
+    num_partitions: 50
+  - name: shop-product_export_unit
+    replication_factor: 3
+    num_partitions: 50
+  - name: pg-idealo-best_unit_with_prediction
+    replication_factor: 3
+    num_partitions: 50
+    config:
+      cleanup.policy: compact

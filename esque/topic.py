@@ -1,10 +1,11 @@
 import re
-from concurrent.futures import Future
 from typing import Dict, List, Tuple
 
 import pykafka
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
+
+import yaml
 
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
@@ -14,6 +15,24 @@ from esque.helpers import (
     unpack_confluent_config,
 )
 
+class TopicConfig:
+    def __init__(self, name: str, num_partitions: int, replication_factor: int, config: Dict[str, str] = None):
+        self.name = name
+        self.num_partitions = num_partitions
+        self.replication_factor = replication_factor
+        self.config = config
+
+    def get_new_topic(self):
+        config = {}
+        if not self.config:
+            config = self.config.copy()
+
+        return NewTopic(
+            self.name,
+            self.num_partitions,
+            self.replication_factor,
+            config
+        )
 
 class Topic:
     def __init__(self, name: str, cluster: Cluster):
@@ -135,11 +154,53 @@ class TopicController:
             replication_factor=replication_factor,
             config=topic_config,
         )
+        return new_topic
 
-        future: Future = self.cluster.confluent_client.create_topics([new_topic])[
-            topic_name
-        ]
-        ensure_kafka_futures_done([future])
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def create_topics(self, topics: List[NewTopic]):
+        if not topics:
+            return
+        future_list = self.cluster.confluent_client.create_topics(topics)
+        ensure_kafka_futures_done(list(future_list.values()))
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def alter_configs(self, configs: List[ConfigResource]):
+        if not configs:
+            return
+        future_list = self.cluster.confluent_client.alter_configs(configs)
+        ensure_kafka_futures_done(list(future_list.values()))
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def apply_topic_conf(
+            self,
+            config_path: str
+    ):
+        yaml_data = yaml.load(open(config_path))
+        topics = yaml_data["topics"]
+        new_topics = []
+        editable_topics = []
+        existing_topic_names = [topic.name for topic in self.list_topics()]
+        for topic in topics:
+            topic_config = TopicConfig(
+                topic.get("name"),
+                topic.get("num_partitions"),
+                topic.get("replication_factor"),
+                topic.get("config")
+            )
+            if topic.get("name") in existing_topic_names:
+                editable_topics.append(topic_config)
+                continue
+
+            new_topics.append(topic_config.get_new_topic())
+
+        topics_config_diff = self.alter_topic_configs(editable_topics)
+        self.create_topics(new_topics)
+
+        return topics_config_diff, new_topics
 
     @raise_for_kafka_exception
     @invalidate_cache_after
@@ -149,3 +210,33 @@ class TopicController:
 
     def get_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name, self.cluster)
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def alter_topic_configs(self, editable_topics: List[TopicConfig]) -> Dict[str, Dict[str, List[str]]]:
+        config_resources = []
+        topics_diff = {}
+        for topic_config in editable_topics:
+            if not topic_config.config:
+                continue
+
+            conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic_config.name)
+            config_list = unpack_confluent_config(conf)
+            new_config = topic_config.config
+            config_diff = {}
+            for name, value in config_list.items():
+                if not new_config.get(name):
+                    continue
+                if new_config.get(name) != value:
+                    config_diff.pop(name, [new_config.get(name), value])
+
+            config_diff.pop(topic_config.name, topics_diff.pop(topic_config.name, config_diff))
+            config_resources.append(
+                ConfigResource(ConfigResource.Type.TOPIC, topic_config.name, topic_config.config)
+            )
+
+        if not config_resources:
+            return topics_diff
+
+        self.alter_configs(config_resources)
+        return topics_diff

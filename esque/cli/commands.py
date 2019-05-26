@@ -31,7 +31,7 @@ def get():
     pass
 
 
-@esque.group(help="Get detailed informations about a resource.")
+@esque.group(help="Get detailed information about a resource.")
 def describe():
     pass
 
@@ -88,6 +88,25 @@ def ctx(state, context):
 def create_topic(state: State, topic_name):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         TopicController(state.cluster).create_topic(topic_name)
+
+
+@esque.command("apply", help="Apply a configuration")
+@click.option(
+    "-f", "--file", help="Config file path", default=False
+)
+@pass_state
+def apply(state: State, file):
+    if ensure_approval("Are you sure?", no_verify=state.no_verify):
+        topics_config_diff, new_topics = TopicController(state.cluster).apply_topic_conf(file)
+
+        if not topics_config_diff:
+            click.echo("No topics changed.")
+            return
+
+        for name, diff in topics_config_diff:
+            click.echo("Topic " + name + ":")
+            for attribute, value in diff:
+                click.echo(attribute + ": " + value[0] + " -> " + value[1])
 
 
 @delete.command("topic")

@@ -7,6 +7,7 @@ verify_ssl = true
 kafkaesque = {path = ".",editable = true,extras = ["test", "dev"]}
 
 [packages]
+pyyaml = "*"
 
 [requires]
 python_version = "3.6"
