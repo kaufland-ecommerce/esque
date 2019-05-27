@@ -98,6 +98,11 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     if not value:
         return ""
 
+    if " -> " in value:
+        values = value.split(" -> ")
+        return click.style(pretty_duration(values[0]), fg="red") \
+            + " -> " + click.style(pretty_duration(values[1]), fg="green")
+
     if type(value) != int:
         value = int(value)
 

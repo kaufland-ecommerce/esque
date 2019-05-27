@@ -5,8 +5,6 @@ import pykafka
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
 
-import yaml
-
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
 from esque.helpers import (
@@ -24,14 +22,14 @@ class TopicConfig:
 
     def get_new_topic(self):
         config = {}
-        if not self.config:
-            config = self.config.copy()
+        if len(self.config) >= 1:
+            config = self.config
 
         return NewTopic(
             self.name,
-            self.num_partitions,
-            self.replication_factor,
-            config
+            num_partitions=self.num_partitions,
+            replication_factor=self.replication_factor,
+            config=config
         )
 
 class Topic:
@@ -162,25 +160,25 @@ class TopicController:
     def create_topics(self, topics: List[NewTopic]):
         if not topics:
             return
-        future_list = self.cluster.confluent_client.create_topics(topics)
-        ensure_kafka_futures_done(list(future_list.values()))
+        for new_topic in topics:
+            future_list = self.cluster.confluent_client.create_topics([new_topic])
+            ensure_kafka_futures_done(list(future_list.values()))
 
     @raise_for_kafka_exception
     @invalidate_cache_after
     def alter_configs(self, configs: List[ConfigResource]):
         if not configs:
             return
-        future_list = self.cluster.confluent_client.alter_configs(configs)
-        ensure_kafka_futures_done(list(future_list.values()))
+        for config_resource in configs:
+            future_list = self.cluster.confluent_client.alter_configs([config_resource])
+            ensure_kafka_futures_done(list(future_list.values()))
 
     @raise_for_kafka_exception
     @invalidate_cache_after
     def apply_topic_conf(
             self,
-            config_path: str
+            topics: Dict
     ):
-        yaml_data = yaml.load(open(config_path))
-        topics = yaml_data["topics"]
         new_topics = []
         editable_topics = []
         existing_topic_names = [topic.name for topic in self.list_topics()]
@@ -227,16 +225,17 @@ class TopicController:
             for name, value in config_list.items():
                 if not new_config.get(name):
                     continue
-                if new_config.get(name) != value:
-                    config_diff.pop(name, [new_config.get(name), value])
+                if str(new_config.get(name)) != str(value):
+                    config_diff[name] = [str(value), str(new_config.get(name))]
 
-            config_diff.pop(topic_config.name, topics_diff.pop(topic_config.name, config_diff))
             config_resources.append(
                 ConfigResource(ConfigResource.Type.TOPIC, topic_config.name, topic_config.config)
             )
 
-        if not config_resources:
-            return topics_diff
+            if len(config_diff) >= 1:
+                topics_diff[topic_config.name] = config_diff
 
-        self.alter_configs(config_resources)
+        if len(config_resources) >= 1:
+            self.alter_configs(config_resources)
+
         return topics_diff
