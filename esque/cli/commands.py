@@ -9,7 +9,7 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty
+from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics
 from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config
@@ -101,33 +101,8 @@ def apply(state: State, file):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         yaml_data = yaml.load(open(file), Loader=yaml.Loader)
         topics_config_diff, new_topics = TopicController(state.cluster).apply_topic_conf(yaml_data.get("topics"))
-
-        if not topics_config_diff:
-            click.echo("No topics changed.")
-        else:
-            for name, diff in topics_config_diff.items():
-                config_diff_attributes = {}
-                for attribute, value in diff.items():
-                    config_diff_attributes[attribute] = value[0] + " -> " + value[1]
-                click.echo(pretty(
-                    {"Changed topics" + click.style(name, bold=True): {"Config Diff": config_diff_attributes}}
-                ))
-
-        if not new_topics:
-            click.echo("No new topics created.")
-        else:
-            new_topic_configs = {}
-            for new_topic in new_topics:
-                new_topic_config = {
-                    "num_partitions: ": new_topic.num_partitions,
-                    "replication_factor: ": new_topic.replication_factor,
-                    "config": new_topic.config
-                }
-                new_topic_configs[click.style(new_topic.topic, bold=True)] = new_topic_config
-
-            click.echo(pretty(
-                {"New topics created": new_topic_configs}
-            ))
+        click.echo(get_output_topic_diffs(topics_config_diff))
+        click.echo(get_output_new_topics(new_topics))
 
 
 @delete.command("topic")

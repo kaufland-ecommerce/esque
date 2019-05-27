@@ -1,9 +1,10 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, List, MutableMapping
+from typing import Any, List, MutableMapping, Dict
 
 import click
 import pendulum
+from confluent_kafka.cimpl import NewTopic
 
 C_MAX_INT = 2 ** 31 - 1
 
@@ -57,10 +58,7 @@ def pretty_dict(d: MutableMapping[str, Any]) -> str:
             row = f"{pretty(key)}:".ljust(max_col_length + 2)
 
             unit = str(key).split(".")[-1]
-            if unit in CONVERSION_MAPPING:
-                row += f"{CONVERSION_MAPPING[unit](value)}"
-            else:
-                row += pretty(value)
+            row += get_value(unit, value)
         else:
             row = f"{pretty(key)}:\n  "
             sub_lines = pretty(value).splitlines(keepends=False)
@@ -72,6 +70,17 @@ def pretty_dict(d: MutableMapping[str, Any]) -> str:
         lines.append(row)
 
     return "\n".join(lines)
+
+
+def get_value(unit, value):
+    if " -> " in value:
+        values = value.split(" -> ")
+        return click.style(get_value(unit, values[0]), fg="red") \
+            + " -> " + click.style(get_value(unit, values[1]), fg="green")
+
+    if unit in CONVERSION_MAPPING:
+        return f"{CONVERSION_MAPPING[unit](value)}"
+    return pretty(value)
 
 
 def is_scalar(value: Any) -> bool:
@@ -98,11 +107,6 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     if not value:
         return ""
 
-    if " -> " in value:
-        values = value.split(" -> ")
-        return click.style(pretty_duration(values[0]), fg="red") \
-            + " -> " + click.style(pretty_duration(values[1]), fg="green")
-
     if type(value) != int:
         value = int(value)
 
@@ -114,6 +118,40 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
         return pendulum.duration(years=value).in_words()
 
     return pendulum.duration(milliseconds=value).in_words()
+
+
+def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, List[str]]]) -> str:
+    if not topics_config_diff:
+        return "No topics changed."
+
+    output = []
+    for name, diff in topics_config_diff.items():
+        config_diff_attributes = {}
+        for attribute, value in diff.items():
+            config_diff_attributes[attribute] = value[0] + " -> " + value[1]
+        output.append(
+            {click.style(name, bold=True): {"Config Diff": config_diff_attributes}}
+        )
+
+    return pretty({"Changed Topics": output})
+
+
+def get_output_new_topics(new_topics: List[NewTopic]) -> str:
+    if not new_topics:
+        return "No new topics created."
+
+    new_topic_configs = {}
+    for new_topic in new_topics:
+        new_topic_config = {
+            "num_partitions: ": new_topic.num_partitions,
+            "replication_factor: ": new_topic.replication_factor,
+            "config": new_topic.config
+        }
+        new_topic_configs[click.style(new_topic.topic, bold=True)] = new_topic_config
+
+    return pretty(
+        {"New topics created": new_topic_configs}
+    )
 
 
 def pretty_size(value: Any) -> str:
