@@ -154,7 +154,6 @@ class TopicController:
         )
         return new_topic
 
-
     @raise_for_kafka_exception
     @invalidate_cache_after
     def create_topics(self, topics: List[NewTopic]):

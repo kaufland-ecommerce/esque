@@ -73,7 +73,7 @@ def pretty_dict(d: MutableMapping[str, Any]) -> str:
 
 
 def get_value(unit, value):
-    if " -> " in value:
+    if isinstance(value, str) and " -> " in value:
         values = value.split(" -> ")
         return click.style(get_value(unit, values[0]), fg="red") \
             + " -> " + click.style(get_value(unit, values[1]), fg="green")
