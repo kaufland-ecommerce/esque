@@ -99,7 +99,7 @@ def create_topic(state: State, topic_name):
 @pass_state
 def apply(state: State, file):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        yaml_data = yaml.load(open(file), Loader=yaml.Loader)
+        yaml_data = yaml.safe_load(open(file))
         topics_config_diff, new_topics = TopicController(state.cluster).apply_topic_conf(yaml_data.get("topics"))
         click.echo(get_output_topic_diffs(topics_config_diff))
         click.echo(get_output_new_topics(new_topics))
