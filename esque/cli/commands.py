@@ -94,10 +94,10 @@ def create_topic(state: State, topic_name):
 
 @esque.command("apply", help="Apply a configuration")
 @click.option(
-    "-f", "--file", help="Config file path", default=False
+    "-f", "--file", help="Config file path", required=True
 )
 @pass_state
-def apply(state: State, file):
+def apply(state: State, file: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         yaml_data = yaml.safe_load(open(file))
         topics_config_diff, new_topics = TopicController(state.cluster).apply_topic_conf(yaml_data.get("topics"))
