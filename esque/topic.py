@@ -220,12 +220,11 @@ class TopicController:
             conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic_config.name)
             config_list = unpack_confluent_config(conf)
             new_config = topic_config.config
-            config_diff = {}
-            for name, value in config_list.items():
-                if not new_config.get(name):
-                    continue
-                if str(new_config.get(name)) != str(value):
-                    config_diff[name] = [str(value), str(new_config.get(name))]
+            config_diff = {
+                name: [str(value), str(new_config.get(name))]
+                for name, value in config_list.items()
+                if new_config.get(name) and str(new_config.get(name) != str(value))
+            }
 
             config_resources.append(
                 ConfigResource(ConfigResource.Type.TOPIC, topic_config.name, topic_config.config)
