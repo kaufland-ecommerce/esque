@@ -188,7 +188,7 @@ class TopicController:
                 topic.get("replication_factor"),
                 topic.get("config")
             )
-            if topic.get("name") in existing_topic_names:
+            if topic_config.name in existing_topic_names:
                 editable_topics.append(topic_config)
                 continue
 
