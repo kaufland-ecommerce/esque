@@ -223,7 +223,7 @@ class TopicController:
             config_diff = {
                 name: [str(value), str(new_config.get(name))]
                 for name, value in config_list.items()
-                if new_config.get(name) and str(new_config.get(name) != str(value))
+                if new_config.get(name) and str(new_config.get(name)) != str(value)
             }
 
             config_resources.append(
