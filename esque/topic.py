@@ -14,11 +14,11 @@ from esque.helpers import (
 )
 
 
-class Topic:
+class _Topic:
     def __init__(
             self,
             name: str,
-            cluster: Cluster,
+            cluster: Cluster = None,
             num_partitions: int = None,
             replication_factor: int = None,
             config: Dict[str, str] = None
@@ -125,7 +125,7 @@ class TopicController:
     @raise_for_kafka_exception
     def list_topics(
         self, *, search_string: str = None, sort=True, hide_internal=True
-    ) -> List[Topic]:
+    ) -> List[_Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topics = self.cluster.confluent_client.list_topics().topics
         topics = [self.get_topic(t.topic) for t in topics.values()]
@@ -139,7 +139,7 @@ class TopicController:
         return topics
 
     @raise_for_kafka_exception
-    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
+    def filter_existing_topics(self, topics: List[_Topic]) -> List[_Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         confluent_topics = self.cluster.confluent_client.list_topics().topics
         existing_topic_names = [t.topic for t in confluent_topics.values()]
@@ -147,12 +147,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def create_topic(self, topic: Topic):
-        self.create_topics([topic])
-
-    @raise_for_kafka_exception
-    @invalidate_cache_after
-    def create_topics(self, topics: List[Topic]):
+    def create_topics(self, topics: List[_Topic]):
         for topic in topics:
             new_topic = NewTopic(
                 topic.name,
@@ -165,7 +160,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def alter_configs(self, topics: List[Topic]):
+    def alter_configs(self, topics: List[_Topic]):
         for topic in topics:
             config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
@@ -173,9 +168,15 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def delete_topic(self, topic: Topic):
+    def delete_topic(self, topic: _Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_futures_done([future])
 
-    def get_topic(self, topic_name: str) -> Topic:
-        return Topic(topic_name, self.cluster)
+    def get_topic(
+            self,
+            topic_name: str,
+            num_partitions: int = None,
+            replication_factor: int = None,
+            config: Dict[str, str] = None
+    ) -> _Topic:
+        return _Topic(topic_name, self.cluster, num_partitions, replication_factor, config)

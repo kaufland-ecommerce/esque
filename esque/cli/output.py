@@ -4,9 +4,8 @@ from typing import Any, List, MutableMapping, Dict, Tuple
 
 import click
 import pendulum
-from confluent_kafka.cimpl import NewTopic
 
-from esque.topic import Topic
+from esque.topic import _Topic
 
 C_MAX_INT = 2 ** 31 - 1
 
@@ -135,7 +134,7 @@ def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, st
     return pretty({"Topics to change": output})
 
 
-def get_output_new_topics(new_topics: List[Topic]) -> str:
+def get_output_new_topics(new_topics: List[_Topic]) -> str:
     new_topic_configs = {}
     for topic in new_topics:
         new_topic_config = {
