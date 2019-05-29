@@ -18,7 +18,7 @@ class _Topic:
     def __init__(
             self,
             name: str,
-            cluster: Cluster = None,
+            cluster: Cluster,
             num_partitions: int = None,
             replication_factor: int = None,
             config: Dict[str, str] = None
