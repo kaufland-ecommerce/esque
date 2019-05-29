@@ -147,23 +147,8 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def create_topic(
-        self,
-        topic_name: str,
-        *,
-        num_partitions: int = 1,
-        replication_factor: int = 3,
-        topic_config: Dict[str, str] = None,
-    ):
-        if not topic_config:
-            topic_config = {}
-        new_topic = NewTopic(
-            topic_name,
-            num_partitions=num_partitions,
-            replication_factor=replication_factor,
-            config=topic_config,
-        )
-        return new_topic
+    def create_topic(self, topic: Topic):
+        self.create_topics([topic])
 
     @raise_for_kafka_exception
     @invalidate_cache_after
@@ -181,33 +166,10 @@ class TopicController:
     @raise_for_kafka_exception
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
-        if not topics:
-            return
         for topic in topics:
             config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_futures_done(list(future_list.values()))
-
-    @raise_for_kafka_exception
-    @invalidate_cache_after
-    def apply_topic_conf(
-            self,
-            topics: List[Topic]
-    ):
-        new_topics = []
-        editable_topics = []
-        existing_topic_names = [topic.name for topic in self.list_topics()]
-        for topic in topics:
-            if topic.name in existing_topic_names:
-                editable_topics.append(topic)
-                continue
-
-            new_topics.append(topic)
-
-        self.alter_configs(editable_topics)
-        self.create_topics(new_topics)
-
-        return new_topics
 
     @raise_for_kafka_exception
     @invalidate_cache_after
