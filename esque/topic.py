@@ -13,24 +13,6 @@ from esque.helpers import (
     unpack_confluent_config,
 )
 
-class TopicConfig:
-    def __init__(self, name: str, num_partitions: int, replication_factor: int, config: Dict[str, str] = None):
-        self.name = name
-        self.num_partitions = num_partitions
-        self.replication_factor = replication_factor
-        self.config = config
-
-    def get_new_topic(self):
-        config = {}
-        if len(self.config) >= 1:
-            config = self.config
-
-        return NewTopic(
-            self.name,
-            num_partitions=self.num_partitions,
-            replication_factor=self.replication_factor,
-            config=config
-        )
 
 class Topic:
     def __init__(
@@ -45,6 +27,11 @@ class Topic:
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
+        self.num_partitions = num_partitions
+        self.replication_factor = replication_factor
+        if config is None:
+            config = {}
+        self.config = config
 
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
