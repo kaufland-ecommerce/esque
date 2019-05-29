@@ -19,7 +19,7 @@ from esque.errors import (
     ContextNotDefinedException,
     TopicAlreadyExistsException,
 )
-from esque.topic import TopicController
+from esque.topic import TopicController, Topic
 
 
 @click.group(help="(Kafka-)esque.")
@@ -98,11 +98,41 @@ def create_topic(state: State, topic_name):
 )
 @pass_state
 def apply(state: State, file: str):
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        yaml_data = yaml.safe_load(open(file))
-        topics_config_diff, new_topics = TopicController(state.cluster).apply_topic_conf(yaml_data.get("topics"))
-        click.echo(get_output_topic_diffs(topics_config_diff))
+    topic_controller = TopicController(state.cluster)
+    yaml_data = yaml.safe_load(open(file))
+    topic_configs = yaml_data.get("topics")
+    topics = []
+    for topic_config in topic_configs:
+        topics.append(
+            Topic(
+                topic_config.get("name"),
+                state.cluster,
+                topic_config.get("num_partitions"),
+                topic_config.get("replication_factor"),
+                topic_config.get("config")
+            )
+        )
+    editable_topics = topic_controller.filter_existing_topics(topics)
+    topic_config_diffs = {
+        topic.name: topic.config_diff()
+        for topic in editable_topics
+        if topic.config_diff() != {}
+    }
+
+    if len(topic_config_diffs) > 0:
+        click.echo(get_output_topic_diffs(topic_config_diffs))
+        if ensure_approval("Are you sure to alter configs?", no_verify=state.no_verify):
+            topic_controller.alter_configs(editable_topics)
+    else:
+        click.echo('No topics to edit.')
+
+    new_topics = [topic for topic in topics if topic not in editable_topics]
+    if len(new_topics) > 0:
         click.echo(get_output_new_topics(new_topics))
+        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
+            topic_controller.create_topics(new_topics)
+    else:
+        click.echo('No new topics to create.')
 
 
 @delete.command("topic")
@@ -114,7 +144,7 @@ def apply(state: State, file: str):
 def delete_topic(state: State, topic_name: str):
     topic_controller = TopicController(state.cluster)
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(topic_name)
+        topic_controller.delete_topic(Topic(topic_name, state.cluster))
 
         assert topic_name not in topic_controller.list_topics()
 

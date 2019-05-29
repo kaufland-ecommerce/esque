@@ -1,10 +1,12 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, List, MutableMapping, Dict
+from typing import Any, List, MutableMapping, Dict, Tuple
 
 import click
 import pendulum
 from confluent_kafka.cimpl import NewTopic
+
+from esque.topic import Topic
 
 C_MAX_INT = 2 ** 31 - 1
 
@@ -120,10 +122,7 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     return pendulum.duration(milliseconds=value).in_words()
 
 
-def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, List[str]]]) -> str:
-    if not topics_config_diff:
-        return "No topics changed."
-
+def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]) -> str:
     output = []
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
@@ -133,21 +132,18 @@ def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, List[str]]]) 
             {click.style(name, bold=True): {"Config Diff": config_diff_attributes}}
         )
 
-    return pretty({"Changed Topics": output})
+    return pretty({"Topics to change": output})
 
 
-def get_output_new_topics(new_topics: List[NewTopic]) -> str:
-    if not new_topics:
-        return "No new topics created."
-
+def get_output_new_topics(new_topics: List[Topic]) -> str:
     new_topic_configs = {}
-    for new_topic in new_topics:
+    for topic in new_topics:
         new_topic_config = {
-            "num_partitions: ": new_topic.num_partitions,
-            "replication_factor: ": new_topic.replication_factor,
-            "config": new_topic.config
+            "num_partitions: ": topic.num_partitions,
+            "replication_factor: ": topic.replication_factor,
+            "config": topic.config
         }
-        new_topic_configs[click.style(new_topic.topic, bold=True)] = new_topic_config
+        new_topic_configs[click.style(topic.name, bold=True)] = new_topic_config
 
     return pretty(
         {"New topics created": new_topic_configs}
