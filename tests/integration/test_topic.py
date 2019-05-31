@@ -12,6 +12,12 @@ def test_offsets(filled_topic: _Topic):
 def test_partitions(topic_object: _Topic):
     assert topic_object.partitions == [0]
 
+@pytest.mark.integration
+def test_config_diff(changed_topic_object: _Topic):
+    config_diff = changed_topic_object.config_diff()
+
+    assert config_diff.get(changed_topic_object.name) == [{"delete.policy": ["delete", "compact"]}]
+
 
 @pytest.mark.integration
 def test_describe(filled_topic: _Topic):
