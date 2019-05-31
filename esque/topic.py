@@ -16,12 +16,12 @@ from esque.helpers import (
 
 class _Topic:
     def __init__(
-            self,
-            name: str,
-            cluster: Cluster,
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None
+        self,
+        name: str,
+        cluster: Cluster,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ):
         self.name = name
         self.cluster: Cluster = cluster
@@ -153,7 +153,7 @@ class TopicController:
                 topic.name,
                 num_partitions=topic.num_partitions,
                 replication_factor=topic.replication_factor,
-                config=topic.config
+                config=topic.config,
             )
             future_list = self.cluster.confluent_client.create_topics([new_topic])
             ensure_kafka_futures_done(list(future_list.values()))
@@ -162,7 +162,9 @@ class TopicController:
     @invalidate_cache_after
     def alter_configs(self, topics: List[_Topic]):
         for topic in topics:
-            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
+            config_resource = ConfigResource(
+                ConfigResource.Type.TOPIC, topic.name, topic.config
+            )
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_futures_done(list(future_list.values()))
 
@@ -173,10 +175,12 @@ class TopicController:
         ensure_kafka_futures_done([future])
 
     def get_topic(
-            self,
-            topic_name: str,
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None
+        self,
+        topic_name: str,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ) -> _Topic:
-        return _Topic(topic_name, self.cluster, num_partitions, replication_factor, config)
+        return _Topic(
+            topic_name, self.cluster, num_partitions, replication_factor, config
+        )

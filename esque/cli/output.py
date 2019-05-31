@@ -76,8 +76,11 @@ def pretty_dict(d: MutableMapping[str, Any]) -> str:
 def get_value(unit: str, value: Any) -> str:
     if isinstance(value, str) and " -> " in value:
         values = value.split(" -> ")
-        return click.style(get_value(unit, values[0]), fg="red") \
-            + " -> " + click.style(get_value(unit, values[1]), fg="green")
+        return (
+            click.style(get_value(unit, values[0]), fg="red")
+            + " -> "
+            + click.style(get_value(unit, values[1]), fg="green")
+        )
 
     if unit in CONVERSION_MAPPING:
         return f"{CONVERSION_MAPPING[unit](value)}"
@@ -121,7 +124,9 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     return pendulum.duration(milliseconds=value).in_words()
 
 
-def get_output_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]) -> str:
+def get_output_topic_diffs(
+    topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
+) -> str:
     output = []
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
@@ -140,13 +145,11 @@ def get_output_new_topics(new_topics: List[_Topic]) -> str:
         new_topic_config = {
             "num_partitions: ": topic.num_partitions,
             "replication_factor: ": topic.replication_factor,
-            "config": topic.config
+            "config": topic.config,
         }
         new_topic_configs[click.style(topic.name, bold=True)] = new_topic_config
 
-    return pretty(
-        {"New topics created": new_topic_configs}
-    )
+    return pretty({"New topics created": new_topic_configs})
 
 
 def pretty_size(value: Any) -> str:

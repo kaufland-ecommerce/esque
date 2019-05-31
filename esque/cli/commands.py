@@ -90,13 +90,13 @@ def ctx(state, context):
 def create_topic(state: State, topic_name):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller = TopicController(state.cluster)
-        TopicController(state.cluster).create_topics([(topic_controller.get_topic(topic_name))])
+        TopicController(state.cluster).create_topics(
+            [(topic_controller.get_topic(topic_name))]
+        )
 
 
 @esque.command("apply", help="Apply a configuration")
-@click.option(
-    "-f", "--file", help="Config file path", required=True
-)
+@click.option("-f", "--file", help="Config file path", required=True)
 @pass_state
 def apply(state: State, file: str):
     topic_controller = TopicController(state.cluster)
@@ -109,7 +109,7 @@ def apply(state: State, file: str):
                 topic_config.get("name"),
                 topic_config.get("num_partitions"),
                 topic_config.get("replication_factor"),
-                topic_config.get("config")
+                topic_config.get("config"),
             )
         )
     editable_topics = topic_controller.filter_existing_topics(topics)
@@ -124,15 +124,17 @@ def apply(state: State, file: str):
         if ensure_approval("Are you sure to alter configs?", no_verify=state.no_verify):
             topic_controller.alter_configs(editable_topics)
     else:
-        click.echo('No topics to edit.')
+        click.echo("No topics to edit.")
 
     new_topics = [topic for topic in topics if topic not in editable_topics]
     if len(new_topics) > 0:
         click.echo(get_output_new_topics(new_topics))
-        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
+        if ensure_approval(
+            "Are you sure to create the new topics?", no_verify=state.no_verify
+        ):
             topic_controller.create_topics(new_topics)
     else:
-        click.echo('No new topics to create.')
+        click.echo("No new topics to create.")
 
 
 @delete.command("topic")
@@ -241,7 +243,9 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_topic(PING_TOPIC, state.cluster)])
+            topic_controller.create_topics(
+                [topic_controller.get_topic(PING_TOPIC, state.cluster)]
+            )
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
