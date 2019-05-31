@@ -125,7 +125,7 @@ class TopicController:
     @raise_for_kafka_exception
     def list_topics(
         self, *, search_string: str = None, sort=True, hide_internal=True
-    ) -> List[_Topic]:
+    ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topics = self.cluster.confluent_client.list_topics().topics
         topics = [self.get_topic(t.topic) for t in topics.values()]
@@ -139,7 +139,7 @@ class TopicController:
         return topics
 
     @raise_for_kafka_exception
-    def filter_existing_topics(self, topics: List[_Topic]) -> List[_Topic]:
+    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         confluent_topics = self.cluster.confluent_client.list_topics().topics
         existing_topic_names = [t.topic for t in confluent_topics.values()]
@@ -147,7 +147,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def create_topics(self, topics: List[_Topic]):
+    def create_topics(self, topics: List[Topic]):
         for topic in topics:
             new_topic = NewTopic(
                 topic.name,
@@ -160,7 +160,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def alter_configs(self, topics: List[_Topic]):
+    def alter_configs(self, topics: List[Topic]):
         for topic in topics:
             config_resource = ConfigResource(
                 ConfigResource.Type.TOPIC, topic.name, topic.config

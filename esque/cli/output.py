@@ -139,7 +139,7 @@ def get_output_topic_diffs(
     return pretty({"Topics to change": output})
 
 
-def get_output_new_topics(new_topics: List[_Topic]) -> str:
+def get_output_new_topics(new_topics: List[Topic]) -> str:
     new_topic_configs = {}
     for topic in new_topics:
         new_topic_config = {
@@ -149,7 +149,7 @@ def get_output_new_topics(new_topics: List[_Topic]) -> str:
         }
         new_topic_configs[click.style(topic.name, bold=True)] = new_topic_config
 
-    return pretty({"New topics created": new_topic_configs})
+    return pretty({"New topics to create": new_topic_configs})
 
 
 def pretty_size(value: Any) -> str:
