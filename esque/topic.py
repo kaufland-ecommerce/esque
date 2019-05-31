@@ -27,9 +27,9 @@ class _Topic:
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
-        self.num_partitions = num_partitions or 1
-        self.replication_factor = replication_factor or 1
-        self.config = config or {}
+        self.num_partitions = num_partitions if num_partitions is not None else 1
+        self.replication_factor = replication_factor if replication_factor is not None else 1
+        self.config = config if config is not None else {}
 
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
