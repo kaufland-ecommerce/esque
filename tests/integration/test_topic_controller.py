@@ -29,18 +29,18 @@ def test_topic_creation_works(
 @pytest.mark.integration
 def test_alter_topic_config_works(topic_controller: TopicController, topic_id: str):
     initial_topic = topic_controller.get_topic(
-        topic_id, config={"delete.policy": "delete"}
+        topic_id, config={'cleanup.policy': "delete"}
     )
     topic_controller.create_topics([initial_topic])
     replicas, config = initial_topic.describe()
     assert config.get("Config").get("delete.policy") == "delete"
     change_topic = topic_controller.get_topic(
-        topic_id, config={"delete.policy": "compact"}
+        topic_id, config={'cleanup.policy': "compact"}
     )
     topic_controller.alter_configs([change_topic])
     after_changes_applied_topic = topic_controller.get_topic(topic_id)
     replicas, final_config = after_changes_applied_topic.describe()
-    assert final_config.get("Config").get("delete.policy") == "compact"
+    assert final_config.get("Config").get('cleanup.policy') == "compact"
 
 
 @pytest.mark.integration
