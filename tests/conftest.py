@@ -1,4 +1,3 @@
-import os
 import random
 from concurrent.futures import Future
 from pathlib import Path
@@ -15,7 +14,7 @@ from esque.cluster import Cluster
 from esque.config import Config
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic
+from esque.topic import _Topic, TopicController
 
 TEST_CONFIG = """
 [Context]
@@ -73,7 +72,7 @@ def topic_id(confluent_admin_client) -> str:
 
 @pytest.fixture()
 def topic_object(cluster, topic):
-    yield Topic(topic, cluster)
+    yield TopicController(cluster).get_topic(topic)
 
 
 @pytest.fixture()
@@ -106,7 +105,7 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(topic_object: Topic):
+def producer(topic_object: _Topic):
     # Send messages synchronously so we can be sure offset has been commited in tests.
     yield Producer(
         topic_object.cluster.pykafka_client.cluster,
@@ -133,7 +132,7 @@ def consumer_group():
 
 
 @pytest.fixture()
-def consumer(topic_object: Topic, consumer_group):
+def consumer(topic_object: _Topic, consumer_group):
     _config = Config().create_confluent_config()
     _config.update(
         {
