@@ -14,7 +14,7 @@ from esque.helpers import (
 )
 
 
-class _Topic:
+class Topic:
     def __init__(
         self,
         name: str,
@@ -170,7 +170,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def delete_topic(self, topic: _Topic):
+    def delete_topic(self, topic: Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_futures_done([future])
 
@@ -180,7 +180,7 @@ class TopicController:
         num_partitions: int = None,
         replication_factor: int = None,
         config: Dict[str, str] = None,
-    ) -> _Topic:
-        return _Topic(
+    ) -> Topic:
+        return Topic(
             topic_name, self.cluster, num_partitions, replication_factor, config
         )

@@ -1,7 +1,7 @@
 import confluent_kafka
 import pytest
 
-from esque.topic import _Topic, TopicController
+from esque.topic import Topic, TopicController
 
 
 @pytest.fixture()
@@ -67,5 +67,5 @@ def test_topic_listing_works(topic_controller: TopicController, topic: str):
 @pytest.mark.integration
 def test_topic_object_works(topic_controller: TopicController, topic: str):
     topic = topic_controller.get_topic(topic)
-    assert isinstance(topic, _Topic)
+    assert isinstance(topic, Topic)
     assert len(topic.get_offsets()) != 0

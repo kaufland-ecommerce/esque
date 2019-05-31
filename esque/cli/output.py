@@ -5,7 +5,7 @@ from typing import Any, List, MutableMapping, Dict, Tuple
 import click
 import pendulum
 
-from esque.topic import _Topic
+from esque.topic import Topic
 
 C_MAX_INT = 2 ** 31 - 1
 
