@@ -77,7 +77,7 @@ def topic_object(cluster, topic):
 
 @pytest.fixture()
 def changed_topic_object(cluster, topic):
-    yield TopicController(cluster).get_topic(topic, 1, 3, {'cleanup.policy': "compact"})
+    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
