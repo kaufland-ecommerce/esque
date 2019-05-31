@@ -133,21 +133,27 @@ def get_output_topic_diffs(
         for attribute, value in diff.items():
             config_diff_attributes[attribute] = value[0] + " -> " + value[1]
         output.append(
-            {click.style(name, bold=True): {"Config Diff": config_diff_attributes}}
+            {
+                click.style(name, bold=True, fg="yellow"): {
+                    "Config Diff": config_diff_attributes
+                }
+            }
         )
 
     return pretty({"Topics to change": output})
 
 
 def get_output_new_topics(new_topics: List[Topic]) -> str:
-    new_topic_configs = {}
+    new_topic_configs = []
     for topic in new_topics:
         new_topic_config = {
             "num_partitions: ": topic.num_partitions,
             "replication_factor: ": topic.replication_factor,
             "config": topic.config,
         }
-        new_topic_configs[click.style(topic.name, bold=True)] = new_topic_config
+        new_topic_configs.append(
+            {click.style(topic.name, bold=True, fg="green"): new_topic_config}
+        )
 
     return pretty({"New topics to create": new_topic_configs})
 

@@ -113,16 +113,31 @@ def apply(state: State, file: str):
             )
         )
     editable_topics = topic_controller.filter_existing_topics(topics)
+    topics_to_be_changed = [
+        topic for topic in editable_topics if topic.config_diff() != {}
+    ]
     topic_config_diffs = {
-        topic.name: topic.config_diff()
-        for topic in editable_topics
-        if topic.config_diff() != {}
+        topic.name: topic.config_diff() for topic in topics_to_be_changed
     }
 
     if len(topic_config_diffs) > 0:
         click.echo(get_output_topic_diffs(topic_config_diffs))
-        if ensure_approval("Are you sure to alter configs?", no_verify=state.no_verify):
-            topic_controller.alter_configs(editable_topics)
+        if ensure_approval(
+            "Are you sure to change configs?", no_verify=state.no_verify
+        ):
+            topic_controller.alter_configs(topics_to_be_changed)
+            click.echo(
+                click.style(
+                    pretty(
+                        {
+                            "Successfully changed topics": [
+                                topic.name for topic in topics_to_be_changed
+                            ]
+                        }
+                    ),
+                    fg="green",
+                )
+            )
     else:
         click.echo("No topics to edit.")
 
@@ -133,6 +148,18 @@ def apply(state: State, file: str):
             "Are you sure to create the new topics?", no_verify=state.no_verify
         ):
             topic_controller.create_topics(new_topics)
+            click.echo(
+                click.style(
+                    pretty(
+                        {
+                            "Successfully created topics": [
+                                topic.name for topic in new_topics
+                            ]
+                        }
+                    ),
+                    fg="green",
+                )
+            )
     else:
         click.echo("No new topics to create.")
 
