@@ -18,7 +18,7 @@ def test_topic_creation_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
     topic_controller.create_topics(
-        topic_controller.get_topic(topic_id), replication_factor=1
+        [topic_controller.get_topic(topic_id, replication_factor=1)]
     )
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
