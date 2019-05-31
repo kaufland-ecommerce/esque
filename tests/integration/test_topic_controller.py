@@ -25,6 +25,7 @@ def test_topic_creation_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
 
+
 @pytest.mark.integration
 def test_alter_topic_config_works(
     topic_controller: TopicController,
