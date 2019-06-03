@@ -74,12 +74,38 @@ Options:
   --help  Show this message and exit.
 
 Commands:
+  apply     Apply a configuration
   create    Create a new instance of a resource.
   ctx       Switch clusters.
   delete    Delete a resource.
   describe  Get detailed informations about a resource.
   get       Get a quick overview of different resources.
   ping      Tests the connection to the kafka cluster.
+```
+
+#### Config file for "apply" command
+
+The config for the apply command has to be a yaml file and
+is given with the option -f or --file.
+
+In the current version only topic configurations can be
+changed and specified.
+
+It has to use the schema, which is used 
+for the following example:
+
+```
+topics:
+  - name: topic_one
+    replication_factor: 3
+    num_partitions: 50
+    config:
+      cleanup.policy: compact
+  - name: topic_two
+    replication_factor: 3
+    num_partitions: 50
+    config:
+      cleanup.policy: compact
 ```
 
 ## Development

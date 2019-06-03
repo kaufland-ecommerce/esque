@@ -1,4 +1,3 @@
-import os
 import random
 from concurrent.futures import Future
 from pathlib import Path
@@ -15,7 +14,7 @@ from esque.cluster import Cluster
 from esque.config import Config
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic
+from esque.topic import Topic, TopicController
 
 TEST_CONFIG = """
 [Context]
@@ -73,7 +72,12 @@ def topic_id(confluent_admin_client) -> str:
 
 @pytest.fixture()
 def topic_object(cluster, topic):
-    yield Topic(topic, cluster)
+    yield TopicController(cluster).get_topic(topic)
+
+
+@pytest.fixture()
+def changed_topic_object(cluster, topic):
+    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()

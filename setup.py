@@ -28,6 +28,7 @@ required = [
     "click>=7.0",
     "pykafka",
     "pendulum",
+    "pyyaml",
 ]
 
 setup(

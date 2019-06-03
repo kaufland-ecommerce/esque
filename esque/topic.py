@@ -1,5 +1,4 @@
 import re
-from concurrent.futures import Future
 from typing import Dict, List, Tuple
 
 import pykafka
@@ -16,11 +15,23 @@ from esque.helpers import (
 
 
 class Topic:
-    def __init__(self, name: str, cluster: Cluster):
+    def __init__(
+        self,
+        name: str,
+        cluster: Cluster,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
+    ):
         self.name = name
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
+        self.num_partitions = num_partitions if num_partitions is not None else 1
+        self.replication_factor = (
+            replication_factor if replication_factor is not None else 1
+        )
+        self.config = config if config is not None else {}
 
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
@@ -64,6 +75,16 @@ class Topic:
                 int(high_watermark_offsets[partition_id][0][0]),
             )
             for partition_id in partitions
+        }
+
+    @raise_for_kafka_exception
+    def config_diff(self) -> Dict[str, Tuple[str, str]]:
+        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
+        config_list = unpack_confluent_config(conf)
+        return {
+            name: [str(value), str(self.config.get(name))]
+            for name, value in config_list.items()
+            if self.config.get(name) and str(self.config.get(name)) != str(value)
         }
 
     @raise_for_kafka_exception
@@ -118,34 +139,48 @@ class TopicController:
         return topics
 
     @raise_for_kafka_exception
-    @invalidate_cache_after
-    def create_topic(
-        self,
-        topic_name: str,
-        *,
-        num_partitions: int = 1,
-        replication_factor: int = 3,
-        topic_config: Dict[str, str] = None,
-    ):
-        if not topic_config:
-            topic_config = {}
-        new_topic = NewTopic(
-            topic_name,
-            num_partitions=num_partitions,
-            replication_factor=replication_factor,
-            config=topic_config,
-        )
-
-        future: Future = self.cluster.confluent_client.create_topics([new_topic])[
-            topic_name
-        ]
-        ensure_kafka_futures_done([future])
+    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
+        self.cluster.confluent_client.poll(timeout=1)
+        confluent_topics = self.cluster.confluent_client.list_topics().topics
+        existing_topic_names = [t.topic for t in confluent_topics.values()]
+        return [topic for topic in topics if topic.name in existing_topic_names]
 
     @raise_for_kafka_exception
     @invalidate_cache_after
-    def delete_topic(self, topic_name):
-        future = self.cluster.confluent_client.delete_topics([topic_name])[topic_name]
+    def create_topics(self, topics: List[Topic]):
+        for topic in topics:
+            new_topic = NewTopic(
+                topic.name,
+                num_partitions=topic.num_partitions,
+                replication_factor=topic.replication_factor,
+                config=topic.config,
+            )
+            future_list = self.cluster.confluent_client.create_topics([new_topic])
+            ensure_kafka_futures_done(list(future_list.values()))
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def alter_configs(self, topics: List[Topic]):
+        for topic in topics:
+            config_resource = ConfigResource(
+                ConfigResource.Type.TOPIC, topic.name, topic.config
+            )
+            future_list = self.cluster.confluent_client.alter_configs([config_resource])
+            ensure_kafka_futures_done(list(future_list.values()))
+
+    @raise_for_kafka_exception
+    @invalidate_cache_after
+    def delete_topic(self, topic: Topic):
+        future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_futures_done([future])
 
-    def get_topic(self, topic_name: str) -> Topic:
-        return Topic(topic_name, self.cluster)
+    def get_topic(
+        self,
+        topic_name: str,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
+    ) -> Topic:
+        return Topic(
+            topic_name, self.cluster, num_partitions, replication_factor, config
+        )

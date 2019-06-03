@@ -17,11 +17,30 @@ def test_topic_creation_works(
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
-    topic_controller.create_topic(topic_id, replication_factor=1)
+    topic_controller.create_topics(
+        [topic_controller.get_topic(topic_id, replication_factor=1)]
+    )
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_alter_topic_config_works(topic_controller: TopicController, topic_id: str):
+    initial_topic = topic_controller.get_topic(
+        topic_id, config={"cleanup.policy": "delete"}
+    )
+    topic_controller.create_topics([initial_topic])
+    replicas, config = initial_topic.describe()
+    assert config.get("Config").get("cleanup.policy") == "delete"
+    change_topic = topic_controller.get_topic(
+        topic_id, config={"cleanup.policy": "compact"}
+    )
+    topic_controller.alter_configs([change_topic])
+    after_changes_applied_topic = topic_controller.get_topic(topic_id)
+    replicas, final_config = after_changes_applied_topic.describe()
+    assert final_config.get("Config").get("cleanup.policy") == "compact"
 
 
 @pytest.mark.integration
@@ -32,7 +51,7 @@ def test_topic_deletion_works(
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
-    topic_controller.delete_topic(topic)
+    topic_controller.delete_topic(topic_controller.get_topic(topic))
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
