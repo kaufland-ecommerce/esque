@@ -271,7 +271,7 @@ def ping(state, times, wait):
     try:
         try:
             topic_controller.create_topics(
-                [topic_controller.get_topic(PING_TOPIC, state.cluster)]
+                [topic_controller.get_topic(PING_TOPIC)]
             )
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
@@ -290,7 +290,7 @@ def ping(state, times, wait):
     except KeyboardInterrupt:
         pass
     finally:
-        topic_controller.delete_topic(PING_TOPIC)
+        topic_controller.delete_topic(topic_controller.get_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(
