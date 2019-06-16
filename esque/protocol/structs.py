@@ -95,31 +95,53 @@ def encode_varint(value: int) -> bytes:
 
 
 def encode_varlen(value: int) -> bytes:
+    # see how many bytes we need, only 7 bit are available per byte
+    # the msb is used to indicate whether another byte is following
     len_, rest = divmod(value.bit_length(), 7)
     if rest:
         len_ += 1
-    len_ = max(len_, 1)
-    arr = bytearray(len_)
 
+    if len_ == 0:
+        return b"\x00"
+
+    arr = bytearray(len_)
     for i in range(len_):
-        arr[len_-i-1] = value & 0x7f
-        if i:
-            arr[len_-i-1] |= 0x80
+        # put last 7 bits into current position (we start at the end of the bytes array)
+        arr[-i-1] = value & 0x7f
+        # shift our value by the seven bits we've just serialized
         value >>= 7
+
+        # if this is not the first iteration, i.e. not the last byte, we set msb here to 1 to indicate that another
+        # byte is following
+        if i:
+            arr[-i-1] |= 0x80
 
     return bytes(arr)
 
 
 def decode_varint(buffer: BinaryIO) -> int:
+    zigzag = decode_varlen(buffer)
+
+    # now turn ZigZag encoding
+    value = (zigzag // 2) ^ (-1 * (zigzag & 1))
+    return value
+
+
+def decode_varlen(buffer):
     value = 0
     while True:
-        byte = decode_int8(buffer)
+        # shift the value we've computed so far by 7 bits to make space for the next 7
         value <<= 7
+
+        # read one byte
+        byte = decode_int8(buffer)
+
+        # append this byte's 7 data bits
         value ^= byte & 0x7f
+
+        # check msb to see if we need to continue reading
         if not (byte & 0x80):
             break
-
-    value = (value // 2) ^ (-1 * (value & 1))
     return value
 
 
