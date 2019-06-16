@@ -33,8 +33,6 @@ matrix:
     - TEST_CMD="flake8 esque/"
   - name: '3.6'
     python: 3.6
-    env:
-      - TEST_CMD="pytest tests/ --integration --cov=esque && coveralls"
   - name: '3.7'
     python: 3.7
 deploy:
