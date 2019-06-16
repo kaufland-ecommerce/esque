@@ -1,5 +1,5 @@
-from typing import Dict, Generic, List, Optional, TypeVar
 from io import BytesIO
+from typing import Dict, Generic, List, Optional, TypeVar
 
 import pytest
 
@@ -59,8 +59,8 @@ SAMPLES: Dict[str, List[Sample]] = {
         Sample[int](encoded_value=b"\x03", decoded_value=-2),
         Sample[int](encoded_value=b"\x8f\xff\xff\xff\x7e", decoded_value=2147483647),
         Sample[int](encoded_value=b"\x8f\xff\xff\xff\x7f", decoded_value=-2147483648),
-        Sample[int](encoded_value=b'\x81\xff\xff\xff\xff\xff\xff\xff\xff\x7e', decoded_value=9223372036854775807),
-        Sample[int](encoded_value=b'\x81\xff\xff\xff\xff\xff\xff\xff\xff\x7f', decoded_value=-9223372036854775808),
+        Sample[int](encoded_value=b"\x81\xff\xff\xff\xff\xff\xff\xff\xff\x7e", decoded_value=9223372036854775807),
+        Sample[int](encoded_value=b"\x81\xff\xff\xff\xff\xff\xff\xff\xff\x7f", decoded_value=-9223372036854775808),
     ],
     "STRING": [
         Sample[str](encoded_value=b"\x00\x0812345678", decoded_value="12345678"),

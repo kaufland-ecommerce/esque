@@ -1,5 +1,6 @@
 import struct
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
+
 from typing.io import BinaryIO
 
 # noinspection PyDictCreation
@@ -107,14 +108,14 @@ def encode_varlen(value: int) -> bytes:
     arr = bytearray(len_)
     for i in range(len_):
         # put last 7 bits into current position (we start at the end of the bytes array)
-        arr[-i-1] = value & 0x7f
+        arr[-i - 1] = value & 0x7F
         # shift our value by the seven bits we've just serialized
         value >>= 7
 
         # if this is not the first iteration, i.e. not the last byte, we set msb here to 1 to indicate that another
         # byte is following
         if i:
-            arr[-i-1] |= 0x80
+            arr[-i - 1] |= 0x80
 
     return bytes(arr)
 
@@ -137,7 +138,7 @@ def decode_varlen(buffer):
         byte = decode_int8(buffer)
 
         # append this byte's 7 data bits
-        value ^= byte & 0x7f
+        value ^= byte & 0x7F
 
         # check msb to see if we need to continue reading
         if not (byte & 0x80):
@@ -327,4 +328,4 @@ def encode_type(type_: str, value: Any) -> bytes:
 
 
 def strip_array(type_: str) -> str:
-    return type_[len('ARRAY['):-1]
+    return type_[len("ARRAY[") : -1]
