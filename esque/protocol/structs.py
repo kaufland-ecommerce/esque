@@ -1,5 +1,6 @@
 import struct
 from typing import Dict, Optional, Any
+from typing.io import BinaryIO
 
 # noinspection PyDictCreation
 PRIMITIVE_STRUCTS: Dict[str, struct.Struct] = {}
@@ -13,8 +14,13 @@ def encode_boolean(value: bool) -> bytes:
     return PRIMITIVE_STRUCTS["BOOLEAN"].pack(value)
 
 
-def decode_boolean(buffer: bytes) -> bool:
-    return PRIMITIVE_STRUCTS["BOOLEAN"].unpack(buffer)[0]
+def decode_boolean(buffer: BinaryIO) -> bool:
+    return unpack_primitive("BOOLEAN", buffer)
+
+
+def unpack_primitive(primitive: str, buffer: BinaryIO) -> Any:
+    primitive_struct = PRIMITIVE_STRUCTS[primitive]
+    return primitive_struct.unpack(buffer.read(primitive_struct.size))[0]
 
 
 # Represents an integer between -1**7 and 1**7-1 inclusive.
@@ -25,8 +31,8 @@ def encode_int8(value: int) -> bytes:
     return PRIMITIVE_STRUCTS["INT8"].pack(value)
 
 
-def decode_int8(buffer: bytes) -> int:
-    return PRIMITIVE_STRUCTS["INT8"].unpack(buffer)[0]
+def decode_int8(buffer: BinaryIO) -> int:
+    return unpack_primitive("INT8", buffer)
 
 
 # Represents an integer between -1**15 and 1**15-1 inclusive. The values are encoded using two bytes in
@@ -38,8 +44,8 @@ def encode_int16(value: int) -> bytes:
     return PRIMITIVE_STRUCTS["INT16"].pack(value)
 
 
-def decode_int16(buffer: bytes) -> int:
-    return PRIMITIVE_STRUCTS["INT16"].unpack(buffer)[0]
+def decode_int16(buffer: BinaryIO) -> int:
+    return unpack_primitive("INT16", buffer)
 
 
 # Represents an integer between -1**31 and 1**31-1 inclusive. The values are encoded using four bytes in
@@ -51,8 +57,8 @@ def encode_int32(value: int) -> bytes:
     return PRIMITIVE_STRUCTS["INT32"].pack(value)
 
 
-def decode_int32(buffer: bytes) -> int:
-    return PRIMITIVE_STRUCTS["INT32"].unpack(buffer)[0]
+def decode_int32(buffer: BinaryIO) -> int:
+    return unpack_primitive("INT32", buffer)
 
 
 # Represents an integer between -1**63 and 1**63-1 inclusive. The values are encoded using eight bytes in
@@ -64,8 +70,8 @@ def encode_int64(value: int) -> bytes:
     return PRIMITIVE_STRUCTS["INT64"].pack(value)
 
 
-def decode_int64(buffer: bytes) -> int:
-    return PRIMITIVE_STRUCTS["INT64"].unpack(buffer)[0]
+def decode_int64(buffer: BinaryIO) -> int:
+    return unpack_primitive("INT64", buffer)
 
 
 # Represents an integer between 0 and 1**32-1 inclusive. The values are encoded using four bytes in
@@ -77,18 +83,42 @@ def encode_uint32(value: int) -> bytes:
     return PRIMITIVE_STRUCTS["UINT32"].pack(value)
 
 
-def decode_uint32(buffer: bytes) -> int:
-    return PRIMITIVE_STRUCTS["UINT32"].unpack(buffer)[0]
+def decode_uint32(buffer: BinaryIO) -> int:
+    return unpack_primitive("UINT32", buffer)
 
 
 # Represents an integer between -2**31 and 2**31-1 inclusive. Encoding follows the variable-length zig-zag
 # encoding from Google Protocol Buffers.
 def encode_varint(value: int) -> bytes:
-    return encode_uint32((value << 1) ^ (value >> 31))
+    value = (value << 1) ^ (value >> 31)
+    return encode_varlen(value)
 
 
-def decode_varint(buffer: bytes) -> int:
-    value = decode_uint32(buffer)
+def encode_varlen(value: int) -> bytes:
+    len_, rest = divmod(value.bit_length(), 7)
+    if rest:
+        len_ += 1
+    len_ = max(len_, 1)
+    arr = bytearray(len_)
+
+    for i in range(len_):
+        arr[len_-i-1] = value & 0x7f
+        if i:
+            arr[len_-i-1] |= 0x80
+        value >>= 7
+
+    return bytes(arr)
+
+
+def decode_varint(buffer: BinaryIO) -> int:
+    value = 0
+    while True:
+        byte = decode_int8(buffer)
+        value <<= 7
+        value ^= byte & 0x7f
+        if not (byte & 0x80):
+            break
+
     value = (value // 2) ^ (-1 * (value & 1))
     return value
 
@@ -99,13 +129,12 @@ PRIMITIVE_STRUCTS["UINT64"] = struct.Struct(">Q")
 
 
 def encode_varlong(value: int) -> bytes:
-    return PRIMITIVE_STRUCTS["UINT64"].pack((value << 1) ^ (value >> 63))
+    value = (value << 1) ^ (value >> 63)
+    return encode_varlen(value)
 
 
-def decode_varlong(buffer: bytes) -> int:
-    value = PRIMITIVE_STRUCTS["UINT64"].unpack(buffer)[0]
-    value = (value // 2) ^ (-1 * (value & 1))
-    return value
+def decode_varlong(buffer: BinaryIO) -> int:
+    return decode_varint(buffer)
 
 
 # Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow
@@ -115,9 +144,9 @@ def encode_string(value: str) -> bytes:
     return encode_int16(len_) + struct.pack(f"{len_}s", value.encode("utf-8"))
 
 
-def decode_string(buffer: bytes) -> str:
-    len_ = decode_int16(buffer[:2])
-    return struct.unpack(f"{len_}s", buffer[2:])[0].decode("utf-8")
+def decode_string(buffer: BinaryIO) -> str:
+    len_ = decode_int16(buffer)
+    return buffer.read(len_).decode("utf-8")
 
 
 # Represents a sequence of characters or null. For non-null strings, first the length N is given as an
@@ -129,11 +158,11 @@ def encode_nullable_string(value: Optional[str]) -> bytes:
     return encode_string(value)
 
 
-def decode_nullable_string(buffer: bytes) -> Optional[str]:
-    len_ = decode_int16(buffer[:2])
+def decode_nullable_string(buffer: BinaryIO) -> Optional[str]:
+    len_ = decode_int16(buffer)
     if len_ == -1:
         return None
-    return struct.unpack(f"{len_}s", buffer[2:])[0].decode("utf-8")
+    return buffer.read(len_).decode("utf-8")
 
 
 # Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
@@ -142,9 +171,9 @@ def encode_bytes(value: bytes) -> bytes:
     return encode_int32(len_) + struct.pack(f"{len_}s", value)
 
 
-def decode_bytes(buffer: bytes) -> bytes:
-    len_ = decode_int32(buffer[:4])
-    return struct.unpack(f"{len_}s", buffer[4:])[0]
+def decode_bytes(buffer: BinaryIO) -> bytes:
+    len_ = decode_int32(buffer)
+    return buffer.read(len_)
 
 
 # Represents a raw sequence of bytes or null. For non-null values, first the length N is given as an
@@ -156,11 +185,11 @@ def encode_nullable_bytes(value: Optional[bytes]) -> bytes:
     return encode_bytes(value)
 
 
-def decode_nullable_bytes(buffer: bytes) -> Optional[bytes]:
-    len_ = decode_int32(buffer[:4])
+def decode_nullable_bytes(buffer: BinaryIO) -> Optional[bytes]:
+    len_ = decode_int32(buffer)
     if len_ == -1:
         return None
-    return struct.unpack(f"{len_}s", buffer[4:])[0]
+    return buffer.read(len_)
 
 
 # Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see
@@ -169,7 +198,7 @@ def encode_records(value: Optional[bytes]) -> bytes:
     return encode_nullable_bytes(value)
 
 
-def decode_records(buffer: bytes) -> Optional[bytes]:
+def decode_records(buffer: BinaryIO) -> Optional[bytes]:
     return decode_nullable_bytes(buffer)
 
 
@@ -182,12 +211,12 @@ def encode_array(type_: str, value: list) -> bytes:
     return encode_int32(len_) + b"".join((encode_type(type_, elem) for elem in value))
 
 
-def decode_array(type_: str, buffer: bytes) -> list:
-    len_ = decode_int32(buffer[:4])
-    return [decode_type(type_, buffer[4:]) for _ in range(len_)]  # TODO this is bullshit, doesn't work
+def decode_array(type_: str, buffer: BinaryIO) -> list:
+    len_ = decode_int32(buffer)
+    return [decode_type(type_, buffer) for _ in range(len_)]
 
 
-def decode_type(type_: str, buffer: bytes) -> Any:
+def decode_type(type_: str, buffer: BinaryIO) -> Any:
     if type_ == "BOOLEAN":
         return decode_boolean(buffer)
 
