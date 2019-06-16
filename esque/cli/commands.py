@@ -270,9 +270,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics(
-                [topic_controller.get_topic(PING_TOPIC)]
-            )
+            topic_controller.create_topics([topic_controller.get_topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
