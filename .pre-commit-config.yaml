@@ -11,14 +11,6 @@ repos:
   - id: check-json
   - id: check-merge-conflict
   - id: check-yaml
-    exclude: >
-     (?x)^(
-        helm/.*/.* |
-        helm/.*/templates/.* |
-        tools/fuse/tests/.*
-      )$
-
-  - id: requirements-txt-fixer
   - id: trailing-whitespace
     exclude: .*\.md$
 - repo: local
