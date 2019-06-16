@@ -112,9 +112,7 @@ def test_decode_boolean(sample: Sample[bool]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BOOLEAN"])
 def test_serde_boolean(sample: Sample[bool]) -> None:
 
-    recreated_original_value = structs.decode_boolean(
-        structs.encode_boolean(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_boolean(structs.encode_boolean(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -137,9 +135,7 @@ def test_decode_int8(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT8"])
 def test_serde_int8(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int8(
-        structs.encode_int8(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_int8(structs.encode_int8(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -163,9 +159,7 @@ def test_decode_int16(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT16"])
 def test_serde_int16(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int16(
-        structs.encode_int16(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_int16(structs.encode_int16(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -189,9 +183,7 @@ def test_decode_int32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT32"])
 def test_serde_int32(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int32(
-        structs.encode_int32(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_int32(structs.encode_int32(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -215,9 +207,7 @@ def test_decode_int64(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT64"])
 def test_serde_int64(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int64(
-        structs.encode_int64(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_int64(structs.encode_int64(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -241,9 +231,7 @@ def test_decode_uint32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["UINT32"])
 def test_serde_uint32(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_uint32(
-        structs.encode_uint32(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_uint32(structs.encode_uint32(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -267,9 +255,7 @@ def test_decode_varint(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARINT"])
 def test_serde_varint(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_varint(
-        structs.encode_varint(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_varint(structs.encode_varint(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -293,9 +279,7 @@ def test_decode_varlong(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARLONG"])
 def test_serde_varlong(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_varlong(
-        structs.encode_varlong(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_varlong(structs.encode_varlong(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -319,9 +303,7 @@ def test_decode_string(sample: Sample[str]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["STRING"])
 def test_serde_string(sample: Sample[str]) -> None:
 
-    recreated_original_value = structs.decode_string(
-        structs.encode_string(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_string(structs.encode_string(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -346,9 +328,7 @@ def test_decode_nullable_string(sample: Sample[Optional[str]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_STRING"])
 def test_serde_nullable_string(sample: Sample[Optional[str]]) -> None:
 
-    recreated_original_value = structs.decode_nullable_string(
-        structs.encode_nullable_string(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_nullable_string(structs.encode_nullable_string(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -371,9 +351,7 @@ def test_decode_bytes(sample: Sample[bytes]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BYTES"])
 def test_serde_bytes(sample: Sample[bytes]) -> None:
 
-    recreated_original_value = structs.decode_bytes(
-        structs.encode_bytes(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_bytes(structs.encode_bytes(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -398,9 +376,7 @@ def test_decode_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_BYTES"])
 def test_serde_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
 
-    recreated_original_value = structs.decode_nullable_bytes(
-        structs.encode_nullable_bytes(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_nullable_bytes(structs.encode_nullable_bytes(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -424,8 +400,14 @@ def test_decode_records(sample: Sample[Optional[bytes]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["RECORDS"])
 def test_serde_records(sample: Sample[Optional[bytes]]) -> None:
 
-    recreated_original_value = structs.decode_records(
-        structs.encode_records(sample.decoded_value)
-    )
+    recreated_original_value = structs.decode_records(structs.encode_records(sample.decoded_value))
 
     assert sample.decoded_value == recreated_original_value
+
+
+@pytest.mark.parametrize(["type_", "samples"], SAMPLES.items())
+def test_serde_array(type_: str, samples: List[Sample]) -> None:
+    original_value = [sample.decoded_value for sample in samples]
+    recreated_original_value = structs.decode_array(type_, structs.encode_array(type_, original_value))
+
+    assert original_value == recreated_original_value
