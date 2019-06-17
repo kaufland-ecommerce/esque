@@ -1,7 +1,7 @@
 import struct
 from typing import Any, Dict, Optional
 
-from typing.io import BinaryIO
+from typing import BinaryIO
 
 # noinspection PyDictCreation
 PRIMITIVE_STRUCTS: Dict[str, struct.Struct] = {}
