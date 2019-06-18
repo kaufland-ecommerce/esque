@@ -91,11 +91,14 @@ def decode_uint32(buffer: BinaryIO) -> int:
 # Represents an integer between -2**31 and 2**31-1 inclusive. Encoding follows the variable-length zig-zag
 # encoding from Google Protocol Buffers.
 def encode_varint(value: int) -> bytes:
+    assert (
+        -2 ** 31 <= value <= (2 ** 31 - 1)
+    ), f"Number not in range! {-2**31}(min) <= {value}(value) <= {(2**31-1)}(max)"
     value = (value << 1) ^ (value >> 31)
-    return encode_varlen(value)
+    return varlen_encode(value)
 
 
-def encode_varlen(value: int) -> bytes:
+def varlen_encode(value: int) -> bytes:
     # see how many bytes we need, only 7 bit are available per byte
     # the msb is used to indicate whether another byte is following
     len_, rest = divmod(value.bit_length(), 7)
@@ -121,14 +124,14 @@ def encode_varlen(value: int) -> bytes:
 
 
 def decode_varint(buffer: BinaryIO) -> int:
-    zigzag = decode_varlen(buffer)
+    zigzag = varlen_decode(buffer)
 
     # now turn ZigZag encoding
     value = (zigzag // 2) ^ (-1 * (zigzag & 1))
     return value
 
 
-def decode_varlen(buffer):
+def varlen_decode(buffer) -> int:
     value = 0
     while True:
         # shift the value we've computed so far by 7 bits to make space for the next 7
@@ -146,14 +149,18 @@ def decode_varlen(buffer):
     return value
 
 
-# Represents an integer between -1**63 and 1**63-1 inclusive. Encoding follows the variable-length zig-zag
+# Represents an integer between -2**63 and 2**63-1 inclusive. Encoding follows the variable-length zig-zag
 # encoding from Google Protocol Buffers.
 PRIMITIVE_STRUCTS["UINT64"] = struct.Struct(">Q")
 
 
 def encode_varlong(value: int) -> bytes:
+    assert (
+        -2 ** 63 <= value <= (2 ** 63 - 1)
+    ), f"Number not in range! {-2 ** 63}(min) <= {value}(value) <= {(2 ** 63 - 1)}(max)"
+
     value = (value << 1) ^ (value >> 63)
-    return encode_varlen(value)
+    return varlen_encode(value)
 
 
 def decode_varlong(buffer: BinaryIO) -> int:
