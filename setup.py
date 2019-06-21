@@ -3,6 +3,7 @@
 import codecs
 import os
 import sys
+import warnings
 
 from setuptools import find_packages, setup
 
@@ -30,6 +31,12 @@ required = [
     "pendulum",
     "pyyaml",
 ]
+if sys.version_info < (3, 6):
+    warnings.warn(
+        "Esque is neither tested nor developed for Python versions < 3.6. Use at your own risk.", RuntimeWarning
+    )
+if sys.version_info < (3, 7):
+    required.append("dataclasses")
 
 setup(
     name="esque",
