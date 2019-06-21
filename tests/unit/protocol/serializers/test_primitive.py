@@ -3,7 +3,7 @@ from typing import Dict, Generic, List, Optional, TypeVar
 
 import pytest
 
-from esque.protocol import structs
+from esque.protocol import serializers
 
 T = TypeVar("T")
 
@@ -93,14 +93,14 @@ SAMPLES: Dict[str, List[Sample]] = {
 # respectively. When reading a boolean value, any non-zero value is considered true.
 @pytest.mark.parametrize("sample", SAMPLES["BOOLEAN"])
 def test_encode_boolean(sample: Sample[bool]) -> None:
-    actual_encoded_value = structs.encode_boolean(sample.decoded_value)
+    actual_encoded_value = serializers.booleanSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["BOOLEAN"])
 def test_decode_boolean(sample: Sample[bool]) -> None:
-    actual_decoded_value = structs.decode_boolean(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.booleanSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -108,7 +108,8 @@ def test_decode_boolean(sample: Sample[bool]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BOOLEAN"])
 def test_serde_boolean(sample: Sample[bool]) -> None:
 
-    recreated_original_value = structs.decode_boolean(BytesIO(structs.encode_boolean(sample.decoded_value)))
+    recreated_original_value = serializers.booleanSerializer.read(BytesIO(serializers.booleanSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -116,14 +117,14 @@ def test_serde_boolean(sample: Sample[bool]) -> None:
 # Represents an integer between -2**7 and 2**7-1 inclusive.
 @pytest.mark.parametrize("sample", SAMPLES["INT8"])
 def test_encode_int8(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_int8(sample.decoded_value)
+    actual_encoded_value = serializers.int8Serializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["INT8"])
 def test_decode_int8(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_int8(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.int8Serializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -131,7 +132,8 @@ def test_decode_int8(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT8"])
 def test_serde_int8(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int8(BytesIO(structs.encode_int8(sample.decoded_value)))
+    recreated_original_value = serializers.int8Serializer.read(BytesIO(serializers.int8Serializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -140,14 +142,14 @@ def test_serde_int8(sample: Sample[int]) -> None:
 # in network byte order (big-endian).
 @pytest.mark.parametrize("sample", SAMPLES["INT16"])
 def test_encode_int16(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_int16(sample.decoded_value)
+    actual_encoded_value = serializers.int16Serializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["INT16"])
 def test_decode_int16(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_int16(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.int16Serializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -155,7 +157,8 @@ def test_decode_int16(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT16"])
 def test_serde_int16(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int16(BytesIO(structs.encode_int16(sample.decoded_value)))
+    recreated_original_value = serializers.int16Serializer.read(BytesIO(serializers.int16Serializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -164,14 +167,14 @@ def test_serde_int16(sample: Sample[int]) -> None:
 # in network byte order (big-endian).
 @pytest.mark.parametrize("sample", SAMPLES["INT32"])
 def test_encode_int32(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_int32(sample.decoded_value)
+    actual_encoded_value = serializers.int32Serializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["INT32"])
 def test_decode_int32(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_int32(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.int32Serializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -179,7 +182,8 @@ def test_decode_int32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT32"])
 def test_serde_int32(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int32(BytesIO(structs.encode_int32(sample.decoded_value)))
+    recreated_original_value = serializers.int32Serializer.read(BytesIO(serializers.int32Serializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -188,14 +192,14 @@ def test_serde_int32(sample: Sample[int]) -> None:
 # in network byte order (big-endian).
 @pytest.mark.parametrize("sample", SAMPLES["INT64"])
 def test_encode_int64(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_int64(sample.decoded_value)
+    actual_encoded_value = serializers.int64Serializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["INT64"])
 def test_decode_int64(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_int64(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.int64Serializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -203,7 +207,8 @@ def test_decode_int64(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT64"])
 def test_serde_int64(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_int64(BytesIO(structs.encode_int64(sample.decoded_value)))
+    recreated_original_value = serializers.int64Serializer.read(BytesIO(serializers.int64Serializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -212,14 +217,14 @@ def test_serde_int64(sample: Sample[int]) -> None:
 # network byte order (big-endian).
 @pytest.mark.parametrize("sample", SAMPLES["UINT32"])
 def test_encode_uint32(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_uint32(sample.decoded_value)
+    actual_encoded_value = serializers.uint32Serializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["UINT32"])
 def test_decode_uint32(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_uint32(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.uint32Serializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -227,7 +232,8 @@ def test_decode_uint32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["UINT32"])
 def test_serde_uint32(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_uint32(BytesIO(structs.encode_uint32(sample.decoded_value)))
+    recreated_original_value = serializers.uint32Serializer.read(BytesIO(serializers.uint32Serializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -236,14 +242,14 @@ def test_serde_uint32(sample: Sample[int]) -> None:
 # zig-zag encoding from Google Protocol Buffers.
 @pytest.mark.parametrize("sample", SAMPLES["VARINT"])
 def test_encode_varint(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_varint(sample.decoded_value)
+    actual_encoded_value = serializers.varIntSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["VARINT"])
 def test_decode_varint(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_varint(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.varIntSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -251,7 +257,8 @@ def test_decode_varint(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARINT"])
 def test_serde_varint(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_varint(BytesIO(structs.encode_varint(sample.decoded_value)))
+    recreated_original_value = serializers.varIntSerializer.read(BytesIO(serializers.varIntSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -260,14 +267,14 @@ def test_serde_varint(sample: Sample[int]) -> None:
 # zig-zag encoding from Google Protocol Buffers.
 @pytest.mark.parametrize("sample", SAMPLES["VARLONG"])
 def test_encode_varlong(sample: Sample[int]) -> None:
-    actual_encoded_value = structs.encode_varlong(sample.decoded_value)
+    actual_encoded_value = serializers.varLongSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["VARLONG"])
 def test_decode_varlong(sample: Sample[int]) -> None:
-    actual_decoded_value = structs.decode_varlong(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.varLongSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -275,7 +282,8 @@ def test_decode_varlong(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARLONG"])
 def test_serde_varlong(sample: Sample[int]) -> None:
 
-    recreated_original_value = structs.decode_varlong(BytesIO(structs.encode_varlong(sample.decoded_value)))
+    recreated_original_value = serializers.varLongSerializer.read(BytesIO(serializers.varLongSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -284,14 +292,14 @@ def test_serde_varlong(sample: Sample[int]) -> None:
 # which are the UTF-8 encoding of the character sequence. Length must not be negative.
 @pytest.mark.parametrize("sample", SAMPLES["STRING"])
 def test_encode_string(sample: Sample[str]) -> None:
-    actual_encoded_value = structs.encode_string(sample.decoded_value)
+    actual_encoded_value = serializers.stringSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["STRING"])
 def test_decode_string(sample: Sample[str]) -> None:
-    actual_decoded_value = structs.decode_string(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.stringSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -299,7 +307,8 @@ def test_decode_string(sample: Sample[str]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["STRING"])
 def test_serde_string(sample: Sample[str]) -> None:
 
-    recreated_original_value = structs.decode_string(BytesIO(structs.encode_string(sample.decoded_value)))
+    recreated_original_value = serializers.stringSerializer.read(BytesIO(serializers.stringSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -309,14 +318,14 @@ def test_serde_string(sample: Sample[str]) -> None:
 # encoded with length of -1 and there are no following bytes.
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_STRING"])
 def test_encode_nullable_string(sample: Sample[Optional[str]]) -> None:
-    actual_encoded_value = structs.encode_nullable_string(sample.decoded_value)
+    actual_encoded_value = serializers.nullableStringSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_STRING"])
 def test_decode_nullable_string(sample: Sample[Optional[str]]) -> None:
-    actual_decoded_value = structs.decode_nullable_string(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.nullableStringSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -324,8 +333,8 @@ def test_decode_nullable_string(sample: Sample[Optional[str]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_STRING"])
 def test_serde_nullable_string(sample: Sample[Optional[str]]) -> None:
 
-    recreated_original_value = structs.decode_nullable_string(
-        BytesIO(structs.encode_nullable_string(sample.decoded_value))
+    recreated_original_value = serializers.nullableStringSerializer.read(
+        BytesIO(serializers.nullableStringSerializer.encode(sample.decoded_value))
     )
 
     assert sample.decoded_value == recreated_original_value
@@ -334,14 +343,14 @@ def test_serde_nullable_string(sample: Sample[Optional[str]]) -> None:
 # Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
 @pytest.mark.parametrize("sample", SAMPLES["BYTES"])
 def test_encode_bytes(sample: Sample[bytes]) -> None:
-    actual_encoded_value = structs.encode_bytes(sample.decoded_value)
+    actual_encoded_value = serializers.bytesSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["BYTES"])
 def test_decode_bytes(sample: Sample[bytes]) -> None:
-    actual_decoded_value = structs.decode_bytes(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.bytesSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -349,7 +358,8 @@ def test_decode_bytes(sample: Sample[bytes]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BYTES"])
 def test_serde_bytes(sample: Sample[bytes]) -> None:
 
-    recreated_original_value = structs.decode_bytes(BytesIO(structs.encode_bytes(sample.decoded_value)))
+    recreated_original_value = serializers.bytesSerializer.read(BytesIO(serializers.bytesSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
 
@@ -359,14 +369,14 @@ def test_serde_bytes(sample: Sample[bytes]) -> None:
 # bytes.
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_BYTES"])
 def test_encode_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
-    actual_encoded_value = structs.encode_nullable_bytes(sample.decoded_value)
+    actual_encoded_value = serializers.nullableBytesSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_BYTES"])
 def test_decode_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
-    actual_decoded_value = structs.decode_nullable_bytes(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.nullableBytesSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -374,8 +384,8 @@ def test_decode_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["NULLABLE_BYTES"])
 def test_serde_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
 
-    recreated_original_value = structs.decode_nullable_bytes(
-        BytesIO(structs.encode_nullable_bytes(sample.decoded_value))
+    recreated_original_value = serializers.nullableBytesSerializer.read(
+        BytesIO(serializers.nullableBytesSerializer.encode(sample.decoded_value))
     )
 
     assert sample.decoded_value == recreated_original_value
@@ -385,14 +395,14 @@ def test_serde_nullable_bytes(sample: Sample[Optional[bytes]]) -> None:
 # Message Sets.
 @pytest.mark.parametrize("sample", SAMPLES["RECORDS"])
 def test_encode_records(sample: Sample[Optional[bytes]]) -> None:
-    actual_encoded_value = structs.encode_records(sample.decoded_value)
+    actual_encoded_value = serializers.recordsSerializer.encode(sample.decoded_value)
 
     assert actual_encoded_value == sample.encoded_value
 
 
 @pytest.mark.parametrize("sample", SAMPLES["RECORDS"])
 def test_decode_records(sample: Sample[Optional[bytes]]) -> None:
-    actual_decoded_value = structs.decode_records(BytesIO(sample.encoded_value))
+    actual_decoded_value = serializers.recordsSerializer.read(BytesIO(sample.encoded_value))
 
     assert actual_decoded_value == sample.decoded_value
 
@@ -400,14 +410,7 @@ def test_decode_records(sample: Sample[Optional[bytes]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["RECORDS"])
 def test_serde_records(sample: Sample[Optional[bytes]]) -> None:
 
-    recreated_original_value = structs.decode_records(BytesIO(structs.encode_records(sample.decoded_value)))
+    recreated_original_value = serializers.recordsSerializer.read(BytesIO(serializers.recordsSerializer.encode(
+        sample.decoded_value)))
 
     assert sample.decoded_value == recreated_original_value
-
-
-@pytest.mark.parametrize(["type_", "samples"], SAMPLES.items())
-def test_serde_array(type_: str, samples: List[Sample]) -> None:
-    original_value = [sample.decoded_value for sample in samples]
-    recreated_original_value = structs.decode_array(type_, BytesIO(structs.encode_array(type_, original_value)))
-
-    assert original_value == recreated_original_value
