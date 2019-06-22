@@ -1,1 +1,2 @@
-from esque.protocol.messages import ApiVersionRequestData, BrokerConnection
+from .connection import BrokerConnection
+from .api import ApiVersionRequestData, ApiVersionResponseData

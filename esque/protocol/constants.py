@@ -1,5 +1,5 @@
-from enum import Enum, IntEnum
-from typing import Tuple, Dict
+from enum import Enum
+from typing import Dict, Tuple
 
 _ERROR_METADATA: Dict[int, Tuple[bool, str]] = {
     -1: (False, "The server experienced an unexpected error when processing the request."),
@@ -235,50 +235,3 @@ class ErrorCode(Enum):
         retryable, description = _ERROR_METADATA[code]
         self.retryable = retryable
         self.description = description
-
-
-class ApiKey(IntEnum):
-    PRODUCE = 0
-    FETCH = 1
-    LIST_OFFSETS = 2
-    METADATA = 3
-    LEADER_AND_ISR = 4
-    STOP_REPLICA = 5
-    UPDATE_METADATA = 6
-    CONTROLLED_SHUTDOWN = 7
-    OFFSET_COMMIT = 8
-    OFFSET_FETCH = 9
-    FIND_COORDINATOR = 10
-    JOIN_GROUP = 11
-    HEARTBEAT = 12
-    LEAVE_GROUP = 13
-    SYNC_GROUP = 14
-    DESCRIBE_GROUPS = 15
-    LIST_GROUPS = 16
-    SASL_HANDSHAKE = 17
-    API_VERSIONS = 18
-    CREATE_TOPICS = 19
-    DELETE_TOPICS = 20
-    DELETE_RECORDS = 21
-    INIT_PRODUCER_ID = 22
-    OFFSET_FOR_LEADER_EPOCH = 23
-    ADD_PARTITIONS_TO_TXN = 24
-    ADD_OFFSETS_TO_TXN = 25
-    END_TXN = 26
-    WRITE_TXN_MARKERS = 27
-    TXN_OFFSET_COMMIT = 28
-    DESCRIBE_ACLS = 29
-    CREATE_ACLS = 30
-    DELETE_ACLS = 31
-    DESCRIBE_CONFIGS = 32
-    ALTER_CONFIGS = 33
-    ALTER_REPLICA_LOG_DIRS = 34
-    DESCRIBE_LOG_DIRS = 35
-    SASL_AUTHENTICATE = 36
-    CREATE_PARTITIONS = 37
-    CREATE_DELEGATION_TOKEN = 38
-    RENEW_DELEGATION_TOKEN = 39
-    EXPIRE_DELEGATION_TOKEN = 40
-    DESCRIBE_DELEGATION_TOKEN = 41
-    DELETE_GROUPS = 42
-    ELECT_PREFERRED_LEADERS = 43
