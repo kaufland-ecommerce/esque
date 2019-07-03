@@ -2,6 +2,7 @@ import re
 from typing import Dict, List, Tuple, Union
 
 import pykafka
+import yaml
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
 
