@@ -12,10 +12,9 @@ from esque.helpers import (
     invalidate_cache_after,
     unpack_confluent_config,
 )
-from esque.resource import Resource
 
 
-class Topic(Resource):
+class Topic:
     def __init__(
         self,
         name: str,
@@ -38,8 +37,16 @@ class Topic(Resource):
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
-            "config": self._retrieve_kafka_config()
+            "config": self._retrieve_kafka_config(),
         }
+
+    def to_yaml(self) -> str:
+        return yaml.dump(self.as_dict())
+
+    def from_yaml(self, data) -> None:
+        new_values = yaml.safe_load(data)
+        for attr, value in new_values.items():
+            setattr(self, attr, value)
 
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
