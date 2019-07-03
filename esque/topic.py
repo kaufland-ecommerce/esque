@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import pykafka
 from confluent_kafka.admin import ConfigResource
@@ -12,9 +12,10 @@ from esque.helpers import (
     invalidate_cache_after,
     unpack_confluent_config,
 )
+from esque.resource import Resource
 
 
-class Topic:
+class Topic(Resource):
     def __init__(
         self,
         name: str,
@@ -32,6 +33,13 @@ class Topic:
             replication_factor if replication_factor is not None else 1
         )
         self.config = config if config is not None else {}
+
+    def as_dict(self) -> Dict[str, Union[int, Dict[str, str]]]:
+        return {
+            "num_partitions": self.num_partitions,
+            "replication_factor": self.replication_factor,
+            "config": self._retrieve_kafka_config()
+        }
 
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
@@ -77,10 +85,13 @@ class Topic:
             for partition_id in partitions
         }
 
+    def _retrieve_kafka_config(self):
+        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
+        return unpack_confluent_config(conf)
+
     @raise_for_kafka_exception
     def config_diff(self) -> Dict[str, Tuple[str, str]]:
-        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
-        config_list = unpack_confluent_config(conf)
+        config_list = self._retrieve_kafka_config()
         return {
             name: [str(value), str(self.config.get(name))]
             for name, value in config_list.items()
@@ -107,8 +118,7 @@ class Topic:
             for partition, partition_meta in t.partitions.items()
         ]
 
-        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
-        conf = unpack_confluent_config(conf)
+        conf = self._retrieve_kafka_config()
 
         return replicas, {"Config": conf}
 
