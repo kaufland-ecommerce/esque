@@ -1,3 +1,5 @@
+import os
+import random
 from time import sleep
 
 import click
@@ -12,7 +14,7 @@ from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics
 from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
-from esque.config import PING_TOPIC, Config
+from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import (
     ConsumerGroupDoesNotExistException,
@@ -164,6 +166,26 @@ def apply(state: State, file: str):
         click.echo("No new topics to create.")
 
 
+@esque.command(help="Consume messages from a topic to file.")
+@click.option("-t", "--topic", help="Source Topic name", required=True)
+@click.option("-f", "--file", help="Destination file path", required=True)
+@click.argument("amount", required=True)
+def consume(topic:str, file: str, amount: str):
+    your_letters = 'abcdefghijklmnopqrstuvwxyz'
+    group_id = topic.join((random.choice(your_letters) for i in range(7)))
+
+    consumer = Consumer(group_id, topic, "earliest")
+    consumer.consume_to_file(file, int(amount))
+
+
+@esque.command(help="Produce messages from a file to topic.")
+@click.option("-f", "--file", help="Source file path", required=True)
+@click.option("-t", "--topic", help="Destination Topic name", required=True)
+def produce(topic:str, file: str):
+    producer = Producer()
+    producer.produce_from_file(file, topic)
+
+
 @delete.command("topic")
 @click.argument(
     "topic-name", required=True, type=click.STRING, autocompletion=list_topics
@@ -261,6 +283,35 @@ def get_topics(state, topic):
         click.echo(topic.name)
 
 
+@esque.command("transfer")
+@click.argument("topic", required=True)
+@click.option("-f", "--from", "from_context", help="Source Context", required=True)
+@click.option("-t", "--to", "to_context", help="Destination context", required=True)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
+@click.option('--last/--first', default=False)
+def transfer(topic: str, from_context: str, to_context: str, numbers: int, last: bool):
+    your_letters = 'abcdefghijklmnopqrstuvwxyz'
+    group_id = topic.join((random.choice(your_letters) for i in range(7)))
+    file_name = group_id
+
+    ctx(from_context)
+    print("Start consuming from source context " + from_context)
+    consumer = Consumer(group_id, topic, last)
+    number_consumed_messages = consumer.consume_to_file(file_name, int(numbers))
+    print(str(number_consumed_messages) + "  messages consumed successfully.")
+    print("Ready to produce to context " + to_context + " and target topic " + topic + "\n")
+
+    if ensure_approval("Do you want to proceed?", no_verify=state.no_verify):
+        ctx(to_context)
+        producer = Producer()
+        number_produced_messages = producer.produce_from_file(file_name, topic)
+        print(str(number_produced_messages) + "  messages successfully produced.")
+
+    os.remove(file_name)
+
+
+
+
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
@@ -275,12 +326,12 @@ def ping(state, times, wait):
             click.echo("Topic already exists.")
 
         producer = Producer()
-        consumer = Consumer()
+        consumer = Consumer(PING_GROUP_ID, PING_TOPIC, "latest")
 
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
         for i in range(times):
-            producer.produce_ping()
+            producer.produce_ping(PING_TOPIC)
             _, delta = consumer.consume_ping()
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")
