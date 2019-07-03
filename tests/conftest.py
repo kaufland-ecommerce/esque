@@ -12,12 +12,10 @@ from pykafka import Producer
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config import Config
+from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
 from esque.topic import Topic
-
-SAMPLE_CONFIG_PATH: Path = Path(__file__).parent.parent / "config" / "sample_config.cfg"
 
 
 def pytest_addoption(parser):
@@ -48,7 +46,7 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture()
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(SAMPLE_CONFIG_PATH.read_text(), encoding="UTF-8")
+    fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
     mocker.patch("esque.config.config_path", return_value=fn)
     yield fn
 
@@ -120,7 +118,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+        partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
 ):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
@@ -160,7 +158,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
+        consumer: confluent_kafka.Consumer, filled_topic, consumer_group
 ):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
