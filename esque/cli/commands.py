@@ -3,11 +3,13 @@ from time import sleep
 import click
 from click import version_option
 
+import yaml
+
 from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty
+from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics
 from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config
@@ -31,7 +33,7 @@ def get():
     pass
 
 
-@esque.group(help="Get detailed informations about a resource.")
+@esque.group(help="Get detailed information about a resource.")
 def describe():
     pass
 
@@ -87,7 +89,79 @@ def ctx(state, context):
 @pass_state
 def create_topic(state: State, topic_name):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        TopicController(state.cluster).create_topic(topic_name)
+        topic_controller = TopicController(state.cluster)
+        TopicController(state.cluster).create_topics(
+            [(topic_controller.get_topic(topic_name))]
+        )
+
+
+@esque.command("apply", help="Apply a configuration")
+@click.option("-f", "--file", help="Config file path", required=True)
+@pass_state
+def apply(state: State, file: str):
+    topic_controller = TopicController(state.cluster)
+    yaml_data = yaml.safe_load(open(file))
+    topic_configs = yaml_data.get("topics")
+    topics = []
+    for topic_config in topic_configs:
+        topics.append(
+            topic_controller.get_topic(
+                topic_config.get("name"),
+                topic_config.get("num_partitions"),
+                topic_config.get("replication_factor"),
+                topic_config.get("config"),
+            )
+        )
+    editable_topics = topic_controller.filter_existing_topics(topics)
+    topics_to_be_changed = [
+        topic for topic in editable_topics if topic.config_diff() != {}
+    ]
+    topic_config_diffs = {
+        topic.name: topic.config_diff() for topic in topics_to_be_changed
+    }
+
+    if len(topic_config_diffs) > 0:
+        click.echo(get_output_topic_diffs(topic_config_diffs))
+        if ensure_approval(
+            "Are you sure to change configs?", no_verify=state.no_verify
+        ):
+            topic_controller.alter_configs(topics_to_be_changed)
+            click.echo(
+                click.style(
+                    pretty(
+                        {
+                            "Successfully changed topics": [
+                                topic.name for topic in topics_to_be_changed
+                            ]
+                        }
+                    ),
+                    fg="green",
+                )
+            )
+    else:
+        click.echo("No topics to edit.")
+
+    new_topics = [topic for topic in topics if topic not in editable_topics]
+    if len(new_topics) > 0:
+        click.echo(get_output_new_topics(new_topics))
+        if ensure_approval(
+            "Are you sure to create the new topics?", no_verify=state.no_verify
+        ):
+            topic_controller.create_topics(new_topics)
+            click.echo(
+                click.style(
+                    pretty(
+                        {
+                            "Successfully created topics": [
+                                topic.name for topic in new_topics
+                            ]
+                        }
+                    ),
+                    fg="green",
+                )
+            )
+    else:
+        click.echo("No new topics to create.")
 
 
 @delete.command("topic")
@@ -99,7 +173,7 @@ def create_topic(state: State, topic_name):
 def delete_topic(state: State, topic_name: str):
     topic_controller = TopicController(state.cluster)
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(topic_name)
+        topic_controller.delete_topic(topic_controller.get_topic(topic_name))
 
         assert topic_name not in topic_controller.list_topics()
 
@@ -196,7 +270,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topic(PING_TOPIC)
+            topic_controller.create_topics([topic_controller.get_topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
@@ -214,7 +288,7 @@ def ping(state, times, wait):
     except KeyboardInterrupt:
         pass
     finally:
-        topic_controller.delete_topic(PING_TOPIC)
+        topic_controller.delete_topic(topic_controller.get_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(
