@@ -11,20 +11,10 @@ from pykafka import Producer
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config import Config
+from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
 from esque.topic import Topic, TopicController
-
-TEST_CONFIG = """
-[Context]
-current = local
-
-[Context.local]
-bootstrap_hosts = localhost
-bootstrap_port = 9092
-security_protocol = PLAINTEXT
-"""
 
 
 def pytest_addoption(parser):
@@ -33,6 +23,12 @@ def pytest_addoption(parser):
         action="store_true",
         default=False,
         help="run integration tests",
+    )
+    parser.addoption(
+        "--local",
+        action="store_true",
+        default=False,
+        help="run against the 'local' context of the sample config instead of the default 'docker' context for CI",
     )
 
 
@@ -49,17 +45,17 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture()
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(TEST_CONFIG, encoding="UTF-8")
+    fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
     mocker.patch("esque.config.config_path", return_value=fn)
     yield fn
 
 
 @pytest.fixture()
-def test_config(test_config_path):
-    config = Config()
-    # if os.getenv("ESQUE_TEST_ENV") == "ci":
-    #     config.context_switch("ci")
-    yield config
+def test_config(test_config_path, request):
+    esque_config = Config()
+    if request.config.getoption("--local"):
+        esque_config.context_switch("local")
+    yield esque_config
 
 
 @pytest.fixture()

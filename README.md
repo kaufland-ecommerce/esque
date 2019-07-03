@@ -116,9 +116,13 @@ export PYTHONPATH=$(pwd)
 ```
 
 ### Run tests
+
+To run all tests, just run
+
 ```
 docker-compose up
 ```
+While the `docker-compose` stack is up, you can also run the tests from the CLI via `pytest tests/ --integration --local` 
 
 ## Alternatives
 
