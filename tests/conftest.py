@@ -122,7 +122,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(
-        partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
 ):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
@@ -162,7 +162,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(
-        consumer: confluent_kafka.Consumer, filled_topic, consumer_group
+    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
 ):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
