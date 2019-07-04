@@ -24,7 +24,8 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+*.pyc
+*.pyo
 
 # Esque specific
 esque.cfg
