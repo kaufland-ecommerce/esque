@@ -1,0 +1,14 @@
+version: '3'
+services:
+  esque:
+    build: .
+    volumes:
+      - .:/esque
+    environment:
+      ESQUE_TEST_ENV: "ci"
+    depends_on:
+      - kafka
+    command: >
+      -c
+        "(until (kafkacat -b kafka:9093 -X debug=all -L); do sleep 5s; done) \
+        && pytest tests/ --integration"

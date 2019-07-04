@@ -109,6 +109,9 @@ topics:
 ```
 
 ## Development
+
+To setup your development environment, make sure you have at least Python 3.6 & [Pipenv](https://github.com/pypa/pipenv) installed, then run 
+
 ```
 pipenv install --dev
 pipenv shell 
@@ -117,12 +120,16 @@ export PYTHONPATH=$(pwd)
 
 ### Run tests
 
-To run all tests, just run
+To start up a local test setup (Kafka and Zookeeper), you can run
 
 ```
 docker-compose up
 ```
-While the `docker-compose` stack is up, you can also run the tests from the CLI via `pytest tests/ --integration --local` 
+While this `docker-compose` stack is up, you can run the tests from the CLI via `pytest tests/ --integration --local`
+
+
+Alternatively, you can also run the entire test suite, without needing to setup the development environment, in docker compose via `docker-compose -f docker-compose.yml -f docker-compose.test.yml` 
+
 
 ## Alternatives
 
