@@ -3,8 +3,10 @@
 import codecs
 import os
 import sys
+from subprocess import call
 
 from setuptools import find_packages, setup
+from setuptools.command.install import install
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -30,6 +32,16 @@ required = [
     "pendulum",
     "pyyaml",
 ]
+
+
+class InstallWithPostCommand(install):
+    """Post-installation for installation mode."""
+
+    def run(self):
+        install.run(self)
+        print("installing auto completion")
+        call(["./auto_completion.sh"])
+
 
 setup(
     name="esque",
@@ -61,4 +73,5 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
+    cmdclass={"install": InstallWithPostCommand},
 )
