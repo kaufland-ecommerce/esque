@@ -1,6 +1,7 @@
 import configparser
 import random
 import string
+from distutils.sysconfig import get_python_lib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -28,8 +29,9 @@ def config_path() -> Path:
 
 
 def sample_config_path() -> Path:
-    sample_path = Path(__file__).parent.parent / "config" / "sample_config.cfg"
-    return sample_path
+    if ESQUE_ENV == "dev":
+        return Path(__file__).parent.parent / "config" / "sample_config.cfg"
+    return Path(get_python_lib()) / "esque" / "config" / "sample_config.cfg"
 
 
 class Config:
