@@ -29,6 +29,25 @@ This is partly (but not only) due to a fragmented and unclear definition of tool
 
 `esque` is available at pypi.org and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
 
+### Autocompletion
+
+Autocompletion is automatically installed via a post-install hook in the setup.py. 
+If it doesn't work for some reason you can still install it yourself: 
+
+#### Bash
+
+```
+ echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque-autocompletion.sh
+ echo "source ~/.esque-autocompletion.sh" >> ~/.bashrc
+```
+
+#### ZSH
+
+```
+echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque-autocompletion.zsh
+echo "source ~/.esque-autocompletion.zsh" >> ~/.zshrc
+```
+
 ### Usage
 
 #### Config Definition

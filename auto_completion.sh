@@ -9,6 +9,7 @@ then
         grep -q 'esque-autocompletion' ~/.bashrc
         if [[ $? -ne 0 ]]; then
             echo "" >> ~/.bashrc
+            echo "Added by esque" >> ~/.bashrc
             echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque-autocompletion.sh
             echo "source ~/.esque-autocompletion.sh" >> ~/.bashrc
         fi
@@ -21,6 +22,7 @@ then
         grep -q 'esque-autocompletion' ~/.zshrc
         if [[ $? -ne 0 ]]; then
             echo "" >> ~/.zshrc
+            echo "# Added by esque" >> ~/.zshrc
             echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque-autocompletion.zsh
             echo "source ~/.esque-autocompletion.zsh" >> ~/.zshrc
         fi
