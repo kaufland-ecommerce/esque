@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Inspired by: https://qone.io/python/bash/zsh/2016/04/24/python-click-auto-complete-bash-zsh.html
 
+mkdir -p "~/.esque"
+
 if [[ $(basename $SHELL) = 'bash' ]];
 then
     if [[ -f ~/.bashrc ]];
@@ -10,8 +12,8 @@ then
         if [[ $? -ne 0 ]]; then
             echo "" >> ~/.bashrc
             echo "Added by esque" >> ~/.bashrc
-            echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque-autocompletion.sh
-            echo "source ~/.esque-autocompletion.sh" >> ~/.bashrc
+            echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque/autocompletion.sh
+            echo "source ~/.esque/autocompletion.sh" >> ~/.bashrc
         fi
     fi
 elif [[ $(basename $SHELL) = 'zsh' ]];
@@ -23,8 +25,8 @@ then
         if [[ $? -ne 0 ]]; then
             echo "" >> ~/.zshrc
             echo "# Added by esque" >> ~/.zshrc
-            echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque-autocompletion.zsh
-            echo "source ~/.esque-autocompletion.zsh" >> ~/.zshrc
+            echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque/autocompletion.zsh
+            echo "source ~/.esque/autocompletion.zsh" >> ~/.zshrc
         fi
     fi
 fi
