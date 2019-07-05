@@ -29,22 +29,6 @@ This is partly (but not only) due to a fragmented and unclear definition of tool
 
 `esque` is available at pypi.org and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
 
-### Enable Autocompletion
-
-`esque` uses Magic Environment Variables to provide autocompletion to you. You can enable autocompletion by adding the one of the following snippets to your `.bashrc`/`.zshrc` 
-
-#### Bash
-
-```
-eval "$(_ESQUE_COMPLETE=source esque)"
-```
-
-#### ZSH
-
-```
-eval "$(_ESQUE_COMPLETE=source_zsh esque)"
-```
-
 ### Usage
 
 #### Config Definition
