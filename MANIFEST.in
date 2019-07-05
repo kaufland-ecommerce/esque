@@ -1,0 +1,4 @@
+include config
+include scripts/auto_completion.sh
+include README.md
+include LICENSE

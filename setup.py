@@ -40,7 +40,7 @@ class InstallWithPostCommand(install):
     def run(self):
         install.run(self)
         print("installing auto completion")
-        call(["./auto_completion.sh"])
+        call(["./scripts/auto_completion.sh"])
 
 
 setup(
@@ -55,7 +55,7 @@ setup(
     author_email="opensource@real-digital.de",
     packages=find_packages(exclude=["tests", "tests.*"]),
     entry_points={"console_scripts": ["esque=esque.cli.commands:esque"]},
-    package_data={"config": ["sample_config.cfg"]},
+    package_data={"config": ["sample_config.cfg"], "scripts": ["scripts"]},
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
