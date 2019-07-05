@@ -37,10 +37,12 @@ matrix:
     python: 3.6
     env:
       - ESQUE_ENV=dev
+      - TEST_CMD="pytest tests/ --integration --cov=esque --local"
   - name: '3.7'
     python: 3.7
     env:
       - ESQUE_ENV=dev
+      - TEST_CMD="pytest tests/ --integration --cov=esque --local"
 deploy:
   provider: pypi
   user: real.digital
