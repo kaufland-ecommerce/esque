@@ -30,7 +30,7 @@ def config_path() -> Path:
 
 def sample_config_path() -> Path:
     if ESQUE_ENV == "dev":
-        return Path(__file__).parent.parent / "config" / "sample_config.cfg"
+        return Path(__file__).parent / "config" / "sample_config.cfg"
     return Path(get_python_lib()) / "esque" / "config" / "sample_config.cfg"
 
 
