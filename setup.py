@@ -34,7 +34,7 @@ required = [
 ]
 
 
-class PostInstallCommand(install):
+class InstallWithPostCommand(install):
     """Post-installation for installation mode."""
 
     def run(self):
@@ -73,5 +73,5 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
-    cmdclass={"install": PostInstallCommand},
+    cmdclass={"install": InstallWithPostCommand},
 )
