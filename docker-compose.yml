@@ -37,6 +37,34 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
+  schema_registry_source:
+    image: confluentinc/cp-schema-registry:5.2.2
+    container_name: schema_registry_source
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:9092
+    links:
+      - zookeeper
+      - kafka
+    ports:
+      - 8081:8081
+
+  schema_registry_target:
+    image: confluentinc/cp-schema-registry:5.2.2
+    container_name: schema_registry_target
+    environment:
+      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
+      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
+      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8082
+      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:9092
+    links:
+      - zookeeper
+      - kafka
+    ports:
+      - 8082:8081
+
   esque:
     build: .
     volumes:

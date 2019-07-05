@@ -180,7 +180,11 @@ def bold(s: str) -> str:
 
 
 def blue_bold(s: str) -> str:
-    return click.style(s, fg="blue", bold=True)
+    return bold(click.style(s, fg="blue"))
+
+
+def green_bold(s: str) -> str:
+    return bold(click.style(s, fg="green"))
 
 
 STYLE_MAPPING = {

@@ -84,6 +84,11 @@ class Config:
         return config_dict["bootstrap_hosts"].split(",")
 
     @property
+    def schema_registry(self) -> str:
+        config_dict = self.current_context_dict
+        return config_dict["schema_registry"]
+
+    @property
     def bootstrap_servers(self):
         if self.bootstrap_domain:
             return [

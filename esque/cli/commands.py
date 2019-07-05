@@ -1,5 +1,6 @@
 import os
 import random
+import time
 from time import sleep
 
 import click
@@ -11,7 +12,7 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics
+from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics, blue_bold, green_bold
 from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
@@ -285,31 +286,38 @@ def get_topics(state, topic):
 
 @esque.command("transfer")
 @click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", required=True)
-@click.option("-t", "--to", "to_context", help="Destination context", required=True)
+@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
+@click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
 @click.option('--last/--first', default=False)
-def transfer(topic: str, from_context: str, to_context: str, numbers: int, last: bool):
-    your_letters = 'abcdefghijklmnopqrstuvwxyz'
-    group_id = topic.join((random.choice(your_letters) for i in range(7)))
-    file_name = group_id
+@pass_state
+def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool):
+    current_timestamp_milliseconds = int(round(time.time() * 1000))
+    temp_name = topic + '_' + str(current_timestamp_milliseconds)
+    group_id = "group_for_" + temp_name
+    file_name = "temp-file_" + temp_name
 
-    ctx(from_context)
-    print("Start consuming from source context " + from_context)
+    state.config.context_switch(from_context)
+    click.echo("\nStart consuming from source context " + blue_bold(from_context))
     consumer = Consumer(group_id, topic, last)
     number_consumed_messages = consumer.consume_to_file(file_name, int(numbers))
-    print(str(number_consumed_messages) + "  messages consumed successfully.")
-    print("Ready to produce to context " + to_context + " and target topic " + topic + "\n")
+    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed successfully.")
+    click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 
-    if ensure_approval("Do you want to proceed?", no_verify=state.no_verify):
-        ctx(to_context)
+    if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
+        state.config.context_switch(to_context)
         producer = Producer()
         number_produced_messages = producer.produce_from_file(file_name, topic)
-        print(str(number_produced_messages) + "  messages successfully produced.")
+        click.echo(
+            green_bold(str(number_produced_messages))
+            + " messages successfully produced to context "
+            + green_bold(to_context)
+            + " and topic "
+            + green_bold(topic)
+            + "."
+        )
 
     os.remove(file_name)
-
-
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
@@ -326,7 +334,7 @@ def ping(state, times, wait):
             click.echo("Topic already exists.")
 
         producer = Producer()
-        consumer = Consumer(PING_GROUP_ID, PING_TOPIC, "latest")
+        consumer = Consumer(PING_GROUP_ID, PING_TOPIC, True)
 
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
