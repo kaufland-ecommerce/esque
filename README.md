@@ -37,15 +37,15 @@ If it doesn't work for some reason you can still install it yourself:
 #### Bash
 
 ```
- echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque-autocompletion.sh
- echo "source ~/.esque-autocompletion.sh" >> ~/.bashrc
+ echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque/autocompletion.sh
+ echo "source ~/.esque/autocompletion.sh" >> ~/.bashrc
 ```
 
 #### ZSH
 
 ```
-echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque-autocompletion.zsh
-echo "source ~/.esque-autocompletion.zsh" >> ~/.zshrc
+echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque/autocompletion.zsh
+echo "source ~/.esque/autocompletion.zsh" >> ~/.zshrc
 ```
 
 ### Usage
