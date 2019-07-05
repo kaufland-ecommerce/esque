@@ -1,13 +1,12 @@
 import configparser
 import random
 import string
-from distutils.sysconfig import get_python_lib
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import click
 
-from esque.environment import ESQUE_ENV
+from esque.environment import ESQUE_CONF_PATH
 from esque.errors import ConfigNotExistsException, ContextNotDefinedException
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
@@ -19,19 +18,17 @@ SLEEP_INTERVAL = 2
 
 
 def config_dir() -> Path:
-    if ESQUE_ENV == "dev":
-        return Path(__file__).parent.parent
     return Path(click.get_app_dir("esque", force_posix=True))
 
 
 def config_path() -> Path:
+    if ESQUE_CONF_PATH:
+        return Path(ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
 
 
 def sample_config_path() -> Path:
-    if ESQUE_ENV == "dev":
-        return Path(__file__).parent / "config" / "sample_config.cfg"
-    return Path(get_python_lib()) / "esque" / "config" / "sample_config.cfg"
+    return Path(__file__).parent / "config" / "sample_config.cfg"
 
 
 class Config:

@@ -1,3 +1,3 @@
 import os
 
-ESQUE_ENV = os.environ.get("ESQUE_ENV")
+ESQUE_CONF_PATH = os.environ.get("ESQUE_CONF_PATH")
