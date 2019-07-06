@@ -132,25 +132,41 @@ def apply(state: State, file: str):
             )
         )
     editable_topics = topic_controller.filter_existing_topics(new_topic_configs)
-    topics_to_be_changed = [topic for topic in editable_topics if topic.diff_with_cluster() != {}]
-    topic_config_diffs = {topic.name: topic.diff_with_cluster() for topic in topics_to_be_changed}
+    topics_to_be_changed = [
+        topic for topic in editable_topics if topic.diff_with_cluster() != {}
+    ]
+    topic_config_diffs = {
+        topic.name: topic.diff_with_cluster() for topic in topics_to_be_changed
+    }
 
     if len(topic_config_diffs) > 0:
         click.echo(pretty_topic_diffs(topic_config_diffs))
-        if ensure_approval("Are you sure to change configs?", no_verify=state.no_verify):
+        if ensure_approval(
+            "Are you sure to change configs?", no_verify=state.no_verify
+        ):
             topic_controller.alter_configs(topics_to_be_changed)
             to_change = [topic.name for topic in topics_to_be_changed]
-            click.echo(click.style(pretty({"Successfully changed topics": to_change}), fg="green"))
+            click.echo(
+                click.style(
+                    pretty({"Successfully changed topics": to_change}), fg="green"
+                )
+            )
     else:
         click.echo("No topics to edit.")
 
     new_topics = [topic for topic in new_topic_configs if topic not in editable_topics]
     if len(new_topics) > 0:
         click.echo(get_output_new_topics(new_topics))
-        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
+        if ensure_approval(
+            "Are you sure to create the new topics?", no_verify=state.no_verify
+        ):
             topic_controller.create_topics(new_topics)
             to_create = [topic.name for topic in new_topics]
-            click.echo(click.style(pretty({"Successfully created topics": to_create}), fg="green"))
+            click.echo(
+                click.style(
+                    pretty({"Successfully created topics": to_create}), fg="green"
+                )
+            )
     else:
         click.echo("No new topics to create.")
 

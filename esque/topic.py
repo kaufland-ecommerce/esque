@@ -14,19 +14,21 @@ from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
 
 class Topic(KafkaResource):
     def __init__(
-            self,
-            name: str,
-            cluster: Cluster,
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None,
+        self,
+        name: str,
+        cluster: Cluster,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ):
         self.name = name
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
         self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = replication_factor if replication_factor is not None else 1
+        self.replication_factor = (
+            replication_factor if replication_factor is not None else 1
+        )
 
         self.config = config if config is not None else {}
 
@@ -140,7 +142,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     def list_topics(
-            self, *, search_string: str = None, sort=True, hide_internal=True
+        self, *, search_string: str = None, sort=True, hide_internal=True
     ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topics = self.cluster.confluent_client.list_topics().topics
@@ -191,11 +193,11 @@ class TopicController:
         ensure_kafka_futures_done([future])
 
     def get_topic(
-            self,
-            topic_name: str,
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None,
+        self,
+        topic_name: str,
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ) -> Topic:
         return Topic(
             topic_name, self.cluster, num_partitions, replication_factor, config
