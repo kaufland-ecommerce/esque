@@ -15,9 +15,9 @@ def test_partitions(topic_object: Topic):
 
 @pytest.mark.integration
 def test_config_diff(changed_topic_object: Topic):
-    config_diff = changed_topic_object.config_diff()
+    config_diff = changed_topic_object.diff_with_cluster()
 
-    assert config_diff.get("cleanup.policy") == ["delete", "compact"]
+    assert config_diff.get("cleanup.policy") == ("delete", "compact")
 
 
 @pytest.mark.integration
