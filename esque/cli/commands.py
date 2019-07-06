@@ -233,7 +233,7 @@ def get_offsets(state, topic_name):
 @click.argument("broker-id", required=True)
 @pass_state
 def describe_broker(state, broker_id):
-    broker = Broker(state.cluster, broker_id).describe()
+    broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(pretty(broker, break_lists=True))
 
 
@@ -258,9 +258,9 @@ def describe_consumergroup(state, consumer_id, verbose):
 @get.command("brokers")
 @pass_state
 def get_brokers(state):
-    brokers = state.cluster.brokers
+    brokers = Broker.get_all(state.cluster)
     for broker in brokers:
-        click.echo(f"{broker['id']}: {broker['host']}:{broker['port']}")
+        click.echo(f"{broker.broker_id}: {broker.host}:{broker.port}")
 
 
 @get.command("consumergroups")

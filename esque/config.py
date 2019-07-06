@@ -95,7 +95,7 @@ class Config:
         ]
 
     def context_switch(self, context: str):
-        click.echo((f"Switched to context: {context}"))
+        click.echo(f"Switched to context: {context}")
         if context not in self.available_contexts:
             raise ContextNotDefinedException(
                 f"{context} not defined in {config_path()}"

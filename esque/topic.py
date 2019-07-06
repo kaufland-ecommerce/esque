@@ -8,6 +8,7 @@ from confluent_kafka.cimpl import NewTopic
 
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
+from esque.resource import KafkaResource
 from esque.helpers import (
     ensure_kafka_futures_done,
     invalidate_cache_after,
@@ -15,23 +16,22 @@ from esque.helpers import (
 )
 
 
-class Topic:
+class Topic(KafkaResource):
     def __init__(
         self,
         name: str,
         cluster: Cluster,
-        num_partitions: int = None,
-        replication_factor: int = None,
+        num_partitions: int = 1,
+        replication_factor: int = 1,
         config: Dict[str, str] = None,
     ):
         self.name = name
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
-        self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = (
-            replication_factor if replication_factor is not None else 1
-        )
+        self.num_partitions = num_partitions
+        self.replication_factor = replication_factor
+
         self.config = config if config is not None else {}
 
     def as_dict(self) -> Dict[str, Union[int, Dict[str, str]]]:

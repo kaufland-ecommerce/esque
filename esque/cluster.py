@@ -1,5 +1,3 @@
-import operator
-
 import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
@@ -20,24 +18,12 @@ class Cluster:
     def bootstrap_servers(self):
         return self._config.bootstrap_servers
 
-    @property
-    def brokers(self):
-        metadata = self.confluent_client.list_topics(timeout=1)
-        return sorted(
-            [
-                {"id": broker.id, "host": broker.host, "port": broker.port}
-                for broker in metadata.brokers.values()
-            ],
-            key=operator.itemgetter("id"),
-        )
+    def get_metadata(self):
+        return self.confluent_client.list_topics(timeout=1)
 
     def retrieve_config(self, config_type: ConfigResource.Type, id):
         requested_resources = [ConfigResource(config_type, str(id))]
-
         futures = self.confluent_client.describe_configs(requested_resources)
-
         (old_resource, future), = futures.items()
-
         future = ensure_kafka_futures_done([future])
-
         return future.result()
