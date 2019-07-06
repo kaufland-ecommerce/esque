@@ -71,20 +71,6 @@ def list_contexts(ctx, args, incomplete):
     ]
 
 
-@edit.command("topic")
-@click.argument("topic-name", required=True)
-@pass_state
-def edit_topic(state: State, topic_name: str):
-    controller = TopicController(state.cluster)
-    topic = TopicController(state.cluster).get_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml())
-    topic.from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: topic.config_diff()})
-    click.echo(diff)
-    if ensure_approval("Are you sure?"):
-        controller.alter_configs([topic])
-
-
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @pass_state
@@ -114,6 +100,20 @@ def create_topic(state: State, topic_name: str):
         )
 
 
+@edit.command("topic")
+@click.argument("topic-name", required=True)
+@pass_state
+def edit_topic(state: State, topic_name: str):
+    controller = TopicController(state.cluster)
+    topic = TopicController(state.cluster).get_topic(topic_name)
+    new_conf = click.edit(topic.to_yaml())
+    topic.from_yaml(new_conf)
+    diff = pretty_topic_diffs({topic_name: topic.diff_with_cluster()})
+    click.echo(diff)
+    if ensure_approval("Are you sure?"):
+        controller.alter_configs([topic])
+
+
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
 @pass_state
@@ -121,9 +121,9 @@ def apply(state: State, file: str):
     topic_controller = TopicController(state.cluster)
     yaml_data = yaml.safe_load(open(file))
     topic_configs = yaml_data.get("topics")
-    topics = []
+    new_topic_configs = []
     for topic_config in topic_configs:
-        topics.append(
+        new_topic_configs.append(
             topic_controller.get_topic(
                 topic_config.get("name"),
                 topic_config.get("num_partitions"),
@@ -131,54 +131,26 @@ def apply(state: State, file: str):
                 topic_config.get("config"),
             )
         )
-    editable_topics = topic_controller.filter_existing_topics(topics)
-    topics_to_be_changed = [
-        topic for topic in editable_topics if topic.config_diff() != {}
-    ]
-    topic_config_diffs = {
-        topic.name: topic.config_diff() for topic in topics_to_be_changed
-    }
+    editable_topics = topic_controller.filter_existing_topics(new_topic_configs)
+    topics_to_be_changed = [topic for topic in editable_topics if topic.diff_with_cluster() != {}]
+    topic_config_diffs = {topic.name: topic.diff_with_cluster() for topic in topics_to_be_changed}
 
     if len(topic_config_diffs) > 0:
         click.echo(pretty_topic_diffs(topic_config_diffs))
-        if ensure_approval(
-            "Are you sure to change configs?", no_verify=state.no_verify
-        ):
+        if ensure_approval("Are you sure to change configs?", no_verify=state.no_verify):
             topic_controller.alter_configs(topics_to_be_changed)
-            click.echo(
-                click.style(
-                    pretty(
-                        {
-                            "Successfully changed topics": [
-                                topic.name for topic in topics_to_be_changed
-                            ]
-                        }
-                    ),
-                    fg="green",
-                )
-            )
+            to_change = [topic.name for topic in topics_to_be_changed]
+            click.echo(click.style(pretty({"Successfully changed topics": to_change}), fg="green"))
     else:
         click.echo("No topics to edit.")
 
-    new_topics = [topic for topic in topics if topic not in editable_topics]
+    new_topics = [topic for topic in new_topic_configs if topic not in editable_topics]
     if len(new_topics) > 0:
         click.echo(get_output_new_topics(new_topics))
-        if ensure_approval(
-            "Are you sure to create the new topics?", no_verify=state.no_verify
-        ):
+        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
             topic_controller.create_topics(new_topics)
-            click.echo(
-                click.style(
-                    pretty(
-                        {
-                            "Successfully created topics": [
-                                topic.name for topic in new_topics
-                            ]
-                        }
-                    ),
-                    fg="green",
-                )
-            )
+            to_create = [topic.name for topic in new_topics]
+            click.echo(click.style(pretty({"Successfully created topics": to_create}), fg="green"))
     else:
         click.echo("No new topics to create.")
 
@@ -274,7 +246,7 @@ def get_consumergroups(state):
 @get.command("topics")
 @click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-def get_topics(state, topic, o):
+def get_topics(state, topic):
     topics = TopicController(state.cluster).list_topics(search_string=topic)
     for topic in topics:
         click.echo(topic.name)

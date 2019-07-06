@@ -3,7 +3,6 @@ import operator
 
 from confluent_kafka.admin import ConfigResource
 
-from esque.helpers import unpack_confluent_config
 from esque.resource import KafkaResource
 
 
@@ -32,8 +31,7 @@ class Broker(KafkaResource):
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 
     def describe(self):
-        conf = self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
-        return unpack_confluent_config(conf)
+        return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 
     def as_dict(self):
         return {

@@ -9,28 +9,24 @@ from confluent_kafka.cimpl import NewTopic
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
 from esque.resource import KafkaResource
-from esque.helpers import (
-    ensure_kafka_futures_done,
-    invalidate_cache_after,
-    unpack_confluent_config,
-)
+from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
 
 
 class Topic(KafkaResource):
     def __init__(
-        self,
-        name: str,
-        cluster: Cluster,
-        num_partitions: int = 1,
-        replication_factor: int = 1,
-        config: Dict[str, str] = None,
+            self,
+            name: str,
+            cluster: Cluster,
+            num_partitions: int = None,
+            replication_factor: int = None,
+            config: Dict[str, str] = None,
     ):
         self.name = name
         self.cluster: Cluster = cluster
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
-        self.num_partitions = num_partitions
-        self.replication_factor = replication_factor
+        self.num_partitions = num_partitions if num_partitions is not None else 1
+        self.replication_factor = replication_factor if replication_factor is not None else 1
 
         self.config = config if config is not None else {}
 
@@ -38,7 +34,7 @@ class Topic(KafkaResource):
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
-            "config": self._retrieve_kafka_config(),
+            "config": self._current_cluster_state(),
         }
 
     def to_yaml(self) -> str:
@@ -93,18 +89,20 @@ class Topic(KafkaResource):
             for partition_id in partitions
         }
 
-    def _retrieve_kafka_config(self):
-        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
-        return unpack_confluent_config(conf)
+    def _current_cluster_state(self):
+        return self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
 
     @raise_for_kafka_exception
-    def config_diff(self) -> Dict[str, Tuple[str, str]]:
-        config_list = self._retrieve_kafka_config()
-        return {
-            name: [str(value), str(self.config.get(name))]
-            for name, value in config_list.items()
-            if self.config.get(name) and str(self.config.get(name)) != str(value)
-        }
+    def diff_with_cluster(self) -> Dict[str, Tuple[str, str]]:
+        cluster_state = self._current_cluster_state()
+        out = {}
+        for name, old_value in cluster_state.items():
+            new_val = self.config.get(name)
+            if not new_val or str(new_val) == str(old_value):
+                continue
+            out[name] = (str(old_value), str(new_val))
+
+        return out
 
     @raise_for_kafka_exception
     def describe(self):
@@ -126,7 +124,7 @@ class Topic(KafkaResource):
             for partition, partition_meta in t.partitions.items()
         ]
 
-        conf = self._retrieve_kafka_config()
+        conf = self._current_cluster_state()
 
         return replicas, {"Config": conf}
 
@@ -142,7 +140,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     def list_topics(
-        self, *, search_string: str = None, sort=True, hide_internal=True
+            self, *, search_string: str = None, sort=True, hide_internal=True
     ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topics = self.cluster.confluent_client.list_topics().topics
@@ -193,11 +191,11 @@ class TopicController:
         ensure_kafka_futures_done([future])
 
     def get_topic(
-        self,
-        topic_name: str,
-        num_partitions: int = None,
-        replication_factor: int = None,
-        config: Dict[str, str] = None,
+            self,
+            topic_name: str,
+            num_partitions: int = None,
+            replication_factor: int = None,
+            config: Dict[str, str] = None,
     ) -> Topic:
         return Topic(
             topic_name, self.cluster, num_partitions, replication_factor, config

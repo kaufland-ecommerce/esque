@@ -30,7 +30,7 @@ def invalidate_cache_after(func):
 
 
 def ensure_kafka_futures_done(future: List[Future]) -> Future:
-    done, failed = wait(future, timeout=0.5)
+    done, failed = wait(future, timeout=15)
     assert len(failed) <= 1
     if len(failed) != 0:
         for future in failed:
