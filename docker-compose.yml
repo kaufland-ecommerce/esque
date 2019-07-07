@@ -37,6 +37,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
+
   schema_registry_source:
     image: confluentinc/cp-schema-registry:5.2.2
     container_name: schema_registry_source

@@ -12,7 +12,7 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, get_output_topic_diffs, get_output_new_topics, blue_bold, green_bold
+from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
 from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
@@ -51,6 +51,11 @@ def delete():
     pass
 
 
+@esque.group(help="Edit a resource")
+def edit():
+    pass
+
+
 # TODO: Figure out how to pass the state object
 def list_topics(ctx, args, incomplete):
     cluster = Cluster()
@@ -67,6 +72,20 @@ def list_contexts(ctx, args, incomplete):
         for context in config.available_contexts
         if context.startswith(incomplete)
     ]
+
+
+@edit.command("topic")
+@click.argument("topic-name", required=True)
+@pass_state
+def edit_topic(state: State, topic_name: str):
+    controller = TopicController(state.cluster)
+    topic = TopicController(state.cluster).get_topic(topic_name)
+    new_conf = click.edit(topic.to_yaml())
+    topic.from_yaml(new_conf)
+    diff = pretty_topic_diffs({topic_name: topic.config_diff()})
+    click.echo(diff)
+    if ensure_approval("Are you sure?"):
+        controller.alter_configs([topic])
 
 
 @esque.command("ctx", help="Switch clusters.")
@@ -90,7 +109,7 @@ def ctx(state, context):
 @click.argument("topic-name", required=True)
 @no_verify_option
 @pass_state
-def create_topic(state: State, topic_name):
+def create_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller = TopicController(state.cluster)
         TopicController(state.cluster).create_topics(
@@ -124,7 +143,7 @@ def apply(state: State, file: str):
     }
 
     if len(topic_config_diffs) > 0:
-        click.echo(get_output_topic_diffs(topic_config_diffs))
+        click.echo(pretty_topic_diffs(topic_config_diffs))
         if ensure_approval(
             "Are you sure to change configs?", no_verify=state.no_verify
         ):
@@ -278,7 +297,7 @@ def get_consumergroups(state):
 @get.command("topics")
 @click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-def get_topics(state, topic):
+def get_topics(state, topic, o):
     topics = TopicController(state.cluster).list_topics(search_string=topic)
     for topic in topics:
         click.echo(topic.name)

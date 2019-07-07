@@ -124,7 +124,7 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     return pendulum.duration(milliseconds=value).in_words()
 
 
-def get_output_topic_diffs(
+def pretty_topic_diffs(
     topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
 ) -> str:
     output = []

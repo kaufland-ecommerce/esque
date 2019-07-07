@@ -29,20 +29,23 @@ This is partly (but not only) due to a fragmented and unclear definition of tool
 
 `esque` is available at pypi.org and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
 
-### Enable Autocompletion
+### Autocompletion
 
-`esque` uses Magic Environment Variables to provide autocompletion to you. You can enable autocompletion by adding the one of the following snippets to your `.bashrc`/`.zshrc` 
+Autocompletion is automatically installed via a post-install hook in the setup.py. 
+If it doesn't work for some reason you can still install it yourself: 
 
 #### Bash
 
 ```
-eval "$(_ESQUE_COMPLETE=source esque)"
+ echo 'eval "$(_ESQUE_COMPLETE=source esque)"' >> ~/.esque/autocompletion.sh
+ echo "source ~/.esque/autocompletion.sh" >> ~/.bashrc
 ```
 
 #### ZSH
 
 ```
-eval "$(_ESQUE_COMPLETE=source_zsh esque)"
+echo 'eval "$(_ESQUE_COMPLETE=source_zsh esque)"' >> ~/.esque/autocompletion.zsh
+echo "source ~/.esque/autocompletion.zsh" >> ~/.zshrc
 ```
 
 ### Usage
@@ -109,6 +112,9 @@ topics:
 ```
 
 ## Development
+
+To setup your development environment, make sure you have at least Python 3.6 & [Pipenv](https://github.com/pypa/pipenv) installed, then run 
+
 ```
 pipenv install --dev
 pipenv shell 
@@ -117,12 +123,16 @@ export PYTHONPATH=$(pwd)
 
 ### Run tests
 
-To run all tests, just run
+To start up a local test setup (Kafka and Zookeeper), you can run
 
 ```
 docker-compose up
 ```
-While the `docker-compose` stack is up, you can also run the tests from the CLI via `pytest tests/ --integration --local` 
+While this `docker-compose` stack is up, you can run the tests from the CLI via `pytest tests/ --integration --local`
+
+
+Alternatively, you can also run the entire test suite, without needing to setup the development environment, in docker compose via `docker-compose -f docker-compose.yml -f docker-compose.test.yml` 
+
 
 ## Alternatives
 
