@@ -1,7 +1,8 @@
 import confluent_kafka
 import pytest
 
-from esque.topic import Topic, TopicController
+from esque.topic import Topic
+from esque.topic_controller import TopicController
 from esque.errors import KafkaException
 
 @pytest.fixture()
@@ -18,7 +19,7 @@ def test_topic_creation_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
     topic_controller.create_topics(
-        [topic_controller.get_topic(topic_id, replication_factor=1)]
+        [topic_controller.get_cluster_topic(topic_id, replication_factor=1)]
     )
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
@@ -37,23 +38,23 @@ def test_topic_creation_raises_for_wrong_config(
     # We only have 1 broker for tests, so a higher replication should fail
     with pytest.raises(KafkaException):
         topic_controller.create_topics(
-            [topic_controller.get_topic(topic_id, replication_factor=2)]
+            [topic_controller.get_cluster_topic(topic_id, replication_factor=2)]
         )
 
 
 @pytest.mark.integration
 def test_alter_topic_config_works(topic_controller: TopicController, topic_id: str):
-    initial_topic = topic_controller.get_topic(
+    initial_topic = topic_controller.get_cluster_topic(
         topic_id, config={"cleanup.policy": "delete"}
     )
     topic_controller.create_topics([initial_topic])
     replicas, config = initial_topic.describe()
     assert config.get("Config").get("cleanup.policy") == "delete"
-    change_topic = topic_controller.get_topic(
+    change_topic = topic_controller.get_cluster_topic(
         topic_id, config={"cleanup.policy": "compact"}
     )
     topic_controller.alter_configs([change_topic])
-    after_changes_applied_topic = topic_controller.get_topic(topic_id)
+    after_changes_applied_topic = topic_controller.get_cluster_topic(topic_id)
     replicas, final_config = after_changes_applied_topic.describe()
     assert final_config.get("Config").get("cleanup.policy") == "compact"
 
@@ -66,7 +67,7 @@ def test_topic_deletion_works(
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
-    topic_controller.delete_topic(topic_controller.get_topic(topic))
+    topic_controller.delete_topic(topic_controller.get_cluster_topic(topic))
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -81,6 +82,6 @@ def test_topic_listing_works(topic_controller: TopicController, topic: str):
 
 @pytest.mark.integration
 def test_topic_object_works(topic_controller: TopicController, topic: str):
-    topic = topic_controller.get_topic(topic)
+    topic = topic_controller.get_cluster_topic(topic)
     assert isinstance(topic, Topic)
     assert len(topic.get_offsets()) != 0

@@ -14,7 +14,8 @@ from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic, TopicController
+from esque.topic import Topic
+from esque.topic_controller import TopicController
 
 
 def pytest_addoption(parser):
@@ -68,12 +69,12 @@ def topic_id(confluent_admin_client) -> str:
 
 @pytest.fixture()
 def topic_object(cluster, topic):
-    yield TopicController(cluster).get_topic(topic)
+    yield TopicController(cluster).get_cluster_topic(topic)
 
 
 @pytest.fixture()
 def changed_topic_object(cluster, topic):
-    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
+    yield TopicController(cluster).get_local_topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
@@ -99,6 +100,11 @@ def topic(confluent_admin_client: AdminClient, topic_id: str) -> str:
 
 
 @pytest.fixture()
+def topic_controller(cluster):
+    yield TopicController(cluster)
+
+
+@pytest.fixture()
 def confluent_admin_client(test_config: Config) -> AdminClient:
     admin = AdminClient(test_config.create_confluent_config())
     admin.poll(timeout=5)
@@ -106,10 +112,10 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(topic_object: Topic):
+def producer(topic_object: Topic, cluster: Cluster):
     # Send messages synchronously so we can be sure offset has been commited in tests.
     yield Producer(
-        topic_object.cluster.pykafka_client.cluster,
+        cluster.pykafka_client.cluster,
         topic_object._pykafka_topic,
         sync=True,
     )
@@ -122,7 +128,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+        partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
 ):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
@@ -162,7 +168,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
+        consumer: confluent_kafka.Consumer, filled_topic, consumer_group
 ):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]

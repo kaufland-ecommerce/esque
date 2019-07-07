@@ -1,6 +1,7 @@
 import pytest
 
 from esque.topic import Topic
+from esque.topic_controller import TopicController
 
 
 @pytest.mark.integration
@@ -14,8 +15,8 @@ def test_partitions(topic_object: Topic):
 
 
 @pytest.mark.integration
-def test_config_diff(changed_topic_object: Topic):
-    config_diff = changed_topic_object.diff_with_cluster()
+def test_config_diff(changed_topic_object: Topic, topic_controller: TopicController):
+    config_diff = topic_controller.diff_with_cluster(changed_topic_object)
 
     assert config_diff.get("cleanup.policy") == ("delete", "compact")
 

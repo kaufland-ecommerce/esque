@@ -6,7 +6,7 @@ from pykafka.protocol.admin import DescribeGroupResponse
 
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
-from esque.topic import TopicController
+from esque.topic_controller import TopicController
 
 
 # TODO: Refactor this shit hole
@@ -63,7 +63,7 @@ class ConsumerGroup:
 
         if verbose:
             for topic in consumer_offsets.keys():
-                topic_offsets = self.topic_controller.get_topic(topic).get_offsets()
+                topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
                 for partition_id, consumer_offset in consumer_offsets[topic].items():
                     consumer_offsets[topic][partition_id] = {
                         "consumer_offset": consumer_offset,
@@ -74,7 +74,7 @@ class ConsumerGroup:
                     }
             return consumer_offsets
         for topic in consumer_offsets.keys():
-            topic_offsets = self.topic_controller.get_topic(topic).get_offsets()
+            topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
             new_consumer_offsets = {
                 "consumer_offset": (float("inf"), float("-inf")),
                 "topic_low_watermark": (float("inf"), float("-inf")),

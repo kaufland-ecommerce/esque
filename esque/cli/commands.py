@@ -19,7 +19,7 @@ from esque.errors import (
     ContextNotDefinedException,
     TopicAlreadyExistsException,
 )
-from esque.topic import TopicController
+from esque.topic_controller import TopicController
 
 
 @click.group(help="(Kafka-)esque.")
@@ -96,7 +96,7 @@ def create_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller = TopicController(state.cluster)
         TopicController(state.cluster).create_topics(
-            [(topic_controller.get_topic(topic_name))]
+            [(topic_controller.get_cluster_topic(topic_name))]
         )
 
 
@@ -105,10 +105,10 @@ def create_topic(state: State, topic_name: str):
 @pass_state
 def edit_topic(state: State, topic_name: str):
     controller = TopicController(state.cluster)
-    topic = TopicController(state.cluster).get_topic(topic_name)
+    topic = TopicController(state.cluster).get_cluster_topic(topic_name)
     new_conf = click.edit(topic.to_yaml())
     topic.from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: topic.diff_with_cluster()})
+    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
     click.echo(diff)
     if ensure_approval("Are you sure?"):
         controller.alter_configs([topic])
@@ -124,7 +124,7 @@ def apply(state: State, file: str):
     new_topic_configs = []
     for topic_config in topic_configs:
         new_topic_configs.append(
-            topic_controller.get_topic(
+            topic_controller.get_cluster_topic(
                 topic_config.get("name"),
                 topic_config.get("num_partitions"),
                 topic_config.get("replication_factor"),
@@ -133,10 +133,10 @@ def apply(state: State, file: str):
         )
     editable_topics = topic_controller.filter_existing_topics(new_topic_configs)
     topics_to_be_changed = [
-        topic for topic in editable_topics if topic.diff_with_cluster() != {}
+        topic for topic in editable_topics if topic_controller.diff_with_cluster(topic) != {}
     ]
     topic_config_diffs = {
-        topic.name: topic.diff_with_cluster() for topic in topics_to_be_changed
+        topic.name: topic_controller.diff_with_cluster(topic) for topic in topics_to_be_changed
     }
 
     if len(topic_config_diffs) > 0:
@@ -180,7 +180,7 @@ def apply(state: State, file: str):
 def delete_topic(state: State, topic_name: str):
     topic_controller = TopicController(state.cluster)
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(topic_controller.get_topic(topic_name))
+        topic_controller.delete_topic(topic_controller.get_cluster_topic(topic_name))
 
         assert topic_name not in topic_controller.list_topics()
 
@@ -191,7 +191,7 @@ def delete_topic(state: State, topic_name: str):
 )
 @pass_state
 def describe_topic(state, topic_name):
-    partitions, config = TopicController(state.cluster).get_topic(topic_name).describe()
+    partitions, config = TopicController(state.cluster).get_cluster_topic(topic_name).describe()
 
     click.echo(bold(f"Topic: {topic_name}"))
 
@@ -277,7 +277,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_topic(PING_TOPIC)])
+            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
@@ -295,7 +295,7 @@ def ping(state, times, wait):
     except KeyboardInterrupt:
         pass
     finally:
-        topic_controller.delete_topic(topic_controller.get_topic(PING_TOPIC))
+        topic_controller.delete_topic(topic_controller.get_cluster_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(
