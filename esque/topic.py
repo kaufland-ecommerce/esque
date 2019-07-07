@@ -1,5 +1,6 @@
 import re
 from typing import Dict, List, Tuple, Union
+from collections import namedtuple
 
 import pykafka
 import yaml
@@ -10,6 +11,9 @@ from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
 from esque.resource import KafkaResource
 from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
+
+
+AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
 
 class Topic(KafkaResource):
@@ -95,14 +99,14 @@ class Topic(KafkaResource):
         return self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
 
     @raise_for_kafka_exception
-    def diff_with_cluster(self) -> Dict[str, Tuple[str, str]]:
+    def diff_with_cluster(self) -> Dict[str, AttributeDiff]:
         cluster_state = self._current_cluster_state()
         out = {}
         for name, old_value in cluster_state.items():
             new_val = self.config.get(name)
             if not new_val or str(new_val) == str(old_value):
                 continue
-            out[name] = (str(old_value), str(new_val))
+            out[name] = AttributeDiff(str(old_value), str(new_val))
 
         return out
 

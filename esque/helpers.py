@@ -30,18 +30,20 @@ def invalidate_cache_after(func):
 
 
 def ensure_kafka_futures_done(future: List[Future]) -> Future:
+    # Clients, such as confluents AdminClient, may return a done future with an exception
     done, failed = wait(future, timeout=15)
-    assert len(failed) <= 1
-    if len(failed) != 0:
-        for future in failed:
-            if isinstance(future.exception(), KafkaError):
-                raise_for_kafka_error(future.exception())
-            else:
-                raise future.exception()
+    assert len(failed) + len(done) == 1
 
-    assert len(done) == 1
+    result = next(islice(done, 1)) if len(done) == 1 else next(islice(failed, 1))
 
-    return next(islice(done, 1))
+    exception = result.exception()
+
+    if exception is None:
+        return result
+    elif isinstance(exception, KafkaError):
+        raise_for_kafka_error(exception)
+    else:
+        raise exception
 
 
 def unpack_confluent_config(config):

@@ -2,7 +2,7 @@ import confluent_kafka
 import pytest
 
 from esque.topic import Topic, TopicController
-
+from esque.errors import KafkaException
 
 @pytest.fixture()
 def topic_controller(cluster):
@@ -24,6 +24,21 @@ def test_topic_creation_works(
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_topic_creation_raises_for_wrong_config(
+    topic_controller: TopicController,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic_id: str,
+):
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id not in topics
+    # We only have 1 broker for tests, so a higher replication should fail
+    with pytest.raises(KafkaException):
+        topic_controller.create_topics(
+            [topic_controller.get_topic(topic_id, replication_factor=2)]
+        )
 
 
 @pytest.mark.integration
