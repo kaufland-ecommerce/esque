@@ -31,6 +31,8 @@ required = [
     "pykafka",
     "pendulum",
     "pyyaml",
+    'requests',
+    'fastavro',
 ]
 
 

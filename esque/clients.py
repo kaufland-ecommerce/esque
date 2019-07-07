@@ -1,3 +1,4 @@
+import pathlib
 import pickle
 from typing import Optional, Tuple
 
@@ -7,9 +8,9 @@ import pendulum
 from confluent_kafka import TopicPartition, Message
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, raise_for_message, MessageEmptyException, KafkaException
+from esque.errors import raise_for_kafka_error, raise_for_message, KafkaException
 from esque.helpers import delivery_callback, delta_t
-from esque.message import decode_message
+from esque.avromessage import AvroSerializer
 
 DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -45,9 +46,9 @@ class Consumer:
         delta_sent = pendulum.now() - msg_sent_at
         return msg.key(), delta_sent.microseconds / 1000
 
-    def consume_to_file(self, file_path: str, amount: int) -> int:
+    def consume_to_file(self, working_dir: pathlib.Path, serializer: AvroSerializer, amount: int) -> int:
         counter = 0
-        with open(file_path, "wb") as file:
+        with (working_dir / "data").open("wb") as file:
             while counter < amount:
                 try:
                     message = self._consume_single_message()
@@ -55,9 +56,7 @@ class Consumer:
                     print("An error occurred: " + ex.message)
                     continue
 
-                decoded_message = decode_message(message)
-                serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
-                pickle.dump(serializable_message, file)
+                serializer.serialize(message, file)
                 counter += 1
 
         return counter
