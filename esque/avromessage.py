@@ -9,6 +9,7 @@ import itertools as it
 import fastavro
 from confluent_kafka.cimpl import Message
 
+from esque.message import Serializer
 from esque.schemaregistry import SchemaRegistryClient
 
 
@@ -20,10 +21,10 @@ class DecodedAvroMessage:
         self.value_schema_id = value_schema_id
 
 
-class AvroSerializer:
+class AvroSerializer(Serializer):
 
-    def __init__(self, schema_registry_client: SchemaRegistryClient, working_dir: pathlib.Path):
-        self.working_dir = working_dir
+    def __init__(self, working_dir: pathlib.Path, schema_registry_client: SchemaRegistryClient):
+        super().__init__(working_dir)
         self.schema_registry_client = schema_registry_client
         self.current_key_schema_id = None
         self.current_value_schema_id = None

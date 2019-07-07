@@ -10,9 +10,10 @@ from confluent_kafka import TopicPartition, Message
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, raise_for_message, KafkaException
 from esque.helpers import delivery_callback, delta_t
-from esque.avromessage import AvroSerializer
+from esque.message import Serializer
 
 DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+
 
 class Consumer:
     def __init__(self, group_id: str, topic_name: str, last: bool):
@@ -46,9 +47,9 @@ class Consumer:
         delta_sent = pendulum.now() - msg_sent_at
         return msg.key(), delta_sent.microseconds / 1000
 
-    def consume_to_file(self, working_dir: pathlib.Path, serializer: AvroSerializer, amount: int) -> int:
+    def consume_to_file(self, serializer: Serializer, amount: int) -> int:
         counter = 0
-        with (working_dir / "data").open("wb") as file:
+        with (serializer.get_working_directory_path() / "data").open("wb") as file:
             while counter < amount:
                 try:
                     message = self._consume_single_message()

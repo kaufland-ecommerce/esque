@@ -1,6 +1,7 @@
 import os
 import random
 import time
+from pathlib import Path
 from time import sleep
 
 import click
@@ -9,6 +10,7 @@ from click import version_option
 import yaml
 
 from esque.__version__ import __version__
+from esque.avromessage import AvroSerializer
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
@@ -22,6 +24,7 @@ from esque.errors import (
     ContextNotDefinedException,
     TopicAlreadyExistsException,
 )
+from esque.schemaregistry import SchemaRegistryClient
 from esque.topic import TopicController
 
 
@@ -319,7 +322,9 @@ def transfer(state: State, topic: str, from_context: str, to_context: str, numbe
     state.config.context_switch(from_context)
     click.echo("\nStart consuming from source context " + blue_bold(from_context))
     consumer = Consumer(group_id, topic, last)
-    number_consumed_messages = consumer.consume_to_file(file_name, int(numbers))
+    schema_registry = SchemaRegistryClient(state.config.schema_registry)
+    serializer = AvroSerializer(Path('temp'), schema_registry)
+    number_consumed_messages = consumer.consume_to_file(serializer, int(numbers))
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed successfully.")
     click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 

@@ -1,4 +1,6 @@
+import pathlib
 import pickle
+from pathlib import Path
 from typing import BinaryIO
 
 from confluent_kafka.cimpl import Message
@@ -10,13 +12,19 @@ class DecodedMessage:
         self.value = value
 
 
-class Serializer:
+class Serializer(object):
+
+    def __init__(self, working_dir: pathlib.Path):
+        self.working_dir = working_dir
 
     def serialize(self, message: Message, file: BinaryIO):
         pass
 
+    def get_working_directory_path(self) -> Path:
+        return self.working_dir
 
-class JsonSerializer:
+
+class JsonSerializer(Serializer):
 
     def serialize(self, message: Message, file: BinaryIO):
         decoded_message = decode_message(message)
