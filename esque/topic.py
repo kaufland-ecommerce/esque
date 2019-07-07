@@ -8,19 +8,21 @@ from esque.resource import KafkaResource
 
 class Topic(KafkaResource):
     def __init__(
-            self,
-            name: str,
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None,
+        self,
+        name: Union[str, bytes],
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ):
+        # Should we warn in those cases to force clients to migrate to string-only?
+        if isinstance(name, bytes):
+            name = name.decode("ascii")
         self.name = name
 
         self.num_partitions = num_partitions if num_partitions is not None else 1
         self.replication_factor = (
             replication_factor if replication_factor is not None else 1
         )
-
         self.config = config if config is not None else {}
 
         self.low_watermark = None
@@ -50,6 +52,9 @@ class Topic(KafkaResource):
         """
         Returns the low and high watermark for each partition in a topic
         """
+
+        assert not self.is_only_local, "Need to update topic before describing offsets"
+
         partitions: List[int] = self.partitions
         low_watermark_offsets = self.low_watermark
         high_watermark_offsets = self.high_watermark
@@ -64,6 +69,8 @@ class Topic(KafkaResource):
 
     @raise_for_kafka_exception
     def describe(self):
+        assert not self.is_only_local, "Need to update topic before describing"
+
         offsets = self.get_offsets()
         replicas = [
             {

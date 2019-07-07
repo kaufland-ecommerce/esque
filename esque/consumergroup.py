@@ -63,7 +63,9 @@ class ConsumerGroup:
 
         if verbose:
             for topic in consumer_offsets.keys():
-                topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
+                topic_offsets = self.topic_controller.get_cluster_topic(
+                    topic
+                ).get_offsets()
                 for partition_id, consumer_offset in consumer_offsets[topic].items():
                     consumer_offsets[topic][partition_id] = {
                         "consumer_offset": consumer_offset,

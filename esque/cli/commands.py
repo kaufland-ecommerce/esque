@@ -14,6 +14,7 @@ from esque.clients import Consumer, Producer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config
 from esque.consumergroup import ConsumerGroupController
+from esque.topic import Topic
 from esque.errors import (
     ConsumerGroupDoesNotExistException,
     ContextNotDefinedException,
@@ -124,7 +125,7 @@ def apply(state: State, file: str):
     new_topic_configs = []
     for topic_config in topic_configs:
         new_topic_configs.append(
-            topic_controller.get_cluster_topic(
+            Topic(
                 topic_config.get("name"),
                 topic_config.get("num_partitions"),
                 topic_config.get("replication_factor"),
@@ -133,10 +134,13 @@ def apply(state: State, file: str):
         )
     editable_topics = topic_controller.filter_existing_topics(new_topic_configs)
     topics_to_be_changed = [
-        topic for topic in editable_topics if topic_controller.diff_with_cluster(topic) != {}
+        topic
+        for topic in editable_topics
+        if topic_controller.diff_with_cluster(topic) != {}
     ]
     topic_config_diffs = {
-        topic.name: topic_controller.diff_with_cluster(topic) for topic in topics_to_be_changed
+        topic.name: topic_controller.diff_with_cluster(topic)
+        for topic in topics_to_be_changed
     }
 
     if len(topic_config_diffs) > 0:
@@ -191,7 +195,9 @@ def delete_topic(state: State, topic_name: str):
 )
 @pass_state
 def describe_topic(state, topic_name):
-    partitions, config = TopicController(state.cluster).get_cluster_topic(topic_name).describe()
+    partitions, config = (
+        TopicController(state.cluster).get_cluster_topic(topic_name).describe()
+    )
 
     click.echo(bold(f"Topic: {topic_name}"))
 
@@ -277,7 +283,9 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
+            topic_controller.create_topics(
+                [topic_controller.get_cluster_topic(PING_TOPIC)]
+            )
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 

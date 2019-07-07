@@ -74,7 +74,7 @@ def topic_object(cluster, topic):
 
 @pytest.fixture()
 def changed_topic_object(cluster, topic):
-    yield TopicController(cluster).get_local_topic(topic, 1, 3, {"cleanup.policy": "compact"})
+    yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
@@ -115,9 +115,7 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 def producer(topic_object: Topic, cluster: Cluster):
     # Send messages synchronously so we can be sure offset has been commited in tests.
     yield Producer(
-        cluster.pykafka_client.cluster,
-        topic_object._pykafka_topic,
-        sync=True,
+        cluster.pykafka_client.cluster, topic_object._pykafka_topic, sync=True
     )
 
 
@@ -128,7 +126,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(
-        partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
 ):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
@@ -168,7 +166,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(
-        consumer: confluent_kafka.Consumer, filled_topic, consumer_group
+    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
 ):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
