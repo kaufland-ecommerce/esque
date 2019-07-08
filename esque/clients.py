@@ -45,7 +45,6 @@ class Consumer:
 
 
 class PingConsumer(Consumer):
-
     def consume_ping(self) -> Optional[Tuple[str, int]]:
         msg = self._consumer.consume(timeout=10)[0]
 
@@ -57,15 +56,18 @@ class PingConsumer(Consumer):
 
 
 class FileConsumer(Consumer):
-
-    def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
+    def __init__(
+        self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool
+    ):
         super().__init__(group_id, topic_name, last)
         self.working_dir = working_dir
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
 
-        self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
+        self._config.update(
+            {"default.topic.config": {"auto.offset.reset": offset_reset}}
+        )
         self._consumer = confluent_kafka.Consumer(self._config)
         self._assign_exact_partitions(topic_name)
         self.writer = PlainTextFileWriter()
@@ -101,21 +103,19 @@ class FileConsumer(Consumer):
 
 
 class AvroFileConsumer(FileConsumer):
-
     def __init__(
-            self,
-            group_id: str,
-            topic_name: str,
-            working_dir: pathlib.Path,
-            schema_registry_client: SchemaRegistryClient,
-            last: bool
+        self,
+        group_id: str,
+        topic_name: str,
+        working_dir: pathlib.Path,
+        schema_registry_client: SchemaRegistryClient,
+        last: bool,
     ):
         super().__init__(group_id, topic_name, working_dir, last)
         self.writer = AvroFileWriter(working_dir, schema_registry_client)
 
 
-
-class Producer(object):
+class PingProducer(object):
     def __init__(self):
         self._config = Config().create_confluent_config()
         self._config.update(
@@ -139,14 +139,10 @@ class Producer(object):
 
 
 class FileProducer(object):
-
     def __init__(self, working_dir: pathlib.Path):
         self._config = Config().create_confluent_config()
         self._config.update(
-            {
-                "on_delivery": delivery_callback,
-                "error_cb": raise_for_kafka_error,
-            }
+            {"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error}
         )
 
         self._producer = confluent_kafka.Producer(self._config)
@@ -176,12 +172,9 @@ class FileProducer(object):
 
 
 class AvroFileProducer(FileProducer):
-
     def __init__(self, working_dir: pathlib.Path):
         super().__init__(working_dir)
-        self._config.update(
-            {"schema.registry.url": Config().schema_registry}
-        )
+        self._config.update({"schema.registry.url": Config().schema_registry})
         self._producer = AvroProducer(self._config)
         self.reader = AvroFileReader(working_dir)
 
@@ -191,5 +184,5 @@ class AvroFileProducer(FileProducer):
             key=message.key,
             value=message.value,
             key_schema=message.key_schema,
-            value_schema=message.value_schema
+            value_schema=message.value_schema,
         )

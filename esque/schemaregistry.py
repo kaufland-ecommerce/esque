@@ -12,7 +12,6 @@ SchemaPair = namedtuple("SchemaPair", ["original_schema", "parsed_schema"])
 
 
 class SchemaRegistryClient:
-
     def __init__(self, schema_registry_uri: str):
         self.schema_registry_uri = schema_registry_uri
 

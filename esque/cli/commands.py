@@ -11,8 +11,24 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
-from esque.clients import Consumer, Producer, FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer
+from esque.cli.output import (
+    bold,
+    pretty,
+    pretty_topic_diffs,
+    get_output_new_topics,
+    blue_bold,
+    green_bold,
+)
+from esque.clients import (
+    Consumer,
+    Producer,
+    FileConsumer,
+    FileProducer,
+    AvroFileProducer,
+    AvroFileConsumer,
+    PingConsumer,
+    PingProducer,
+)
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
@@ -20,7 +36,8 @@ from esque.errors import (
     ConsumerGroupDoesNotExistException,
     ContextNotDefinedException,
     TopicAlreadyExistsException,
-    DeleteOnException)
+    DeleteOnException,
+)
 from esque.schemaregistry import SchemaRegistryClient
 from esque.topic import TopicController
 
@@ -283,19 +300,49 @@ def get_topics(state, topic, o):
         click.echo(topic.name)
 
 
-@esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
+@esque.command(
+    "transfer", help="Transfer messages of a topic from one environment to another."
+)
 @click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
-@click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
-@click.option('--last/--first', default=False)
 @click.option(
-    "-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True
+    "-f",
+    "--from",
+    "from_context",
+    help="Source Context",
+    type=click.STRING,
+    required=True,
+)
+@click.option(
+    "-t",
+    "--to",
+    "to_context",
+    help="Destination context",
+    type=click.STRING,
+    required=True,
+)
+@click.option(
+    "-n", "--numbers", help="Number of messages", type=click.INT, required=True
+)
+@click.option("--last/--first", default=False)
+@click.option(
+    "-a",
+    "--avro",
+    help="Set this flag if the topic contains avro data",
+    default=False,
+    is_flag=True,
 )
 @pass_state
-def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool):
+def transfer(
+    state: State,
+    topic: str,
+    from_context: str,
+    to_context: str,
+    numbers: int,
+    last: bool,
+    avro: bool,
+):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    temp_name = topic + '_' + str(current_timestamp_milliseconds)
+    temp_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + temp_name
     directory_name = "temp-file_" + temp_name
 
@@ -308,13 +355,23 @@ def transfer(state: State, topic: str, from_context: str, to_context: str, numbe
 
         if avro:
             schema_registry = SchemaRegistryClient(state.config.schema_registry)
-            consumer = AvroFileConsumer(group_id, topic, working_dir, schema_registry, last)
+            consumer = AvroFileConsumer(
+                group_id, topic, working_dir, schema_registry, last
+            )
         else:
             consumer = FileConsumer(group_id, topic, working_dir, last)
 
         number_consumed_messages = consumer.consume_to_file(int(numbers))
-        click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed successfully.")
-        click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
+        click.echo(
+            blue_bold(str(number_consumed_messages))
+            + " messages consumed successfully."
+        )
+        click.echo(
+            "\nReady to produce to context "
+            + blue_bold(to_context)
+            + " and target topic "
+            + blue_bold(topic)
+        )
 
         if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
             state.config.context_switch(to_context)
@@ -324,7 +381,9 @@ def transfer(state: State, topic: str, from_context: str, to_context: str, numbe
             else:
                 producer = FileProducer(working_dir)
 
-            number_produced_messages = producer.produce_from_file("test_write_from_file_target2")
+            number_produced_messages = producer.produce_from_file(
+                "test_write_from_file_target2"
+            )
             click.echo(
                 green_bold(str(number_produced_messages))
                 + " messages successfully produced to context "
@@ -351,8 +410,8 @@ def ping(state, times, wait):
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
-        producer = Producer()
-        consumer = Consumer(PING_GROUP_ID, PING_TOPIC, True)
+        producer = PingProducer()
+        consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
 
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 

@@ -82,6 +82,7 @@ class DeleteOnException:
         if exc_val is not None and self._dir.exists():
             shutil.rmtree(self._dir)
 
+
 ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
     36: TopicAlreadyExistsException,
     -191: EndOfPartitionReachedException,

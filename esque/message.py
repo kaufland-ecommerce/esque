@@ -19,27 +19,26 @@ class KafkaMessage:
 
 
 class FileWriter(object):
-
     def write_message_to_file(self, message: Message, file: BinaryIO):
         pass
 
 
 class FileReader(object):
-
     def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
         pass
 
 
 class PlainTextFileWriter(FileWriter):
-
     def write_message_to_file(self, message: Message, file: BinaryIO):
         decoded_message = decode_message(message)
-        serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
+        serializable_message = {
+            "key": decoded_message.key,
+            "value": decoded_message.value,
+        }
         pickle.dump(serializable_message, file)
 
 
 class PlainTextFileReader(FileReader):
-
     def reade_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
         try:
             record = pickle.load(file)
