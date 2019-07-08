@@ -346,45 +346,52 @@ def transfer(
     state.config.context_switch(from_context)
 
     with DeleteOnException(base_dir) as working_dir:
-        click.echo("\nStart consuming from source context " + blue_bold(from_context))
-
-        if avro:
-            consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
-        else:
-            consumer = FileConsumer.create(group_id, topic, working_dir, last)
-
-        number_consumed_messages = consumer.consume_to_file(int(numbers))
-        click.echo(
-            blue_bold(str(number_consumed_messages))
-            + " messages consumed successfully."
-        )
-        click.echo(
-            "\nReady to produce to context "
-            + blue_bold(to_context)
-            + " and target topic "
-            + blue_bold(topic)
+        _consume_to_file(
+            avro, from_context, group_id, last, numbers, to_context, topic, working_dir
         )
 
         if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
-            state.config.context_switch(to_context)
-
-            if avro:
-                producer = AvroFileProducer.create(working_dir)
-            else:
-                producer = FileProducer.create(working_dir)
-
-            number_produced_messages = producer.produce_from_file(topic)
-            click.echo(
-                green_bold(str(number_produced_messages))
-                + " messages successfully produced to context "
-                + green_bold(to_context)
-                + " and topic "
-                + green_bold(topic)
-                + "."
-            )
+            _produce_from_file(avro, state, to_context, topic, working_dir)
 
     if base_dir.exists():
         shutil.rmtree(base_dir)
+
+
+def _produce_from_file(avro, state, to_context, topic, working_dir):
+    state.config.context_switch(to_context)
+    if avro:
+        producer = AvroFileProducer.create(working_dir)
+    else:
+        producer = FileProducer.create(working_dir)
+    number_produced_messages = producer.produce_from_file(topic)
+    click.echo(
+        green_bold(str(number_produced_messages))
+        + " messages successfully produced to context "
+        + green_bold(to_context)
+        + " and topic "
+        + green_bold(topic)
+        + "."
+    )
+
+
+def _consume_to_file(
+    avro, from_context, group_id, last, numbers, to_context, topic, working_dir
+):
+    click.echo("\nStart consuming from source context " + blue_bold(from_context))
+    if avro:
+        consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
+    else:
+        consumer = FileConsumer.create(group_id, topic, working_dir, last)
+    number_consumed_messages = consumer.consume_to_file(int(numbers))
+    click.echo(
+        blue_bold(str(number_consumed_messages)) + " messages consumed successfully."
+    )
+    click.echo(
+        "\nReady to produce to context "
+        + blue_bold(to_context)
+        + " and target topic "
+        + blue_bold(topic)
+    )
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
