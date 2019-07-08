@@ -373,9 +373,7 @@ def transfer(
             else:
                 producer = FileProducer.create(working_dir)
 
-            number_produced_messages = producer.produce_from_file(
-                "test_write_from_file_target2"
-            )
+            number_produced_messages = producer.produce_from_file(topic)
             click.echo(
                 green_bold(str(number_produced_messages))
                 + " messages successfully produced to context "
