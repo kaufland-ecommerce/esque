@@ -18,7 +18,9 @@ SLEEP_INTERVAL = 2
 
 
 def config_dir() -> Path:
-    return Path(__file__).parent.parent
+    if ESQUE_ENV == "dev":
+        return Path(__file__).parent.parent
+    return Path(click.get_app_dir("esque", force_posix=True))
 
 
 def config_path() -> Path:
