@@ -52,25 +52,7 @@ class AvroFileWriter(FileWriter):
             )
             self.current_key_schema_id = key_schema_id
             self.current_value_schema_id = value_schema_id
-
-            directory = self.working_dir / self.schema_dir_name
-            directory.mkdir()
-
-            (directory / "key_schema.avsc").write_text(
-                json.dumps(
-                    self.schema_registry_client.get_schema_from_id(
-                        key_schema_id
-                    ).original_schema
-                )
-            )
-
-            (directory / "value_schema.avsc").write_text(
-                json.dumps(
-                    self.schema_registry_client.get_schema_from_id(
-                        value_schema_id
-                    ).original_schema
-                )
-            )
+            self._dump_schemata(key_schema_id, value_schema_id)
 
         serializable_message = {
             "key": decoded_key,
@@ -78,6 +60,24 @@ class AvroFileWriter(FileWriter):
             "schema_directory_name": self.schema_dir_name,
         }
         pickle.dump(serializable_message, file)
+
+    def _dump_schemata(self, key_schema_id, value_schema_id):
+        directory = self.working_dir / self.schema_dir_name
+        directory.mkdir()
+        (directory / "key_schema.avsc").write_text(
+            json.dumps(
+                self.schema_registry_client.get_schema_from_id(
+                    key_schema_id
+                ).original_schema
+            )
+        )
+        (directory / "value_schema.avsc").write_text(
+            json.dumps(
+                self.schema_registry_client.get_schema_from_id(
+                    value_schema_id
+                ).original_schema
+            )
+        )
 
     def decode_bytes(self, raw_data: Optional[bytes]) -> Tuple[int, Optional[Dict]]:
         if raw_data is None:
