@@ -26,16 +26,6 @@ class SchemaRegistryClient:
         schema: Dict = json.loads(response.json()["schema"])
         return SchemaPair(schema, fastavro.schema.parse_schema(schema))
 
-    def get_schema_for_bytes(self, avro_content: Optional[bytes]) -> SchemaPair:
-        if avro_content is None:
-            return -1, None
-
-        with BytesIO(avro_content) as fake_stream:
-            schema_id = self._extract_schema_id(fake_stream.read(5))
-            parsed_schema = self.get_schema_from_id(schema_id).parsed_schema
-            record = fastavro.schemaless_reader(fake_stream, parsed_schema)
-        return schema_id, record
-
     def _extract_schema_id(self, message: bytes) -> int:
         _, schema_id = struct.unpack(">bI", message[:5])
         return schema_id
