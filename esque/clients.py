@@ -6,6 +6,7 @@ import confluent_kafka
 import pendulum
 from confluent_kafka import TopicPartition, Message
 from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import KafkaError
 
 from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
@@ -93,18 +94,16 @@ class FileConsumer(Consumer):
         counter = 0
         with (self.working_dir / "data").open("wb") as file:
             while counter < amount:
-                try:
-                    message = self._consume_single_message()
-                except KafkaException as ex:
-                    print("An error occurred: " + ex.message)
-                    continue
+                message = self._consume_single_message()
+                if message is None:
+                    return counter
 
                 self.file_writer.write_message_to_file(message, file)
                 counter += 1
 
         return counter
 
-    def _consume_single_message(self) -> Message:
+    def _consume_single_message(self) -> Optional[Message]:
         poll_limit = 10
         counter = 0
         try:
@@ -113,10 +112,17 @@ class FileConsumer(Consumer):
                 if message is None:
                     counter += 1
                     continue
+                if message.error() is not None:
+                    if message.error().code() == KafkaError._PARTITION_EOF:
+                        print("\nEnd of partition reached!".format(**locals()))
+                        break
+                    else:
+                        raise RuntimeError(message.error().str())
                 raise_for_message(message)
                 return message
         except KafkaException as ex:
             print("An error occurred: " + ex.message)
+            return None
 
 
 class AvroFileConsumer(FileConsumer):
@@ -181,11 +187,7 @@ class FileProducer(object):
     def produce_from_file(self, topic_name: str) -> int:
         with (self.working_dir / "data").open("rb") as file:
             counter = 0
-            while True:
-                message = self.file_reader.read_from_file(file)
-                if message is None:
-                    break
-
+            for message in self.file_reader.read_from_file(file):
                 self.produce(topic_name, message)
                 counter += 1
 

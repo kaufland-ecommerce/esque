@@ -1,4 +1,4 @@
-import shutil
+import pathlib
 import time
 from pathlib import Path
 from time import sleep
@@ -9,7 +9,7 @@ from click import version_option
 
 from esque.__version__ import __version__
 from esque.broker import Broker
-from esque.cli.helpers import ensure_approval
+from esque.cli.helpers import ensure_approval, DeleteOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import (
     bold,
@@ -34,7 +34,6 @@ from esque.errors import (
     ConsumerGroupDoesNotExistException,
     ContextNotDefinedException,
     TopicAlreadyExistsException,
-    DeleteOnException,
 )
 from esque.topic import TopicController
 
@@ -345,20 +344,36 @@ def transfer(
     base_dir = Path(directory_name)
     state.config.context_switch(from_context)
 
-    with DeleteOnException(base_dir) as working_dir:
-        _consume_to_file(
-            avro, from_context, group_id, last, numbers, to_context, topic, working_dir
+    with DeleteOnFinished(base_dir) as working_dir:
+        number_consumed_messages = _consume_to_file(
+            working_dir, topic, group_id, from_context, numbers, avro, last
         )
 
-        if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
-            _produce_from_file(avro, state, to_context, topic, working_dir)
+        if number_consumed_messages == 0:
+            click.echo(
+                click.style(
+                    "Execution stopped, because no messages consumed.", fg="red"
+                )
+            )
+            return
 
-    if base_dir.exists():
-        shutil.rmtree(base_dir)
+        click.echo(
+            "\nReady to produce to context "
+            + blue_bold(to_context)
+            + " and target topic "
+            + blue_bold(topic)
+        )
+
+        if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
+            return
+
+        state.config.context_switch(to_context)
+        _produce_from_file(topic, to_context, working_dir, avro)
 
 
-def _produce_from_file(avro, state, to_context, topic, working_dir):
-    state.config.context_switch(to_context)
+def _produce_from_file(
+    topic: str, to_context: str, working_dir: pathlib.Path, avro: bool
+):
     if avro:
         producer = AvroFileProducer.create(working_dir)
     else:
@@ -375,23 +390,23 @@ def _produce_from_file(avro, state, to_context, topic, working_dir):
 
 
 def _consume_to_file(
-    avro, from_context, group_id, last, numbers, to_context, topic, working_dir
-):
+    working_dir: pathlib.Path,
+    topic: str,
+    group_id: str,
+    from_context: str,
+    numbers: int,
+    avro: bool,
+    last: bool,
+) -> int:
     click.echo("\nStart consuming from source context " + blue_bold(from_context))
     if avro:
         consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
     else:
         consumer = FileConsumer.create(group_id, topic, working_dir, last)
     number_consumed_messages = consumer.consume_to_file(int(numbers))
-    click.echo(
-        blue_bold(str(number_consumed_messages)) + " messages consumed successfully."
-    )
-    click.echo(
-        "\nReady to produce to context "
-        + blue_bold(to_context)
-        + " and target topic "
-        + blue_bold(topic)
-    )
+    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
+
+    return number_consumed_messages
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")

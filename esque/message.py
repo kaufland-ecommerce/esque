@@ -1,5 +1,5 @@
 import pickle
-from typing import BinaryIO, Optional
+from typing import BinaryIO, Iterable
 
 from confluent_kafka.cimpl import Message
 
@@ -24,7 +24,7 @@ class FileWriter(object):
 
 
 class FileReader(object):
-    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
+    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
         pass
 
 
@@ -39,13 +39,14 @@ class PlainTextFileWriter(FileWriter):
 
 
 class PlainTextFileReader(FileReader):
-    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
-        try:
-            record = pickle.load(file)
-        except EOFError:
-            return None
+    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
+        while True:
+            try:
+                record = pickle.load(file)
+            except EOFError:
+                continue
 
-        return KafkaMessage(record["key"], record["value"])
+            yield KafkaMessage(record["key"], record["value"])
 
 
 def decode_message(message: Message) -> DecodedMessage:

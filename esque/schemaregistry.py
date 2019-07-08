@@ -2,8 +2,7 @@ import json
 import struct
 from collections import namedtuple
 from functools import lru_cache
-from io import BytesIO
-from typing import Dict, Optional
+from typing import Dict
 
 import fastavro
 import requests
