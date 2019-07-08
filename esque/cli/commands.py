@@ -20,8 +20,6 @@ from esque.cli.output import (
     green_bold,
 )
 from esque.clients import (
-    Consumer,
-    Producer,
     FileConsumer,
     FileProducer,
     AvroFileProducer,
