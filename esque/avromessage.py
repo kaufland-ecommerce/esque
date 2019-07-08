@@ -3,7 +3,7 @@ import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Optional, Tuple, Dict, BinaryIO
+from typing import Optional, Tuple, Dict, BinaryIO, Iterable
 import itertools as it
 
 import fastavro
@@ -102,18 +102,19 @@ class AvroFileReader(FileReader):
     def __init__(self, working_dir: pathlib.Path):
         self.working_dir = working_dir
 
-    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
-        try:
-            record = pickle.load(file)
-        except EOFError:
-            return None
+    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
+        while True:
+            try:
+                record = pickle.load(file)
+            except EOFError:
+                return
 
-        schema_directory = self.working_dir / record["schema_directory_name"]
+            schema_directory = self.working_dir / record["schema_directory_name"]
 
-        key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
-        value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
+            key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
+            value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
 
-        return KafkaMessage(record["key"], record["value"], key_schema, value_schema)
+            yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
 
 
 def extract_schema_id(message: bytes) -> int:

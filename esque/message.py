@@ -44,7 +44,7 @@ class PlainTextFileReader(FileReader):
             try:
                 record = pickle.load(file)
             except EOFError:
-                continue
+                return
 
             yield KafkaMessage(record["key"], record["value"])
 

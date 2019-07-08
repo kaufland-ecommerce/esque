@@ -378,6 +378,7 @@ def _produce_from_file(
         producer = AvroFileProducer.create(working_dir)
     else:
         producer = FileProducer.create(working_dir)
+    click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
     number_produced_messages = producer.produce_from_file(topic)
     click.echo(
         green_bold(str(number_produced_messages))
@@ -398,11 +399,11 @@ def _consume_to_file(
     avro: bool,
     last: bool,
 ) -> int:
-    click.echo("\nStart consuming from source context " + blue_bold(from_context))
     if avro:
         consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
     else:
         consumer = FileConsumer.create(group_id, topic, working_dir, last)
+    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     number_consumed_messages = consumer.consume_to_file(int(numbers))
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 

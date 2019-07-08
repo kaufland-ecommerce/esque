@@ -195,6 +195,7 @@ class FileProducer(object):
                 left_messages = self._producer.flush(1)
                 if left_messages == 0:
                     break
+                click.echo("Still {left_messages} messages left, flushing...")
 
             return counter
 
