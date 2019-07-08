@@ -39,7 +39,7 @@ class PlainTextFileWriter(FileWriter):
 
 
 class PlainTextFileReader(FileReader):
-    def reade_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
+    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
         try:
             record = pickle.load(file)
         except EOFError:

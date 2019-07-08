@@ -36,7 +36,6 @@ from esque.errors import (
     TopicAlreadyExistsException,
     DeleteOnException,
 )
-from esque.schemaregistry import SchemaRegistryClient
 from esque.topic import TopicController
 
 
@@ -343,21 +342,16 @@ def transfer(
     temp_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + temp_name
     directory_name = "temp-file_" + temp_name
-
-    state.config.context_switch(from_context)
-
     base_dir = Path(directory_name)
+    state.config.context_switch(from_context)
 
     with DeleteOnException(base_dir) as working_dir:
         click.echo("\nStart consuming from source context " + blue_bold(from_context))
 
         if avro:
-            schema_registry = SchemaRegistryClient(state.config.schema_registry)
-            consumer = AvroFileConsumer(
-                group_id, topic, working_dir, schema_registry, last
-            )
+            consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
         else:
-            consumer = FileConsumer(group_id, topic, working_dir, last)
+            consumer = FileConsumer.create(group_id, topic, working_dir, last)
 
         number_consumed_messages = consumer.consume_to_file(int(numbers))
         click.echo(
@@ -375,9 +369,9 @@ def transfer(
             state.config.context_switch(to_context)
 
             if avro:
-                producer = AvroFileProducer(working_dir)
+                producer = AvroFileProducer.create(working_dir)
             else:
-                producer = FileProducer(working_dir)
+                producer = FileProducer.create(working_dir)
 
             number_produced_messages = producer.produce_from_file(
                 "test_write_from_file_target2"

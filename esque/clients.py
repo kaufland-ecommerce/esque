@@ -11,7 +11,13 @@ from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, raise_for_message, KafkaException
 from esque.helpers import delivery_callback, delta_t
-from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter
+from esque.message import (
+    KafkaMessage,
+    PlainTextFileReader,
+    PlainTextFileWriter,
+    FileReader,
+    FileWriter,
+)
 from esque.schemaregistry import SchemaRegistryClient
 
 DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
@@ -57,7 +63,12 @@ class PingConsumer(Consumer):
 
 class FileConsumer(Consumer):
     def __init__(
-        self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool
+        self,
+        group_id: str,
+        topic_name: str,
+        working_dir: pathlib.Path,
+        file_writer: FileWriter,
+        last: bool,
     ):
         super().__init__(group_id, topic_name, last)
         self.working_dir = working_dir
@@ -70,7 +81,13 @@ class FileConsumer(Consumer):
         )
         self._consumer = confluent_kafka.Consumer(self._config)
         self._assign_exact_partitions(topic_name)
-        self.writer = PlainTextFileWriter()
+        self.file_writer = file_writer
+
+    @classmethod
+    def create(
+        cls, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool
+    ):
+        return cls(group_id, topic_name, working_dir, PlainTextFileWriter(), last)
 
     def consume_to_file(self, amount: int) -> int:
         counter = 0
@@ -82,7 +99,7 @@ class FileConsumer(Consumer):
                     print("An error occurred: " + ex.message)
                     continue
 
-                self.writer.write_message_to_file(message, file)
+                self.file_writer.write_message_to_file(message, file)
                 counter += 1
 
         return counter
@@ -108,11 +125,19 @@ class AvroFileConsumer(FileConsumer):
         group_id: str,
         topic_name: str,
         working_dir: pathlib.Path,
-        schema_registry_client: SchemaRegistryClient,
+        file_writer: FileWriter,
         last: bool,
     ):
-        super().__init__(group_id, topic_name, working_dir, last)
-        self.writer = AvroFileWriter(working_dir, schema_registry_client)
+        super().__init__(group_id, topic_name, working_dir, file_writer, last)
+        self.writer = file_writer
+
+    @classmethod
+    def create(
+        cls, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool
+    ):
+        schema_registry_client = SchemaRegistryClient(Config().schema_registry)
+        file_writer = AvroFileWriter(working_dir, schema_registry_client)
+        return cls(group_id, topic_name, working_dir, file_writer, last)
 
 
 class PingProducer(object):
@@ -139,7 +164,7 @@ class PingProducer(object):
 
 
 class FileProducer(object):
-    def __init__(self, working_dir: pathlib.Path):
+    def __init__(self, working_dir: pathlib.Path, file_reader: FileReader):
         self._config = Config().create_confluent_config()
         self._config.update(
             {"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error}
@@ -147,13 +172,17 @@ class FileProducer(object):
 
         self._producer = confluent_kafka.Producer(self._config)
         self.working_dir = working_dir
-        self.reader = PlainTextFileReader()
+        self.file_reader = file_reader
+
+    @classmethod
+    def create(cls, working_dir: pathlib.Path):
+        return cls(working_dir, PlainTextFileReader())
 
     def produce_from_file(self, topic_name: str) -> int:
         with (self.working_dir / "data").open("rb") as file:
             counter = 0
             while True:
-                message = self.reader.read_from_file(file)
+                message = self.file_reader.read_from_file(file)
                 if message is None:
                     break
 
@@ -172,11 +201,15 @@ class FileProducer(object):
 
 
 class AvroFileProducer(FileProducer):
-    def __init__(self, working_dir: pathlib.Path):
-        super().__init__(working_dir)
+    def __init__(self, working_dir: pathlib.Path, file_reader: FileReader):
+        super().__init__(working_dir, file_reader)
         self._config.update({"schema.registry.url": Config().schema_registry})
         self._producer = AvroProducer(self._config)
-        self.reader = AvroFileReader(working_dir)
+        self.file_reader = file_reader
+
+    @classmethod
+    def create(cls, working_dir: pathlib.Path):
+        return cls(working_dir, AvroFileReader(working_dir))
 
     def produce(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(
