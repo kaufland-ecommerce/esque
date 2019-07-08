@@ -1,21 +1,18 @@
-import os
-import random
+import shutil
 import time
 from pathlib import Path
 from time import sleep
 
 import click
+import yaml
 from click import version_option
 
-import yaml
-
 from esque.__version__ import __version__
-from esque.avromessage import AvroSerializer
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
-from esque.clients import Consumer, Producer
+from esque.clients import Consumer, Producer, FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
@@ -23,7 +20,7 @@ from esque.errors import (
     ConsumerGroupDoesNotExistException,
     ContextNotDefinedException,
     TopicAlreadyExistsException,
-)
+    DeleteOnException)
 from esque.schemaregistry import SchemaRegistryClient
 from esque.topic import TopicController
 
@@ -189,26 +186,6 @@ def apply(state: State, file: str):
         click.echo("No new topics to create.")
 
 
-@esque.command(help="Consume messages from a topic to file.")
-@click.option("-t", "--topic", help="Source Topic name", required=True)
-@click.option("-f", "--file", help="Destination file path", required=True)
-@click.argument("amount", required=True)
-def consume(topic:str, file: str, amount: str):
-    your_letters = 'abcdefghijklmnopqrstuvwxyz'
-    group_id = topic.join((random.choice(your_letters) for i in range(7)))
-
-    consumer = Consumer(group_id, topic, "earliest")
-    consumer.consume_to_file(file, int(amount))
-
-
-@esque.command(help="Produce messages from a file to topic.")
-@click.option("-f", "--file", help="Source file path", required=True)
-@click.option("-t", "--topic", help="Destination Topic name", required=True)
-def produce(topic:str, file: str):
-    producer = Producer()
-    producer.produce_from_file(file, topic)
-
-
 @delete.command("topic")
 @click.argument(
     "topic-name", required=True, type=click.STRING, autocompletion=list_topics
@@ -306,42 +283,59 @@ def get_topics(state, topic, o):
         click.echo(topic.name)
 
 
-@esque.command("transfer")
+@esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
 @click.argument("topic", required=True)
 @click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
 @click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
 @click.option('--last/--first', default=False)
+@click.option(
+    "-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True
+)
 @pass_state
-def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool):
+def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     temp_name = topic + '_' + str(current_timestamp_milliseconds)
     group_id = "group_for_" + temp_name
-    file_name = "temp-file_" + temp_name
+    directory_name = "temp-file_" + temp_name
 
     state.config.context_switch(from_context)
-    click.echo("\nStart consuming from source context " + blue_bold(from_context))
-    consumer = Consumer(group_id, topic, last)
-    schema_registry = SchemaRegistryClient(state.config.schema_registry)
-    serializer = AvroSerializer(Path('temp'), schema_registry)
-    number_consumed_messages = consumer.consume_to_file(serializer, int(numbers))
-    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed successfully.")
-    click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 
-    if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
-        state.config.context_switch(to_context)
-        producer = Producer()
-        number_produced_messages = producer.produce_from_file(file_name, topic)
-        click.echo(
-            green_bold(str(number_produced_messages))
-            + " messages successfully produced to context "
-            + green_bold(to_context)
-            + " and topic "
-            + green_bold(topic)
-            + "."
-        )
+    base_dir = Path(directory_name)
 
-    os.remove(file_name)
+    with DeleteOnException(base_dir) as working_dir:
+        click.echo("\nStart consuming from source context " + blue_bold(from_context))
+
+        if avro:
+            schema_registry = SchemaRegistryClient(state.config.schema_registry)
+            consumer = AvroFileConsumer(group_id, topic, working_dir, schema_registry, last)
+        else:
+            consumer = FileConsumer(group_id, topic, working_dir, last)
+
+        number_consumed_messages = consumer.consume_to_file(int(numbers))
+        click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed successfully.")
+        click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
+
+        if ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
+            state.config.context_switch(to_context)
+
+            if avro:
+                producer = AvroFileProducer(working_dir)
+            else:
+                producer = FileProducer(working_dir)
+
+            number_produced_messages = producer.produce_from_file("test_write_from_file_target2")
+            click.echo(
+                green_bold(str(number_produced_messages))
+                + " messages successfully produced to context "
+                + green_bold(to_context)
+                + " and topic "
+                + green_bold(topic)
+                + "."
+            )
+
+    if base_dir.exists():
+        shutil.rmtree(base_dir)
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")

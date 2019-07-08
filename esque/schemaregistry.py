@@ -1,12 +1,12 @@
 import json
 import struct
 from collections import namedtuple
+from functools import lru_cache
 from io import BytesIO
 from typing import Dict, Optional
 
 import fastavro
 import requests
-from functools import lru_cache
 
 SchemaPair = namedtuple("SchemaPair", ["original_schema", "parsed_schema"])
 
@@ -25,7 +25,6 @@ class SchemaRegistryClient:
         response = requests.get(url.format(**locals()))
         response.raise_for_status()
         schema: Dict = json.loads(response.json()["schema"])
-        print("Schema received for id {schema_id}\n{schema}".format(**locals()))
         return SchemaPair(schema, fastavro.schema.parse_schema(schema))
 
     def get_schema_for_bytes(self, avro_content: Optional[bytes]) -> SchemaPair:

@@ -8,8 +8,9 @@ import itertools as it
 
 import fastavro
 from confluent_kafka.cimpl import Message
+from confluent_kafka.avro import loads as load_schema
 
-from esque.message import Serializer
+from esque.message import FileWriter, FileReader, KafkaMessage
 from esque.schemaregistry import SchemaRegistryClient
 
 
@@ -21,23 +22,27 @@ class DecodedAvroMessage:
         self.value_schema_id = value_schema_id
 
 
-class AvroSerializer(Serializer):
+class AvroFileWriter(FileWriter):
 
     def __init__(self, working_dir: pathlib.Path, schema_registry_client: SchemaRegistryClient):
-        super().__init__(working_dir)
+        self.working_dir = working_dir
         self.schema_registry_client = schema_registry_client
         self.current_key_schema_id = None
         self.current_value_schema_id = None
+        self.schema_dir_name = None
         self.schema_version = it.count(1)
 
-    def serialize(self, message: Message, file: BinaryIO):
+    def write_message_to_file(self, message: Message, file: BinaryIO):
         key_schema_id, decoded_key = self.decode_bytes(message.key())
         value_schema_id, decoded_value = self.decode_bytes(message.value())
         decoded_message = DecodedAvroMessage(decoded_key, decoded_value, key_schema_id, value_schema_id)
 
-        if self.schema_changed(decoded_message):
-            schema_dir_name = f"{next(self.schema_version):04}_{key_schema_id}_{value_schema_id}"
-            directory = self.working_dir / schema_dir_name
+        if self.schema_changed(decoded_message) or self.schema_dir_name is None:
+            self.schema_dir_name = f"{next(self.schema_version):04}_{key_schema_id}_{value_schema_id}"
+            self.current_key_schema_id = key_schema_id
+            self.current_value_schema_id = value_schema_id
+
+            directory = self.working_dir / self.schema_dir_name
             directory.mkdir()
 
             (directory / "key_schema.avsc").write_text(
@@ -48,7 +53,11 @@ class AvroSerializer(Serializer):
                 json.dumps(self.schema_registry_client.get_schema_from_id(value_schema_id).original_schema)
             )
 
-        serializable_message = {"key": decoded_key, "value": decoded_value}
+        serializable_message = {
+            "key": decoded_key,
+            "value": decoded_value,
+            "schema_directory_name": self.schema_dir_name,
+        }
         pickle.dump(serializable_message, file)
 
     def decode_bytes(self, raw_data: Optional[bytes]) -> Tuple[int, Optional[Dict]]:
@@ -64,6 +73,25 @@ class AvroSerializer(Serializer):
     def schema_changed(self, decoded_message: DecodedAvroMessage) -> bool:
         return (self.current_value_schema_id != decoded_message.value_schema_id and decoded_message.value is not None) \
                or self.current_key_schema_id != decoded_message.key_schema_id
+
+
+class AvroFileReader(FileReader):
+
+    def __init__(self, working_dir: pathlib.Path):
+        self.working_dir = working_dir
+
+    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
+        try:
+            record = pickle.load(file)
+        except EOFError:
+            return None
+
+        schema_directory = (self.working_dir / record["schema_directory_name"])
+
+        key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
+        value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
+
+        return KafkaMessage(record["key"], record["value"], key_schema, value_schema)
 
 
 def extract_schema_id(message: bytes) -> int:

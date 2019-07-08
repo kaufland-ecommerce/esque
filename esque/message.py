@@ -1,7 +1,5 @@
-import pathlib
 import pickle
-from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Optional
 
 from confluent_kafka.cimpl import Message
 
@@ -12,24 +10,43 @@ class DecodedMessage:
         self.value = value
 
 
-class Serializer(object):
+class KafkaMessage:
+    def __init__(self, key: str, value: str, key_schema=None, value_schema=None):
+        self.key = key
+        self.value = value
+        self.key_schema = key_schema
+        self.value_schema = value_schema
 
-    def __init__(self, working_dir: pathlib.Path):
-        self.working_dir = working_dir
 
-    def serialize(self, message: Message, file: BinaryIO):
+class FileWriter(object):
+
+    def write_message_to_file(self, message: Message, file: BinaryIO):
         pass
 
-    def get_working_directory_path(self) -> Path:
-        return self.working_dir
+
+class FileReader(object):
+
+    def read_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
+        pass
 
 
-class JsonSerializer(Serializer):
+class PlainTextFileWriter(FileWriter):
 
-    def serialize(self, message: Message, file: BinaryIO):
+    def write_message_to_file(self, message: Message, file: BinaryIO):
         decoded_message = decode_message(message)
         serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
         pickle.dump(serializable_message, file)
+
+
+class PlainTextFileReader(FileReader):
+
+    def reade_from_file(self, file: BinaryIO) -> Optional[KafkaMessage]:
+        try:
+            record = pickle.load(file)
+        except EOFError:
+            return None
+
+        return KafkaMessage(record["key"], record["value"])
 
 
 def decode_message(message: Message) -> DecodedMessage:
