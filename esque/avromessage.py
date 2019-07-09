@@ -112,7 +112,9 @@ class AvroFileReader(FileReader):
             schema_directory = self.working_dir / record["schema_directory_name"]
 
             key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
-            value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
+            value_schema = load_schema(
+                (schema_directory / "value_schema.avsc").read_text()
+            )
 
             yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
 
