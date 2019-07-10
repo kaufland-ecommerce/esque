@@ -10,8 +10,9 @@ def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
     return click.confirm(question)
 
 
-class DeleteOnFinished:
-    def __init__(self, dir_: pathlib.Path):
+class HandleFileOnFinished:
+    def __init__(self, dir_: pathlib.Path, keep_file: bool):
+        self.keep_file = keep_file
         self._dir = dir_
         self._dir.mkdir(parents=True)
 
@@ -19,5 +20,5 @@ class DeleteOnFinished:
         return self._dir
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self._dir.exists():
+        if not self.keep_file and self._dir.exists():
             shutil.rmtree(self._dir)

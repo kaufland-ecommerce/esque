@@ -9,7 +9,7 @@ from click import version_option
 
 from esque.__version__ import __version__
 from esque.broker import Broker
-from esque.cli.helpers import ensure_approval, DeleteOnFinished
+from esque.cli.helpers import ensure_approval, HandleFileOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
@@ -240,16 +240,26 @@ def get_topics(state, topic, o):
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
 @click.option("--last/--first", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option(
+    "-k",
+    "--keep",
+    "keep_file",
+    help="Set this flag if the file with consumed messages should be kept.",
+    default=False,
+    is_flag=True,
+)
 @pass_state
-def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool):
+def transfer(
+    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
+):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    temp_name = topic + "_" + str(current_timestamp_milliseconds)
-    group_id = "group_for_" + temp_name
-    directory_name = "temp-file_" + temp_name
+    unique_name = topic + "_" + str(current_timestamp_milliseconds)
+    group_id = "group_for_" + unique_name
+    directory_name = "message_" + unique_name
     base_dir = Path(directory_name)
     state.config.context_switch(from_context)
 
-    with DeleteOnFinished(base_dir) as working_dir:
+    with HandleFileOnFinished(base_dir, keep_file) as working_dir:
         number_consumed_messages = _consume_to_file(working_dir, topic, group_id, from_context, numbers, avro, last)
 
         if number_consumed_messages == 0:
