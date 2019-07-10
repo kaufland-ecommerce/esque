@@ -24,7 +24,3 @@ class SchemaRegistryClient:
         response.raise_for_status()
         schema: Dict = json.loads(response.json()["schema"])
         return SchemaPair(schema, fastavro.schema.parse_schema(schema))
-
-    def _extract_schema_id(self, message: bytes) -> int:
-        _, schema_id = struct.unpack(">bI", message[:5])
-        return schema_id
