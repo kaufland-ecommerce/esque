@@ -68,10 +68,7 @@ class TopicDoesNotExistException(Exception):
     pass
 
 
-ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
-    36: TopicAlreadyExistsException,
-    -191: EndOfPartitionReachedException,
-}
+ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {36: TopicAlreadyExistsException, -191: EndOfPartitionReachedException}
 
 # BROKER_NOT_AVAILABLE = 8
 #     CLUSTER_AUTHORIZATION_FAILED = 31

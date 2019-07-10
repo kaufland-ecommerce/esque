@@ -24,10 +24,7 @@ class Cluster:
     def brokers(self):
         metadata = self.confluent_client.list_topics(timeout=1)
         return sorted(
-            [
-                {"id": broker.id, "host": broker.host, "port": broker.port}
-                for broker in metadata.brokers.values()
-            ],
+            [{"id": broker.id, "host": broker.host, "port": broker.port} for broker in metadata.brokers.values()],
             key=operator.itemgetter("id"),
         )
 

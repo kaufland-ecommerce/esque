@@ -11,30 +11,12 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval, DeleteOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import (
-    bold,
-    pretty,
-    pretty_topic_diffs,
-    get_output_new_topics,
-    blue_bold,
-    green_bold,
-)
-from esque.clients import (
-    FileConsumer,
-    FileProducer,
-    AvroFileProducer,
-    AvroFileConsumer,
-    PingConsumer,
-    PingProducer,
-)
+from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
+from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
-from esque.errors import (
-    ConsumerGroupDoesNotExistException,
-    ContextNotDefinedException,
-    TopicAlreadyExistsException,
-)
+from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
 from esque.topic import TopicController
 
 
@@ -72,19 +54,12 @@ def edit():
 # TODO: Figure out how to pass the state object
 def list_topics(ctx, args, incomplete):
     cluster = Cluster()
-    return [
-        topic["name"]
-        for topic in TopicController(cluster).list_topics(search_string=incomplete)
-    ]
+    return [topic["name"] for topic in TopicController(cluster).list_topics(search_string=incomplete)]
 
 
 def list_contexts(ctx, args, incomplete):
     config = Config()
-    return [
-        context
-        for context in config.available_contexts
-        if context.startswith(incomplete)
-    ]
+    return [context for context in config.available_contexts if context.startswith(incomplete)]
 
 
 @edit.command("topic")
@@ -125,9 +100,7 @@ def ctx(state, context):
 def create_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller = TopicController(state.cluster)
-        TopicController(state.cluster).create_topics(
-            [(topic_controller.get_topic(topic_name))]
-        )
+        TopicController(state.cluster).create_topics([(topic_controller.get_topic(topic_name))])
 
 
 @esque.command("apply", help="Apply a configuration")
@@ -148,29 +121,16 @@ def apply(state: State, file: str):
             )
         )
     editable_topics = topic_controller.filter_existing_topics(topics)
-    topics_to_be_changed = [
-        topic for topic in editable_topics if topic.config_diff() != {}
-    ]
-    topic_config_diffs = {
-        topic.name: topic.config_diff() for topic in topics_to_be_changed
-    }
+    topics_to_be_changed = [topic for topic in editable_topics if topic.config_diff() != {}]
+    topic_config_diffs = {topic.name: topic.config_diff() for topic in topics_to_be_changed}
 
     if len(topic_config_diffs) > 0:
         click.echo(pretty_topic_diffs(topic_config_diffs))
-        if ensure_approval(
-            "Are you sure to change configs?", no_verify=state.no_verify
-        ):
+        if ensure_approval("Are you sure to change configs?", no_verify=state.no_verify):
             topic_controller.alter_configs(topics_to_be_changed)
             click.echo(
                 click.style(
-                    pretty(
-                        {
-                            "Successfully changed topics": [
-                                topic.name for topic in topics_to_be_changed
-                            ]
-                        }
-                    ),
-                    fg="green",
+                    pretty({"Successfully changed topics": [topic.name for topic in topics_to_be_changed]}), fg="green"
                 )
             )
     else:
@@ -179,30 +139,17 @@ def apply(state: State, file: str):
     new_topics = [topic for topic in topics if topic not in editable_topics]
     if len(new_topics) > 0:
         click.echo(get_output_new_topics(new_topics))
-        if ensure_approval(
-            "Are you sure to create the new topics?", no_verify=state.no_verify
-        ):
+        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
             topic_controller.create_topics(new_topics)
             click.echo(
-                click.style(
-                    pretty(
-                        {
-                            "Successfully created topics": [
-                                topic.name for topic in new_topics
-                            ]
-                        }
-                    ),
-                    fg="green",
-                )
+                click.style(pretty({"Successfully created topics": [topic.name for topic in new_topics]}), fg="green")
             )
     else:
         click.echo("No new topics to create.")
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", required=True, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @no_verify_option
 @pass_state
 def delete_topic(state: State, topic_name: str):
@@ -214,9 +161,7 @@ def delete_topic(state: State, topic_name: str):
 
 
 @describe.command("topic")
-@click.argument(
-    "topic-name", required=True, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
     partitions, config = TopicController(state.cluster).get_topic(topic_name).describe()
@@ -230,17 +175,13 @@ def describe_topic(state, topic_name):
 
 
 @get.command("offsets")
-@click.argument(
-    "topic-name", required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def get_offsets(state, topic_name):
     # TODO: Gathering of all offsets takes super long
     topics = TopicController(state.cluster).list_topics(search_string=topic_name)
 
-    offsets = {
-        topic.name: max([v for v in topic.get_offsets().values()]) for topic in topics
-    }
+    offsets = {topic.name: max([v for v in topic.get_offsets().values()]) for topic in topics}
 
     click.echo(pretty(offsets))
 
@@ -255,15 +196,11 @@ def describe_broker(state, broker_id):
 
 @describe.command("consumergroup")
 @click.argument("consumer-id", required=False)
-@click.option(
-    "-v", "--verbose", help="More detailed information.", default=False, is_flag=True
-)
+@click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
     try:
-        consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(
-            consumer_id
-        )
+        consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
         consumer_group_desc = consumer_group.describe(verbose=verbose)
 
         click.echo(pretty(consumer_group_desc, break_lists=True))
@@ -296,47 +233,15 @@ def get_topics(state, topic, o):
         click.echo(topic.name)
 
 
-@esque.command(
-    "transfer", help="Transfer messages of a topic from one environment to another."
-)
+@esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
 @click.argument("topic", required=True)
-@click.option(
-    "-f",
-    "--from",
-    "from_context",
-    help="Source Context",
-    type=click.STRING,
-    required=True,
-)
-@click.option(
-    "-t",
-    "--to",
-    "to_context",
-    help="Destination context",
-    type=click.STRING,
-    required=True,
-)
-@click.option(
-    "-n", "--numbers", help="Number of messages", type=click.INT, required=True
-)
+@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
+@click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
 @click.option("--last/--first", default=False)
-@click.option(
-    "-a",
-    "--avro",
-    help="Set this flag if the topic contains avro data",
-    default=False,
-    is_flag=True,
-)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @pass_state
-def transfer(
-    state: State,
-    topic: str,
-    from_context: str,
-    to_context: str,
-    numbers: int,
-    last: bool,
-    avro: bool,
-):
+def transfer(state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     temp_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + temp_name
@@ -345,24 +250,13 @@ def transfer(
     state.config.context_switch(from_context)
 
     with DeleteOnFinished(base_dir) as working_dir:
-        number_consumed_messages = _consume_to_file(
-            working_dir, topic, group_id, from_context, numbers, avro, last
-        )
+        number_consumed_messages = _consume_to_file(working_dir, topic, group_id, from_context, numbers, avro, last)
 
         if number_consumed_messages == 0:
-            click.echo(
-                click.style(
-                    "Execution stopped, because no messages consumed.", fg="red"
-                )
-            )
+            click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
             return
 
-        click.echo(
-            "\nReady to produce to context "
-            + blue_bold(to_context)
-            + " and target topic "
-            + blue_bold(topic)
-        )
+        click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 
         if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
             return
@@ -371,19 +265,12 @@ def transfer(
         _produce_from_file(topic, to_context, working_dir, avro)
 
 
-def _produce_from_file(
-    topic: str, to_context: str, working_dir: pathlib.Path, avro: bool
-):
+def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, avro: bool):
     if avro:
         producer = AvroFileProducer.create(working_dir)
     else:
         producer = FileProducer.create(working_dir)
-    click.echo(
-        "\nStart producing to topic "
-        + blue_bold(topic)
-        + " in target context "
-        + blue_bold(to_context)
-    )
+    click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
     number_produced_messages = producer.produce_from_file(topic)
     click.echo(
         green_bold(str(number_produced_messages))
@@ -396,24 +283,13 @@ def _produce_from_file(
 
 
 def _consume_to_file(
-    working_dir: pathlib.Path,
-    topic: str,
-    group_id: str,
-    from_context: str,
-    numbers: int,
-    avro: bool,
-    last: bool,
+    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
         consumer = AvroFileConsumer.create(group_id, topic, working_dir, last)
     else:
         consumer = FileConsumer.create(group_id, topic, working_dir, last)
-    click.echo(
-        "\nStart consuming from topic "
-        + blue_bold(topic)
-        + " in source context "
-        + blue_bold(from_context)
-    )
+    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     number_consumed_messages = consumer.consume_to_file(int(numbers))
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 
@@ -450,6 +326,4 @@ def ping(state, times, wait):
         topic_controller.delete_topic(topic_controller.get_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(
-            f"min/avg/max = {min(deltas):.2f}/{(sum(deltas)/len(deltas)):.2f}/{max(deltas):.2f} ms"
-        )
+        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas)/len(deltas)):.2f}/{max(deltas):.2f} ms")

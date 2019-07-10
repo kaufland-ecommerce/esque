@@ -39,9 +39,7 @@ def pretty_list(l: List[Any], *, break_lists=False, list_separator: str = ", ") 
         break_lists = True
 
     if break_lists:
-        sub_elements = (
-            "\n  ".join(elem.splitlines(keepends=False)) for elem in list_output
-        )
+        sub_elements = ("\n  ".join(elem.splitlines(keepends=False)) for elem in list_output)
         return "- " + "\n- ".join(sub_elements)
     else:
         return list_separator.join(list_output)
@@ -124,21 +122,13 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     return pendulum.duration(milliseconds=value).in_words()
 
 
-def pretty_topic_diffs(
-    topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
-) -> str:
+def pretty_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]) -> str:
     output = []
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
         for attribute, value in diff.items():
             config_diff_attributes[attribute] = value[0] + " -> " + value[1]
-        output.append(
-            {
-                click.style(name, bold=True, fg="yellow"): {
-                    "Config Diff": config_diff_attributes
-                }
-            }
-        )
+        output.append({click.style(name, bold=True, fg="yellow"): {"Config Diff": config_diff_attributes}})
 
     return pretty({"Topics to change": output})
 
@@ -151,9 +141,7 @@ def get_output_new_topics(new_topics: List[Topic]) -> str:
             "replication_factor: ": topic.replication_factor,
             "config": topic.config,
         }
-        new_topic_configs.append(
-            {click.style(topic.name, bold=True, fg="green"): new_topic_config}
-        )
+        new_topic_configs.append({click.style(topic.name, bold=True, fg="green"): new_topic_config})
 
     return pretty({"New topics to create": new_topic_configs})
 

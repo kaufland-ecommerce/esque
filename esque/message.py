@@ -31,10 +31,7 @@ class FileReader(object):
 class PlainTextFileWriter(FileWriter):
     def write_message_to_file(self, message: Message, file: BinaryIO):
         decoded_message = decode_message(message)
-        serializable_message = {
-            "key": decoded_message.key,
-            "value": decoded_message.value,
-        }
+        serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
         pickle.dump(serializable_message, file)
 
 
