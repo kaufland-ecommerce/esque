@@ -12,7 +12,7 @@ from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, raise_for_message, KafkaException
 from esque.helpers import delivery_callback, delta_t
-from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter, FileReader, FileWriter
+from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter
 from esque.schemaregistry import SchemaRegistryClient
 
 DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
@@ -44,43 +44,8 @@ class Consumer:
     def _assign_exact_partitions(self, topic: str) -> None:
         self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
 
-
-class PingConsumer(Consumer):
-    def consume_ping(self) -> Optional[Tuple[str, int]]:
-        msg = self._consumer.consume(timeout=10)[0]
-
-        raise_for_message(msg)
-
-        msg_sent_at = pendulum.from_timestamp(float(msg.value()))
-        delta_sent = pendulum.now() - msg_sent_at
-        return msg.key(), delta_sent.microseconds / 1000
-
-
-class FileConsumer(Consumer):
-    def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
-        super().__init__(group_id, topic_name, last)
-        self.working_dir = working_dir
-        offset_reset = "earliest"
-        if last:
-            offset_reset = "latest"
-
-        self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
-        self._consumer = confluent_kafka.Consumer(self._config)
-        self._assign_exact_partitions(topic_name)
-        self.file_writer = PlainTextFileWriter()
-
-    def consume_to_file(self, amount: int) -> int:
-        counter = 0
-        with (self.working_dir / "data").open("wb") as file:
-            while counter < amount:
-                message = self._consume_single_message()
-                if message is None:
-                    return counter
-
-                self.file_writer.write_message_to_file(message, file)
-                counter += 1
-
-        return counter
+    def consume(self, amount: int) -> int:
+        pass
 
     def _consume_single_message(self) -> Optional[Message]:
         poll_limit = 10
@@ -104,6 +69,44 @@ class FileConsumer(Consumer):
             return None
 
 
+class PingConsumer(Consumer):
+    def consume(self, amount: int) -> Optional[Tuple[str, int]]:
+        msg = self._consumer.consume(timeout=10)[0]
+
+        raise_for_message(msg)
+
+        msg_sent_at = pendulum.from_timestamp(float(msg.value()))
+        delta_sent = pendulum.now() - msg_sent_at
+        return msg.key(), delta_sent.microseconds / 1000
+
+
+class FileConsumer(Consumer):
+    def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
+        super().__init__(group_id, topic_name, last)
+        self.working_dir = working_dir
+        offset_reset = "earliest"
+        if last:
+            offset_reset = "latest"
+
+        self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
+        self._consumer = confluent_kafka.Consumer(self._config)
+        self._assign_exact_partitions(topic_name)
+        self.file_writer = PlainTextFileWriter()
+
+    def consume(self, amount: int) -> int:
+        counter = 0
+        with (self.working_dir / "data").open("wb") as file:
+            while counter < amount:
+                message = self._consume_single_message()
+                if message is None:
+                    return counter
+
+                self.file_writer.write_message_to_file(message, file)
+                counter += 1
+
+        return counter
+
+
 class AvroFileConsumer(FileConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, working_dir, last)
@@ -111,14 +114,19 @@ class AvroFileConsumer(FileConsumer):
         self.writer = AvroFileWriter(working_dir, schema_registry_client)
 
 
-class PingProducer(object):
+class Producer(object):
+    def produce(self, topic_name: str) -> int:
+        pass
+
+
+class PingProducer(Producer):
     def __init__(self):
         self._config = Config().create_confluent_config()
         self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
 
         self._producer = confluent_kafka.Producer(self._config)
 
-    def produce_ping(self, topic_name: str):
+    def produce(self, topic_name: str) -> int:
         start = pendulum.now()
         self._producer.produce(topic=topic_name, key=str(0), value=str(pendulum.now().timestamp()))
         while True:
@@ -126,9 +134,10 @@ class PingProducer(object):
             if left_messages == 0:
                 break
             click.echo(f"{delta_t(start)} | Still {left_messages} messages left, flushing...")
+        return 1
 
 
-class FileProducer(object):
+class FileProducer(Producer):
     def __init__(self, working_dir: pathlib.Path):
         self._config = Config().create_confluent_config()
         self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
@@ -137,11 +146,11 @@ class FileProducer(object):
         self.working_dir = working_dir
         self.file_reader = PlainTextFileReader()
 
-    def produce_from_file(self, topic_name: str) -> int:
+    def produce(self, topic_name: str) -> int:
         with (self.working_dir / "data").open("rb") as file:
             counter = 0
             for message in self.file_reader.read_from_file(file):
-                self.produce(topic_name, message)
+                self.produce_message(topic_name, message)
                 counter += 1
 
             while True:
@@ -152,7 +161,7 @@ class FileProducer(object):
 
             return counter
 
-    def produce(self, topic_name: str, message: KafkaMessage):
+    def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(topic=topic_name, key=message.key, value=message.value)
 
 
@@ -163,7 +172,7 @@ class AvroFileProducer(FileProducer):
         self._producer = AvroProducer(self._config)
         self.file_reader = AvroFileReader(working_dir)
 
-    def produce(self, topic_name: str, message: KafkaMessage):
+    def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(
             topic=topic_name,
             key=message.key,

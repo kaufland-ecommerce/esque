@@ -281,7 +281,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
     else:
         producer = FileProducer(working_dir)
     click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
-    number_produced_messages = producer.produce_from_file(topic)
+    number_produced_messages = producer.produce(topic)
     click.echo(
         green_bold(str(number_produced_messages))
         + " messages successfully produced to context "
@@ -300,7 +300,7 @@ def _consume_to_file(
     else:
         consumer = FileConsumer(group_id, topic, working_dir, last)
     click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
-    number_consumed_messages = consumer.consume_to_file(int(numbers))
+    number_consumed_messages = consumer.consume(int(numbers))
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 
     return number_consumed_messages
@@ -325,8 +325,8 @@ def ping(state, times, wait):
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
         for i in range(times):
-            producer.produce_ping(PING_TOPIC)
-            _, delta = consumer.consume_ping()
+            producer.produce(PING_TOPIC)
+            _, delta = consumer.consume()
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)
