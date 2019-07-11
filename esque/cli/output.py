@@ -7,7 +7,7 @@ import pendulum
 
 from esque.topic import Topic
 
-C_MAX_INT = 2 ** 31 - 1
+MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 
 
 def _indent(level: int):
@@ -117,8 +117,8 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     value *= multiplier
 
     # Fix for conversion errors of ms > C_MAX_INT in some internal lib
-    if value > C_MAX_INT:
-        value = int(value / 1000 / 3600 / 24 / 365)
+    if value > MILLISECONDS_PER_YEAR:
+        value = int(value / MILLISECONDS_PER_YEAR)
         return pendulum.duration(years=value).in_words()
 
     return pendulum.duration(milliseconds=value).in_words()
