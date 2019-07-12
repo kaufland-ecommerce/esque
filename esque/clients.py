@@ -42,7 +42,7 @@ class Consumer:
         self._subscribe(topic_name)
 
     def _subscribe(self, topic: str) -> None:
-        self._consumer.subscribe(topic)
+        self._consumer.subscribe([topic])
 
     def consume(self, amount: int) -> int:
         pass
