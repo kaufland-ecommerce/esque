@@ -1,3 +1,4 @@
+import pathlib
 import random
 from concurrent.futures import Future
 from pathlib import Path
@@ -10,6 +11,7 @@ from confluent_kafka.cimpl import TopicPartition
 from pykafka import Producer
 from pykafka.exceptions import NoBrokersAvailableError
 
+from esque.clients import FileConsumer, AvroFileConsumer
 from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
@@ -18,12 +20,7 @@ from esque.topic import Topic, TopicController
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--integration",
-        action="store_true",
-        default=False,
-        help="run integration tests",
-    )
+    parser.addoption("--integration", action="store_true", default=False, help="run integration tests")
     parser.addoption(
         "--local",
         action="store_true",
@@ -108,11 +105,7 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 @pytest.fixture()
 def producer(topic_object: Topic):
     # Send messages synchronously so we can be sure offset has been commited in tests.
-    yield Producer(
-        topic_object.cluster.pykafka_client.cluster,
-        topic_object._pykafka_topic,
-        sync=True,
-    )
+    yield Producer(topic_object.cluster.pykafka_client.cluster, topic_object._pykafka_topic, sync=True)
 
 
 @pytest.fixture()
@@ -121,9 +114,7 @@ def consumergroup_controller(cluster: Cluster):
 
 
 @pytest.fixture()
-def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
-):
+def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
 
@@ -161,9 +152,26 @@ def filled_topic(producer, topic_object):
 
 
 @pytest.fixture()
-def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
-):
+def working_dir():
+    yield Path("test_directory")
+
+
+@pytest.fixture()
+def file_consumer(mocker, consumer_group, topic: str, working_dir: pathlib.Path):
+    file_consumer = FileConsumer(consumer_group, topic, working_dir, False)
+    file_writer = mocker.patch("esque.message.FileWriter")
+    file_writer.write_message_to_file.call_count = 10
+    file_consumer.file_writer = file_consumer
+    yield file_consumer
+
+
+@pytest.fixture()
+def avro_file_consumer(consumer_group, topic: str, working_dir: pathlib.Path):
+    yield AvroFileConsumer(consumer_group, topic, working_dir, False)
+
+
+@pytest.fixture()
+def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
         consumer.commit(msg, asynchronous=False)

@@ -61,10 +61,7 @@ setup(
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
-    extras_require={
-        "test": ["pytest", "pytest-mock", "pytest-cov"],
-        "dev": ["black", "flake8"],
-    },
+    extras_require={"test": ["pytest", "pytest-mock", "pytest-cov"], "dev": ["black", "flake8"]},
     include_package_data=True,
     license="MIT",
     classifiers=[
