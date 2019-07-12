@@ -39,10 +39,10 @@ class Consumer:
             }
         )
         self._consumer = confluent_kafka.Consumer(self._config)
-        self._assign_exact_partitions(topic_name)
+        self._subscribe(topic_name)
 
-    def _assign_exact_partitions(self, topic: str) -> None:
-        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
+    def _subscribe(self, topic: str) -> None:
+        self._consumer.subscribe(topic)
 
     def consume(self, amount: int) -> int:
         pass
@@ -90,7 +90,7 @@ class FileConsumer(Consumer):
 
         self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
         self._consumer = confluent_kafka.Consumer(self._config)
-        self._assign_exact_partitions(topic_name)
+        self._subscribe(topic_name)
         self.file_writer = PlainTextFileWriter()
 
     def consume(self, amount: int) -> int:
