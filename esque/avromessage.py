@@ -24,6 +24,7 @@ class DecodedAvroMessage:
 
 class AvroFileWriter(FileWriter):
     def __init__(self, working_dir: pathlib.Path, schema_registry_client: SchemaRegistryClient):
+        super().__init__(working_dir)
         self.working_dir = working_dir
         self.schema_registry_client = schema_registry_client
         self.current_key_schema_id = None
@@ -31,7 +32,7 @@ class AvroFileWriter(FileWriter):
         self.schema_dir_name = None
         self.schema_version = it.count(1)
 
-    def write_message_to_file(self, message: Message, file: BinaryIO):
+    def write_message_to_file(self, message: Message):
         key_schema_id, decoded_key = self.decode_bytes(message.key())
         value_schema_id, decoded_value = self.decode_bytes(message.value())
         decoded_message = DecodedAvroMessage(decoded_key, decoded_value, key_schema_id, value_schema_id)
@@ -47,7 +48,7 @@ class AvroFileWriter(FileWriter):
             "value": decoded_value,
             "schema_directory_name": self.schema_dir_name,
         }
-        pickle.dump(serializable_message, file)
+        pickle.dump(serializable_message, self.file)
 
     def _dump_schemata(self, key_schema_id, value_schema_id):
         directory = self.working_dir / self.schema_dir_name
@@ -74,11 +75,14 @@ class AvroFileWriter(FileWriter):
             self.current_value_schema_id != decoded_message.value_schema_id and decoded_message.value is not None
         ) or self.current_key_schema_id != decoded_message.key_schema_id
 
+    def __enter__(self):
+        self.file = (self.working_dir / "data").open("wb+")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file.close()
+
 
 class AvroFileReader(FileReader):
-    def __init__(self, working_dir: pathlib.Path):
-        self.working_dir = working_dir
-
     def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
         while True:
             try:
@@ -92,6 +96,12 @@ class AvroFileReader(FileReader):
             value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
 
             yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
+
+    def __enter__(self):
+        self.file = (self.working_dir / "data").open("rb")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file.close()
 
 
 def extract_schema_id(message: bytes) -> int:

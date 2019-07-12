@@ -91,17 +91,17 @@ class FileConsumer(Consumer):
         self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
-        self.file_writer = PlainTextFileWriter()
+        self.file_writer = PlainTextFileWriter(working_dir)
 
     def consume(self, amount: int) -> int:
         counter = 0
-        with (self.working_dir / "data").open("wb") as file:
+        with self.file_writer:
             while counter < amount:
                 message = self._consume_single_message()
                 if message is None:
                     return counter
 
-                self.file_writer.write_message_to_file(message, file)
+                self.file_writer.write_message_to_file(message)
                 counter += 1
 
         return counter
@@ -111,7 +111,7 @@ class AvroFileConsumer(FileConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, working_dir, last)
         schema_registry_client = SchemaRegistryClient(Config().schema_registry)
-        self.writer = AvroFileWriter(working_dir, schema_registry_client)
+        self.file_writer = AvroFileWriter(working_dir, schema_registry_client)
 
 
 class Producer(object):
@@ -147,7 +147,7 @@ class FileProducer(Producer):
         self.file_reader = PlainTextFileReader()
 
     def produce(self, topic_name: str) -> int:
-        with (self.working_dir / "data").open("rb") as file:
+        with self.file_reader as file:
             counter = 0
             for message in self.file_reader.read_from_file(file):
                 self.produce_message(topic_name, message)
