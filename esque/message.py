@@ -1,6 +1,6 @@
 import pathlib
 import pickle
-from typing import BinaryIO, Iterable, IO
+from typing import Iterable
 
 from confluent_kafka.cimpl import Message
 
@@ -19,63 +19,53 @@ class KafkaMessage:
         self.value_schema = value_schema
 
 
-class FileWriter(object):
-    def __init__(self, file_path: pathlib.Path):
-        self.working_dir = file_path
+class IOHandler:
+    def __init__(self, directory: pathlib.Path):
+        self.directory = directory
+        self.file_name = "data"
+        self.open_mode = "w+"
 
+    def __enter__(self):
+        self.file = (self.directory / self.file_name).open(self.open_mode)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file.close()
+
+
+class FileWriter(IOHandler):
     def write_message_to_file(self, message: Message):
         pass
 
-    def __enter__(self):
-        pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-
-
-class FileReader(object):
-    def __init__(self, file_path: pathlib.Path):
-        self.working_dir = file_path
-
-    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
-        pass
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
+class FileReader(IOHandler):
+    def read_from_file(self) -> Iterable[KafkaMessage]:
         pass
 
 
 class PlainTextFileWriter(FileWriter):
+    def __init__(self, directory: pathlib.Path):
+        super().__init__(directory)
+        self.open_mode = "w+"
+
     def write_message_to_file(self, message: Message):
         decoded_message = decode_message(message)
         serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
-        print(serializable_message)
         pickle.dump(serializable_message, self.file)
-
-    def __enter__(self):
-        self.file = (self.working_dir / "data").open("w+")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
 
 
 class PlainTextFileReader(FileReader):
-    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
+    def __init__(self, directory: pathlib.Path):
+        super().__init__(directory)
+        self.open_mode = "r"
+
+    def read_from_file(self) -> Iterable[KafkaMessage]:
         while True:
             try:
-                record = pickle.load(file)
+                record = pickle.load(self.file)
             except EOFError:
                 return
 
             yield KafkaMessage(record["key"], record["value"])
-
-    def __enter__(self):
-        self.file = (self.working_dir / "data").open("r")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
 
 
 def decode_message(message: Message) -> DecodedMessage:

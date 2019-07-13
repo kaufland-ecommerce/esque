@@ -4,13 +4,13 @@ from typing import Optional, Tuple
 import click
 import confluent_kafka
 import pendulum
-from confluent_kafka import TopicPartition, Message
+from confluent_kafka import Message
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import KafkaError
 
 from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, raise_for_message, KafkaException
+from esque.errors import raise_for_kafka_error, raise_for_message
 from esque.helpers import delivery_callback, delta_t
 from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter
 from esque.schemaregistry import SchemaRegistryClient
@@ -50,23 +50,19 @@ class Consumer:
     def _consume_single_message(self) -> Optional[Message]:
         poll_limit = 10
         counter = 0
-        try:
-            while counter < poll_limit:
-                message = self._consumer.poll(timeout=10)
-                if message is None:
-                    counter += 1
-                    continue
-                if message.error() is not None:
-                    if message.error().code() == KafkaError._PARTITION_EOF:
-                        print("\nEnd of partition reached!".format(**locals()))
-                        break
-                    else:
-                        raise RuntimeError(message.error().str())
-                raise_for_message(message)
-                return message
-        except KafkaException as ex:
-            print("An error occurred: " + ex.message)
-            return None
+        while counter < poll_limit:
+            message = self._consumer.poll(timeout=10)
+            if message is None:
+                counter += 1
+                continue
+            if message.error() is not None:
+                if message.error().code() == KafkaError._PARTITION_EOF:
+                    print("\nEnd of partition reached!".format(**locals()))
+                    break
+                else:
+                    raise RuntimeError(message.error().str())
+            raise_for_message(message)
+            return message
 
 
 class PingConsumer(Consumer):
@@ -147,9 +143,9 @@ class FileProducer(Producer):
         self.file_reader = PlainTextFileReader()
 
     def produce(self, topic_name: str) -> int:
-        with self.file_reader as file:
+        with self.file_reader:
             counter = 0
-            for message in self.file_reader.read_from_file(file):
+            for message in self.file_reader.read_from_file():
                 self.produce_message(topic_name, message)
                 counter += 1
 

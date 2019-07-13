@@ -160,6 +160,8 @@ def working_dir():
 def file_consumer(mocker, consumer_group, topic: str, working_dir: pathlib.Path):
     file_consumer = FileConsumer(consumer_group, topic, working_dir, False)
     file_writer = mocker.patch("esque.message.FileWriter")
+    file_writer.__enter__.assert_called_once()
+    file_writer.__exit__.assert_called_once()
     file_writer.write_message_to_file.call_count = 10
     file_consumer.file_writer = file_consumer
     yield file_consumer

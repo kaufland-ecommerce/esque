@@ -3,7 +3,7 @@ import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Optional, Tuple, Dict, BinaryIO, Iterable
+from typing import Optional, Tuple, Dict, Iterable
 import itertools as it
 
 import fastavro
@@ -23,14 +23,15 @@ class DecodedAvroMessage:
 
 
 class AvroFileWriter(FileWriter):
-    def __init__(self, working_dir: pathlib.Path, schema_registry_client: SchemaRegistryClient):
-        super().__init__(working_dir)
-        self.working_dir = working_dir
+    def __init__(self, directory: pathlib.Path, schema_registry_client: SchemaRegistryClient):
+        super().__init__(directory)
+        self.directory = directory
         self.schema_registry_client = schema_registry_client
         self.current_key_schema_id = None
         self.current_value_schema_id = None
         self.schema_dir_name = None
         self.schema_version = it.count(1)
+        self.open_mode = "wb+"
 
     def write_message_to_file(self, message: Message):
         key_schema_id, decoded_key = self.decode_bytes(message.key())
@@ -51,7 +52,7 @@ class AvroFileWriter(FileWriter):
         pickle.dump(serializable_message, self.file)
 
     def _dump_schemata(self, key_schema_id, value_schema_id):
-        directory = self.working_dir / self.schema_dir_name
+        directory = self.directory / self.schema_dir_name
         directory.mkdir()
         (directory / "key_schema.avsc").write_text(
             json.dumps(self.schema_registry_client.get_schema_from_id(key_schema_id).original_schema)
@@ -75,33 +76,25 @@ class AvroFileWriter(FileWriter):
             self.current_value_schema_id != decoded_message.value_schema_id and decoded_message.value is not None
         ) or self.current_key_schema_id != decoded_message.key_schema_id
 
-    def __enter__(self):
-        self.file = (self.working_dir / "data").open("wb+")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
-
 
 class AvroFileReader(FileReader):
-    def read_from_file(self, file: BinaryIO) -> Iterable[KafkaMessage]:
+    def __init__(self, directory: pathlib.Path):
+        super().__init__(directory)
+        self.open_mode = "rb"
+
+    def read_from_file(self) -> Iterable[KafkaMessage]:
         while True:
             try:
-                record = pickle.load(file)
+                record = pickle.load(self.file)
             except EOFError:
                 return
 
-            schema_directory = self.working_dir / record["schema_directory_name"]
+            schema_directory = self.directory / record["schema_directory_name"]
 
             key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
             value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
 
             yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
-
-    def __enter__(self):
-        self.file = (self.working_dir / "data").open("rb")
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.file.close()
 
 
 def extract_schema_id(message: bytes) -> int:
