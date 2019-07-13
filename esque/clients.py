@@ -14,11 +14,10 @@ from esque.errors import raise_for_kafka_error, raise_for_message
 from esque.helpers import delivery_callback, delta_t
 from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter
 from esque.schemaregistry import SchemaRegistryClient
+from abc import ABC, abstractmethod
 
-DEFAULT_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
 
-
-class Consumer:
+class AbstractConsumer(ABC):
     def __init__(self, group_id: str, topic_name: str, last: bool):
         offset_reset = "earliest"
         if last:
@@ -44,6 +43,7 @@ class Consumer:
     def _subscribe(self, topic: str) -> None:
         self._consumer.subscribe([topic])
 
+    @abstractmethod
     def consume(self, amount: int) -> int:
         pass
 
@@ -65,7 +65,7 @@ class Consumer:
             return message
 
 
-class PingConsumer(Consumer):
+class PingConsumer(AbstractConsumer):
     def consume(self, amount: int) -> Optional[Tuple[str, int]]:
         msg = self._consumer.consume(timeout=10)[0]
 
@@ -76,7 +76,7 @@ class PingConsumer(Consumer):
         return msg.key(), delta_sent.microseconds / 1000
 
 
-class FileConsumer(Consumer):
+class FileConsumer(AbstractConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, last)
         self.working_dir = working_dir
@@ -110,7 +110,8 @@ class AvroFileConsumer(FileConsumer):
         self.file_writer = AvroFileWriter(working_dir, schema_registry_client)
 
 
-class Producer(object):
+class Producer(ABC):
+    @abstractmethod
     def produce(self, topic_name: str) -> int:
         pass
 

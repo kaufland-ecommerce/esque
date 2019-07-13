@@ -5,9 +5,9 @@ verify_ssl = true
 
 [dev-packages]
 kafkaesque = {path = ".",editable = true,extras = ["test", "dev"]}
+esque = {editable = true,path = "."}
 
 [packages]
-esque = {editable = true,path = "."}
 
 [requires]
 python_version = "3.6"
