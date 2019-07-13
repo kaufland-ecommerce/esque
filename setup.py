@@ -32,7 +32,7 @@ required = [
     "pendulum",
     "pyyaml",
     "requests",
-    "fastavro>=0.21.8",
+    "fastavro>=0.22.3",
     "avro-python3",
 ]
 
