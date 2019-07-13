@@ -140,7 +140,7 @@ def consumer(topic_object: Topic, consumer_group):
         }
     )
     _consumer = confluent_kafka.Consumer(_config)
-    _consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
+    _consumer.subscribe([topic_object.name])
     yield _consumer
 
 
@@ -157,13 +157,8 @@ def working_dir():
 
 
 @pytest.fixture()
-def file_consumer(mocker, consumer_group, topic: str, working_dir: pathlib.Path):
+def file_consumer(consumer_group, topic: str, working_dir: pathlib.Path):
     file_consumer = FileConsumer(consumer_group, topic, working_dir, False)
-    file_writer = mocker.patch("esque.message.FileWriter")
-    file_writer.__enter__ = mocker.Mock(return_value=None)
-    file_writer.__exit__ = mocker.Mock(return_value=None)
-    file_writer.write_message_to_file.call_count = 10
-    file_consumer.file_writer = file_consumer
     yield file_consumer
 
 
