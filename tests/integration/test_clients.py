@@ -33,7 +33,3 @@ def test_produce_from_file(mocker, file_producer: FileProducer, topic: str):
     file_producer.produce(topic)
 
     assert producer.produce_message.call_count == 10
-
-
-
-
