@@ -11,7 +11,7 @@ from confluent_kafka.cimpl import TopicPartition
 from pykafka import Producer
 from pykafka.exceptions import NoBrokersAvailableError
 
-from esque.clients import FileConsumer, AvroFileConsumer
+from esque.clients import FileConsumer, AvroFileConsumer, FileProducer
 from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
@@ -157,14 +157,15 @@ def working_dir():
 
 
 @pytest.fixture()
-def file_consumer(consumer_group, topic: str, working_dir: pathlib.Path):
-    file_consumer = FileConsumer(consumer_group, topic, working_dir, False)
+def file_consumer(consumer_group, filled_topic: Topic, working_dir: pathlib.Path):
+    file_consumer = FileConsumer(consumer_group, filled_topic.name, working_dir, False)
     yield file_consumer
 
 
 @pytest.fixture()
-def avro_file_consumer(consumer_group, topic: str, working_dir: pathlib.Path):
-    yield AvroFileConsumer(consumer_group, topic, working_dir, False)
+def file_producer(working_dir: pathlib.Path):
+    file_producer = FileProducer(working_dir)
+    yield file_producer
 
 
 @pytest.fixture()
