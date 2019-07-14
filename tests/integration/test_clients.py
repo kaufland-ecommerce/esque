@@ -1,35 +1,38 @@
+import pathlib
+
 import pytest
 
-from esque.clients import FileConsumer, FileProducer
-from esque.message import KafkaMessage
+from esque.avromessage import AvroFileReader
+from esque.clients import FileConsumer, AvroFileConsumer
+from esque.message import PlainTextFileReader
+from esque.topic import Topic
 
 
 @pytest.mark.integration
-def test_consume_to_file(mocker, file_consumer: FileConsumer):
-    file_writer = mocker.patch("esque.message.FileWriter")
-    file_writer.__enter__ = mocker.Mock(return_value=None)
-    file_writer.__exit__ = mocker.Mock(return_value=None)
-    file_writer.write_message_to_file = mocker.Mock()
-    file_consumer.file_writer = file_writer
+def test_plaint_text_consume_to_file(consumer_group, filled_topic: Topic, working_dir: pathlib.Path):
+    file_consumer = FileConsumer(consumer_group, filled_topic.name, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
+    messages = []
+    file_reader = PlainTextFileReader(working_dir)
+    with file_reader:
+        for message in file_reader.read_from_file():
+            messages.append({"key": message.key, "value": message.value})
+
     assert number_of_consumer_messages == 10
-    assert file_writer.write_message_to_file.call_count == 10
+    assert len(messages) == 10
 
 
 @pytest.mark.integration
-def test_produce_from_file(mocker, file_producer: FileProducer, topic: str):
-    file_reader = mocker.patch("esque.message.FileReader")
-    file_reader.__enter__ = mocker.Mock(return_value=None)
-    file_reader.__exit__ = mocker.Mock(return_value=None)
-    file_reader.read_from_file = mocker.Mock()
-    file_reader.read_from_file.return_value = [KafkaMessage("key", "value") for _ in range(10)]
-    file_producer.file_reader = file_reader
+def test_avro_consume_to_file(consumer_group, filled_avro_topic: Topic, working_dir: pathlib.Path):
+    file_consumer = AvroFileConsumer(consumer_group, filled_avro_topic.name, working_dir, False)
+    number_of_consumer_messages = file_consumer.consume(10)
 
-    producer = mocker.Mock()
-    producer.produce_message = mocker.Mock()
-    file_producer._producer = producer
+    messages = []
+    file_reader = AvroFileReader(working_dir)
+    with file_reader:
+        for message in file_reader.read_from_file():
+            messages.append({"key": message.key, "value": message.value})
 
-    file_producer.produce(topic)
-
-    assert producer.produce_message.call_count == 10
+    assert number_of_consumer_messages == 10
+    assert len(messages) == 10

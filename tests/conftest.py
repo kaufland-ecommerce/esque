@@ -1,4 +1,4 @@
-import pathlib
+import json
 import random
 from concurrent.futures import Future
 from pathlib import Path
@@ -7,11 +7,11 @@ from string import ascii_letters
 import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka.cimpl import TopicPartition
-from pykafka import Producer
+from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import TopicPartition, Producer
 from pykafka.exceptions import NoBrokersAvailableError
+from confluent_kafka.avro import loads as load_schema
 
-from esque.clients import FileConsumer, AvroFileConsumer, FileProducer
 from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
 from esque.consumergroup import ConsumerGroupController
@@ -103,9 +103,15 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(topic_object: Topic):
-    # Send messages synchronously so we can be sure offset has been commited in tests.
-    yield Producer(topic_object.cluster.pykafka_client.cluster, topic_object._pykafka_topic, sync=True)
+def producer(test_config: Config):
+    yield Producer(test_config.create_confluent_config())
+
+
+@pytest.fixture()
+def avro_producer(test_config: Config):
+    producer_config = test_config.create_confluent_config()
+    producer_config.update({"schema.registry.url": Config().schema_registry})
+    yield AvroProducer(producer_config)
 
 
 @pytest.fixture()
@@ -140,32 +146,38 @@ def consumer(topic_object: Topic, consumer_group):
         }
     )
     _consumer = confluent_kafka.Consumer(_config)
-    _consumer.subscribe([topic_object.name])
+    _consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
     yield _consumer
 
 
 @pytest.fixture()
 def filled_topic(producer, topic_object):
     for _ in range(10):
-        producer.produce("".join(random.choices(ascii_letters, k=5)).encode("utf-8"))
+        random_value = "".join(random.choices(ascii_letters, k=5)).encode("utf-8")
+        producer.produce(topic=topic_object.name, key=random_value, value=random_value)
+        producer.flush()
     yield topic_object
 
 
 @pytest.fixture()
-def working_dir():
-    yield Path("test_directory")
+def filled_avro_topic(avro_producer: AvroProducer, topic_object):
+    with open("tests/test_samples/key_schema", "r") as file:
+        key_schema = load_schema(file.read())
+    with open("tests/test_samples/value_schema", "r") as file:
+        value_schema = load_schema(file.read())
+    for i in range(10):
+        key = {"id": str(i)}
+        value = {"first": "Firstname", "last": "Lastname"}
+        avro_producer.produce(
+            topic=topic_object.name, key=key, value=value, key_schema=key_schema, value_schema=value_schema
+        )
+        avro_producer.flush()
+    yield topic_object
 
 
 @pytest.fixture()
-def file_consumer(consumer_group, filled_topic: Topic, working_dir: pathlib.Path):
-    file_consumer = FileConsumer(consumer_group, filled_topic.name, working_dir, False)
-    yield file_consumer
-
-
-@pytest.fixture()
-def file_producer(working_dir: pathlib.Path):
-    file_producer = FileProducer(working_dir)
-    yield file_producer
+def working_dir(tmpdir_factory):
+    yield tmpdir_factory.mktemp("working_directory")
 
 
 @pytest.fixture()

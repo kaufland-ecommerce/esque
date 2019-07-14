@@ -1,5 +1,5 @@
+import json
 import pathlib
-import pickle
 from typing import Iterable
 
 from confluent_kafka.cimpl import Message
@@ -50,7 +50,7 @@ class PlainTextFileWriter(FileWriter):
     def write_message_to_file(self, message: Message):
         decoded_message = decode_message(message)
         serializable_message = {"key": decoded_message.key, "value": decoded_message.value}
-        pickle.dump(serializable_message, self.file)
+        self.file.write(json.dumps(serializable_message) + "\n")
 
 
 class PlainTextFileReader(FileReader):
@@ -59,9 +59,9 @@ class PlainTextFileReader(FileReader):
         self.open_mode = "r"
 
     def read_from_file(self) -> Iterable[KafkaMessage]:
-        while True:
+        for line in self.file:
             try:
-                record = pickle.load(self.file)
+                record = json.loads(line)
             except EOFError:
                 return
 

@@ -111,6 +111,10 @@ class AvroFileConsumer(FileConsumer):
 
 
 class Producer(ABC):
+    def __init__(self):
+        self._config = Config().create_confluent_config()
+        self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
+
     @abstractmethod
     def produce(self, topic_name: str) -> int:
         pass
@@ -118,9 +122,7 @@ class Producer(ABC):
 
 class PingProducer(Producer):
     def __init__(self):
-        self._config = Config().create_confluent_config()
-        self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
-
+        super().__init__()
         self._producer = confluent_kafka.Producer(self._config)
 
     def produce(self, topic_name: str) -> int:
@@ -136,12 +138,10 @@ class PingProducer(Producer):
 
 class FileProducer(Producer):
     def __init__(self, working_dir: pathlib.Path):
-        self._config = Config().create_confluent_config()
-        self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
-
+        super().__init__()
         self._producer = confluent_kafka.Producer(self._config)
         self.working_dir = working_dir
-        self.file_reader = PlainTextFileReader()
+        self.file_reader = PlainTextFileReader(working_dir)
 
     def produce(self, topic_name: str) -> int:
         with self.file_reader:

@@ -55,10 +55,11 @@ class AvroFileWriter(FileWriter):
         directory = self.directory / self.schema_dir_name
         directory.mkdir()
         (directory / "key_schema.avsc").write_text(
-            json.dumps(self.schema_registry_client.get_schema_from_id(key_schema_id).original_schema)
+            json.dumps(self.schema_registry_client.get_schema_from_id(key_schema_id).original_schema), encoding="utf-8"
         )
         (directory / "value_schema.avsc").write_text(
-            json.dumps(self.schema_registry_client.get_schema_from_id(value_schema_id).original_schema)
+            json.dumps(self.schema_registry_client.get_schema_from_id(value_schema_id).original_schema),
+            encoding="utf-8",
         )
 
     def decode_bytes(self, raw_data: Optional[bytes]) -> Tuple[int, Optional[Dict]]:
@@ -91,8 +92,8 @@ class AvroFileReader(FileReader):
 
             schema_directory = self.directory / record["schema_directory_name"]
 
-            key_schema = load_schema((schema_directory / "key_schema.avsc").read_text())
-            value_schema = load_schema((schema_directory / "value_schema.avsc").read_text())
+            key_schema = load_schema((schema_directory / "key_schema.avsc").read_text(encoding="utf-8"))
+            value_schema = load_schema((schema_directory / "value_schema.avsc").read_text(encoding="utf-8"))
 
             yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
 
