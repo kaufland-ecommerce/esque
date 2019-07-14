@@ -5,7 +5,6 @@ verify_ssl = true
 
 [dev-packages]
 kafkaesque = {path = ".",editable = true,extras = ["test", "dev"]}
-esque = {editable = true,path = "."}
 
 [packages]
 

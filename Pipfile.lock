@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "70ffd0673a6261321aa7425d25088d686c8c8bd414a857a68321b13a7ae7cd33"
+            "sha256": "39bdc1457e421be937c9db60e2b5bf93f09a746d17a48e1630febae254b35cb3"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -141,10 +141,6 @@
                 "sha256:c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"
             ],
             "version": "==0.3"
-        },
-        "esque": {
-            "editable": true,
-            "path": "."
         },
         "fastavro": {
             "hashes": [
