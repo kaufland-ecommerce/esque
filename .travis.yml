@@ -6,9 +6,9 @@ env:
 before_install:
 - wget http://packages.confluent.io/archive/3.0/confluent-3.0.0-2.11.tar.gz -O kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && ./bin/zookeeper-server-start etc/kafka/zookeeper.properties  &"
-- nohup bash -c "cd kafka && ./bin/kafka-server-start etc/kafka/server.properties &"
-- nohup bash -c "cd kafka && ./bin/schema-registry-start etc/schema-registry/schema-registry.properties &"
+- nohup bash -c "cd kafka && bin/zookeeper-server-start etc/kafka/zookeeper.properties &"
+- nohup bash -c "cd kafka && bin/kafka-server-start etc/kafka/server.properties &"
+- nohup bash -c "cd kafka && bin/schema-registry-start etc/schema-registry/schema-registry.properties &"
 - scripts/wait-for-it.sh localhost:9092
 - scripts/wait-for-it.sh localhost:2181
 - scripts/wait-for-it.sh localhost:8081
