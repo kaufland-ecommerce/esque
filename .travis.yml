@@ -4,7 +4,7 @@ cache: pip
 env:
 - TEST_CMD="pytest tests/ --integration --cov=esque --local"
 before_install:
-- wget http://packages.confluent.io/archive/5.2/confluent-5.2.2-2.12.tar.gz -O kafka.tgz
+- wget https://packages.confluent.io/archive/5.2/confluent-5.2.2-2.12.tar.gz -O kafka.tgz
 - mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
 - nohup bash -c "cd kafka && bin/zookeeper-server-start etc/kafka/zookeeper.properties &"
 - nohup bash -c "cd kafka && bin/kafka-server-start etc/kafka/server.properties &"

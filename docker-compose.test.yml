@@ -8,6 +8,7 @@ services:
       ESQUE_TEST_ENV: "ci"
     depends_on:
       - kafka
+      - schema_registry
     command: >
       -c
         "(until (kafkacat -b kafka:9093 -X debug=all -L); do sleep 5s; done) \
