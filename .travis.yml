@@ -9,8 +9,8 @@ before_install:
 - nohup bash -c "cd kafka && bin/zookeeper-server-start etc/kafka/zookeeper.properties &"
 - nohup bash -c "cd kafka && bin/kafka-server-start etc/kafka/server.properties &"
 - nohup bash -c "cd kafka && bin/schema-registry-start etc/schema-registry/schema-registry.properties &"
-- scripts/wait-for-it.sh localhost:9092
 - scripts/wait-for-it.sh localhost:2181
+- scripts/wait-for-it.sh localhost:9092
 - scripts/wait-for-it.sh localhost:8081
 install:
 - pip install coverage coveralls flake8 pipenv
