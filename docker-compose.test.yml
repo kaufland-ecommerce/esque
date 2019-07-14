@@ -11,4 +11,4 @@ services:
     command: >
       -c
         "(until (kafkacat -b kafka:9093 -X debug=all -L); do sleep 5s; done) \
-        && pytest tests/ --integration"
+        && pytest tests/integration/test_clients.py --integration"
