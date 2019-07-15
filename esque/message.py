@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Iterable, NamedTuple
+from typing import Iterable, NamedTuple, Any
 
 from confluent_kafka.cimpl import Message
 
@@ -11,8 +11,8 @@ class DecodedMessage(NamedTuple):
 
 
 class KafkaMessage(NamedTuple):
-    key: str
-    value: str
+    key: Any
+    value: Any
     key_schema: str = None
     value_schema: str = None
 
