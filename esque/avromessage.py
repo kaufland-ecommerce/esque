@@ -99,5 +99,6 @@ class AvroFileReader(FileReader):
 
 
 def extract_schema_id(message: bytes) -> int:
-    _, schema_id = struct.unpack(">bI", message[:5])
+    magic_byte, schema_id = struct.unpack(">bI", message[:5])
+    assert magic_byte == 0, f"Wrong magic byte ({magic_byte}), no AVRO message."
     return schema_id
