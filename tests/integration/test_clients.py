@@ -27,11 +27,12 @@ def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer
 
     assert number_of_consumer_messages == 10
     assert len(consumed_messages) == 10
-    assert all([
-        produced_message.key == consumed_message.key and
-        produced_message.value == consumed_message.value
-        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-    ])
+    assert all(
+        [
+            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
+            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+        ]
+    )
 
 
 @pytest.mark.integration
@@ -49,15 +50,18 @@ def test_avro_consume_to_file(consumer_group, avro_producer: AvroProducer, sourc
 
     assert number_of_consumer_messages == 10
     assert len(consumed_messages) == 10
-    assert all([
-        produced_message.key == consumed_message.key and
-        produced_message.value == consumed_message.value
-        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-    ])
+    assert all(
+        [
+            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
+            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+        ]
+    )
 
 
 @pytest.mark.integration
-def test_plain_text_consume_and_produce(consumer_group, producer: ConfluenceProducer, source_topic: str, target_topic: str, tmpdir_factory):
+def test_plain_text_consume_and_produce(
+    consumer_group, producer: ConfluenceProducer, source_topic: str, target_topic: str, tmpdir_factory
+):
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages(producer, source_topic)
     file_consumer = FileConsumer(consumer_group, source_topic, working_dir, False)
@@ -77,15 +81,18 @@ def test_plain_text_consume_and_produce(consumer_group, producer: ConfluenceProd
         for message in file_reader.read_from_file():
             consumed_messages.append(message)
 
-    assert all([
-        produced_message.key == consumed_message.key and
-        produced_message.value == consumed_message.value
-        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-    ])
+    assert all(
+        [
+            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
+            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+        ]
+    )
 
 
 @pytest.mark.integration
-def test_avro_consume_and_produce(consumer_group, avro_producer: AvroProducer, source_topic: str, target_topic: str, tmpdir_factory):
+def test_avro_consume_and_produce(
+    consumer_group, avro_producer: AvroProducer, source_topic: str, target_topic: str, tmpdir_factory
+):
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
     file_consumer = AvroFileConsumer(consumer_group, source_topic, working_dir, False)
@@ -96,7 +103,9 @@ def test_avro_consume_and_produce(consumer_group, avro_producer: AvroProducer, s
 
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
-    file_consumer = AvroFileConsumer((consumer_group + "assertion_check"), target_topic, assertion_check_directory, False)
+    file_consumer = AvroFileConsumer(
+        (consumer_group + "assertion_check"), target_topic, assertion_check_directory, False
+    )
     file_consumer.consume(10)
 
     consumed_messages = []
@@ -105,11 +114,12 @@ def test_avro_consume_and_produce(consumer_group, avro_producer: AvroProducer, s
         for message in file_reader.read_from_file():
             consumed_messages.append(message)
 
-    assert all([
-        produced_message.key == consumed_message.key and
-        produced_message.value == consumed_message.value
-        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-    ])
+    assert all(
+        [
+            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
+            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+        ]
+    )
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[KafkaMessage]:
@@ -133,8 +143,6 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: str) -> 
         key = {"id": str(i)}
         value = {"first": "Firstname", "last": "Lastname"}
         messages.append(KafkaMessage(json.dumps(key), json.dumps(value), key_schema, value_schema))
-        avro_producer.produce(
-            topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema
-        )
+        avro_producer.produce(topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema)
         avro_producer.flush()
     return messages
