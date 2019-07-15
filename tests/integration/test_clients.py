@@ -1,5 +1,4 @@
 import json
-import pathlib
 import random
 from typing import Iterable
 from string import ascii_letters
@@ -10,14 +9,14 @@ from confluent_kafka.cimpl import Producer as ConfluenceProducer
 from esque.avromessage import AvroFileReader
 from esque.clients import FileConsumer, AvroFileConsumer, FileProducer, AvroFileProducer
 from esque.message import PlainTextFileReader, KafkaMessage
-from esque.topic import Topic
 from confluent_kafka.avro import loads as load_schema, AvroProducer
 
 
 @pytest.mark.integration
-def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer, topic: str, working_dir: pathlib.Path):
-    produced_messages = produce_test_messages(producer, topic)
-    file_consumer = FileConsumer(consumer_group, topic, working_dir, False)
+def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer, source_topic: str, tmpdir_factory):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    produced_messages = produce_test_messages(producer, source_topic)
+    file_consumer = FileConsumer(consumer_group, source_topic, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = []
@@ -36,9 +35,10 @@ def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer
 
 
 @pytest.mark.integration
-def test_avro_consume_to_file(consumer_group, avro_producer: AvroProducer, topic: str, working_dir: pathlib.Path):
-    produced_messages = produce_test_messages_with_avro(avro_producer, topic)
-    file_consumer = AvroFileConsumer(consumer_group, topic, working_dir, False)
+def test_avro_consume_to_file(consumer_group, avro_producer: AvroProducer, source_topic: str, tmpdir_factory):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
+    file_consumer = AvroFileConsumer(consumer_group, source_topic, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = []
@@ -57,27 +57,59 @@ def test_avro_consume_to_file(consumer_group, avro_producer: AvroProducer, topic
 
 
 @pytest.mark.integration
-def test_plain_text_consume_and_produce(consumer_group, filled_topic: Topic, topic: str, working_dir: pathlib.Path):
-    file_consumer = FileConsumer(consumer_group, filled_topic.name, working_dir, False)
-    number_of_consumer_messages = file_consumer.consume(10)
+def test_plain_text_consume_and_produce(consumer_group, producer: ConfluenceProducer, source_topic: str, target_topic: str, tmpdir_factory):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    produced_messages = produce_test_messages(producer, source_topic)
+    file_consumer = FileConsumer(consumer_group, source_topic, working_dir, False)
+    file_consumer.consume(10)
 
     producer = FileProducer(working_dir)
-    number_of_produced_messages = producer.produce(topic)
+    producer.produce(target_topic)
 
-    assert number_of_consumer_messages == 10
-    assert number_of_produced_messages == 10
+    # Check assertions:
+    assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
+    file_consumer = FileConsumer((consumer_group + "assertion_check"), target_topic, assertion_check_directory, False)
+    file_consumer.consume(10)
+
+    consumed_messages = []
+    file_reader = PlainTextFileReader(assertion_check_directory)
+    with file_reader:
+        for message in file_reader.read_from_file():
+            consumed_messages.append(message)
+
+    assert all([
+        produced_message.key == consumed_message.key and
+        produced_message.value == consumed_message.value
+        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+    ])
 
 
 @pytest.mark.integration
-def test_avro_consume_and_produce(consumer_group, filled_avro_topic: Topic, topic: str, working_dir: pathlib.Path):
-    file_consumer = AvroFileConsumer(consumer_group, filled_avro_topic.name, working_dir, False)
-    number_of_consumer_messages = file_consumer.consume(10)
+def test_avro_consume_and_produce(consumer_group, avro_producer: AvroProducer, source_topic: str, target_topic: str, tmpdir_factory):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
+    file_consumer = AvroFileConsumer(consumer_group, source_topic, working_dir, False)
+    file_consumer.consume(10)
 
     producer = AvroFileProducer(working_dir)
-    number_of_produced_messages = producer.produce(topic)
+    producer.produce(target_topic)
 
-    assert number_of_consumer_messages == 10
-    assert number_of_produced_messages == 10
+    # Check assertions:
+    assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
+    file_consumer = AvroFileConsumer((consumer_group + "assertion_check"), target_topic, assertion_check_directory, False)
+    file_consumer.consume(10)
+
+    consumed_messages = []
+    file_reader = AvroFileReader(assertion_check_directory)
+    with file_reader:
+        for message in file_reader.read_from_file():
+            consumed_messages.append(message)
+
+    assert all([
+        produced_message.key == consumed_message.key and
+        produced_message.value == consumed_message.value
+        for produced_message, consumed_message in zip(produced_messages, consumed_messages)
+    ])
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[KafkaMessage]:

@@ -9,7 +9,6 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import TopicPartition, Producer
 from pykafka.exceptions import NoBrokersAvailableError
-from confluent_kafka.avro import loads as load_schema
 
 from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
@@ -70,6 +69,16 @@ def topic_object(cluster, topic):
 @pytest.fixture()
 def changed_topic_object(cluster, topic):
     yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
+
+
+@pytest.fixture()
+def source_topic(topic: str) -> str:
+    yield topic
+
+
+@pytest.fixture()
+def target_topic(topic: str) -> str:
+    yield topic
 
 
 @pytest.fixture()
@@ -156,27 +165,6 @@ def filled_topic(producer, topic_object):
         producer.produce(topic=topic_object.name, key=random_value, value=random_value)
         producer.flush()
     yield topic_object
-
-
-@pytest.fixture()
-def filled_avro_topic(avro_producer: AvroProducer, topic_object):
-    with open("tests/test_samples/key_schema", "r") as file:
-        key_schema = load_schema(file.read())
-    with open("tests/test_samples/value_schema", "r") as file:
-        value_schema = load_schema(file.read())
-    for i in range(10):
-        key = {"id": str(i)}
-        value = {"first": "Firstname", "last": "Lastname"}
-        avro_producer.produce(
-            topic=topic_object.name, key=key, value=value, key_schema=key_schema, value_schema=value_schema
-        )
-        avro_producer.flush()
-    yield topic_object
-
-
-@pytest.fixture()
-def working_dir(tmpdir_factory):
-    yield tmpdir_factory.mktemp("working_directory")
 
 
 @pytest.fixture()
