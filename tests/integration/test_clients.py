@@ -27,12 +27,7 @@ def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer
 
     assert number_of_consumer_messages == 10
     assert len(consumed_messages) == 10
-    assert all(
-        [
-            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
-            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-        ]
-    )
+    assert produced_messages == consumed_messages
 
 
 @pytest.mark.integration
@@ -81,12 +76,7 @@ def test_plain_text_consume_and_produce(
         for message in file_reader.read_from_file():
             consumed_messages.append(message)
 
-    assert all(
-        [
-            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
-            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-        ]
-    )
+    assert produced_messages == consumed_messages
 
 
 @pytest.mark.integration
@@ -114,12 +104,7 @@ def test_avro_consume_and_produce(
         for message in file_reader.read_from_file():
             consumed_messages.append(message)
 
-    assert all(
-        [
-            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
-            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-        ]
-    )
+    assert produced_messages == consumed_messages
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[KafkaMessage]:
