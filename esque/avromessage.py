@@ -3,7 +3,7 @@ import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Optional, Tuple, Dict, Iterable
+from typing import Optional, Tuple, Dict, Iterable, NamedTuple
 import itertools as it
 
 import fastavro
@@ -14,12 +14,11 @@ from esque.message import FileWriter, FileReader, KafkaMessage
 from esque.schemaregistry import SchemaRegistryClient
 
 
-class DecodedAvroMessage:
-    def __init__(self, key: Optional[Dict], value: Optional[Dict], key_schema_id: int, value_schema_id: int):
-        self.key = key
-        self.value = value
-        self.key_schema_id = key_schema_id
-        self.value_schema_id = value_schema_id
+class DecodedAvroMessage(NamedTuple):
+    key: Optional[Dict]
+    value: Optional[Dict]
+    key_schema_id: int
+    value_schema_id: int
 
 
 class AvroFileWriter(FileWriter):

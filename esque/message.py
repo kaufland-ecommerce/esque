@@ -1,22 +1,20 @@
 import json
 import pathlib
-from typing import Iterable
+from typing import Iterable, NamedTuple
 
 from confluent_kafka.cimpl import Message
 
 
-class DecodedMessage:
-    def __init__(self, key: str, value: str):
-        self.key = key
-        self.value = value
+class DecodedMessage(NamedTuple):
+    key: str
+    value: str
 
 
-class KafkaMessage:
-    def __init__(self, key: str, value: str, key_schema=None, value_schema=None):
-        self.key = key
-        self.value = value
-        self.key_schema = key_schema
-        self.value_schema = value_schema
+class KafkaMessage(NamedTuple):
+    key: str
+    value: str
+    key_schema: str = None
+    value_schema: str = None
 
 
 class IOHandler:
