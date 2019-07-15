@@ -15,10 +15,7 @@ class SchemaRegistryClient:
 
     @lru_cache(maxsize=100)
     def get_schema_from_id(self, schema_id: int) -> SchemaPair:
-        return self.get_schema_from_server(schema_id, self.schema_registry_uri)
-
-    def get_schema_from_server(self, schema_id: int, server_url: str) -> SchemaPair:
-        url = "{server_url}/schemas/ids/{schema_id}"
+        url = f"{self.schema_registry_uri}/schemas/ids/{schema_id}"
         response = requests.get(url.format(**locals()))
         response.raise_for_status()
         schema: Dict = json.loads(response.json()["schema"])
