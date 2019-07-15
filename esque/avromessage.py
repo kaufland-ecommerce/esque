@@ -3,7 +3,7 @@ import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Optional, Tuple, Dict, Iterable, NamedTuple
+from typing import Optional, Tuple, Dict, Iterable, NamedTuple, Any
 import itertools as it
 
 import fastavro
@@ -15,8 +15,8 @@ from esque.schemaregistry import SchemaRegistryClient
 
 
 class DecodedAvroMessage(NamedTuple):
-    key: Optional[Dict]
-    value: Optional[Dict]
+    key: Any
+    value: Any
     key_schema_id: int
     value_schema_id: int
 
