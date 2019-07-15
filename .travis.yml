@@ -2,10 +2,11 @@ dist: xenial
 language: python
 cache: pip
 env:
-- TEST_CMD="pytest tests/ --integration --cov=esque --local"
-- BROKER_URL="localhost:9092"
-- ZOOKEEPER_URL="localhost:2181"
-- SCHEMA_REGISTRY_URL="localhost:8081"
+- >
+  TEST_CMD="pytest tests/ --integration --cov=esque --local"
+  BROKER_URL="localhost:9092"
+  ZOOKEEPER_URL="localhost:2181"
+  SCHEMA_REGISTRY_URL="localhost:8081"
 before_install:
 - wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz
 - mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
