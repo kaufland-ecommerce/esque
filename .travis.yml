@@ -10,7 +10,7 @@ before_install:
 - nohup bash -c "cd kafka && bin/kafka-server-start ../ci_config/kafka/server.properties &"
 - scripts/wait-for-it.sh localhost:2181
 - scripts/wait-for-it.sh localhost:9092
-- nohup bash -c "cd kafka && bin/schema-registry-start ../ci_config/schema_registry/schema_registry.properties &"
+- nohup bash -c "cd kafka && bin/schema-registry-start etc/schema-registry/schema-registry.properties &"
 - scripts/wait-for-it.sh localhost:8081
 install:
 - pip install coverage coveralls flake8 pipenv
