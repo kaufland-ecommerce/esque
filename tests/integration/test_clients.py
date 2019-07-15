@@ -92,9 +92,9 @@ def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[
 
 
 def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: str) -> Iterable[KafkaMessage]:
-    with open("tests/test_samples/key_schema", "r") as file:
+    with open("tests/test_samples/key_schema.avsc", "r") as file:
         key_schema = load_schema(file.read())
-    with open("tests/test_samples/value_schema", "r") as file:
+    with open("tests/test_samples/value_schema.avsc", "r") as file:
         value_schema = load_schema(file.read())
     messages = []
     for i in range(10):
