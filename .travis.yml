@@ -32,11 +32,13 @@ notifications:
 matrix:
   include:
   - name: black
+    before_install: []
     python: 3.7
     env:
     - TEST_CMD="black --check --verbose --line-length=119 ."
   - name: flake8
     python: 3.7
+    before_install: []
     env:
     - TEST_CMD="flake8 esque/"
   - name: '3.6'
