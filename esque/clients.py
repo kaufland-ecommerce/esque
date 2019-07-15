@@ -1,3 +1,4 @@
+import json
 import pathlib
 from typing import Optional, Tuple
 
@@ -172,8 +173,8 @@ class AvroFileProducer(FileProducer):
     def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(
             topic=topic_name,
-            key=message.key,
-            value=message.value,
+            key=json.loads(message.key),
+            value=json.loads(message.value),
             key_schema=message.key_schema,
             value_schema=message.value_schema,
         )

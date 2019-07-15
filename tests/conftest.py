@@ -1,4 +1,3 @@
-import json
 import random
 from concurrent.futures import Future
 from pathlib import Path

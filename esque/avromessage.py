@@ -95,7 +95,7 @@ class AvroFileReader(FileReader):
             key_schema = load_schema((schema_directory / "key_schema.avsc").read_text(encoding="utf-8"))
             value_schema = load_schema((schema_directory / "value_schema.avsc").read_text(encoding="utf-8"))
 
-            yield KafkaMessage(record["key"], record["value"], key_schema, value_schema)
+            yield KafkaMessage(json.dumps(record["key"]), json.dumps(record["value"]), key_schema, value_schema)
 
 
 def extract_schema_id(message: bytes) -> int:
