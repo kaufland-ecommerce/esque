@@ -109,29 +109,33 @@ def test_avro_consume_and_produce(
     assert produced_messages == consumed_messages
 
 
-def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[KafkaMessage]:
+def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
+    topic_name, num_partitions = topic
     messages = []
     for i in range(10):
+        partition = random.randint(0, num_partitions)
         random_value = "".join(random.choices(ascii_letters, k=5))
         message = KafkaMessage(str(i), random_value, 0)
         messages.append(message)
-        producer.produce(topic=topic, key=message.key, value=message.value, partition=0)
+        producer.produce(topic=topic_name, key=message.key, value=message.value, partition=partition)
         producer.flush()
     return messages
 
 
-def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: str) -> Iterable[KafkaMessage]:
+def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
+    topic_name, num_partitions = topic
     with open("tests/test_samples/key_schema.avsc", "r") as file:
         key_schema = load_schema(file.read())
     with open("tests/test_samples/value_schema.avsc", "r") as file:
         value_schema = load_schema(file.read())
     messages = []
     for i in range(10):
+        partition = random.randint(0, num_partitions)
         key = {"id": str(i)}
         value = {"first": "Firstname", "last": "Lastname"}
         messages.append(KafkaMessage(json.dumps(key), json.dumps(value), 0, key_schema, value_schema))
         avro_producer.produce(
-            topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=0
+            topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=partition
         )
         avro_producer.flush()
     return messages
