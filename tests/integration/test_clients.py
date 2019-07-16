@@ -63,7 +63,7 @@ def test_plain_text_consume_and_produce(
     file_consumer.consume(10)
 
     producer = FileProducer(working_dir)
-    producer.produce(source_topic_id)
+    producer.produce(target_topic_id)
 
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
@@ -113,9 +113,9 @@ def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) 
     for i in range(10):
         partition = random.randrange(0, num_partitions)
         random_value = "".join(random.choices(ascii_letters, k=5))
-        message = KafkaMessage(str(i), random_value, 0)
+        message = KafkaMessage(str(i), random_value, partition)
         messages.append(message)
-        producer.produce(topic=topic_name, key=message.key, value=message.value, partition=partition)
+        producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
         producer.flush()
     return messages
 
@@ -131,7 +131,7 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[st
         partition = random.randrange(0, num_partitions)
         key = {"id": str(i)}
         value = {"first": "Firstname", "last": "Lastname"}
-        messages.append(KafkaMessage(json.dumps(key), json.dumps(value), 0, key_schema, value_schema))
+        messages.append(KafkaMessage(json.dumps(key), json.dumps(value), partition, key_schema, value_schema))
         avro_producer.produce(
             topic=topic_name,
             key=key,
@@ -156,4 +156,4 @@ def get_consumed_messages(directory, avro: bool) -> List[KafkaMessage]:
             stack.enter_context(file_reader)
             for message in file_reader.read_from_file():
                 consumed_messages.append(message)
-    return consumed_messages
+    return sorted(consumed_messages, key=(lambda msg: msg.key))

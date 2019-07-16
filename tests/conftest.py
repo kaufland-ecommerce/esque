@@ -65,34 +65,32 @@ def changed_topic_object(cluster, topic: str):
 
 
 @pytest.fixture()
-def topic(confluent_admin_client: AdminClient) -> str:
+def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
-    yield topic_factory(1, topic_id)[0]
-
-
-@pytest.fixture(params=[1, 10], ids=["1", "10"])
-def source_topic(request, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
-    topic_id = "".join(random.choices(ascii_letters, k=5))
-    yield from topic_factory(request.param, topic_id)
-
-
-@pytest.fixture(params=[1, 10], ids=["1", "10"])
-def target_topic(request, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
-    topic_id = "".join(random.choices(ascii_letters, k=5))
-    yield from topic_factory(request.param, topic_id)
+    for topic, _ in topic_factory(1, topic_id):
+        yield topic
 
 
 @pytest.fixture()
-def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Tuple[str, int]]:
-    """
-    Creates a kafka topic consisting of a random 5 character string and being partition into 1, 5 or 10 partitions.
-    Then it yields the tuple (topic, n_partitions).
+def source_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
 
-    Prints topic information before and after topic was used by a test.
-    :return: Topic and number of partitions within it.
-    """
 
-    def factory(partitions: int, topic_id: str) -> Tuple[str, int]:
+@pytest.fixture()
+def target_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
+
+
+@pytest.fixture(params=[1, 10], ids=["num_partitions=1", "num_partitions=10"])
+def num_partitions(request) -> int:
+    return request.param
+
+
+@pytest.fixture()
+def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Iterable[Tuple[str, int]]]:
+    def factory(partitions: int, topic_id: str) -> Iterable[Tuple[str, int]]:
         future: Future = confluent_admin_client.create_topics(
             [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
         )[topic_id]
@@ -103,9 +101,7 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], T
 
         yield (topic_id, partitions)
 
-        topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-        if topic_id in topics:
-            confluent_admin_client.delete_topics([topic_id]).popitem()
+        confluent_admin_client.delete_topics([topic_id]).popitem()
 
     return factory
 
