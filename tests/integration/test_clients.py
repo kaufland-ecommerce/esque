@@ -17,7 +17,7 @@ from confluent_kafka.avro import loads as load_schema, AvroProducer
 
 @pytest.mark.integration
 def test_plain_text_consume_to_file(
-    consumer_group, producer: ConfluenceProducer, source_topic: Iterable[Tuple[str, int]], tmpdir_factory
+    consumer_group, producer: ConfluenceProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
@@ -34,7 +34,7 @@ def test_plain_text_consume_to_file(
 
 @pytest.mark.integration
 def test_avro_consume_to_file(
-    consumer_group, avro_producer: AvroProducer, source_topic: Iterable[Tuple[str, int]], tmpdir_factory
+    consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
@@ -53,8 +53,8 @@ def test_avro_consume_to_file(
 def test_plain_text_consume_and_produce(
     consumer_group,
     producer: ConfluenceProducer,
-    source_topic: Iterable[Tuple[str, int]],
-    target_topic: Iterable[Tuple[str, int]],
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
     tmpdir_factory,
 ):
     source_topic_id, _ = source_topic
@@ -83,8 +83,8 @@ def test_plain_text_consume_and_produce(
 def test_avro_consume_and_produce(
     consumer_group,
     avro_producer: AvroProducer,
-    source_topic: Iterable[Tuple[str, int]],
-    target_topic: Iterable[Tuple[str, int]],
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
     tmpdir_factory,
 ):
     source_topic_id, _ = source_topic

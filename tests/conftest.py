@@ -2,7 +2,7 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Callable
 
 import confluent_kafka
 import pytest
@@ -55,58 +55,63 @@ def test_config(test_config_path, request):
 
 
 @pytest.fixture()
-def topic_id(confluent_admin_client) -> str:
-    yield "".join(random.choices(ascii_letters, k=5))
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    if topic_id in topics:
-        confluent_admin_client.delete_topics([topic_id]).popitem()
+def topic_object(cluster, topic: str):
+    yield TopicController(cluster).get_topic(topic)
 
 
 @pytest.fixture()
-def topic_object(cluster, topic: Iterable[Tuple[str, int]]):
-    topic_id, _ = topic
-    yield TopicController(cluster).get_topic(topic_id)
+def changed_topic_object(cluster, topic: str):
+    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
-def changed_topic_object(cluster, topic: Iterable[Tuple[str, int]]):
-    topic_id, _ = topic
-    yield TopicController(cluster).get_topic(topic_id, 1, 3, {"cleanup.policy": "compact"})
+def topic(confluent_admin_client: AdminClient) -> str:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield topic_factory(1, topic_id)[0]
+
+
+@pytest.fixture(params=[1, 5, 10], ids=["1", "5", "10"])
+def source_topic(
+    request, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(request.param, topic_id)
+
+
+@pytest.fixture(params=[1, 5, 10], ids=["1", "5", "10"])
+def target_topic(
+    request, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(request.param, topic_id)
 
 
 @pytest.fixture()
-def source_topic(topic: Iterable[Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
-    yield topic
-
-
-@pytest.fixture()
-def target_topic(topic: Iterable[Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
-    yield topic
-
-
-@pytest.fixture(params=[1, 5, 10], ids=["num_partitions=1", "num_partitions=5", "num_partitions=10"])
-def topic(request, confluent_admin_client: AdminClient, topic_id: str) -> Iterable[Tuple[str, int]]:
+def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Tuple[str, int]]:
     """
-    Creates a kafka topic consisting of a random 5 character string and being partition into 1, 2 or 4 partitions.
+    Creates a kafka topic consisting of a random 5 character string and being partition into 1, 5 or 10 partitions.
     Then it yields the tuple (topic, n_partitions).
 
     Prints topic information before and after topic was used by a test.
     :return: Topic and number of partitions within it.
     """
-    partitions = request.param
-    future: Future = confluent_admin_client.create_topics([NewTopic(topic_id, partitions, replication_factor=1)])[
-        topic_id
-    ]
-    while not future.done() or future.cancelled():
-        if future.result():
-            raise RuntimeError
-    confluent_admin_client.poll(timeout=1)
 
-    yield (topic_id, partitions)
+    def factory(partitions: int, topic_id: str) -> Tuple[str, int]:
+        future: Future = confluent_admin_client.create_topics(
+            [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
+        )[topic_id]
+        while not future.done() or future.cancelled():
+            if future.result():
+                raise RuntimeError
+        confluent_admin_client.poll(timeout=1)
 
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    if topic_id in topics:
-        confluent_admin_client.delete_topics([topic_id]).popitem()
+        yield (topic_id, partitions)
+
+        topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+        if topic_id in topics:
+            confluent_admin_client.delete_topics([topic_id]).popitem()
+
+    return factory
 
 
 @pytest.fixture()
