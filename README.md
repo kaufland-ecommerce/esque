@@ -134,6 +134,17 @@ While this `docker-compose` stack is up, you can run the tests from the CLI via 
 Alternatively, you can also run the entire test suite, without needing to setup the development environment, in docker compose via `docker-compose -f docker-compose.yml -f docker-compose.test.yml` 
 
 
+### Pre Commit Hooks
+
+To install pre commit hooks run:
+
+```
+pip install pre-commit
+pre-commit install
+pre-commit install-hooks`
+``
+
+
 ## Alternatives
 
 - [LinkedIn KafkaTools](https://github.com/linkedin/kafka-tools)

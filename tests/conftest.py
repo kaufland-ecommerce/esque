@@ -72,13 +72,17 @@ def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]
 
 
 @pytest.fixture()
-def source_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
+def source_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
 
 
 @pytest.fixture()
-def target_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
+def target_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
 
