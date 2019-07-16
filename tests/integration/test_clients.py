@@ -111,7 +111,7 @@ def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) 
     topic_name, num_partitions = topic
     messages = []
     for i in range(10):
-        partition = random.randint(0, num_partitions)
+        partition = random.randrange(0, num_partitions)
         random_value = "".join(random.choices(ascii_letters, k=5))
         message = KafkaMessage(str(i), random_value, 0)
         messages.append(message)
@@ -128,12 +128,17 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[st
         value_schema = load_schema(file.read())
     messages = []
     for i in range(10):
-        partition = random.randint(0, num_partitions)
+        partition = random.randrange(0, num_partitions)
         key = {"id": str(i)}
         value = {"first": "Firstname", "last": "Lastname"}
         messages.append(KafkaMessage(json.dumps(key), json.dumps(value), 0, key_schema, value_schema))
         avro_producer.produce(
-            topic=topic_name, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=partition
+            topic=topic_name,
+            key=key,
+            value=value,
+            key_schema=key_schema,
+            value_schema=value_schema,
+            partition=partition,
         )
         avro_producer.flush()
     return messages
