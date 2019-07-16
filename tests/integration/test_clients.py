@@ -133,7 +133,7 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[st
         value = {"first": "Firstname", "last": "Lastname"}
         messages.append(KafkaMessage(json.dumps(key), json.dumps(value), 0, key_schema, value_schema))
         avro_producer.produce(
-            topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=partition
+            topic=topic_name, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=partition
         )
         avro_producer.flush()
     return messages
