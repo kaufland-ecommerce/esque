@@ -17,6 +17,7 @@ from esque.schemaregistry import SchemaRegistryClient
 class DecodedAvroMessage(NamedTuple):
     key: Any
     value: Any
+    partition: int
     key_schema_id: int
     value_schema_id: int
 
@@ -35,7 +36,9 @@ class AvroFileWriter(FileWriter):
     def write_message_to_file(self, message: Message):
         key_schema_id, decoded_key = self.decode_bytes(message.key())
         value_schema_id, decoded_value = self.decode_bytes(message.value())
-        decoded_message = DecodedAvroMessage(decoded_key, decoded_value, key_schema_id, value_schema_id)
+        decoded_message = DecodedAvroMessage(
+            decoded_key, decoded_value, message.partition(), key_schema_id, value_schema_id
+        )
 
         if self.schema_changed(decoded_message) or self.schema_dir_name is None:
             self.schema_dir_name = f"{next(self.schema_version):04}_{key_schema_id}_{value_schema_id}"
@@ -44,8 +47,9 @@ class AvroFileWriter(FileWriter):
             self._dump_schemata(key_schema_id, value_schema_id)
 
         serializable_message = {
-            "key": decoded_key,
-            "value": decoded_value,
+            "key": decoded_message.key,
+            "value": decoded_message.value,
+            "partition": decoded_message.partition,
             "schema_directory_name": self.schema_dir_name,
         }
         pickle.dump(serializable_message, self.file)
@@ -94,7 +98,9 @@ class AvroFileReader(FileReader):
             key_schema = load_schema((schema_directory / "key_schema.avsc").read_text(encoding="utf-8"))
             value_schema = load_schema((schema_directory / "value_schema.avsc").read_text(encoding="utf-8"))
 
-            yield KafkaMessage(json.dumps(record["key"]), json.dumps(record["value"]), key_schema, value_schema)
+            yield KafkaMessage(
+                json.dumps(record["key"]), json.dumps(record["value"]), record["partition"], key_schema, value_schema
+            )
 
 
 def extract_schema_id(message: bytes) -> int:

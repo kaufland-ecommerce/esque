@@ -1,6 +1,9 @@
 import json
+import pathlib
 import random
-from typing import Iterable
+from contextlib import ExitStack
+from glob import glob
+from typing import Iterable, List
 from string import ascii_letters
 
 import pytest
@@ -19,11 +22,7 @@ def test_plain_text_consume_to_file(consumer_group, producer: ConfluenceProducer
     file_consumer = FileConsumer(consumer_group, source_topic, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
-    consumed_messages = []
-    file_reader = PlainTextFileReader(working_dir)
-    with file_reader:
-        for message in file_reader.read_from_file():
-            consumed_messages.append(message)
+    consumed_messages = get_consumed_messages(working_dir, False)
 
     assert number_of_consumer_messages == 10
     assert len(consumed_messages) == 10
@@ -37,20 +36,11 @@ def test_avro_consume_to_file(consumer_group, avro_producer: AvroProducer, sourc
     file_consumer = AvroFileConsumer(consumer_group, source_topic, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
-    consumed_messages = []
-    file_reader = AvroFileReader(working_dir)
-    with file_reader:
-        for message in file_reader.read_from_file():
-            consumed_messages.append(message)
+    consumed_messages = get_consumed_messages(working_dir, True)
 
     assert number_of_consumer_messages == 10
     assert len(consumed_messages) == 10
-    assert all(
-        [
-            produced_message.key == consumed_message.key and produced_message.value == consumed_message.value
-            for produced_message, consumed_message in zip(produced_messages, consumed_messages)
-        ]
-    )
+    assert produced_messages == consumed_messages
 
 
 @pytest.mark.integration
@@ -70,11 +60,7 @@ def test_plain_text_consume_and_produce(
     file_consumer = FileConsumer((consumer_group + "assertion_check"), target_topic, assertion_check_directory, False)
     file_consumer.consume(10)
 
-    consumed_messages = []
-    file_reader = PlainTextFileReader(assertion_check_directory)
-    with file_reader:
-        for message in file_reader.read_from_file():
-            consumed_messages.append(message)
+    consumed_messages = get_consumed_messages(assertion_check_directory, False)
 
     assert produced_messages == consumed_messages
 
@@ -98,11 +84,7 @@ def test_avro_consume_and_produce(
     )
     file_consumer.consume(10)
 
-    consumed_messages = []
-    file_reader = AvroFileReader(assertion_check_directory)
-    with file_reader:
-        for message in file_reader.read_from_file():
-            consumed_messages.append(message)
+    consumed_messages = get_consumed_messages(assertion_check_directory, True)
 
     assert produced_messages == consumed_messages
 
@@ -111,9 +93,9 @@ def produce_test_messages(producer: ConfluenceProducer, topic: str) -> Iterable[
     messages = []
     for i in range(10):
         random_value = "".join(random.choices(ascii_letters, k=5))
-        message = KafkaMessage(str(i), random_value)
+        message = KafkaMessage(str(i), random_value, 0)
         messages.append(message)
-        producer.produce(topic=topic, key=message.key, value=message.value)
+        producer.produce(topic=topic, key=message.key, value=message.value, partition=0)
         producer.flush()
     return messages
 
@@ -127,7 +109,24 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: str) -> 
     for i in range(10):
         key = {"id": str(i)}
         value = {"first": "Firstname", "last": "Lastname"}
-        messages.append(KafkaMessage(json.dumps(key), json.dumps(value), key_schema, value_schema))
-        avro_producer.produce(topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema)
+        messages.append(KafkaMessage(json.dumps(key), json.dumps(value), 0, key_schema, value_schema))
+        avro_producer.produce(
+            topic=topic, key=key, value=value, key_schema=key_schema, value_schema=value_schema, partition=0
+        )
         avro_producer.flush()
     return messages
+
+
+def get_consumed_messages(directory, avro: bool) -> List[KafkaMessage]:
+    consumed_messages = []
+    path_list = glob(str(directory / "partition_*"))
+    with ExitStack() as stack:
+        for partition_path in path_list:
+            if avro:
+                file_reader = AvroFileReader(pathlib.Path(partition_path))
+            else:
+                file_reader = PlainTextFileReader(pathlib.Path(partition_path))
+            stack.enter_context(file_reader)
+            for message in file_reader.read_from_file():
+                consumed_messages.append(message)
+    return consumed_messages

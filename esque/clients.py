@@ -1,5 +1,7 @@
 import json
 import pathlib
+from contextlib import ExitStack
+from glob import glob
 from typing import Optional, Tuple
 
 import click
@@ -13,7 +15,7 @@ from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, raise_for_message
 from esque.helpers import delivery_callback, delta_t
-from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter
+from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter, FileReader, FileWriter
 from esque.schemaregistry import SchemaRegistryClient
 from abc import ABC, abstractmethod
 
@@ -88,27 +90,38 @@ class FileConsumer(AbstractConsumer):
         self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
-        self.file_writer = PlainTextFileWriter(working_dir)
 
     def consume(self, amount: int) -> int:
         counter = 0
-        with self.file_writer:
+        file_writers = {}
+        with ExitStack() as stack:
             while counter < amount:
                 message = self._consume_single_message()
                 if message is None:
                     return counter
 
-                self.file_writer.write_message_to_file(message)
+                if message.partition() not in file_writers.keys():
+                    file_writer = self.get_file_writer((self.working_dir / f"partition_{message.partition()}"))
+                    stack.enter_context(file_writer)
+                    file_writers[message.partition()] = file_writer
+
+                file_writer = file_writers[message.partition()]
+                file_writer.write_message_to_file(message)
                 counter += 1
 
         return counter
+
+    def get_file_writer(self, directory: pathlib.Path) -> FileWriter:
+        return PlainTextFileWriter(directory)
 
 
 class AvroFileConsumer(FileConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, working_dir, last)
-        schema_registry_client = SchemaRegistryClient(Config().schema_registry)
-        self.file_writer = AvroFileWriter(working_dir, schema_registry_client)
+        self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
+
+    def get_file_writer(self, directory: pathlib.Path) -> FileWriter:
+        return AvroFileWriter(directory, self.schema_registry_client)
 
 
 class Producer(ABC):
@@ -142,25 +155,31 @@ class FileProducer(Producer):
         super().__init__()
         self._producer = confluent_kafka.Producer(self._config)
         self.working_dir = working_dir
-        self.file_reader = PlainTextFileReader(working_dir)
 
     def produce(self, topic_name: str) -> int:
-        with self.file_reader:
-            counter = 0
-            for message in self.file_reader.read_from_file():
-                self.produce_message(topic_name, message)
-                counter += 1
+        path_list = glob(str(self.working_dir / "partition_*"))
+        counter = 0
+        with ExitStack() as stack:
+            for partition_path in path_list:
+                file_reader = self.get_file_reader(pathlib.Path(partition_path))
+                stack.enter_context(file_reader)
+                for message in file_reader.read_from_file():
+                    self.produce_message(topic_name, message)
+                    counter += 1
 
             while True:
                 left_messages = self._producer.flush(1)
                 if left_messages == 0:
                     break
-                click.echo("Still {left_messages} messages left, flushing...")
+                click.echo(f"Still {left_messages} messages left, flushing...")
 
             return counter
 
+    def get_file_reader(self, directory: pathlib.Path) -> FileReader:
+        return PlainTextFileReader(directory)
+
     def produce_message(self, topic_name: str, message: KafkaMessage):
-        self._producer.produce(topic=topic_name, key=message.key, value=message.value)
+        self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
 
 
 class AvroFileProducer(FileProducer):
@@ -168,7 +187,9 @@ class AvroFileProducer(FileProducer):
         super().__init__(working_dir)
         self._config.update({"schema.registry.url": Config().schema_registry})
         self._producer = AvroProducer(self._config)
-        self.file_reader = AvroFileReader(working_dir)
+
+    def get_file_reader(self, directory: pathlib.Path) -> FileReader:
+        return AvroFileReader(directory)
 
     def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(
@@ -177,4 +198,5 @@ class AvroFileProducer(FileProducer):
             value=json.loads(message.value),
             key_schema=message.key_schema,
             value_schema=message.value_schema,
+            partition=message.partition,
         )
