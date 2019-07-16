@@ -28,7 +28,6 @@ def test_plain_text_consume_to_file(
     consumed_messages = get_consumed_messages(working_dir, False)
 
     assert number_of_consumer_messages == 10
-    assert len(consumed_messages) == 10
     assert produced_messages == consumed_messages
 
 
@@ -45,7 +44,6 @@ def test_avro_consume_to_file(
     consumed_messages = get_consumed_messages(working_dir, True)
 
     assert number_of_consumer_messages == 10
-    assert len(consumed_messages) == 10
     assert produced_messages == consumed_messages
 
 
