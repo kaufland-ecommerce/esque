@@ -21,7 +21,7 @@ def test_plain_text_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
-    produced_messages = produce_test_messages(producer, source_topic_id)
+    produced_messages = produce_test_messages(producer, source_topic)
     file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
@@ -38,7 +38,7 @@ def test_avro_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
-    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic_id)
+    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
     file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
@@ -60,7 +60,7 @@ def test_plain_text_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
-    produced_messages = produce_test_messages(producer, source_topic_id)
+    produced_messages = produce_test_messages(producer, source_topic)
     file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
     file_consumer.consume(10)
 
@@ -90,7 +90,7 @@ def test_avro_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
-    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic_id)
+    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
     file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
     file_consumer.consume(10)
 
