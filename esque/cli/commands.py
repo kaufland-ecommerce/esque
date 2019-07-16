@@ -227,7 +227,7 @@ def get_consumergroups(state):
 @get.command("topics")
 @click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-def get_topics(state, topic, o):
+def get_topics(state, topic):
     topics = TopicController(state.cluster).list_topics(search_string=topic)
     for topic in topics:
         click.echo(topic.name)
