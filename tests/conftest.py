@@ -70,18 +70,14 @@ def topic(confluent_admin_client: AdminClient) -> str:
     yield topic_factory(1, topic_id)[0]
 
 
-@pytest.fixture(params=[1, 5, 10], ids=["1", "5", "10"])
-def source_topic(
-    request, topic_factory: Callable[[int, str], Tuple[str, int]]
-) -> Iterable[Tuple[str, int]]:
+@pytest.fixture(params=[1, 5], ids=["1", "5"])
+def source_topic(request, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(request.param, topic_id)
 
 
-@pytest.fixture(params=[1, 5, 10], ids=["1", "5", "10"])
-def target_topic(
-    request, topic_factory: Callable[[int, str], Tuple[str, int]]
-) -> Iterable[Tuple[str, int]]:
+@pytest.fixture(params=[1, 5], ids=["1", "5"])
+def target_topic(request, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(request.param, topic_id)
 
