@@ -55,6 +55,14 @@ def test_config(test_config_path, request):
 
 
 @pytest.fixture()
+def topic_id(confluent_admin_client) -> str:
+    yield "".join(random.choices(ascii_letters, k=5))
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    if topic_id in topics:
+        confluent_admin_client.delete_topics([topic_id]).popitem()
+
+
+@pytest.fixture()
 def topic_object(cluster, topic: str):
     yield TopicController(cluster).get_topic(topic)
 
