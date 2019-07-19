@@ -9,7 +9,6 @@ import confluent_kafka
 import pendulum
 from confluent_kafka import Message
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import KafkaError
 
 from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
