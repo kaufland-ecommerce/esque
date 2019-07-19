@@ -101,18 +101,19 @@ class FileConsumer(AbstractConsumer):
                     return counter
 
                 if message.partition() not in file_writers:
-                    file_writer = self.get_file_writer((self.working_dir / f"partition_{message.partition()}"))
+                    partition = message.partition()
+                    file_writer = self.get_file_writer(partition)
                     stack.enter_context(file_writer)
-                    file_writers[message.partition()] = file_writer
+                    file_writers[partition] = file_writer
 
-                file_writer = file_writers[message.partition()]
+                file_writer = file_writers[partition]
                 file_writer.write_message_to_file(message)
                 counter += 1
 
         return counter
 
-    def get_file_writer(self, directory: pathlib.Path) -> FileWriter:
-        return PlainTextFileWriter(directory)
+    def get_file_writer(self, partition: int) -> FileWriter:
+        return PlainTextFileWriter((self.working_dir / f"partition_{partition}"))
 
 
 class AvroFileConsumer(FileConsumer):
@@ -120,8 +121,8 @@ class AvroFileConsumer(FileConsumer):
         super().__init__(group_id, topic_name, working_dir, last)
         self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
 
-    def get_file_writer(self, directory: pathlib.Path) -> FileWriter:
-        return AvroFileWriter(directory, self.schema_registry_client)
+    def get_file_writer(self, partition: int) -> FileWriter:
+        return AvroFileWriter((self.working_dir / f"partition_{partition}"), self.schema_registry_client)
 
 
 class Producer(ABC):
@@ -159,21 +160,20 @@ class FileProducer(Producer):
     def produce(self, topic_name: str) -> int:
         path_list = glob(str(self.working_dir / "partition_*"))
         counter = 0
-        with ExitStack() as stack:
-            for partition_path in path_list:
-                file_reader = self.get_file_reader(pathlib.Path(partition_path))
-                stack.enter_context(file_reader)
+        for partition_path in path_list:
+            file_reader = self.get_file_reader(pathlib.Path(partition_path))
+            with file_reader:
                 for message in file_reader.read_from_file():
                     self.produce_message(topic_name, message)
                     counter += 1
 
-            while True:
-                left_messages = self._producer.flush(1)
-                if left_messages == 0:
-                    break
-                click.echo(f"Still {left_messages} messages left, flushing...")
+        while True:
+            left_messages = self._producer.flush(1)
+            if left_messages == 0:
+                break
+            click.echo(f"Still {left_messages} messages left, flushing...")
 
-            return counter
+        return counter
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
