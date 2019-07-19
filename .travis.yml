@@ -35,7 +35,7 @@ matrix:
     before_install: []
     python: 3.7
     env:
-    - TEST_CMD="black --check --verbose --line-length=119 ."
+    - TEST_CMD="black --check --verbose ."
   - name: flake8
     python: 3.7
     before_install: []
