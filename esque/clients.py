@@ -50,33 +50,19 @@ class AbstractConsumer(ABC):
     def consume(self, amount: int) -> int:
         pass
 
-    def _consume_single_message(self) -> Optional[Message]:
-        poll_limit = 10
-        counter = 0
-        while counter < poll_limit:
-            message = self._consumer.poll(timeout=10)
-            if message is None:
-                counter += 1
-                continue
-            if message.error() is not None:
-                if message.error().code() == KafkaError._PARTITION_EOF:
-                    print("\nEnd of partition reached!".format(**locals()))
-                    break
-                else:
-                    raise RuntimeError(message.error().str())
-            raise_for_message(message)
-            return message
+    def _consume_single_message(self, timeout=10) -> Optional[Message]:
+        message = self._consumer.poll(timeout=timeout)
+        raise_for_message(message)
+        return message
 
 
 class PingConsumer(AbstractConsumer):
     def consume(self, amount: int) -> Optional[Tuple[str, int]]:
-        msg = self._consumer.consume(timeout=10)[0]
+        message = self._consume_single_message()
 
-        raise_for_message(msg)
-
-        msg_sent_at = pendulum.from_timestamp(float(msg.value()))
+        msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
-        return msg.key(), delta_sent.microseconds / 1000
+        return message.key(), delta_sent.microseconds / 1000
 
 
 class FileConsumer(AbstractConsumer):
