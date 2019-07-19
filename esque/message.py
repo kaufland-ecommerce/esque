@@ -30,25 +30,31 @@ class IOHandler:
             self.directory.mkdir()
         self.file = (self.directory / self.file_name).open(self.open_mode)
 
+        return self
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file.close()
 
 
 class FileWriter(IOHandler):
+    def __init__(self, directory: pathlib.Path):
+        super().__init__(directory)
+        self.open_mode = "w+"
+
     def write_message_to_file(self, message: Message):
         pass
 
 
 class FileReader(IOHandler):
+    def __init__(self, directory: pathlib.Path):
+        super().__init__(directory)
+        self.open_mode = "r"
+
     def read_from_file(self) -> Iterable[KafkaMessage]:
         pass
 
 
 class PlainTextFileWriter(FileWriter):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
-        self.open_mode = "w+"
-
     def write_message_to_file(self, message: Message):
         decoded_message = decode_message(message)
         serializable_message = {
@@ -60,10 +66,6 @@ class PlainTextFileWriter(FileWriter):
 
 
 class PlainTextFileReader(FileReader):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
-        self.open_mode = "r"
-
     def read_from_file(self) -> Iterable[KafkaMessage]:
         for line in self.file:
             try:

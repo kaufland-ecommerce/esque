@@ -147,8 +147,7 @@ class FileProducer(Producer):
         path_list = glob(str(self.working_dir / "partition_*"))
         counter = 0
         for partition_path in path_list:
-            file_reader = self.get_file_reader(pathlib.Path(partition_path))
-            with file_reader:
+            with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
                 for message in file_reader.read_from_file():
                     self.produce_message(topic_name, message)
                     counter += 1
