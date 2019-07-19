@@ -141,8 +141,8 @@ To install pre commit hooks run:
 ```
 pip install pre-commit
 pre-commit install
-pre-commit install-hooks`
-``
+pre-commit install-hooks
+```
 
 
 ## Alternatives
