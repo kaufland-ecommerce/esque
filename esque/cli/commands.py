@@ -238,7 +238,7 @@ def get_topics(state, topic):
 @click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
 @click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
-@click.option("--last/--first", default=False)
+@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
     "-k",
