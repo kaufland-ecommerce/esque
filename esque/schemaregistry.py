@@ -16,7 +16,7 @@ class SchemaRegistryClient:
     @lru_cache(maxsize=100)
     def get_schema_from_id(self, schema_id: int) -> SchemaPair:
         url = f"{self.schema_registry_uri}/schemas/ids/{schema_id}"
-        response = requests.get(url.format(**locals()))
+        response = requests.get(url)
         response.raise_for_status()
         schema: Dict = json.loads(response.json()["schema"])
         return SchemaPair(schema, fastavro.schema.parse_schema(schema))
