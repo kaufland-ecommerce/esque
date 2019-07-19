@@ -100,7 +100,7 @@ class FileConsumer(AbstractConsumer):
                 if message is None:
                     return counter
 
-                if message.partition() not in file_writers.keys():
+                if message.partition() not in file_writers:
                     file_writer = self.get_file_writer((self.working_dir / f"partition_{message.partition()}"))
                     stack.enter_context(file_writer)
                     file_writers[message.partition()] = file_writer
