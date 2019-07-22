@@ -114,7 +114,7 @@ class AvroFileConsumer(FileConsumer):
 class Producer(ABC):
     def __init__(self):
         self.queue_length = 100000
-        self.internal_queue_length_limit = self.queue_length / 0.8
+        self.internal_queue_length_limit = self.queue_length / 0.5
         self._config = Config().create_confluent_config()
         self._config.update(
             {
