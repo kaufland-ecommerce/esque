@@ -25,7 +25,7 @@ def raise_for_kafka_error(err: KafkaError):
 
 def raise_for_message(message: Message):
     if message is None:
-        raise MessageEmptyException
+        raise MessageEmptyException(-1, message)
     elif message.error() is not None:
         raise_for_kafka_error(message.error())
 

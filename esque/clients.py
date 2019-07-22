@@ -50,9 +50,16 @@ class AbstractConsumer(ABC):
         pass
 
     def _consume_single_message(self, timeout=10) -> Optional[Message]:
-        message = self._consumer.poll(timeout=timeout)
-        raise_for_message(message)
-        return message
+        poll_limit = 10
+        counter = 0
+        while counter < poll_limit:
+            message = self._consumer.poll(timeout=timeout)
+            if message is None:
+                counter += 1
+                continue
+            if message.error() is not None:
+                raise_for_message(message)
+            return message
 
 
 class PingConsumer(AbstractConsumer):
