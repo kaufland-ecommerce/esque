@@ -264,6 +264,7 @@ def transfer(
 
         if number_consumed_messages == 0:
             click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
+            click.echo(bold("Possible reasons: The topic is empty or the starting offset was set too high."))
             return
 
         click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
