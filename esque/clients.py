@@ -12,7 +12,7 @@ from confluent_kafka.avro import AvroProducer
 
 from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, raise_for_message
+from esque.errors import raise_for_kafka_error, raise_for_message, MessageEmptyException
 from esque.helpers import delivery_callback, delta_t
 from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter, FileReader, FileWriter
 from esque.schemaregistry import SchemaRegistryClient
@@ -50,16 +50,9 @@ class AbstractConsumer(ABC):
         pass
 
     def _consume_single_message(self, timeout=10) -> Optional[Message]:
-        poll_limit = 10
-        counter = 0
-        while counter < poll_limit:
-            message = self._consumer.poll(timeout=timeout)
-            if message is None:
-                counter += 1
-                continue
-            if message.error() is not None:
-                raise_for_message(message)
-            return message
+        message = self._consumer.poll(timeout=timeout)
+        raise_for_message(message)
+        return message
 
 
 class PingConsumer(AbstractConsumer):
@@ -88,8 +81,9 @@ class FileConsumer(AbstractConsumer):
         file_writers = {}
         with ExitStack() as stack:
             while counter < amount:
-                message = self._consume_single_message()
-                if message is None:
+                try:
+                    message = self._consume_single_message()
+                except MessageEmptyException:
                     return counter
 
                 if message.partition() not in file_writers:

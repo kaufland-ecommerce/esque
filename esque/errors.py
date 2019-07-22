@@ -25,7 +25,7 @@ def raise_for_kafka_error(err: KafkaError):
 
 def raise_for_message(message: Message):
     if message is None:
-        raise MessageEmptyException(-1, message)
+        raise MessageEmptyException
     elif message.error() is not None:
         raise_for_kafka_error(message.error())
 
@@ -49,7 +49,8 @@ class ContextNotDefinedException(Exception):
 
 
 class MessageEmptyException(KafkaException):
-    pass
+    def __init__(self):
+        super().__init__(-185, None)
 
 
 class TopicAlreadyExistsException(KafkaException):
