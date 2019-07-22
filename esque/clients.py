@@ -49,7 +49,7 @@ class AbstractConsumer(ABC):
     def consume(self, amount: int) -> int:
         pass
 
-    def _consume_single_message(self, timeout=10) -> Optional[Message]:
+    def _consume_single_message(self, timeout=30) -> Optional[Message]:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
@@ -113,8 +113,16 @@ class AvroFileConsumer(FileConsumer):
 
 class Producer(ABC):
     def __init__(self):
+        self.queue_length = 100000
+        self.internal_queue_length_limit = self.queue_length / 0.8
         self._config = Config().create_confluent_config()
-        self._config.update({"on_delivery": delivery_callback, "error_cb": raise_for_kafka_error})
+        self._config.update(
+            {
+                "on_delivery": delivery_callback,
+                "error_cb": raise_for_kafka_error,
+                "queue.buffering.max.messages": self.queue_length,
+            }
+        )
 
     @abstractmethod
     def produce(self, topic_name: str) -> int:
@@ -150,15 +158,20 @@ class FileProducer(Producer):
             with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
                 for message in file_reader.read_from_file():
                     self.produce_message(topic_name, message)
+                    left_messages = self._producer.flush(0)
+                    if left_messages > self.internal_queue_length_limit:
+                        self.flush_all()
                     counter += 1
+                self.flush_all()
 
+        return counter
+
+    def flush_all(self):
         while True:
             left_messages = self._producer.flush(1)
             if left_messages == 0:
                 break
             click.echo(f"Still {left_messages} messages left, flushing...")
-
-        return counter
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
