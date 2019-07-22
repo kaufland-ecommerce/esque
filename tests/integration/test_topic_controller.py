@@ -11,15 +11,11 @@ def topic_controller(cluster):
 
 @pytest.mark.integration
 def test_topic_creation_works(
-    topic_controller: TopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic_id: str,
+    topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
-    topic_controller.create_topics(
-        [topic_controller.get_topic(topic_id, replication_factor=1)]
-    )
+    topic_controller.create_topics([topic_controller.get_topic(topic_id, replication_factor=1)])
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -27,27 +23,21 @@ def test_topic_creation_works(
 
 
 @pytest.mark.integration
-def test_alter_topic_config_works(topic_controller: TopicController, topic_id: str):
-    initial_topic = topic_controller.get_topic(
-        topic_id, config={"cleanup.policy": "delete"}
-    )
+def test_alter_topic_config_works(topic_controller: TopicController, topic: str):
+    initial_topic = topic_controller.get_topic(topic, config={"cleanup.policy": "delete"})
     topic_controller.create_topics([initial_topic])
     replicas, config = initial_topic.describe()
     assert config.get("Config").get("cleanup.policy") == "delete"
-    change_topic = topic_controller.get_topic(
-        topic_id, config={"cleanup.policy": "compact"}
-    )
+    change_topic = topic_controller.get_topic(topic, config={"cleanup.policy": "compact"})
     topic_controller.alter_configs([change_topic])
-    after_changes_applied_topic = topic_controller.get_topic(topic_id)
+    after_changes_applied_topic = topic_controller.get_topic(topic)
     replicas, final_config = after_changes_applied_topic.describe()
     assert final_config.get("Config").get("cleanup.policy") == "compact"
 
 
 @pytest.mark.integration
 def test_topic_deletion_works(
-    topic_controller: TopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic: str,
+    topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics

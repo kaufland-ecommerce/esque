@@ -8,11 +8,7 @@ from confluent_kafka.cimpl import NewTopic
 
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
-from esque.helpers import (
-    ensure_kafka_futures_done,
-    invalidate_cache_after,
-    unpack_confluent_config,
-)
+from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after, unpack_confluent_config
 
 
 class Topic:
@@ -29,9 +25,7 @@ class Topic:
         self._pykafka_topic_instance = None
         self._confluent_topic_instance = None
         self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = (
-            replication_factor if replication_factor is not None else 1
-        )
+        self.replication_factor = replication_factor if replication_factor is not None else 1
         self.config = config if config is not None else {}
 
     def as_dict(self) -> Dict[str, Union[int, Dict[str, str]]]:
@@ -52,9 +46,7 @@ class Topic:
     @property
     def _pykafka_topic(self) -> pykafka.Topic:
         if not self._pykafka_topic_instance:
-            self._pykafka_topic_instance = self.cluster.pykafka_client.cluster.topics[
-                self.name
-            ]
+            self._pykafka_topic_instance = self.cluster.pykafka_client.cluster.topics[self.name]
         return self._pykafka_topic_instance
 
     @property
@@ -141,9 +133,7 @@ class TopicController:
         self.cluster: Cluster = cluster
 
     @raise_for_kafka_exception
-    def list_topics(
-        self, *, search_string: str = None, sort=True, hide_internal=True
-    ) -> List[Topic]:
+    def list_topics(self, *, search_string: str = None, sort=True, hide_internal=True) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topics = self.cluster.confluent_client.list_topics().topics
         topics = [self.get_topic(t.topic) for t in topics.values()]
@@ -180,9 +170,7 @@ class TopicController:
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
         for topic in topics:
-            config_resource = ConfigResource(
-                ConfigResource.Type.TOPIC, topic.name, topic.config
-            )
+            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_futures_done(list(future_list.values()))
 
@@ -199,6 +187,4 @@ class TopicController:
         replication_factor: int = None,
         config: Dict[str, str] = None,
     ) -> Topic:
-        return Topic(
-            topic_name, self.cluster, num_partitions, replication_factor, config
-        )
+        return Topic(topic_name, self.cluster, num_partitions, replication_factor, config)

@@ -2,14 +2,20 @@ dist: xenial
 language: python
 cache: pip
 env:
-- ESQUE_ENV=dev TEST_CMD="pytest tests/ --integration --cov=esque --local"
+- >
+  ESQUE_ENV=dev TEST_CMD="pytest tests/ --integration --cov=esque --local"
+  BROKER_URL="localhost:9092"
+  ZOOKEEPER_URL="localhost:2181"
+  SCHEMA_REGISTRY_URL="localhost:8081"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
-- mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
-- nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- scripts/wait-for-it.sh localhost:9092
-- scripts/wait-for-it.sh localhost:2181
+- wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz
+- mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
+- confluent-community/bin/zookeeper-server-start -daemon confluent-community/etc/kafka/zookeeper.properties
+- bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60"
+- confluent-community/bin/kafka-server-start -daemon confluent-community/etc/kafka/server.properties
+- bash -c "scripts/wait-for-it.sh ${BROKER_URL} -t 60"
+- confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
+- bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
@@ -26,11 +32,13 @@ notifications:
 matrix:
   include:
   - name: black
+    before_install: []
     python: 3.7
     env:
     - TEST_CMD="black --check --verbose ."
   - name: flake8
     python: 3.7
+    before_install: []
     env:
     - TEST_CMD="flake8 esque/"
   - name: '3.6'
