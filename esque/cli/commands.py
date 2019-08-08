@@ -195,7 +195,7 @@ def describe_broker(state, broker_id):
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", required=False)
+@click.argument("consumer-id", required=True)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
