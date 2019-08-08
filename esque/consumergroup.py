@@ -97,7 +97,9 @@ class ConsumerGroup:
                     max(old_max, topic_offsets[partition_id][1] - current_offset),
                 )
 
-            return new_consumer_offsets
+            description_template = "{0} (min, max over {1} partitions)"
+            topic_description = description_template.format(topic.decode('utf-8'), len(consumer_offsets[topic].items()))
+            return {topic_description: new_consumer_offsets}
 
     def _get_member_assignment(self, member_assignment: Dict[str, Any]) -> List[PartitionOffsetFetchRequest]:
         """
