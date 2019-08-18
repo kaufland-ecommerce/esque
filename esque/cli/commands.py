@@ -11,13 +11,22 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval, HandleFileOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
+from esque.cli.output import (
+    bold,
+    pretty,
+    pretty_topic_diffs,
+    pretty_new_topic_configs,
+    blue_bold,
+    green_bold,
+    pretty_unchanged_topic_configs,
+)
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
+from esque.topic import Topic
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
-from esque.topic import TopicController
+from esque.topic_controller import TopicController
 
 
 @click.group(help="(Kafka-)esque.")
@@ -62,20 +71,6 @@ def list_contexts(ctx, args, incomplete):
     return [context for context in config.available_contexts if context.startswith(incomplete)]
 
 
-@edit.command("topic")
-@click.argument("topic-name", required=True)
-@pass_state
-def edit_topic(state: State, topic_name: str):
-    controller = TopicController(state.cluster)
-    topic = TopicController(state.cluster).get_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml())
-    topic.from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: topic.config_diff()})
-    click.echo(diff)
-    if ensure_approval("Are you sure?"):
-        controller.alter_configs([topic])
-
-
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @pass_state
@@ -98,54 +93,97 @@ def ctx(state, context):
 @no_verify_option
 @pass_state
 def create_topic(state: State, topic_name: str):
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller = TopicController(state.cluster)
-        TopicController(state.cluster).create_topics([(topic_controller.get_topic(topic_name))])
+    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
+        click.echo("Aborted")
+        return
+
+    topic_controller = TopicController(state.cluster)
+    topic_controller.create_topics([Topic(topic_name)])
+
+
+@edit.command("topic")
+@click.argument("topic-name", required=True)
+@pass_state
+def edit_topic(state: State, topic_name: str):
+    controller = TopicController(state.cluster)
+    topic = TopicController(state.cluster).get_cluster_topic(topic_name)
+    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
+
+    # edit process can be aborted, ex. in vim via :q!
+    if new_conf is None:
+        click.echo("Change aborted")
+        return
+
+    topic.from_yaml(new_conf)
+    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
+    click.echo(diff)
+    if ensure_approval("Are you sure?"):
+        controller.alter_configs([topic])
 
 
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
+@no_verify_option
 @pass_state
 def apply(state: State, file: str):
+    # Get topic data based on the YAML
+    yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
+    yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
+    yaml_topic_names = [t.name for t in yaml_topics]
+    if not len(yaml_topic_names) == len(set(yaml_topic_names)):
+        raise ValueError("Duplicate topic names in the YAML!")
+
+    # Get topic data based on the cluster state
     topic_controller = TopicController(state.cluster)
-    yaml_data = yaml.safe_load(open(file))
-    topic_configs = yaml_data.get("topics")
-    topics = []
-    for topic_config in topic_configs:
-        topics.append(
-            topic_controller.get_topic(
-                topic_config.get("name"),
-                topic_config.get("num_partitions"),
-                topic_config.get("replication_factor"),
-                topic_config.get("config"),
-            )
+    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names))
+    cluster_topic_names = [t.name for t in cluster_topics]
+
+    # Calculate changes
+    to_create = [yaml_topic for yaml_topic in yaml_topics if yaml_topic.name not in cluster_topic_names]
+    to_edit = [
+        yaml_topic
+        for yaml_topic in yaml_topics
+        if yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic) != {}
+    ]
+    to_edit_diffs = {t.name: topic_controller.diff_with_cluster(t) for t in to_edit}
+    to_ignore = [yaml_topic for yaml_topic in yaml_topics if yaml_topic not in to_create and yaml_topic not in to_edit]
+
+    # Sanity check - the 3 groups of topics should be complete and have no overlap
+    assert (
+        set(to_create).isdisjoint(set(to_edit))
+        and set(to_create).isdisjoint(set(to_ignore))
+        and set(to_edit).isdisjoint(set(to_ignore))
+        and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
+    )
+
+    # Print diffs so the user can check
+    click.echo(pretty_unchanged_topic_configs(to_ignore))
+    click.echo(pretty_new_topic_configs(to_create))
+    click.echo(pretty_topic_diffs(to_edit_diffs))
+
+    # Check for actionable changes
+    if len(to_edit) + len(to_create) == 0:
+        click.echo("No changes detected, aborting")
+        return
+
+    # Warn users when replication & num_partition changes are attempted
+    if len(to_edit) > 0:
+        click.echo(
+            "Notice: changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
         )
-    editable_topics = topic_controller.filter_existing_topics(topics)
-    topics_to_be_changed = [topic for topic in editable_topics if topic.config_diff() != {}]
-    topic_config_diffs = {topic.name: topic.config_diff() for topic in topics_to_be_changed}
 
-    if len(topic_config_diffs) > 0:
-        click.echo(pretty_topic_diffs(topic_config_diffs))
-        if ensure_approval("Are you sure to change configs?", no_verify=state.no_verify):
-            topic_controller.alter_configs(topics_to_be_changed)
-            click.echo(
-                click.style(
-                    pretty({"Successfully changed topics": [topic.name for topic in topics_to_be_changed]}), fg="green"
-                )
-            )
-    else:
-        click.echo("No topics to edit.")
+    # Get approval
+    if not ensure_approval("Apply changes?", no_verify=state.no_verify):
+        click.echo("Cancelling changes")
+        return
 
-    new_topics = [topic for topic in topics if topic not in editable_topics]
-    if len(new_topics) > 0:
-        click.echo(get_output_new_topics(new_topics))
-        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
-            topic_controller.create_topics(new_topics)
-            click.echo(
-                click.style(pretty({"Successfully created topics": [topic.name for topic in new_topics]}), fg="green")
-            )
-    else:
-        click.echo("No new topics to create.")
+    # apply changes
+    topic_controller.create_topics(to_create)
+    topic_controller.alter_configs(to_edit)
+
+    # output confirmation
+    changes = {"unchanged": len(to_ignore), "created": len(to_create), "changed": len(to_edit)}
+    click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
 
 
 @delete.command("topic")
@@ -155,7 +193,7 @@ def apply(state: State, file: str):
 def delete_topic(state: State, topic_name: str):
     topic_controller = TopicController(state.cluster)
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(topic_controller.get_topic(topic_name))
+        topic_controller.delete_topic(topic_controller.get_cluster_topic(topic_name))
 
         assert topic_name not in topic_controller.list_topics()
 
@@ -164,7 +202,7 @@ def delete_topic(state: State, topic_name: str):
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
-    partitions, config = TopicController(state.cluster).get_topic(topic_name).describe()
+    partitions, config = TopicController(state.cluster).get_cluster_topic(topic_name).describe()
 
     click.echo(bold(f"Topic: {topic_name}"))
 
@@ -190,7 +228,7 @@ def get_offsets(state, topic_name):
 @click.argument("broker-id", required=True)
 @pass_state
 def describe_broker(state, broker_id):
-    broker = Broker(state.cluster, broker_id).describe()
+    broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(pretty(broker, break_lists=True))
 
 
@@ -211,9 +249,9 @@ def describe_consumergroup(state, consumer_id, verbose):
 @get.command("brokers")
 @pass_state
 def get_brokers(state):
-    brokers = state.cluster.brokers
+    brokers = Broker.get_all(state.cluster)
     for broker in brokers:
-        click.echo(f"{broker['id']}: {broker['host']}:{broker['port']}")
+        click.echo(f"{broker.broker_id}: {broker.host}:{broker.port}")
 
 
 @get.command("consumergroups")
@@ -316,7 +354,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_topic(PING_TOPIC)])
+            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
@@ -334,7 +372,7 @@ def ping(state, times, wait):
     except KeyboardInterrupt:
         pass
     finally:
-        topic_controller.delete_topic(topic_controller.get_topic(PING_TOPIC))
+        topic_controller.delete_topic(topic_controller.get_cluster_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas)/len(deltas)):.2f}/{max(deltas):.2f} ms")
+        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")

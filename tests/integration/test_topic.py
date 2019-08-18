@@ -1,23 +1,18 @@
 import pytest
 
 from esque.topic import Topic
+from esque.topic_controller import TopicController
 
 
 @pytest.mark.integration
-def test_offsets(filled_topic: Topic):
+def test_offsets(filled_topic: Topic, topic_controller: TopicController):
+    topic_controller.update_from_cluster(filled_topic)
     assert filled_topic.get_offsets() == {0: (0, 10)}
 
 
 @pytest.mark.integration
 def test_partitions(topic_object: Topic):
     assert topic_object.partitions == [0]
-
-
-@pytest.mark.integration
-def test_config_diff(changed_topic_object: Topic):
-    config_diff = changed_topic_object.config_diff()
-
-    assert config_diff.get("cleanup.policy") == ["delete", "compact"]
 
 
 @pytest.mark.integration

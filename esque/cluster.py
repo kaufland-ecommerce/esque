@@ -4,7 +4,7 @@ import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
-from esque.helpers import ensure_kafka_futures_done
+from esque.helpers import ensure_kafka_futures_done, unpack_confluent_config
 
 
 class Cluster:
@@ -20,6 +20,9 @@ class Cluster:
     def bootstrap_servers(self):
         return self._config.bootstrap_servers
 
+    def get_metadata(self):
+        return self.confluent_client.list_topics(timeout=1)
+
     @property
     def brokers(self):
         metadata = self.confluent_client.list_topics(timeout=1)
@@ -30,11 +33,8 @@ class Cluster:
 
     def retrieve_config(self, config_type: ConfigResource.Type, id):
         requested_resources = [ConfigResource(config_type, str(id))]
-
         futures = self.confluent_client.describe_configs(requested_resources)
-
         (old_resource, future), = futures.items()
-
         future = ensure_kafka_futures_done([future])
-
-        return future.result()
+        result = future.result()
+        return unpack_confluent_config(result)
