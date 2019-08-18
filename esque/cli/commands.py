@@ -11,18 +11,21 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval, HandleFileOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, pretty_topic_diffs, pretty_new_topic_configs, blue_bold, green_bold, \
-    pretty_unchanged_topic_configs
+from esque.cli.output import (
+    bold,
+    pretty,
+    pretty_topic_diffs,
+    pretty_new_topic_configs,
+    blue_bold,
+    green_bold,
+    pretty_unchanged_topic_configs,
+)
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
 from esque.topic import Topic
-from esque.errors import (
-    ConsumerGroupDoesNotExistException,
-    ContextNotDefinedException,
-    TopicAlreadyExistsException,
-)
+from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
 from esque.topic_controller import TopicController
 
 
@@ -104,7 +107,7 @@ def create_topic(state: State, topic_name: str):
 def edit_topic(state: State, topic_name: str):
     controller = TopicController(state.cluster)
     topic = TopicController(state.cluster).get_cluster_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml(only_editable=True), extension='.yml')
+    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
 
     # edit process can be aborted, ex. in vim via :q!
     if new_conf is None:
@@ -137,16 +140,21 @@ def apply(state: State, file: str):
 
     # Calculate changes
     to_create = [yaml_topic for yaml_topic in yaml_topics if yaml_topic.name not in cluster_topic_names]
-    to_edit = [yaml_topic for yaml_topic in yaml_topics if
-               yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic) != {}]
+    to_edit = [
+        yaml_topic
+        for yaml_topic in yaml_topics
+        if yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic) != {}
+    ]
     to_edit_diffs = {t.name: topic_controller.diff_with_cluster(t) for t in to_edit}
     to_ignore = [yaml_topic for yaml_topic in yaml_topics if yaml_topic not in to_create and yaml_topic not in to_edit]
 
     # Sanity check - the 3 groups of topics should be complete and have no overlap
-    assert set(to_create).isdisjoint(set(to_edit)) \
-           and set(to_create).isdisjoint(set(to_ignore)) \
-           and set(to_edit).isdisjoint(set(to_ignore)) \
-           and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
+    assert (
+        set(to_create).isdisjoint(set(to_edit))
+        and set(to_create).isdisjoint(set(to_ignore))
+        and set(to_edit).isdisjoint(set(to_ignore))
+        and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
+    )
 
     # Print diffs so the user can check
     click.echo(pretty_unchanged_topic_configs(to_ignore))
@@ -157,6 +165,12 @@ def apply(state: State, file: str):
     if len(to_edit) + len(to_create) == 0:
         click.echo("No changes detected, aborting")
         return
+
+    # Warn users when replication & num_partition changes are attempted
+    if len(to_edit) > 0:
+        click.echo(
+            "Notice: changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+        )
 
     # Get approval
     if not ensure_approval("Apply changes?", no_verify=state.no_verify):
@@ -188,9 +202,7 @@ def delete_topic(state: State, topic_name: str):
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
-    partitions, config = (
-        TopicController(state.cluster).get_cluster_topic(topic_name).describe()
-    )
+    partitions, config = TopicController(state.cluster).get_cluster_topic(topic_name).describe()
 
     click.echo(bold(f"Topic: {topic_name}"))
 
@@ -276,8 +288,7 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-        state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool,
-        keep_file: bool
+    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -321,7 +332,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
 
 
 def _consume_to_file(
-        working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
+    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
@@ -343,9 +354,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics(
-                [topic_controller.get_cluster_topic(PING_TOPIC)]
-            )
+            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 

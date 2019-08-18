@@ -7,9 +7,7 @@ from esque.resource import KafkaResource
 
 
 class Broker(KafkaResource):
-    def __init__(
-        self, cluster, *, broker_id: int = None, host: str = None, port: int = None
-    ):
+    def __init__(self, cluster, *, broker_id: int = None, host: str = None, port: int = None):
         self.cluster = cluster
         self.broker_id = broker_id
         self.host = host
@@ -27,9 +25,7 @@ class Broker(KafkaResource):
     def get_all(cls, cluster) -> List["Broker"]:
         metadata = cluster.get_metadata().brokers.values()
         brokers = [
-            cls.from_attributes(
-                cluster, broker_id=broker.id, host=broker.host, port=broker.port
-            )
+            cls.from_attributes(cluster, broker_id=broker.id, host=broker.host, port=broker.port)
             for broker in metadata
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
@@ -38,9 +34,4 @@ class Broker(KafkaResource):
         return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 
     def as_dict(self):
-        return {
-            "cluster": self.cluster,
-            "broker_id": self.broker_id,
-            "host": self.host,
-            "port": self.port,
-        }
+        return {"cluster": self.cluster, "broker_id": self.broker_id, "host": self.host, "port": self.port}

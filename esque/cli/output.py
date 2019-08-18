@@ -75,9 +75,9 @@ def get_value(unit: str, value: Any) -> str:
     if isinstance(value, str) and " -> " in value:
         values = value.split(" -> ")
         return (
-                click.style(get_value(unit, values[0]), fg="red")
-                + " -> "
-                + click.style(get_value(unit, values[1]), fg="green")
+            click.style(get_value(unit, values[0]), fg="red")
+            + " -> "
+            + click.style(get_value(unit, values[1]), fg="green")
         )
 
     if unit in CONVERSION_MAPPING:

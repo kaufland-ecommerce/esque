@@ -73,7 +73,6 @@ def changed_topic_object(cluster, topic):
     yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
-
 @pytest.fixture()
 def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
@@ -136,6 +135,7 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 def producer(test_config: Config):
     producer_config = test_config.create_confluent_config()
     yield Producer(producer_config)
+
 
 @pytest.fixture()
 def avro_producer(test_config: Config):

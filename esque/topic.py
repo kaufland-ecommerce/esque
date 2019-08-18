@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union, Any
+from typing import Dict, List, Tuple, Union
 
 import yaml
 
@@ -10,11 +10,11 @@ TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 
 class Topic(KafkaResource):
     def __init__(
-            self,
-            name: Union[str, bytes],
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None,
+        self,
+        name: Union[str, bytes],
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):

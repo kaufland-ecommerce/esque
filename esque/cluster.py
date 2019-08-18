@@ -22,7 +22,7 @@ class Cluster:
 
     def get_metadata(self):
         return self.confluent_client.list_topics(timeout=1)
-      
+
     @property
     def brokers(self):
         metadata = self.confluent_client.list_topics(timeout=1)
