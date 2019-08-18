@@ -114,23 +114,27 @@ def test_apply(topic_controller: TopicController, topic_id: str):
     # 1: topic creation
     path = save_yaml(topic_id, apply_conf)
     result = runner.invoke(apply, ["-f", path], input="Y\n")
-    assert result.exit_code == 0 and "Successfully created topics:" in result.output, \
+    assert result.exit_code == 0 and "Successfully applied changes" in result.output, \
         f"Calling apply failed, error: {result.output}"
 
     # 2: change cleanup policy to delete
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
     result = runner.invoke(apply, ["-f", path], input="Y\n")
-    assert result.exit_code == 0 and "Successfully changed topics:" in result.output, \
+    assert result.exit_code == 0 and "Successfully applied changes" in result.output, \
         f"Calling apply failed, error: {result.output}"
 
     # 3: add another topic and change the first one again
     apply_conf["topics"].append(topic_2)
     topic_1["config"]["cleanup.policy"] = "compact"
     path = save_yaml(topic_id, apply_conf)
-    result = runner.invoke(apply, ["-f", path], input="Y\nY\n")
-    assert result.exit_code == 0 and "Successfully changed topics:" in result.output \
-           and "Successfully created topics:" in result.output, \
+    result = runner.invoke(apply, ["-f", path], input="Y\n")
+    assert result.exit_code == 0 and "Successfully applied changes" in result.output, \
+        f"Calling apply failed, error: {result.output}"
+
+    # 4: no changes
+    result = runner.invoke(apply, ["-f", path])
+    assert result.exit_code == 0 and "No changes detected, aborting" in result.output, \
         f"Calling apply failed, error: {result.output}"
 
     # final: check results in the cluster to make sure they match
