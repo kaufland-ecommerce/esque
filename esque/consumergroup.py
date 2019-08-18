@@ -24,8 +24,7 @@ class ConsumerGroup:
         consumer_id = self.id.encode("UTF-8")
         if not self._pykafka_group_coordinator_instance:
             self._pykafka_group_coordinator_instance: pykafka.Broker = cast(
-                pykafka.Broker,
-                self.cluster.pykafka_client.cluster.get_group_coordinator(consumer_id),
+                pykafka.Broker, self.cluster.pykafka_client.cluster.get_group_coordinator(consumer_id)
             )
 
         return self._pykafka_group_coordinator_instance
@@ -40,10 +39,7 @@ class ConsumerGroup:
             topic_assignment = self._get_member_assignment(meta["members"])
 
             consumer_offsets = self.get_consumer_offsets(
-                self._pykafka_group_coordinator,
-                consumer_id,
-                topic_assignment,
-                verbose=verbose,
+                self._pykafka_group_coordinator, consumer_id, topic_assignment, verbose=verbose
             )
 
             return {
@@ -54,9 +50,7 @@ class ConsumerGroup:
             }
         raise ConsumerGroupDoesNotExistException()
 
-    def get_consumer_offsets(
-        self, group_coordinator, consumer_id, topic_assignment, verbose
-    ):
+    def get_consumer_offsets(self, group_coordinator, consumer_id, topic_assignment, verbose):
         consumer_offsets = self._unpack_offset_response(
             group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
         )
@@ -71,8 +65,7 @@ class ConsumerGroup:
                         "consumer_offset": consumer_offset,
                         "topic_low_watermark": topic_offsets[partition_id][0],
                         "topic_high_watermark": topic_offsets[partition_id][1],
-                        "consumer_lag": topic_offsets[partition_id][1]
-                        - consumer_offset,
+                        "consumer_lag": topic_offsets[partition_id][1] - consumer_offset,
                     }
             return consumer_offsets
         for topic in consumer_offsets.keys():
@@ -86,10 +79,7 @@ class ConsumerGroup:
             for partition_id, consumer_offset in consumer_offsets[topic].items():
                 current_offset = consumer_offset
                 old_min, old_max = new_consumer_offsets["consumer_offset"]
-                new_consumer_offsets["consumer_offset"] = (
-                    min(old_min, current_offset),
-                    max(old_max, current_offset),
-                )
+                new_consumer_offsets["consumer_offset"] = (min(old_min, current_offset), max(old_max, current_offset))
 
                 old_min, old_max = new_consumer_offsets["topic_low_watermark"]
                 new_consumer_offsets["topic_low_watermark"] = (
@@ -111,9 +101,7 @@ class ConsumerGroup:
 
             return new_consumer_offsets
 
-    def _get_member_assignment(
-        self, member_assignment: Dict[str, Any]
-    ) -> List[PartitionOffsetFetchRequest]:
+    def _get_member_assignment(self, member_assignment: Dict[str, Any]) -> List[PartitionOffsetFetchRequest]:
         """
         Creates a list of style [PartitionOffsetFetchRequest('topic', partition_id)]
         """
@@ -128,15 +116,12 @@ class ConsumerGroup:
 
         return {
             topic_name: {
-                partition_id: partition_data._asdict()["offset"]
-                for partition_id, partition_data in partitions.items()
+                partition_id: partition_data._asdict()["offset"] for partition_id, partition_data in partitions.items()
             }
             for topic_name, partitions in resp.topics.items()
         }
 
-    def _unpack_consumer_group_response(
-        self, resp: DescribeGroupResponse
-    ) -> Dict[str, Any]:
+    def _unpack_consumer_group_response(self, resp: DescribeGroupResponse) -> Dict[str, Any]:
         return {
             "group_id": resp.group_id,
             "protocol": resp.protocol,
@@ -150,9 +135,7 @@ class ConsumerGroup:
                     "client_host": member.client_host,
                     "member_metadata": {
                         # "version": member.member_metadata.version,
-                        "subscription": [
-                            topic for topic in member.member_metadata.topic_names
-                        ],
+                        "subscription": [topic for topic in member.member_metadata.topic_names],
                         # "client": member.member_metadata.user_data,
                     },
                     "member_assignment": {
@@ -176,13 +159,7 @@ class ConsumerGroupController:
         return ConsumerGroup(consumer_id, self.cluster)
 
     def list_consumer_groups(self) -> List[str]:
-        brokers: Dict[
-            int, pykafka.broker.Broker
-        ] = self.cluster.pykafka_client.cluster.brokers
+        brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers
         return list(
-            set(
-                group.decode("UTF-8")
-                for _, broker in brokers.items()
-                for group in broker.list_groups().groups
-            )
+            set(group.decode("UTF-8") for _, broker in brokers.items() for group in broker.list_groups().groups)
         )

@@ -20,6 +20,14 @@ class Cluster:
 
     def get_metadata(self):
         return self.confluent_client.list_topics(timeout=1)
+      
+    @property
+    def brokers(self):
+        metadata = self.confluent_client.list_topics(timeout=1)
+        return sorted(
+            [{"id": broker.id, "host": broker.host, "port": broker.port} for broker in metadata.brokers.values()],
+            key=operator.itemgetter("id"),
+        )
 
     def retrieve_config(self, config_type: ConfigResource.Type, id):
         requested_resources = [ConfigResource(config_type, str(id))]

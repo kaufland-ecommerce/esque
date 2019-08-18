@@ -2,8 +2,11 @@ from typing import Dict, List, Tuple, Union
 
 import yaml
 
-from esque.errors import raise_for_kafka_exception
+
 from esque.resource import KafkaResource
+from esque.cluster import Cluster
+from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
+from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after, unpack_confluent_config
 
 
 class Topic(KafkaResource):
@@ -20,9 +23,7 @@ class Topic(KafkaResource):
         self.name = name
 
         self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = (
-            replication_factor if replication_factor is not None else 1
-        )
+        self.replication_factor = replication_factor if replication_factor is not None else 1
         self.config = config if config is not None else {}
 
         self.low_watermark = None
@@ -47,6 +48,7 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
+
 
     def get_offsets(self) -> Dict[int, Tuple[int, int]]:
         """

@@ -2,12 +2,13 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
+from typing import Iterable, Tuple, Callable
 
 import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka.cimpl import TopicPartition
-from pykafka import Producer
+from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import TopicPartition, Producer
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
@@ -19,12 +20,7 @@ from esque.topic_controller import TopicController
 
 
 def pytest_addoption(parser):
-    parser.addoption(
-        "--integration",
-        action="store_true",
-        default=False,
-        help="run integration tests",
-    )
+    parser.addoption("--integration", action="store_true", default=False, help="run integration tests")
     parser.addoption(
         "--local",
         action="store_true",
@@ -77,26 +73,51 @@ def changed_topic_object(cluster, topic):
     yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
+
 @pytest.fixture()
-def topic(confluent_admin_client: AdminClient, topic_id: str) -> str:
-    """
-    Creates a kafka topic consisting of a random 5 character string.
+def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    for topic, _ in topic_factory(1, topic_id):
+        yield topic
 
-    :return: Topic (str)
-    """
-    future: Future = confluent_admin_client.create_topics(
-        [NewTopic(topic_id, num_partitions=1, replication_factor=1)]
-    )[topic_id]
-    while not future.done() or future.cancelled():
-        if future.result():
-            raise RuntimeError
-    confluent_admin_client.poll(timeout=1)
 
-    yield topic_id
+@pytest.fixture()
+def source_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
 
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    if topic_id in topics:
+
+@pytest.fixture()
+def target_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
+
+
+@pytest.fixture(params=[1, 10], ids=["num_partitions=1", "num_partitions=10"])
+def num_partitions(request) -> int:
+    return request.param
+
+
+@pytest.fixture()
+def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Iterable[Tuple[str, int]]]:
+    def factory(partitions: int, topic_id: str) -> Iterable[Tuple[str, int]]:
+        future: Future = confluent_admin_client.create_topics(
+            [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
+        )[topic_id]
+        while not future.done() or future.cancelled():
+            if future.result():
+                raise RuntimeError
+        confluent_admin_client.poll(timeout=1)
+
+        yield (topic_id, partitions)
+
         confluent_admin_client.delete_topics([topic_id]).popitem()
+
+    return factory
 
 
 @pytest.fixture()
@@ -120,14 +141,19 @@ def producer(topic_object: Topic, cluster: Cluster):
 
 
 @pytest.fixture()
+def avro_producer(test_config: Config):
+    producer_config = test_config.create_confluent_config()
+    producer_config.update({"schema.registry.url": Config().schema_registry})
+    yield AvroProducer(producer_config)
+
+
+@pytest.fixture()
 def consumergroup_controller(cluster: Cluster):
     yield ConsumerGroupController(cluster)
 
 
 @pytest.fixture()
-def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
-):
+def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
 
@@ -160,14 +186,14 @@ def consumer(topic_object: Topic, consumer_group):
 @pytest.fixture()
 def filled_topic(producer, topic_object):
     for _ in range(10):
-        producer.produce("".join(random.choices(ascii_letters, k=5)).encode("utf-8"))
+        random_value = "".join(random.choices(ascii_letters, k=5)).encode("utf-8")
+        producer.produce(topic=topic_object.name, key=random_value, value=random_value)
+        producer.flush()
     yield topic_object
 
 
 @pytest.fixture()
-def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
-):
+def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
         consumer.commit(msg, asynchronous=False)
