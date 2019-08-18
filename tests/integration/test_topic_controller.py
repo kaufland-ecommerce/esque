@@ -144,6 +144,29 @@ def test_apply(topic_controller: TopicController, topic_id: str):
             f"Topic configs don't match, diff is {topic_controller.diff_with_cluster(topic_from_conf)}"
 
 
+@pytest.mark.integration
+def test_apply_duplicate_names(topic_controller: TopicController, topic_id: str):
+    runner = CliRunner()
+    topic_name = f"apply_{topic_id}"
+    topic_1 = {
+        "name": topic_name,
+        "replication_factor": 1,
+        "num_partitions": 50,
+        "config": {
+            "cleanup.policy": "compact"
+        }
+    }
+    apply_conf = {
+        "topics": [topic_1, topic_1]
+    }
+
+    # having the same topic name twice in apply should raise an ValueError
+    path = save_yaml(topic_id, apply_conf)
+    result = runner.invoke(apply, ["-f", path], input="Y\n")
+    assert result.exit_code != 0 and isinstance(result.exception, ValueError), \
+        f"Calling apply should have failed"
+
+
 def save_yaml(fname: str, data: Dict[str, Any]) -> str:
     # this path name is in the gitignore so the temp files are not committed
     path = f"tests/test_samples/{fname}_apply.yaml"
