@@ -42,15 +42,17 @@ class Topic(KafkaResource):
             dict_object.get("config"),
         )
 
-    def as_dict(self) -> TopicDict:
+    def as_dict(self, only_editable=False) -> TopicDict:
+        if only_editable:
+            return {"config": self.config}
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
             "config": self.config,
         }
 
-    def to_yaml(self) -> str:
-        return yaml.dump(self.as_dict())
+    def to_yaml(self, only_editable=False) -> str:
+        return yaml.dump(self.as_dict(only_editable=only_editable))
 
     def from_yaml(self, data) -> None:
         new_values = yaml.safe_load(data)

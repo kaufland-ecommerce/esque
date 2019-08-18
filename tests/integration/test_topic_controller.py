@@ -1,3 +1,4 @@
+import json
 from typing import Dict, Any
 
 import confluent_kafka
@@ -6,7 +7,7 @@ import yaml
 from click.testing import CliRunner
 
 from esque.topic import Topic
-from esque.topic_controller import TopicController
+from esque.topic_controller import TopicController, AttributeDiff
 from esque.errors import KafkaException
 from esque.cli.commands import apply
 
@@ -87,6 +88,48 @@ def test_topic_object_works(topic_controller: TopicController, topic: str):
 
 
 @pytest.mark.integration
+def test_topic_diff(topic_controller: TopicController, topic_id: str):
+    default_delete_retention = '86400000'
+    topic_conf = {
+        "name": topic_id,
+        "replication_factor": 1,
+        "num_partitions": 50,
+        "config": {
+            "cleanup.policy": "compact"
+        }
+    }
+
+    conf = json.loads(json.dumps(topic_conf))
+    topic = Topic.from_dict(conf)
+    topic_controller.create_topics([topic])
+    assert topic_controller.diff_with_cluster(topic) == {}, "Diff on just created topic?!"
+
+    conf = json.loads(json.dumps(topic_conf))
+    conf["config"]["cleanup.policy"] = "delete"
+    topic = Topic.from_dict(conf)
+    diff = {"cleanup.policy": AttributeDiff("compact", "delete")}
+    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on cleanup.policy"
+
+    conf = json.loads(json.dumps(topic_conf))
+    conf["config"]["delete.retention.ms"] = 1500
+    topic = Topic.from_dict(conf)
+    diff = {"delete.retention.ms": AttributeDiff(default_delete_retention, '1500')}
+    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on delete.retention.ms"
+
+    # conf = json.loads(json.dumps(topic_conf))
+    # conf["num_partitions"] = 3
+    # topic = Topic.from_dict(conf)
+    # diff = {"num_partitions": AttributeDiff('50', '3')}
+    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on num_partitions"
+
+    # conf = json.loads(json.dumps(topic_conf))
+    # conf["replication_factor"] = 3
+    # topic = Topic.from_dict(conf)
+    # diff = {"replication_factor": AttributeDiff('1', '3')}
+    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on replication_factor"
+
+
+@pytest.mark.integration
 def test_apply(topic_controller: TopicController, topic_id: str):
     runner = CliRunner()
     topic_name = f"apply_{topic_id}"
@@ -136,6 +179,13 @@ def test_apply(topic_controller: TopicController, topic_id: str):
     result = runner.invoke(apply, ["-f", path])
     assert result.exit_code == 0 and "No changes detected, aborting" in result.output, \
         f"Calling apply failed, error: {result.output}"
+
+    # # 5: change partitions - this should fail
+    # topic_1["num_partitions"] = 3
+    # path = save_yaml(topic_id, apply_conf)
+    # result = runner.invoke(apply, ["-f", path], input="Y\n")
+    # assert result.exit_code != 0 and "Successfully applied changes" in result.output, \
+    #     f"Calling apply failed, error: {result.output}"
 
     # final: check results in the cluster to make sure they match
     for topic_conf in apply_conf["topics"]:
