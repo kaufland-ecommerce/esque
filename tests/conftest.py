@@ -133,12 +133,9 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(topic_object: Topic, cluster: Cluster):
-    # Send messages synchronously so we can be sure offset has been commited in tests.
-    yield Producer(
-        cluster.pykafka_client.cluster, topic_object._pykafka_topic, sync=True
-    )
-
+def producer(test_config: Config):
+    producer_config = test_config.create_confluent_config()
+    yield Producer(producer_config)
 
 @pytest.fixture()
 def avro_producer(test_config: Config):
