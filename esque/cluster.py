@@ -1,3 +1,5 @@
+import operator
+
 import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
