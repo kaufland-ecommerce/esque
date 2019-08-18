@@ -1,18 +1,20 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Any
 
 import yaml
 
 from esque.errors import raise_for_kafka_exception
 from esque.resource import KafkaResource
 
+TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
+
 
 class Topic(KafkaResource):
     def __init__(
-        self,
-        name: Union[str, bytes],
-        num_partitions: int = None,
-        replication_factor: int = None,
-        config: Dict[str, str] = None,
+            self,
+            name: Union[str, bytes],
+            num_partitions: int = None,
+            replication_factor: int = None,
+            config: Dict[str, str] = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):
@@ -31,7 +33,16 @@ class Topic(KafkaResource):
 
         self.is_only_local = True
 
-    def as_dict(self) -> Dict[str, Union[int, Dict[str, str]]]:
+    @classmethod
+    def from_dict(cls, dict_object: TopicDict) -> "Topic":
+        return cls(
+            dict_object.get("name"),
+            dict_object.get("num_partitions"),
+            dict_object.get("replication_factor"),
+            dict_object.get("config"),
+        )
+
+    def as_dict(self) -> TopicDict:
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
@@ -45,7 +56,6 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-
 
     def get_offsets(self) -> Dict[int, Tuple[int, int]]:
         """

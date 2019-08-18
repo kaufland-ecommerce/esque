@@ -19,7 +19,7 @@ class TopicController:
 
     @raise_for_kafka_exception
     def list_topics(
-        self, *, search_string: str = None, sort=True, hide_internal=True
+            self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True
     ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topic_results = self.cluster.confluent_client.list_topics().topics.values()

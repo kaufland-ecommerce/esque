@@ -75,9 +75,9 @@ def get_value(unit: str, value: Any) -> str:
     if isinstance(value, str) and " -> " in value:
         values = value.split(" -> ")
         return (
-            click.style(get_value(unit, values[0]), fg="red")
-            + " -> "
-            + click.style(get_value(unit, values[1]), fg="green")
+                click.style(get_value(unit, values[0]), fg="red")
+                + " -> "
+                + click.style(get_value(unit, values[1]), fg="green")
         )
 
     if unit in CONVERSION_MAPPING:
@@ -130,10 +130,10 @@ def pretty_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
             config_diff_attributes[attribute] = value[0] + " -> " + value[1]
         output.append({click.style(name, bold=True, fg="yellow"): {"Config Diff": config_diff_attributes}})
 
-    return pretty({"Topics to change": output})
+    return pretty({"Configuration changes": output})
 
 
-def get_output_new_topics(new_topics: List[Topic]) -> str:
+def pretty_new_topic_configs(new_topics: List[Topic]) -> str:
     new_topic_configs = []
     for topic in new_topics:
         new_topic_config = {
@@ -144,6 +144,19 @@ def get_output_new_topics(new_topics: List[Topic]) -> str:
         new_topic_configs.append({click.style(topic.name, bold=True, fg="green"): new_topic_config})
 
     return pretty({"New topics to create": new_topic_configs})
+
+
+def pretty_unchanged_topic_configs(new_topics: List[Topic]) -> str:
+    new_topic_configs = []
+    for topic in new_topics:
+        new_topic_config = {
+            "num_partitions: ": topic.num_partitions,
+            "replication_factor: ": topic.replication_factor,
+            "config": topic.config,
+        }
+        new_topic_configs.append({click.style(topic.name, bold=True, fg="blue"): new_topic_config})
+
+    return pretty({"No changes": new_topic_configs})
 
 
 def pretty_size(value: Any) -> str:
@@ -160,7 +173,7 @@ def pretty_size(value: Any) -> str:
     ]
     for sign, size in units:
         if value >= size:
-            return f"{pretty_float(value/size)} {sign}"
+            return f"{pretty_float(value / size)} {sign}"
 
 
 def bold(s: str) -> str:
@@ -184,7 +197,6 @@ STYLE_MAPPING = {
     "high_watermark": blue_bold,
     "member_id": bold,
 }
-
 
 CONVERSION_MAPPING = {
     "ms": pretty_duration,

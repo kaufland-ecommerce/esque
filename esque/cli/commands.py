@@ -11,7 +11,8 @@ from esque.__version__ import __version__
 from esque.broker import Broker
 from esque.cli.helpers import ensure_approval, HandleFileOnFinished
 from esque.cli.options import State, no_verify_option, pass_state
-from esque.cli.output import bold, pretty, pretty_topic_diffs, get_output_new_topics, blue_bold, green_bold
+from esque.cli.output import bold, pretty, pretty_topic_diffs, pretty_new_topic_configs, blue_bold, green_bold, \
+    pretty_unchanged_topic_configs
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID
@@ -23,7 +24,6 @@ from esque.errors import (
     TopicAlreadyExistsException,
 )
 from esque.topic_controller import TopicController
-
 
 
 @click.group(help="(Kafka-)esque.")
@@ -97,7 +97,6 @@ def create_topic(state: State, topic_name: str):
         )
 
 
-
 @edit.command("topic")
 @click.argument("topic-name", required=True)
 @pass_state
@@ -114,63 +113,56 @@ def edit_topic(state: State, topic_name: str):
 
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
+@no_verify_option
 @pass_state
 def apply(state: State, file: str):
+    # Get topic data based on the YAML
+    yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
+    yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
+    yaml_topic_names = [t.name for t in yaml_topics]
+    if not len(yaml_topic_names) == len(set(yaml_topic_names)):
+        raise ValueError("Duplicate topic names in the YAML!")
+
+    # Get topic data based on the cluster state
     topic_controller = TopicController(state.cluster)
-    yaml_data = yaml.safe_load(open(file))
-    topic_configs = yaml_data.get("topics")
-    new_topic_configs = []
-    for topic_config in topic_configs:
-        new_topic_configs.append(
-            Topic(
-                topic_config.get("name"),
-                topic_config.get("num_partitions"),
-                topic_config.get("replication_factor"),
-                topic_config.get("config"),
-            )
-        )
-    editable_topics = topic_controller.filter_existing_topics(new_topic_configs)
-    topics_to_be_changed = [
-        topic
-        for topic in editable_topics
-        if topic_controller.diff_with_cluster(topic) != {}
-    ]
-    topic_config_diffs = {
-        topic.name: topic_controller.diff_with_cluster(topic)
-        for topic in topics_to_be_changed
-    }
-    editable_topics = topic_controller.filter_existing_topics(topics)
-    topics_to_be_changed = [topic for topic in editable_topics if topic.config_diff() != {}]
-    topic_config_diffs = {topic.name: topic.config_diff() for topic in topics_to_be_changed}
+    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names))
+    cluster_topic_names = [t.name for t in cluster_topics]
 
-    if len(topic_config_diffs) > 0:
-        click.echo(pretty_topic_diffs(topic_config_diffs))
-        if ensure_approval("Are you sure to change configs?", no_verify=state.no_verify):
-            topic_controller.alter_configs(topics_to_be_changed)
-            to_change = [topic.name for topic in topics_to_be_changed]
-            click.echo(
-                click.style(
-                    pretty({"Successfully changed topics": to_change}), fg="green"
+    # Calculate changes
+    to_create = [yaml_topic for yaml_topic in yaml_topics if yaml_topic.name not in cluster_topic_names]
+    to_edit = [yaml_topic for yaml_topic in yaml_topics if
+               yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic) != {}]
+    to_edit_diffs = {t.name: topic_controller.diff_with_cluster(t) for t in to_edit}
+    to_ignore = [yaml_topic for yaml_topic in yaml_topics if yaml_topic not in to_create and yaml_topic not in to_edit]
 
-                )
-            )
-    else:
-        click.echo("No topics to edit.")
+    # Sanity check - the 3 groups of topics should be complete and have no overlap
+    assert set(to_create).isdisjoint(set(to_edit)) \
+           and set(to_create).isdisjoint(set(to_ignore)) \
+           and set(to_edit).isdisjoint(set(to_ignore)) \
+           and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
 
-    new_topics = [topic for topic in new_topic_configs if topic not in editable_topics]
-    if len(new_topics) > 0:
-        click.echo(get_output_new_topics(new_topics))
-        if ensure_approval("Are you sure to create the new topics?", no_verify=state.no_verify):
-            topic_controller.create_topics(new_topics)
-            to_create = [topic.name for topic in new_topics]
-            click.echo(
-                click.style(
-                    pretty({"Successfully created topics": to_create}), fg="green"
-                )
+    # Print diffs so the user can check
+    click.echo(pretty_unchanged_topic_configs(to_ignore))
+    click.echo(pretty_new_topic_configs(to_create))
+    click.echo(pretty_topic_diffs(to_edit_diffs))
 
-            )
-    else:
-        click.echo("No new topics to create.")
+    # Check for actionable changes
+    if len(to_edit) + len(to_create) == 0:
+        click.echo("No changes detected, aborting")
+        return
+
+    # Get approval
+    if not ensure_approval("Apply changes?", no_verify=state.no_verify):
+        click.echo("Cancelling changes")
+        return
+
+    # apply changes
+    topic_controller.create_topics(to_create)
+    topic_controller.alter_configs(to_edit)
+
+    # output confirmation
+    changes = {"ignored": len(to_ignore), "created": len(to_create), "changed": len(to_edit)}
+    click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
 
 
 @delete.command("topic")
@@ -277,7 +269,8 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
+        state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool,
+        keep_file: bool
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -321,7 +314,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
 
 
 def _consume_to_file(
-    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
+        working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
@@ -366,4 +359,4 @@ def ping(state, times, wait):
         topic_controller.delete_topic(topic_controller.get_cluster_topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas)/len(deltas)):.2f}/{max(deltas):.2f} ms")
+        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
