@@ -104,6 +104,12 @@ def edit_topic(state: State, topic_name: str):
     controller = TopicController(state.cluster)
     topic = TopicController(state.cluster).get_cluster_topic(topic_name)
     new_conf = click.edit(topic.to_yaml(only_editable=True), extension='.yml')
+
+    # edit process can be aborted, ex. in vim via :q!
+    if new_conf is None:
+        click.echo("Change aborted")
+        return
+
     topic.from_yaml(new_conf)
     diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
     click.echo(diff)
