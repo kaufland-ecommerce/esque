@@ -90,11 +90,12 @@ def ctx(state, context):
 @no_verify_option
 @pass_state
 def create_topic(state: State, topic_name: str):
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller = TopicController(state.cluster)
-        TopicController(state.cluster).create_topics(
-            [(topic_controller.get_cluster_topic(topic_name))]
-        )
+    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
+        click.echo("Aborted")
+        return
+
+    topic_controller = TopicController(state.cluster)
+    topic_controller.create_topics([Topic(topic_name)])
 
 
 @edit.command("topic")

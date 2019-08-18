@@ -21,8 +21,8 @@ class Topic(KafkaResource):
             name = name.decode("ascii")
         self.name = name
 
-        self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = replication_factor if replication_factor is not None else 1
+        self.num_partitions = num_partitions
+        self.replication_factor = replication_factor
         self.config = config if config is not None else {}
 
         self.low_watermark = None

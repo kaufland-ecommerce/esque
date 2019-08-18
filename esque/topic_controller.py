@@ -11,6 +11,9 @@ from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
 from esque.topic import Topic
 
 AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
+# TODO get this from the cluster defaults
+DEFAULT_PARTITIONS = 1
+DEFAULT_REPLICATION = 1
 
 
 class TopicController:
@@ -48,11 +51,13 @@ class TopicController:
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
+            partitions = topic.num_partitions if topic.num_partitions is not None else DEFAULT_PARTITIONS
+            replicas = topic.replication_factor if topic.replication_factor is not None else DEFAULT_REPLICATION
             new_topic = NewTopic(
                 topic.name,
-                num_partitions=topic.num_partitions,
-                replication_factor=topic.replication_factor,
-                config=topic.config,
+                num_partitions=partitions,
+                replication_factor=replicas,
+                config=topic.config
             )
             future_list = self.cluster.confluent_client.create_topics([new_topic])
             ensure_kafka_futures_done(list(future_list.values()))
