@@ -48,15 +48,15 @@ def test_alter_topic_config_works(topic_controller: TopicController, topic_id: s
 
     topic_controller.create_topics([initial_topic])
     topic_controller.update_from_cluster(initial_topic)
-    replicas, config = initial_topic.describe()
-    assert config.get("Config").get("cleanup.policy") == "delete"
+    config = initial_topic.config
+    assert config.get("cleanup.policy") == "delete"
     change_topic = Topic(topic_id, config={"cleanup.policy": "compact"})
     topic_controller.alter_configs([change_topic])
     topic_controller.update_from_cluster(change_topic)
     after_changes_applied_topic = topic_controller.get_cluster_topic(topic_id)
 
-    replicas, final_config = after_changes_applied_topic.describe()
-    assert final_config.get("Config").get("cleanup.policy") == "compact"
+    final_config = after_changes_applied_topic.config
+    assert final_config.get("cleanup.policy") == "compact"
 
 
 @pytest.mark.integration

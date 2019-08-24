@@ -150,10 +150,10 @@ def apply(state: State, file: str):
 
     # Sanity check - the 3 groups of topics should be complete and have no overlap
     assert (
-        set(to_create).isdisjoint(set(to_edit))
-        and set(to_create).isdisjoint(set(to_ignore))
-        and set(to_edit).isdisjoint(set(to_ignore))
-        and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
+            set(to_create).isdisjoint(set(to_edit))
+            and set(to_create).isdisjoint(set(to_ignore))
+            and set(to_edit).isdisjoint(set(to_ignore))
+            and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
     )
 
     # Print diffs so the user can check
@@ -202,12 +202,14 @@ def delete_topic(state: State, topic_name: str):
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
-    partitions, config = TopicController(state.cluster).get_cluster_topic(topic_name).describe()
+    topic = TopicController(state.cluster).get_cluster_topic(topic_name)
+    partitions = topic.get_partitions()
+    config = {"Config": topic.config}
 
     click.echo(bold(f"Topic: {topic_name}"))
 
-    for idx, partition in enumerate(partitions):
-        click.echo(pretty(partition, break_lists=True))
+    for partition in partitions:
+        click.echo(pretty({f"Partition {partition['id']}": partition}, break_lists=True))
 
     click.echo(pretty(config))
 
@@ -288,7 +290,8 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
+        state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool,
+        keep_file: bool
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -332,7 +335,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
 
 
 def _consume_to_file(
-    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
+        working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)

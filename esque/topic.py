@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Any
 
 import yaml
 
@@ -79,25 +79,25 @@ class Topic(KafkaResource):
         }
 
     @raise_for_kafka_exception
-    def describe(self):
-        assert not self.is_only_local, "Need to update topic before describing"
+    def get_partitions(self) -> List[Dict[str, Any]]:
+        assert not self.is_only_local, "Need to update topic before describing partitions"
 
         offsets = self.get_offsets()
-        replicas = [
+        partitions = [
             {
-                f"Partition {partition}": {
-                    "low_watermark": offsets[int(partition)][0],
-                    "high_watermark": offsets[int(partition)][1],
-                    "partition_isrs": partition_meta.isrs,
-                    "partition_leader": partition_meta.leader,
-                    "partition_replicas": partition_meta.replicas,
-                }
+                "id": partition,
+                "low_watermark": offsets[int(partition)][0],
+                "high_watermark": offsets[int(partition)][1],
+                "partition_isrs": partition_meta.isrs,
+                "partition_leader": partition_meta.leader,
+                "partition_replicas": partition_meta.replicas,
+
             }
             for t in self._confluent_topic.values()
             for partition, partition_meta in t.partitions.items()
         ]
+        return partitions
 
-        return replicas, {"Config": self.config}
 
     def __lt__(self, other):
         if self.name < other.name:

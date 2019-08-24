@@ -36,14 +36,6 @@ class TopicController:
         return topics
 
     @raise_for_kafka_exception
-    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
-        # TODO this function should be merged into list topics, only used by apply
-        self.cluster.confluent_client.poll(timeout=1)
-        confluent_topics = self.cluster.confluent_client.list_topics().topics
-        existing_topic_names = [t.topic for t in confluent_topics.values()]
-        return [topic for topic in topics if topic.name in existing_topic_names]
-
-    @raise_for_kafka_exception
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
