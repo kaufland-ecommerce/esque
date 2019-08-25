@@ -203,13 +203,12 @@ def delete_topic(state: State, topic_name: str):
 @pass_state
 def describe_topic(state, topic_name):
     topic = TopicController(state.cluster).get_cluster_topic(topic_name)
-    partitions = topic.get_partitions()
     config = {"Config": topic.config}
 
     click.echo(bold(f"Topic: {topic_name}"))
 
-    for partition in partitions:
-        click.echo(pretty({f"Partition {partition['id']}": partition}, break_lists=True))
+    for partition in topic.partitions:
+        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
 
     click.echo(pretty(config))
 
@@ -221,7 +220,7 @@ def get_offsets(state, topic_name):
     # TODO: Gathering of all offsets takes super long
     topics = TopicController(state.cluster).list_topics(search_string=topic_name)
 
-    offsets = {topic.name: max([v for v in topic.get_offsets().values()]) for topic in topics}
+    offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
 
     click.echo(pretty(offsets))
 

@@ -57,17 +57,17 @@ class ConsumerGroup:
 
         if verbose:
             for topic in consumer_offsets.keys():
-                topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
+                topic_offsets = self.topic_controller.get_cluster_topic(topic).offsets
                 for partition_id, consumer_offset in consumer_offsets[topic].items():
                     consumer_offsets[topic][partition_id] = {
                         "consumer_offset": consumer_offset,
-                        "topic_low_watermark": topic_offsets[partition_id][0],
-                        "topic_high_watermark": topic_offsets[partition_id][1],
-                        "consumer_lag": topic_offsets[partition_id][1] - consumer_offset,
+                        "topic_low_watermark": topic_offsets[partition_id].low,
+                        "topic_high_watermark": topic_offsets[partition_id].high,
+                        "consumer_lag": topic_offsets[partition_id].high - consumer_offset,
                     }
             return consumer_offsets
         for topic in consumer_offsets.keys():
-            topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
+            topic_offsets = self.topic_controller.get_cluster_topic(topic).offsets
             new_consumer_offsets = {
                 "consumer_offset": (float("inf"), float("-inf")),
                 "topic_low_watermark": (float("inf"), float("-inf")),
@@ -81,20 +81,20 @@ class ConsumerGroup:
 
                 old_min, old_max = new_consumer_offsets["topic_low_watermark"]
                 new_consumer_offsets["topic_low_watermark"] = (
-                    min(old_min, topic_offsets[partition_id][0]),
-                    max(old_max, topic_offsets[partition_id][0]),
+                    min(old_min, topic_offsets[partition_id].low),
+                    max(old_max, topic_offsets[partition_id].low),
                 )
 
                 old_min, old_max = new_consumer_offsets["topic_high_watermark"]
                 new_consumer_offsets["topic_high_watermark"] = (
-                    min(old_min, topic_offsets[partition_id][1]),
-                    max(old_max, topic_offsets[partition_id][1]),
+                    min(old_min, topic_offsets[partition_id].high),
+                    max(old_max, topic_offsets[partition_id].high),
                 )
 
                 old_min, old_max = new_consumer_offsets["consumer_lag"]
                 new_consumer_offsets["consumer_lag"] = (
-                    min(old_min, topic_offsets[partition_id][1] - current_offset),
-                    max(old_max, topic_offsets[partition_id][1] - current_offset),
+                    min(old_min, topic_offsets[partition_id].high - current_offset),
+                    max(old_max, topic_offsets[partition_id].high - current_offset),
                 )
 
             return new_consumer_offsets

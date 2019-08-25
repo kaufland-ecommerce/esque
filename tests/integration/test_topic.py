@@ -1,13 +1,13 @@
 import pytest
 
-from esque.topic import Topic
+from esque.topic import Topic, Watermark
 from esque.topic_controller import TopicController
 
 
 @pytest.mark.integration
 def test_offsets(filled_topic: Topic, topic_controller: TopicController):
     topic_controller.update_from_cluster(filled_topic)
-    assert filled_topic.get_offsets() == {0: (0, 10)}
+    assert filled_topic.offsets == {0: Watermark(0, 10)}
 
 
 @pytest.mark.integration
