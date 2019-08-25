@@ -12,6 +12,6 @@ def test_offsets(filled_topic: Topic, topic_controller: TopicController):
 
 @pytest.mark.integration
 def test_partitions(topic_object: Topic):
-    assert topic_object.partitions == [0]
+    assert [p['partition_id'] for p in topic_object.partitions] == [0]
 
 

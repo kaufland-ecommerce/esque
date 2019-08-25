@@ -1,20 +1,52 @@
-from typing import Dict, List, Tuple, Union, Any
+from typing import Dict, List, Tuple, Union, Any, Optional
 
 import yaml
+from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.errors import raise_for_kafka_exception
 from esque.resource import KafkaResource
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
+PartitionInfo = Dict[int, OffsetPartitionResponse]
+
+
+class Partition(KafkaResource):
+    def as_dict(self):
+        return {
+            "partition_id": self.partition_id,
+            "low_watermark": self.low_watermark,
+            "high_watermark": self.high_watermark,
+            "partition_isrs": self.partition_isrs,
+            "partition_leader": self.partition_leader,
+            "partition_replicas": self.partition_replicas
+
+        }
+
+    def __init__(
+            self,
+            partition_id: int,
+            low_watermark: int,
+            high_watermark: int,
+            partition_isrs,
+            partition_leader,
+            partition_replicas
+    ):
+        self.partition_id = partition_id
+        self.low_watermark = low_watermark
+        self.high_watermark = high_watermark
+        self.partition_isrs = partition_isrs
+        self.partition_leader = partition_leader
+        self.partition_replicas = partition_replicas
 
 
 class Topic(KafkaResource):
     def __init__(
-        self,
-        name: Union[str, bytes],
-        num_partitions: int = None,
-        replication_factor: int = None,
-        config: Dict[str, str] = None,
+            self,
+            name: Union[str,
+                        bytes],
+            num_partitions: int = None,
+            replication_factor: int = None,
+            config: Dict[str, str] = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):
@@ -25,13 +57,16 @@ class Topic(KafkaResource):
         self.replication_factor = replication_factor
         self.config = config if config is not None else {}
 
-        self.low_watermark = None
-        self.high_watermark = None
-        self.partitions = None
+        self.__partitions: Optional[List[Dict[str, Any]]] = None
         self._pykafka_topic = None
         self._confluent_topic = None
 
         self.is_only_local = True
+
+    @property
+    def partitions(self):
+        assert not self.is_only_local, "Need to update topic before updating partitions"
+        return self.__partitions
 
     @classmethod
     def from_dict(cls, dict_object: TopicDict) -> "Topic":
@@ -66,38 +101,32 @@ class Topic(KafkaResource):
 
         assert not self.is_only_local, "Need to update topic before describing offsets"
 
-        partitions: List[int] = self.partitions
-        low_watermark_offsets = self.low_watermark
-        high_watermark_offsets = self.high_watermark
-
         return {
-            partition_id: (
-                int(low_watermark_offsets[partition_id][0][0]),
-                int(high_watermark_offsets[partition_id][0][0]),
+            partition["partition_id"]: (
+                partition["low_watermark"],
+                partition["high_watermark"]
             )
-            for partition_id in partitions
+            for partition in self.partitions
         }
 
     @raise_for_kafka_exception
-    def get_partitions(self) -> List[Dict[str, Any]]:
-        assert not self.is_only_local, "Need to update topic before describing partitions"
+    def update_partitions(self, low_watermark: PartitionInfo, high_watermark: PartitionInfo):
 
-        offsets = self.get_offsets()
-        partitions = [
-            {
-                "id": partition,
-                "low_watermark": offsets[int(partition)][0],
-                "high_watermark": offsets[int(partition)][1],
-                "partition_isrs": partition_meta.isrs,
-                "partition_leader": partition_meta.leader,
-                "partition_replicas": partition_meta.replicas,
+        partitions = []
+        for t in self._confluent_topic.values():
+            for partition_id, partition_meta in t.partitions.items():
+                partition = {
+                    "partition_id": partition_id,
+                    "low_watermark": int(low_watermark[partition_id].offset[0]),
+                    "high_watermark": int(high_watermark[partition_id].offset[0]),
+                    "partition_isrs": partition_meta.isrs,
+                    "partition_leader": partition_meta.leader,
+                    "partition_replicas": partition_meta.replicas,
 
-            }
-            for t in self._confluent_topic.values()
-            for partition, partition_meta in t.partitions.items()
-        ]
-        return partitions
+                }
+                partitions.append(partition)
 
+        self.__partitions = partitions
 
     def __lt__(self, other):
         if self.name < other.name:
