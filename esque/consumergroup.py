@@ -31,26 +31,25 @@ class ConsumerGroup:
 
     def describe(self, *, verbose=False):
         consumer_id = self.id.encode("UTF-8")
-        if consumer_id in self._pykafka_group_coordinator.list_groups().groups:
-            resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
-            assert len(resp.groups) == 1
+        if consumer_id not in self._pykafka_group_coordinator.list_groups().groups:
+            raise ConsumerGroupDoesNotExistException()
 
-            meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
-            topic_assignment = self._get_member_assignment(meta["members"])
+        resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
+        assert len(resp.groups) == 1
 
-            consumer_offsets = self.get_consumer_offsets(
-                self._pykafka_group_coordinator, consumer_id, topic_assignment, verbose=verbose
-            )
+        meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
+        consumer_offsets = self._get_consumer_offsets(
+            self._pykafka_group_coordinator, consumer_id, verbose=verbose
+        )
 
-            return {
-                "group_id": consumer_id,
-                "group_coordinator": self._pykafka_group_coordinator.host,
-                "offsets": consumer_offsets,
-                "meta": meta,
-            }
-        raise ConsumerGroupDoesNotExistException()
+        return {
+            "group_id": consumer_id,
+            "group_coordinator": self._pykafka_group_coordinator.host,
+            "offsets": consumer_offsets,
+            "meta": meta,
+        }
 
-    def get_consumer_offsets(self, group_coordinator, consumer_id, topic_assignment, verbose):
+    def _get_consumer_offsets(self, group_coordinator, consumer_id, verbose: bool):
         consumer_offsets = self._unpack_offset_response(
             group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
         )

@@ -73,9 +73,9 @@ class TopicController:
             topic._confluent_topic = self.cluster.confluent_client.list_topics(topic=topic.name, timeout=10).topics
 
         # TODO put the topic instances into a cache of this class
-        low_watermark = topic._pykafka_topic.earliest_available_offsets()
-        high_watermark = topic._pykafka_topic.latest_available_offsets()
-        topic.update_partitions(low_watermark, high_watermark)
+        low_watermarks = topic._pykafka_topic.earliest_available_offsets()
+        high_watermarks = topic._pykafka_topic.latest_available_offsets()
+        topic.update_partitions(low_watermarks, high_watermarks)
 
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
         topic.is_only_local = False

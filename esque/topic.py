@@ -26,7 +26,7 @@ class Partition(KafkaResource):
             partition_replicas
     ):
         self.partition_id = partition_id
-        self.watermark = Watermark(low_watermark, high_watermark)
+        self.watermark = Watermark(high_watermark, low_watermark)
         self.partition_isrs = partition_isrs
         self.partition_leader = partition_leader
         self.partition_replicas = partition_replicas
@@ -56,6 +56,7 @@ class Topic(KafkaResource):
             name = name.decode("ascii")
         self.name = name
 
+        # TODO remove those two, replace with the properties below
         self.num_partitions = num_partitions
         self.replication_factor = replication_factor
         self.config = config if config is not None else {}
@@ -66,11 +67,34 @@ class Topic(KafkaResource):
 
         self.is_only_local = True
 
+    # properties
     @property
     def partitions(self) -> List[Partition]:
         assert not self.is_only_local, "Need to update topic before updating partitions"
         return self._partitions
 
+    @property
+    def partition_amount(self) -> int:
+        return len(self.partitions)
+
+    @property
+    def replication(self) -> int:
+        reps = set(p.partition_replicas for p in self.partitions)
+        if len(reps) != 1:
+            raise ValueError(f"Topic partitions have different replication factors! {reps}")
+        return reps.pop()
+
+    @property
+    def offsets(self) -> Dict[int, Watermark]:
+        """
+        Returns the low and high watermark for each partition in a topic
+        """
+        return {
+            partition.partition_id: partition.watermark
+            for partition in self.partitions
+        }
+
+    # conversions and factories
     @classmethod
     def from_dict(cls, dict_object: TopicDict) -> "Topic":
         return cls(
@@ -97,19 +121,8 @@ class Topic(KafkaResource):
         for attr, value in new_values.items():
             setattr(self, attr, value)
 
-    @property
-    def offsets(self) -> Dict[int, Watermark]:
-        """
-        Returns the low and high watermark for each partition in a topic
-        """
 
-        assert not self.is_only_local, "Need to update topic before describing offsets"
-
-        return {
-            partition.partition_id: partition.watermark
-            for partition in self.partitions
-        }
-
+    # update hook (TODO move to topic controller/factory?)
     @raise_for_kafka_exception
     def update_partitions(self, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo):
 
@@ -128,8 +141,12 @@ class Topic(KafkaResource):
 
         self._partitions = partitions
 
+    # object behaviour
     def __lt__(self, other: "Topic"):
         return self.name < other.name
 
     def __eq__(self, other: "Topic"):
         return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
