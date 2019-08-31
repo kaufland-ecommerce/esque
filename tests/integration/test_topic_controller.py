@@ -14,7 +14,7 @@ from esque.cli.commands import apply
 
 @pytest.fixture()
 def topic_controller(cluster):
-    yield TopicController(cluster)
+    yield cluster.topic_controller
 
 
 @pytest.mark.integration

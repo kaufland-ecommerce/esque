@@ -6,8 +6,6 @@ from pykafka.protocol.admin import DescribeGroupResponse
 
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
-from esque.topic_controller import TopicController
-
 
 # TODO: Refactor this shit hole
 
@@ -17,7 +15,7 @@ class ConsumerGroup:
         self.id = id
         self.cluster = cluster
         self._pykafka_group_coordinator_instance: Optional[pykafka.Broker] = None
-        self.topic_controller = TopicController(self.cluster)
+        self.topic_controller = cluster.topic_controller
 
     @property
     def _pykafka_group_coordinator(self) -> pykafka.Broker:
