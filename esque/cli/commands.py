@@ -298,7 +298,7 @@ def transfer(
     state.config.context_switch(from_context)
 
     with HandleFileOnFinished(base_dir, keep_file) as working_dir:
-        number_consumed_messages = _consume_to_file(working_dir, topic, group_id, from_context, numbers, avro, last)
+        number_consumed_messages = _consume_to_files(working_dir, topic, group_id, from_context, numbers, avro, last)
 
         if number_consumed_messages == 0:
             click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
@@ -311,10 +311,21 @@ def transfer(
             return
 
         state.config.context_switch(to_context)
-        _produce_from_file(topic, to_context, working_dir, avro)
+        _produce_from_files(topic, to_context, working_dir, avro)
 
 
-def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, avro: bool):
+@esque.command("produce", help="Produce messages from directory based on output from transfer command")
+@click.argument("topic", required=True)
+@click.option(
+    "-d", "--directory", help="Sets the directory that contains Kafka messages", type=click.STRING, required=True
+)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@pass_state
+def produce(state: State, topic: str, directory: str, avro: bool):
+    _produce_from_files(topic, state.config.current_context, Path(directory), avro)
+
+
+def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, avro: bool):
     if avro:
         producer = AvroFileProducer(working_dir)
     else:
@@ -331,7 +342,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
     )
 
 
-def _consume_to_file(
+def _consume_to_files(
     working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
