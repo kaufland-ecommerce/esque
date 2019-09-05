@@ -48,7 +48,9 @@ matrix:
   - name: 'Test install'
     python: 3.7
     env: []
-    before_install: []
+    before_install:
+      - mkdir -p ~/.esque
+      - touch ~/.esque/esque.cfg
     install: []
     script:
       - python setup.py sdist
@@ -62,10 +64,12 @@ matrix:
       - pip install devpi-server devpi "pluggy<1,>=0.12.0"
       - devpi-server --serverdir=/tmp/devpi --init
       - devpi-server --serverdir=/tmp/devpi --start
+      - scripts/wait-for-it.sh localhost:3141 -t 60
       - devpi use http://localhost:3141
       - devpi login root --password=
       - devpi index -c root/stable bases=root/pypi volatile=True
-      - scripts/wait-for-it.sh localhost:3141 -t 60
+      - mkdir -p ~/.esque
+      - touch ~/.esque/esque.cfg
     install:
       - pip install twine
     script:
@@ -74,8 +78,6 @@ matrix:
       - python setup.py sdist
       - twine upload --repository-url http://localhost:3141/root/stable/ dist/esque-*.tar.gz --user root --password ''
       - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
-      - mkdir -p ~/.esque
-      - touch ~/.esque/esque.cfg
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
