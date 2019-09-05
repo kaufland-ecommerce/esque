@@ -112,17 +112,17 @@ def test_topic_diff(topic_controller: TopicController, topic_id: str):
     diff = {"delete.retention.ms": AttributeDiff(default_delete_retention, "1500")}
     assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on delete.retention.ms"
 
-    # conf = json.loads(json.dumps(topic_conf))
-    # conf["num_partitions"] = 3
-    # topic = Topic.from_dict(conf)
-    # diff = {"num_partitions": AttributeDiff('50', '3')}
-    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on num_partitions"
+    conf = json.loads(json.dumps(topic_conf))
+    conf["num_partitions"] = 3
+    topic = Topic.from_dict(conf)
+    diff = {"num_partitions": AttributeDiff(50, 3)}
+    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on num_partitions"
 
-    # conf = json.loads(json.dumps(topic_conf))
-    # conf["replication_factor"] = 3
-    # topic = Topic.from_dict(conf)
-    # diff = {"replication_factor": AttributeDiff('1', '3')}
-    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on replication_factor"
+    conf = json.loads(json.dumps(topic_conf))
+    conf["replication_factor"] = 3
+    topic = Topic.from_dict(conf)
+    diff = {"replication_factor": AttributeDiff(1, 3)}
+    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on replication_factor"
 
 
 @pytest.mark.integration
