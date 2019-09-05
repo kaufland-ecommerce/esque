@@ -75,7 +75,7 @@ matrix:
       - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
       - twine upload --repository-url http://localhost:3141/root/stable/ dist/esque-*.tar.gz --user root --password ''
-      - http://localhost:3141/root/stable/ esque==${VERSION}
+      - pip install -i http://localhost:3141/root/stable/ esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
