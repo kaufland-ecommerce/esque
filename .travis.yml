@@ -60,15 +60,22 @@ matrix:
       # - type = pull_request
     env:
       - secure: "znXxvfZqJEMKlu1f78uqvdnZh9y0GAzgPbJK5mBiyQxgIAooELcQnyot811fuQ35dwv5WJv19XeyosJPPVZldUmJMZmfLOa+cxBAWonVpNYNdY6iHk8Yyeoy8V43tc8fGlyG90wiw3h3Phefb9arXPCWZTNrrFSDZZGdU8/4isxLvXUENpQlBXsmi91Q755VHIyuNm9JqpAZk5eLatiE/U35SIncuPSZVtC1B1ZIJ0Bhkf9aVNNusWdeXe2B6c2tTI/rWfFDJfHUPswE+tN2Bw04uCJz7CZDjv8gZKPklNK8noeeZGNsE4X0VFnbKBVUjTWQUPpEuIzQ6Zng/ajlSP7+OhBBLMBsHutP96FwlwT7WqU4V/nK7CajU0B+ZVM8TkEvJwxJDt3+26hc/WzyxqXqNR2qcd70vG6SvGC6JosYEZxOzxmHMYWo5Aff+HMq5Is2NrI6x2kAGJEQnGfpg6S0LGBVrye8i1vzuunZGiT0oVgae5PCt+NZrJq4JFFbkV12NcPg8agNU+LOE9fd2YZCcM9ciGr09vCPgV3kID6k5pK92Lq1mVUBWqAdYsEASbUrgHOMcebtBFoMXIzo4z970DmVFeqdHX/QC1Ofp9+JROQiI/6/6UqIme5TWyTsVLrD76lP5oYD4l5xXj5VFpxCPZjaayvuNIn/eDj1/Dc="
-    before_install: []
+    before_install:
+      - pip install devpi-server devpi
+      - devpi-server --serverdir=/tmp/devpi --init
+      - devpi-server --serverdir=/tmp/devpi  --root-passwd=root --restrict-modify=root --start
+      - devpi use http://localhost:3141
+      - devpi login root password=root
+      - devpi index -c packages/stable
+      - scripts/wait-for-it.sh localhost:3141 -t 60
     install:
       - pip install twine
     script:
       - export VERSION=$(date +"%s")
       - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
-      - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
-      - timeout 300 bash -c 'while [ $? -ne 0 ]; do pip install --no-cache-dir -i https://test.pypi.org/simple esque==${VERSION}; done'
+      - twine upload --repository-url http://localhost:3141/packages/stable/ dist/esque-*.tar.gz
+      - http://localhost:3141/packages/stable/ esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
