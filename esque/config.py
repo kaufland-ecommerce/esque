@@ -86,6 +86,16 @@ class Config:
             return [f"{host_name}.{self.bootstrap_domain}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
         return [f"{host_name}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
 
+    @property
+    def default_partitions(self) -> int:
+        config_dict = self.current_context_dict
+        return int(config_dict["default_partitions"])
+
+    @property
+    def default_replication_factor(self) -> int:
+        config_dict = self.current_context_dict
+        return int(config_dict["default_replication_factor"])
+
     def context_switch(self, context: str):
         click.echo(f"Switched to context: {context}")
         if context not in self.available_contexts:

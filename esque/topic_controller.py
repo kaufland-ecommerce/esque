@@ -1,24 +1,25 @@
 import re
 from collections import namedtuple
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
 
-from esque.cluster import Cluster
+from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
 from esque.topic import Topic
 
+if TYPE_CHECKING:
+    from esque.cluster import Cluster
+
 AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
-# TODO get this from the cluster defaults
-DEFAULT_PARTITIONS = 1
-DEFAULT_REPLICATION = 1
 
 
 class TopicController:
-    def __init__(self, cluster: Cluster):
-        self.cluster: Cluster = cluster
+    def __init__(self, cluster: "Cluster", config: Config):
+        self.cluster: "Cluster" = cluster
+        self.config = config
 
     @raise_for_kafka_exception
     def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
@@ -36,19 +37,15 @@ class TopicController:
         return topics
 
     @raise_for_kafka_exception
-    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
-        # TODO this function should be merged into list topics, only used by apply
-        self.cluster.confluent_client.poll(timeout=1)
-        confluent_topics = self.cluster.confluent_client.list_topics().topics
-        existing_topic_names = [t.topic for t in confluent_topics.values()]
-        return [topic for topic in topics if topic.name in existing_topic_names]
-
-    @raise_for_kafka_exception
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
-            partitions = topic.num_partitions if topic.num_partitions is not None else DEFAULT_PARTITIONS
-            replicas = topic.replication_factor if topic.replication_factor is not None else DEFAULT_REPLICATION
+            partitions = topic.num_partitions if topic.num_partitions is not None else self.config.default_partitions
+            replicas = (
+                topic.replication_factor
+                if topic.replication_factor is not None
+                else self.config.default_replication_factor
+            )
             new_topic = NewTopic(
                 topic.name, num_partitions=partitions, replication_factor=replicas, config=topic.config
             )
@@ -81,9 +78,10 @@ class TopicController:
             topic._confluent_topic = self.cluster.confluent_client.list_topics(topic=topic.name, timeout=10).topics
 
         # TODO put the topic instances into a cache of this class
-        topic.low_watermark = topic._pykafka_topic.earliest_available_offsets()
-        topic.high_watermark = topic._pykafka_topic.latest_available_offsets()
-        topic.partitions = list(topic._pykafka_topic.partitions.keys())
+        low_watermarks = topic._pykafka_topic.earliest_available_offsets()
+        high_watermarks = topic._pykafka_topic.latest_available_offsets()
+        topic.update_partitions(low_watermarks, high_watermarks)
+
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
         topic.is_only_local = False
         return topic
