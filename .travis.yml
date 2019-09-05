@@ -66,7 +66,7 @@ matrix:
       - devpi-server --serverdir=/tmp/devpi --start
       - devpi use http://localhost:3141
       - devpi login root --password=
-      - devpi index -c packages/stable
+      - devpi index -c root/stable
       - scripts/wait-for-it.sh localhost:3141 -t 60
     install:
       - pip install twine
@@ -74,8 +74,8 @@ matrix:
       - export VERSION=$(date +"%s")
       - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
-      - twine upload --repository-url http://localhost:3141/packages/stable/ dist/esque-*.tar.gz
-      - http://localhost:3141/packages/stable/ esque==${VERSION}
+      - twine upload --repository-url http://localhost:3141/root/stable/ dist/esque-*.tar.gz
+      - http://localhost:3141/root/stable/ esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
