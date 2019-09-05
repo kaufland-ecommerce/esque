@@ -56,7 +56,7 @@ matrix:
       - pip install twine
     script:
       - python setup.py sdist
-      - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD
+      - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
       - pip install -i https://test.pypi.org/simple esque
       - esque --recreate-config --no-verify
 
