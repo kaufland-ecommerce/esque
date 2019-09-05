@@ -111,7 +111,7 @@ class Config:
         return {"hosts": ",".join(self.bootstrap_servers)}
 
     def create_confluent_config(
-            self, *, debug: bool = False, ssl: bool = False, auth: Optional[Tuple[str, str]] = None
+        self, *, debug: bool = False, ssl: bool = False, auth: Optional[Tuple[str, str]] = None
     ) -> Dict[str, str]:
 
         base_config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": "PLAINTEXT"}

@@ -1,21 +1,24 @@
 import re
 from collections import namedtuple
-from typing import List, Dict
+from typing import List, Dict, TYPE_CHECKING
 
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
 
-from esque.cluster import Cluster
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
 from esque.topic import Topic
 
+if TYPE_CHECKING:
+    from esque.cluster import Cluster
+
 AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
+
 class TopicController:
-    def __init__(self, cluster: Cluster, config: Config):
-        self.cluster: Cluster = cluster
+    def __init__(self, cluster: "Cluster", config: Config):
+        self.cluster: "Cluster" = cluster
         self.config = config
 
     @raise_for_kafka_exception
@@ -38,7 +41,11 @@ class TopicController:
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
             partitions = topic.num_partitions if topic.num_partitions is not None else self.config.default_partitions
-            replicas = topic.replication_factor if topic.replication_factor is not None else self.config.default_replication_factor
+            replicas = (
+                topic.replication_factor
+                if topic.replication_factor is not None
+                else self.config.default_replication_factor
+            )
             new_topic = NewTopic(
                 topic.name, num_partitions=partitions, replication_factor=replicas, config=topic.config
             )

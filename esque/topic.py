@@ -1,6 +1,6 @@
 from collections import namedtuple
 from functools import total_ordering
-from typing import Dict, List, Tuple, Union, Any, Optional
+from typing import Dict, List, Union, Optional
 
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
@@ -15,15 +15,14 @@ Watermark = namedtuple("Watermark", ["high", "low"])
 
 
 class Partition(KafkaResource):
-
     def __init__(
-            self,
-            partition_id: int,
-            low_watermark: int,
-            high_watermark: int,
-            partition_isrs,
-            partition_leader,
-            partition_replicas
+        self,
+        partition_id: int,
+        low_watermark: int,
+        high_watermark: int,
+        partition_isrs,
+        partition_leader,
+        partition_replicas,
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
@@ -38,18 +37,18 @@ class Partition(KafkaResource):
             "high_watermark": self.watermark.high,
             "partition_isrs": self.partition_isrs,
             "partition_leader": self.partition_leader,
-            "partition_replicas": self.partition_replicas
+            "partition_replicas": self.partition_replicas,
         }
 
 
 @total_ordering
 class Topic(KafkaResource):
     def __init__(
-            self,
-            name: Union[str, bytes],
-            num_partitions: int = None,
-            replication_factor: int = None,
-            config: Dict[str, str] = None,
+        self,
+        name: Union[str, bytes],
+        num_partitions: int = None,
+        replication_factor: int = None,
+        config: Dict[str, str] = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):
@@ -89,10 +88,7 @@ class Topic(KafkaResource):
         """
         Returns the low and high watermark for each partition in a topic
         """
-        return {
-            partition.partition_id: partition.watermark
-            for partition in self.partitions
-        }
+        return {partition.partition_id: partition.watermark for partition in self.partitions}
 
     # conversions and factories
     @classmethod
@@ -120,7 +116,6 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-
 
     # update hook (TODO move to topic controller/factory?)
     @raise_for_kafka_exception

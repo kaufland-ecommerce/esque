@@ -36,9 +36,7 @@ class ConsumerGroup:
         assert len(resp.groups) == 1
 
         meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
-        consumer_offsets = self._get_consumer_offsets(
-            self._pykafka_group_coordinator, consumer_id, verbose=verbose
-        )
+        consumer_offsets = self._get_consumer_offsets(self._pykafka_group_coordinator, consumer_id, verbose=verbose)
 
         return {
             "group_id": consumer_id,

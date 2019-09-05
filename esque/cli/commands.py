@@ -26,7 +26,6 @@ from esque.config import PING_TOPIC, Config, PING_GROUP_ID
 from esque.consumergroup import ConsumerGroupController
 from esque.topic import Topic
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
-from esque.topic_controller import TopicController
 
 
 @click.group(help="(Kafka-)esque.")
@@ -150,10 +149,10 @@ def apply(state: State, file: str):
 
     # Sanity check - the 3 groups of topics should be complete and have no overlap
     assert (
-            set(to_create).isdisjoint(set(to_edit))
-            and set(to_create).isdisjoint(set(to_ignore))
-            and set(to_edit).isdisjoint(set(to_ignore))
-            and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
+        set(to_create).isdisjoint(set(to_edit))
+        and set(to_create).isdisjoint(set(to_ignore))
+        and set(to_edit).isdisjoint(set(to_ignore))
+        and len(to_create) + len(to_edit) + len(to_ignore) == len(yaml_topics)
     )
 
     # Print diffs so the user can check
@@ -289,8 +288,7 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-        state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool,
-        keep_file: bool
+    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -334,7 +332,7 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
 
 
 def _consume_to_file(
-        working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
+    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
