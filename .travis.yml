@@ -45,6 +45,14 @@ matrix:
     python: 3.6
   - name: '3.7'
     python: 3.7
+  - name: '3.8'
+    python: 3.8
+  - name: 'Test install'
+    python: 3.7
+    script:
+      - python setup.py sdist
+      - pip install dist/esque-*.tar.gz
+      - esque --recreate-config --no-verify
 deploy:
   provider: pypi
   user: real.digital
