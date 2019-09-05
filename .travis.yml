@@ -64,10 +64,11 @@ matrix:
     install:
       - pip install twine
     script:
-      - echo "__version__ = \"$(date +"%s")\"" > esque/__version__.py
+      - VERSION=$(date +"%s")
+      - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
       - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
-      - pip install -i https://test.pypi.org/simple esque
+      - pip install -i https://test.pypi.org/simple esque==$VERSION
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
