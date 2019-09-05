@@ -21,9 +21,11 @@ from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedEx
 from esque.topic import TopicController
 
 
-@click.group(help="(Kafka-)esque.", invoke_without_command=True)
-@click.option("--recreate-config", is_flag=True, default=False)
-@click.option("--no-verify", is_flag=True, default=False)
+@click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
+@click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
+@click.option(
+    "--no-verify", is_flag=True, default=False, help="Passes yes to all sanity checks. Use with extreme " "caution."
+)
 @version_option(__version__)
 def esque(recreate_config: bool, no_verify: bool):
     if recreate_config:
