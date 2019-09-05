@@ -47,6 +47,7 @@ matrix:
     python: 3.7
   - name: 'Test install'
     python: 3.7
+    env: []
     before_install: []
     install: []
     script:
