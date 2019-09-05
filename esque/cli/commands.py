@@ -25,10 +25,11 @@ from esque.topic import TopicController
 @click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
 @no_verify_option
 @version_option(__version__)
-def esque(recreate_config: bool, no_verify: bool):
+@pass_state
+def esque(state, recreate_config: bool):
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
-        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=no_verify):
+        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
             copyfile(sample_config_path().as_posix(), config_path())
 
 
