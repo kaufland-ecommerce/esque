@@ -65,7 +65,7 @@ matrix:
       - devpi-server --serverdir=/tmp/devpi --init
       - devpi-server --serverdir=/tmp/devpi  --root-passwd=root --restrict-modify=root --start
       - devpi use http://localhost:3141
-      - devpi login root password=root
+      - devpi login root --password=root
       - devpi index -c packages/stable
       - scripts/wait-for-it.sh localhost:3141 -t 60
     install:
