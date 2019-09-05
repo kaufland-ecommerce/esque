@@ -45,8 +45,6 @@ matrix:
     python: 3.6
   - name: '3.7'
     python: 3.7
-  - name: '3.8-dev'
-    python: 3.8-dev
   - name: 'Test install'
     python: 3.7
 #    if: type = pull_request
@@ -59,6 +57,9 @@ matrix:
       - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
       - pip install -i https://test.pypi.org/simple esque
       - esque --recreate-config --no-verify
+  allow_failures:
+    - name: '3.8-dev'
+      python: 3.8-dev
 
 deploy:
   - provider: pypi
