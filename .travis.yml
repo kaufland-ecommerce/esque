@@ -52,7 +52,7 @@ matrix:
     install: []
     script:
       - python setup.py sdist
-      - pip install dist/esque-*.tar.gz
+      - pip install --no-cache-dir dist/esque-*.tar.gz
       - esque --recreate-config --no-verify
   - name: 'Test upload'
     python: 3.7
@@ -68,7 +68,7 @@ matrix:
       - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
       - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
-      - pip install -i https://test.pypi.org/simple esque==$VERSION
+      - pip install --no-cache-dir -i https://test.pypi.org/simple esque==$VERSION
       - esque --recreate-config --no-verify
   allow_failures:
     - name: '3.8-dev'
