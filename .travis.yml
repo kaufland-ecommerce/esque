@@ -68,8 +68,6 @@ matrix:
       - echo "__version__ = \"$VERSION\"" > esque/__version__.py
       - python setup.py sdist
       - twine upload --repository-url https://test.pypi.org/legacy/ -u real.digital -p $PASSWORD dist/esque-*.tar.gz
-      # Sleep until new version is indexed
-      - bash -c "scripts/wait-for-it.sh https://test.pypi.org/manage/project/esque/release/${VERSION}/ -t 60"
       - pip install --no-cache-dir -i https://test.pypi.org/simple esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
