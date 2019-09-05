@@ -63,9 +63,9 @@ matrix:
     before_install:
       - pip install devpi-server devpi "pluggy<1,>=0.12.0"
       - devpi-server --serverdir=/tmp/devpi --init
-      - devpi-server --serverdir=/tmp/devpi  --root-passwd=root --restrict-modify=root --start
+      - devpi-server --serverdir=/tmp/devpi --start
       - devpi use http://localhost:3141
-      - devpi login root --password=root
+      - devpi login root --password=
       - devpi index -c packages/stable
       - scripts/wait-for-it.sh localhost:3141 -t 60
     install:
