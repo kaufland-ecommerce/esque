@@ -1,10 +1,13 @@
+import json
 import re
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
+import click
 import pykafka
 import yaml
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic
+from kazoo.exceptions import NodeExistsError
 
 from esque.cluster import Cluster
 from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
@@ -188,3 +191,17 @@ class TopicController:
         config: Dict[str, str] = None,
     ) -> Topic:
         return Topic(topic_name, self.cluster, num_partitions, replication_factor, config)
+
+    def execute_cluster_assignment(self, plan: Dict[str, List[Dict[str, Any]]]):
+        with self.cluster.zookeeper_client as zk:
+            reassignment_path = f"/admin/reassign_partitions"
+            for partition in plan["partitions"]:
+                click.echo(f"Reassigning {partition['topic']}")
+            try:
+                # TODO: Validate plan
+                zk.create(reassignment_path, json.dumps(plan, sort_keys=True).encode(), makepath=True)
+                click.echo("Reassigned partitions.")
+            except NodeExistsError:
+                click.echo("Previous plan still in progress..")
+            except Exception as e:
+                click.echo(f"Could not re-assign partitions. Error: {e}")

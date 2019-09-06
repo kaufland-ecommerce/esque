@@ -83,7 +83,7 @@ class Config:
 
     @property
     def zookeeper_hosts(self) -> List[str]:
-        return self.current_context_dict.get("zookeeper_host").split(",")
+        return self.current_context_dict.get("zookeeper_hosts").split(",")
 
     @property
     def zookeeper_domain(self) -> str:

@@ -103,6 +103,20 @@ def create_topic(state: State, topic_name: str):
         TopicController(state.cluster).create_topics([(topic_controller.get_topic(topic_name))])
 
 
+@esque.command("reassign_partitions")
+@click.option("-f")
+@pass_state
+def reassign_partitions(state, f):
+    plan = yaml.safe_load(Path(f).read_text())
+    plan = {
+        "partitions": [{"topic": topic["name"], "partition": id, "replicas": assignment}]
+        for topic in plan["topics"]
+        for id, assignment in topic["partitions"].items()
+    }
+    topic_controller = TopicController(state.cluster)
+    topic_controller.execute_cluster_assignment(plan)
+
+
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
 @pass_state
