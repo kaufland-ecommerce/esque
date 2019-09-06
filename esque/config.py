@@ -59,38 +59,51 @@ class Config:
 
     @property
     def bootstrap_port(self) -> str:
-        if "bootstrap_port" in self.current_context_dict.keys():
-            return self.current_context_dict["bootstrap_port"]
-        return "9092"
+        return self.current_context_dict.get("bootstrap_port", "9092")
 
     @property
     def bootstrap_domain(self) -> Optional[str]:
-        config_dict = self.current_context_dict
-        if "bootstrap_domain" in config_dict:
-            return config_dict["bootstrap_domain"]
-        return None
+        return self.current_context_dict.get("bootstrap_domain", None)
 
     @property
     def bootstrap_hosts(self) -> List[str]:
-        config_dict = self.current_context_dict
-        return config_dict["bootstrap_hosts"].split(",")
+        return self.current_context_dict["bootstrap_hosts"].split(",")
 
     @property
     def schema_registry(self) -> str:
-        config_dict = self.current_context_dict
-        return config_dict["schema_registry"]
+        return self.current_context_dict["schema_registry"]
 
     @property
     def bootstrap_servers(self):
-        if self.bootstrap_domain:
-            return [f"{host_name}.{self.bootstrap_domain}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
-        return [f"{host_name}:{self.bootstrap_port}" for host_name in self.bootstrap_hosts]
+        return self._generate_urls(self.bootstrap_hosts, self.bootstrap_port, domain=self.bootstrap_domain)
+
+    @property
+    def zookeeper_port(self) -> str:
+        return self.current_context_dict.get("zookeeper_port", "2181")
+
+    @property
+    def zookeeper_hosts(self) -> List[str]:
+        return self.current_context_dict.get("zookeeper_host").split(",")
+
+    @property
+    def zookeeper_domain(self) -> str:
+        return self.current_context_dict.get("zookeeper_domain", None)
+
+    @property
+    def zookeeper_nodes(self):
+        return self._generate_urls(self.zookeeper_hosts, self.zookeeper_port, domain=self.zookeeper_domain)
 
     def context_switch(self, context: str):
         click.echo((f"Switched to context: {context}"))
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._update_config("Context", "current", context)
+
+    @staticmethod
+    def _generate_urls(hosts: List[str], port: str, *, domain: str = None):
+        if domain:
+            return [f"{host_name}.{domain}:{port}" for host_name in hosts]
+        return [f"{host_name}:{port}" for host_name in hosts]
 
     def _update_config(self, section: str, key: str, value: str):
         self._cfg.set(section, key, value=value)
