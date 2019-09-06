@@ -46,7 +46,7 @@ matrix:
   - name: '3.7'
     python: 3.7
   - name: 'Test install'
-    python: 3.7
+    python: 3.6
     env: []
     before_install:
       - mkdir -p ~/.esque
@@ -57,7 +57,7 @@ matrix:
       - pip install --no-cache-dir dist/esque-*.tar.gz
       - esque --recreate-config --no-verify
   - name: 'Test upload'
-    python: 3.7
+    python: 3.6
     env:
       - secure: "znXxvfZqJEMKlu1f78uqvdnZh9y0GAzgPbJK5mBiyQxgIAooELcQnyot811fuQ35dwv5WJv19XeyosJPPVZldUmJMZmfLOa+cxBAWonVpNYNdY6iHk8Yyeoy8V43tc8fGlyG90wiw3h3Phefb9arXPCWZTNrrFSDZZGdU8/4isxLvXUENpQlBXsmi91Q755VHIyuNm9JqpAZk5eLatiE/U35SIncuPSZVtC1B1ZIJ0Bhkf9aVNNusWdeXe2B6c2tTI/rWfFDJfHUPswE+tN2Bw04uCJz7CZDjv8gZKPklNK8noeeZGNsE4X0VFnbKBVUjTWQUPpEuIzQ6Zng/ajlSP7+OhBBLMBsHutP96FwlwT7WqU4V/nK7CajU0B+ZVM8TkEvJwxJDt3+26hc/WzyxqXqNR2qcd70vG6SvGC6JosYEZxOzxmHMYWo5Aff+HMq5Is2NrI6x2kAGJEQnGfpg6S0LGBVrye8i1vzuunZGiT0oVgae5PCt+NZrJq4JFFbkV12NcPg8agNU+LOE9fd2YZCcM9ciGr09vCPgV3kID6k5pK92Lq1mVUBWqAdYsEASbUrgHOMcebtBFoMXIzo4z970DmVFeqdHX/QC1Ofp9+JROQiI/6/6UqIme5TWyTsVLrD76lP5oYD4l5xXj5VFpxCPZjaayvuNIn/eDj1/Dc="
     before_install:
