@@ -28,7 +28,7 @@ required = [
     "virtualenv",
     "confluent-kafka",
     "click>=7.0",
-    "pykafka",
+    "kazoo" "pykafka",
     "pendulum",
     "pyyaml",
     "requests",

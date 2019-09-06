@@ -6,6 +6,8 @@
 .AppleDouble
 .LSOverride
 
+pip-wheel-metadata/
+
 # Distribution / packaging
 .Python
 build/
