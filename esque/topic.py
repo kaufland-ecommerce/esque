@@ -1,207 +1,147 @@
-import json
-import re
-from typing import Any, Dict, List, Tuple, Union
+from collections import namedtuple
+from functools import total_ordering
+from typing import Dict, List, Optional, Union
 
-import click
-import pykafka
 import yaml
-from confluent_kafka.admin import ConfigResource
-from confluent_kafka.cimpl import NewTopic
-from kazoo.exceptions import NodeExistsError
+from pykafka.protocol.offset import OffsetPartitionResponse
 
-from esque.cluster import Cluster
-from esque.errors import TopicDoesNotExistException, raise_for_kafka_exception
-from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after, unpack_confluent_config
+from esque.errors import raise_for_kafka_exception
+from esque.resource import KafkaResource
+
+TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
+PartitionInfo = Dict[int, OffsetPartitionResponse]
+
+Watermark = namedtuple("Watermark", ["high", "low"])
 
 
-class Topic:
+class Partition(KafkaResource):
     def __init__(
         self,
-        name: str,
-        cluster: Cluster,
+        partition_id: int,
+        low_watermark: int,
+        high_watermark: int,
+        partition_isrs,
+        partition_leader,
+        partition_replicas,
+    ):
+        self.partition_id = partition_id
+        self.watermark = Watermark(high_watermark, low_watermark)
+        self.partition_isrs = partition_isrs
+        self.partition_leader = partition_leader
+        self.partition_replicas = partition_replicas
+
+    def as_dict(self):
+        return {
+            "partition_id": self.partition_id,
+            "low_watermark": self.watermark.low,
+            "high_watermark": self.watermark.high,
+            "partition_isrs": self.partition_isrs,
+            "partition_leader": self.partition_leader,
+            "partition_replicas": self.partition_replicas,
+        }
+
+
+@total_ordering
+class Topic(KafkaResource):
+    def __init__(
+        self,
+        name: Union[str, bytes],
         num_partitions: int = None,
         replication_factor: int = None,
         config: Dict[str, str] = None,
     ):
+        # Should we warn in those cases to force clients to migrate to string-only?
+        if isinstance(name, bytes):
+            name = name.decode("ascii")
         self.name = name
-        self.cluster: Cluster = cluster
-        self._pykafka_topic_instance = None
-        self._confluent_topic_instance = None
-        self.num_partitions = num_partitions if num_partitions is not None else 1
-        self.replication_factor = replication_factor if replication_factor is not None else 1
+
+        # TODO remove those two, replace with the properties below
+        self.num_partitions = num_partitions
+        self.replication_factor = replication_factor
         self.config = config if config is not None else {}
 
-    def as_dict(self) -> Dict[str, Union[int, Dict[str, str]]]:
+        self._partitions: Optional[List[Partition]] = None
+        self._pykafka_topic = None
+        self._confluent_topic = None
+
+        self.is_only_local = True
+
+    # properties
+    @property
+    def partitions(self) -> List[Partition]:
+        assert not self.is_only_local, "Need to update topic before updating partitions"
+        return self._partitions
+
+    @property
+    def partition_amount(self) -> int:
+        return len(self.partitions)
+
+    @property
+    def replication(self) -> int:
+        reps = set(p.partition_replicas for p in self.partitions)
+        if len(reps) != 1:
+            raise ValueError(f"Topic partitions have different replication factors! {reps}")
+        return reps.pop()
+
+    @property
+    def offsets(self) -> Dict[int, Watermark]:
+        """
+        Returns the low and high watermark for each partition in a topic
+        """
+        return {partition.partition_id: partition.watermark for partition in self.partitions}
+
+    # conversions and factories
+    @classmethod
+    def from_dict(cls, dict_object: TopicDict) -> "Topic":
+        return cls(
+            dict_object.get("name"),
+            dict_object.get("num_partitions"),
+            dict_object.get("replication_factor"),
+            dict_object.get("config"),
+        )
+
+    def as_dict(self, only_editable=False) -> TopicDict:
+        if only_editable:
+            return {"config": self.config}
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
-            "config": self._retrieve_kafka_config(),
+            "config": self.config,
         }
 
-    def to_yaml(self) -> str:
-        return yaml.dump(self.as_dict())
+    def to_yaml(self, only_editable=False) -> str:
+        return yaml.dump(self.as_dict(only_editable=only_editable))
 
     def from_yaml(self, data) -> None:
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
 
-    @property
-    def _pykafka_topic(self) -> pykafka.Topic:
-        if not self._pykafka_topic_instance:
-            self._pykafka_topic_instance = self.cluster.pykafka_client.cluster.topics[self.name]
-        return self._pykafka_topic_instance
-
-    @property
-    def _confluent_topic(self):
-        if not self._confluent_topic_instance:
-            self._confluent_topic_instance = self.cluster.confluent_client.list_topics(
-                topic=self.name, timeout=10
-            ).topics
-        return self._confluent_topic_instance
-
-    @property
-    def low_watermark(self):
-        return self._pykafka_topic.earliest_available_offsets()
-
-    @property
-    def partitions(self) -> List[int]:
-        return list(self._pykafka_topic.partitions.keys())
-
-    @property
-    def high_watermark(self):
-        return self._pykafka_topic.latest_available_offsets()
-
-    def get_offsets(self) -> Dict[int, Tuple[int, int]]:
-        """
-        Returns the low and high watermark for each partition in a topic
-        """
-        partitions: List[int] = self.partitions
-        low_watermark_offsets = self.low_watermark
-        high_watermark_offsets = self.high_watermark
-
-        return {
-            partition_id: (
-                int(low_watermark_offsets[partition_id][0][0]),
-                int(high_watermark_offsets[partition_id][0][0]),
-            )
-            for partition_id in partitions
-        }
-
-    def _retrieve_kafka_config(self):
-        conf = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, self.name)
-        return unpack_confluent_config(conf)
-
+    # update hook (TODO move to topic controller/factory?)
     @raise_for_kafka_exception
-    def config_diff(self) -> Dict[str, Tuple[str, str]]:
-        config_list = self._retrieve_kafka_config()
-        return {
-            name: [str(value), str(self.config.get(name))]
-            for name, value in config_list.items()
-            if self.config.get(name) and str(self.config.get(name)) != str(value)
-        }
+    def update_partitions(self, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo):
 
-    @raise_for_kafka_exception
-    def describe(self):
-        offsets = self.get_offsets()
+        partitions = []
+        for t in self._confluent_topic.values():
+            for partition_id, partition_meta in t.partitions.items():
+                partition = Partition(
+                    partition_id,
+                    int(low_watermarks[partition_id].offset[0]),
+                    int(high_watermarks[partition_id].offset[0]),
+                    partition_meta.isrs,
+                    partition_meta.leader,
+                    partition_meta.replicas,
+                )
+                partitions.append(partition)
 
-        if not self._confluent_topic:
-            raise TopicDoesNotExistException()
-        replicas = [
-            {
-                f"Partition {partition}": {
-                    "low_watermark": offsets[int(partition)][0],
-                    "high_watermark": offsets[int(partition)][1],
-                    "partition_isrs": partition_meta.isrs,
-                    "partition_leader": partition_meta.leader,
-                    "partition_replicas": partition_meta.replicas,
-                }
-            }
-            for t in self._confluent_topic.values()
-            for partition, partition_meta in t.partitions.items()
-        ]
+        self._partitions = partitions
 
-        conf = self._retrieve_kafka_config()
+    # object behaviour
+    def __lt__(self, other: "Topic"):
+        return self.name < other.name
 
-        return replicas, {"Config": conf}
+    def __eq__(self, other: "Topic"):
+        return self.name == other.name
 
-    def __lt__(self, other):
-        if self.name < other.name:
-            return True
-        return False
-
-
-class TopicController:
-    def __init__(self, cluster: Cluster):
-        self.cluster: Cluster = cluster
-
-    @raise_for_kafka_exception
-    def list_topics(self, *, search_string: str = None, sort=True, hide_internal=True) -> List[Topic]:
-        self.cluster.confluent_client.poll(timeout=1)
-        topics = self.cluster.confluent_client.list_topics().topics
-        topics = [self.get_topic(t.topic) for t in topics.values()]
-        if search_string:
-            topics = [topic for topic in topics if re.match(search_string, topic.name)]
-        if hide_internal:
-            topics = [topic for topic in topics if not topic.name.startswith("__")]
-        if sort:
-            topics = sorted(topics)
-
-        return topics
-
-    @raise_for_kafka_exception
-    def filter_existing_topics(self, topics: List[Topic]) -> List[Topic]:
-        self.cluster.confluent_client.poll(timeout=1)
-        confluent_topics = self.cluster.confluent_client.list_topics().topics
-        existing_topic_names = [t.topic for t in confluent_topics.values()]
-        return [topic for topic in topics if topic.name in existing_topic_names]
-
-    @raise_for_kafka_exception
-    @invalidate_cache_after
-    def create_topics(self, topics: List[Topic]):
-        for topic in topics:
-            new_topic = NewTopic(
-                topic.name,
-                num_partitions=topic.num_partitions,
-                replication_factor=topic.replication_factor,
-                config=topic.config,
-            )
-            future_list = self.cluster.confluent_client.create_topics([new_topic])
-            ensure_kafka_futures_done(list(future_list.values()))
-
-    @raise_for_kafka_exception
-    @invalidate_cache_after
-    def alter_configs(self, topics: List[Topic]):
-        for topic in topics:
-            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
-            future_list = self.cluster.confluent_client.alter_configs([config_resource])
-            ensure_kafka_futures_done(list(future_list.values()))
-
-    @raise_for_kafka_exception
-    @invalidate_cache_after
-    def delete_topic(self, topic: Topic):
-        future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
-        ensure_kafka_futures_done([future])
-
-    def get_topic(
-        self,
-        topic_name: str,
-        num_partitions: int = None,
-        replication_factor: int = None,
-        config: Dict[str, str] = None,
-    ) -> Topic:
-        return Topic(topic_name, self.cluster, num_partitions, replication_factor, config)
-
-    def execute_cluster_assignment(self, plan: Dict[str, List[Dict[str, Any]]]):
-        with self.cluster.zookeeper_client as zk:
-            reassignment_path = f"/admin/reassign_partitions"
-            for partition in plan["partitions"]:
-                click.echo(f"Reassigning {partition['topic']}")
-            try:
-                # TODO: Validate plan
-                zk.create(reassignment_path, json.dumps(plan, sort_keys=True).encode(), makepath=True)
-                click.echo("Reassigned partitions.")
-            except NodeExistsError:
-                click.echo("Previous plan still in progress..")
-            except Exception as e:
-                click.echo(f"Could not re-assign partitions. Error: {e}")
+    def __hash__(self):
+        return hash(self.name)

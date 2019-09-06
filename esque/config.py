@@ -93,8 +93,18 @@ class Config:
     def zookeeper_nodes(self):
         return self._generate_urls(self.zookeeper_hosts, self.zookeeper_port, domain=self.zookeeper_domain)
 
+    @property
+    def default_partitions(self) -> int:
+        config_dict = self.current_context_dict
+        return int(config_dict["default_partitions"])
+
+    @property
+    def default_replication_factor(self) -> int:
+        config_dict = self.current_context_dict
+        return int(config_dict["default_replication_factor"])
+
     def context_switch(self, context: str):
-        click.echo((f"Switched to context: {context}"))
+        click.echo(f"Switched to context: {context}")
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._update_config("Context", "current", context)

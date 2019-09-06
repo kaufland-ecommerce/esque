@@ -28,6 +28,7 @@ wheels/
 MANIFEST
 *.pyc
 *.pyo
+pip-wheel-metadata
 
 # Esque specific
 esque.cfg

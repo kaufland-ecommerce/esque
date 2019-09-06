@@ -6,7 +6,8 @@ from kazoo.client import KazooClient
 from kazoo.retry import KazooRetry
 
 from esque.config import Config
-from esque.helpers import ensure_kafka_futures_done
+from esque.helpers import ensure_kafka_futures_done, unpack_confluent_config
+from esque.topic_controller import TopicController
 
 
 class Cluster:
@@ -18,10 +19,20 @@ class Cluster:
         )
         self.confluent_client.poll(timeout=1)
         self.zookeeper_client = Zookeeper(config=self._config)
+        self.__topic_controller = None
+
+    @property
+    def topic_controller(self) -> TopicController:
+        if self.__topic_controller is None:
+            self.__topic_controller = TopicController(self, self._config)
+        return self.__topic_controller
 
     @property
     def bootstrap_servers(self):
         return self._config.bootstrap_servers
+
+    def get_metadata(self):
+        return self.confluent_client.list_topics(timeout=1)
 
     @property
     def brokers(self):
@@ -33,14 +44,11 @@ class Cluster:
 
     def retrieve_config(self, config_type: ConfigResource.Type, id):
         requested_resources = [ConfigResource(config_type, str(id))]
-
         futures = self.confluent_client.describe_configs(requested_resources)
-
         (old_resource, future), = futures.items()
-
         future = ensure_kafka_futures_done([future])
-
-        return future.result()
+        result = future.result()
+        return unpack_confluent_config(result)
 
 
 class Zookeeper:
