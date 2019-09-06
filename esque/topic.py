@@ -49,6 +49,7 @@ class Topic(KafkaResource):
         name: Union[str, bytes],
         num_partitions: int = None,
         replication_factor: int = None,
+        partitions: Dict[int, List[int]] = None,
         config: Dict[str, str] = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
@@ -61,11 +62,18 @@ class Topic(KafkaResource):
         self.__replication_factor = replication_factor
         self.config = config if config is not None else {}
 
+        self._partition_assignment: Dict[int, List[int]] = partitions
         self._partitions: Optional[List[Partition]] = None
         self._pykafka_topic = None
         self._confluent_topic = None
 
         self.is_only_local = True
+
+    @property
+    def partition_assignment(self) -> Dict[int, List[int]]:
+        if self.is_only_local:
+            return self._partition_assignment
+        return {partition.partition_id: partition.partition_replicas for partition in self.partitions}
 
     # properties
     @property
@@ -108,6 +116,7 @@ class Topic(KafkaResource):
             dict_object.get("name"),
             dict_object.get("num_partitions"),
             dict_object.get("replication_factor"),
+            dict_object.get("partition_assignment"),
             dict_object.get("config"),
         )
 
@@ -117,6 +126,7 @@ class Topic(KafkaResource):
         return {
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
+            "partition_assignment": self.partition_assignment,
             "config": self.config,
         }
 
@@ -155,6 +165,9 @@ class Topic(KafkaResource):
 
         if self.replication_factor != other.replication_factor:
             diffs["replication_factor"] = AttributeDiff(other.replication_factor, self.replication_factor)
+
+        if self.partition_assignment and self.partition_assignment != other.partition_assignment:
+            diffs["partition_assignment"] = AttributeDiff(other.partition_assignment, self.partition_assignment)
 
         for name, old_value in other.config.items():
             new_val = self.config.get(name)
