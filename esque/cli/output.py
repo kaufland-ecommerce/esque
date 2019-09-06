@@ -127,7 +127,7 @@ def pretty_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
         for attribute, value in diff.items():
-            config_diff_attributes[attribute] = value[0] + " -> " + value[1]
+            config_diff_attributes[attribute] = f"{value[0]} -> {value[1]}"
         output.append({click.style(name, bold=True, fg="yellow"): {"Config Diff": config_diff_attributes}})
 
     return pretty({"Configuration changes": output})

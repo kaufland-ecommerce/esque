@@ -1,6 +1,5 @@
 import json
 import re
-from collections import namedtuple
 from typing import Any, Dict, List, TYPE_CHECKING
 
 import click
@@ -11,12 +10,10 @@ from kazoo.exceptions import NodeExistsError
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
-from esque.topic import Topic
+from esque.topic import AttributeDiff, Topic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
-
-AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
 
 class TopicController:
@@ -90,16 +87,9 @@ class TopicController:
         return topic
 
     @raise_for_kafka_exception
-    def diff_with_cluster(self, topic: Topic) -> Dict[str, AttributeDiff]:
-        cluster_state = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
-        out = {}
-        for name, old_value in cluster_state.items():
-            new_val = topic.config.get(name)
-            if not new_val or str(new_val) == str(old_value):
-                continue
-            out[name] = AttributeDiff(str(old_value), str(new_val))
-
-        return out
+    def diff_with_cluster(self, local_topic: Topic) -> Dict[str, AttributeDiff]:
+        cluster_topic = self.get_cluster_topic(local_topic.name)
+        return local_topic.diff_settings(cluster_topic)
 
     def execute_cluster_assignment(self, plan: Dict[str, List[Dict[str, Any]]]):
         with self.cluster.zookeeper_client as zk:

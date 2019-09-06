@@ -12,6 +12,7 @@ TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
+AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
 
 class Partition(KafkaResource):
@@ -56,8 +57,8 @@ class Topic(KafkaResource):
         self.name = name
 
         # TODO remove those two, replace with the properties below
-        self.num_partitions = num_partitions
-        self.replication_factor = replication_factor
+        self.__num_partitions = num_partitions
+        self.__replication_factor = replication_factor
         self.config = config if config is not None else {}
 
         self._partitions: Optional[List[Partition]] = None
@@ -73,10 +74,6 @@ class Topic(KafkaResource):
         return self._partitions
 
     @property
-    def partition_amount(self) -> int:
-        return len(self.partitions)
-
-    @property
     def replication(self) -> int:
         reps = set(p.partition_replicas for p in self.partitions)
         if len(reps) != 1:
@@ -89,6 +86,20 @@ class Topic(KafkaResource):
         Returns the low and high watermark for each partition in a topic
         """
         return {partition.partition_id: partition.watermark for partition in self.partitions}
+
+    @property
+    def num_partitions(self) -> int:
+        if self.is_only_local:
+            return self.__num_partitions
+        return len(self.partitions)
+
+    @property
+    def replication_factor(self) -> int:
+        if self.is_only_local:
+            return self.__replication_factor
+        partition_replication_factors = set(r for p in self.partitions for r in p.partition_replicas)
+        assert len(partition_replication_factors) == 1, "Different replication factors for partitions!"
+        return partition_replication_factors.pop()
 
     # conversions and factories
     @classmethod
@@ -135,6 +146,23 @@ class Topic(KafkaResource):
                 partitions.append(partition)
 
         self._partitions = partitions
+
+    def diff_settings(self, other: "Topic") -> Dict[str, AttributeDiff]:
+
+        diffs = {}
+        if self.num_partitions != other.num_partitions:
+            diffs["num_partitions"] = AttributeDiff(other.num_partitions, self.num_partitions)
+
+        if self.replication_factor != other.replication_factor:
+            diffs["replication_factor"] = AttributeDiff(other.replication_factor, self.replication_factor)
+
+        for name, old_value in other.config.items():
+            new_val = self.config.get(name)
+            if not new_val or str(new_val) == str(old_value):
+                continue
+            diffs[name] = AttributeDiff(str(old_value), str(new_val))
+
+        return diffs
 
     # object behaviour
     def __lt__(self, other: "Topic"):
