@@ -5,7 +5,6 @@ from typing import Dict, List, Union, Optional
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
 
-from esque.errors import raise_for_kafka_exception
 from esque.resource import KafkaResource
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
@@ -61,17 +60,14 @@ class Topic(KafkaResource):
         self.__replication_factor = replication_factor
         self.config = config if config is not None else {}
 
-        self._partitions: Optional[List[Partition]] = None
-        self._pykafka_topic = None
-        self._confluent_topic = None
-
+        self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
 
     # properties
     @property
     def partitions(self) -> List[Partition]:
         assert not self.is_only_local, "Need to update topic before updating partitions"
-        return self._partitions
+        return self.partition_data
 
     @property
     def replication(self) -> int:
@@ -127,25 +123,6 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-
-    # update hook (TODO move to topic controller/factory?)
-    @raise_for_kafka_exception
-    def update_partitions(self, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo):
-
-        partitions = []
-        for t in self._confluent_topic.values():
-            for partition_id, partition_meta in t.partitions.items():
-                partition = Partition(
-                    partition_id,
-                    int(low_watermarks[partition_id].offset[0]),
-                    int(high_watermarks[partition_id].offset[0]),
-                    partition_meta.isrs,
-                    partition_meta.leader,
-                    partition_meta.replicas,
-                )
-                partitions.append(partition)
-
-        self._partitions = partitions
 
     def diff_settings(self, other: "Topic") -> Dict[str, AttributeDiff]:
 
