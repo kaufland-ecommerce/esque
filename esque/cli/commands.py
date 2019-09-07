@@ -142,7 +142,7 @@ def apply(state: State, file: str):
     to_edit = [
         yaml_topic
         for yaml_topic in yaml_topics
-        if yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic) != {}
+        if yaml_topic not in to_create and topic_controller.diff_with_cluster(yaml_topic).has_changes
     ]
     to_edit_diffs = {t.name: topic_controller.diff_with_cluster(t) for t in to_edit}
     to_ignore = [yaml_topic for yaml_topic in yaml_topics if yaml_topic not in to_create and yaml_topic not in to_edit]
@@ -165,11 +165,13 @@ def apply(state: State, file: str):
         click.echo("No changes detected, aborting")
         return
 
-    # Warn users when replication & num_partition changes are attempted
-    if len(to_edit) > 0:
+    # Warn users & abort when replication & num_partition changes are attempted
+    if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
         click.echo(
-            "Notice: changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
         )
+        click.echo("Cancelling due to invalid changes")
+        return
 
     # Get approval
     if not ensure_approval("Apply changes?", no_verify=state.no_verify):

@@ -1,6 +1,6 @@
 import re
 from enum import Enum
-from typing import List, Dict, TYPE_CHECKING, Union
+from typing import List, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
@@ -9,7 +9,7 @@ from pykafka.topic import Topic as PyKafkaTopic
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
-from esque.topic import Topic, AttributeDiff, PartitionInfo, Partition
+from esque.topic import Topic, PartitionInfo, Partition, TopicDiff
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -120,6 +120,15 @@ class TopicController:
         return partitions
 
     @raise_for_kafka_exception
-    def diff_with_cluster(self, local_topic: Topic) -> Dict[str, AttributeDiff]:
+    def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
+        assert local_topic.is_only_local, "Can only diff local topics with remote"
+
         cluster_topic = self.get_cluster_topic(local_topic.name)
-        return local_topic.diff_settings(cluster_topic)
+        diffs = TopicDiff()
+        diffs.set_diff("num_partitions", cluster_topic.num_partitions, local_topic.num_partitions)
+        diffs.set_diff("replication_factor", cluster_topic.replication_factor, local_topic.replication_factor)
+
+        for name, old_value in cluster_topic.config.items():
+            diffs.set_diff(name, old_value, local_topic.config.get(name))
+
+        return diffs

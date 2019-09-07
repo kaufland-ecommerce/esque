@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, List, MutableMapping, Dict, Tuple
+from typing import Any, List, MutableMapping, Dict
 
 import click
 import pendulum
 
-from esque.topic import Topic
+from esque.topic import Topic, TopicDiff
 
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 
@@ -122,12 +122,12 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     return pendulum.duration(milliseconds=value).in_words()
 
 
-def pretty_topic_diffs(topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]) -> str:
+def pretty_topic_diffs(topics_config_diff: Dict[str, TopicDiff]) -> str:
     output = []
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
-        for attribute, value in diff.items():
-            config_diff_attributes[attribute] = f"{value[0]} -> {value[1]}"
+        for attr, old, new in diff.changes():
+            config_diff_attributes[attr] = f"{old} -> {new}"
         output.append({click.style(name, bold=True, fg="yellow"): {"Config Diff": config_diff_attributes}})
 
     return pretty({"Configuration changes": output})

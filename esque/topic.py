@@ -1,6 +1,6 @@
 from collections import namedtuple
 from functools import total_ordering
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Union, Optional, Tuple, Any, Generator
 
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
@@ -11,7 +11,6 @@ TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
-AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
 
 class Partition(KafkaResource):
@@ -41,6 +40,87 @@ class Partition(KafkaResource):
         }
 
 
+class AttributeDiff:
+    def __init__(self, remote, local):
+        self.remote = remote
+        self.local = local
+        assert type(remote) == type(
+            local
+        ), f"Attributes should be given as the same type, not {type(remote)} and {type(local)}"
+
+    @property
+    def old(self):
+        return self.remote
+
+    @property
+    def new(self):
+        return self.local
+
+    def __eq__(self, other: "AttributeDiff"):
+        return self.remote == other.remote and self.local == other.local
+
+    def __hash__(self):
+        return hash(hash(self.remote) + hash(self.local))
+
+    def __repr__(self):
+        return f"<AttributeDiff[remote:{self.remote}, local:{self.local}]>"
+
+
+class TopicDiff:
+    INVALID_CHANGES = ["num_partitions", "replication_factor"]
+
+    def __init__(self):
+        self._diffs: Dict[str, AttributeDiff] = {}
+
+    def set_diff(self, name: str, remote, local) -> "TopicDiff":
+
+        # config values of local topics can be set as int or string
+        # since all "config" variables we get from cluster topics are sent to us as strings,
+        # we need to convert the local ones to string to match them correctly (exclude None's)
+        local = str(local) if isinstance(remote, str) and local is not None else local
+
+        if remote == local:
+            return self
+
+        # TODO: this should be handled correctly by checking the cluster defaults, like
+        # if remote == cluster_default(name) and local is None: return
+        # currently, if an attribute that was set get's un-set, it's ignored
+        if local is None:
+            return self
+
+        assert type(remote) == type(
+            local
+        ), f"Attributes for {name} should be given as the same type, not {type(remote)} and {type(local)}"
+        self._diffs[name] = AttributeDiff(remote, local)
+
+        # allow chaining of set-calls
+        return self
+
+    @property
+    def is_valid(self) -> bool:
+        return set(self._diffs.get(a, None) for a in self.INVALID_CHANGES) == {None}
+
+    @classmethod
+    def from_dict(cls, diff_dict: Dict[str, AttributeDiff]) -> "TopicDiff":
+        td = TopicDiff()
+        td._diffs = diff_dict
+        return td
+
+    @property
+    def has_changes(self) -> bool:
+        return len(self._diffs.keys()) > 0
+
+    def changes(self) -> Generator[Tuple[str, Any, Any], None, None]:
+        for key, val in self._diffs.items():
+            yield key, val.remote, val.local
+
+    def __eq__(self, other: "TopicDiff") -> bool:
+        return self._diffs == other._diffs
+
+    def __repr__(self):
+        return f"<TopicDiff[{str(self._diffs)}>"
+
+
 @total_ordering
 class Topic(KafkaResource):
     def __init__(
@@ -55,9 +135,10 @@ class Topic(KafkaResource):
             name = name.decode("ascii")
         self.name = name
 
-        # TODO remove those two, replace with the properties below
+        # those settings are only used until the topic is updated from cluster
         self.__num_partitions = num_partitions
         self.__replication_factor = replication_factor
+
         self.config = config if config is not None else {}
 
         self.partition_data: Optional[List[Partition]] = None
@@ -123,23 +204,6 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-
-    def diff_settings(self, other: "Topic") -> Dict[str, AttributeDiff]:
-
-        diffs = {}
-        if self.num_partitions != other.num_partitions:
-            diffs["num_partitions"] = AttributeDiff(other.num_partitions, self.num_partitions)
-
-        if self.replication_factor != other.replication_factor:
-            diffs["replication_factor"] = AttributeDiff(other.replication_factor, self.replication_factor)
-
-        for name, old_value in other.config.items():
-            new_val = self.config.get(name)
-            if not new_val or str(new_val) == str(old_value):
-                continue
-            diffs[name] = AttributeDiff(str(old_value), str(new_val))
-
-        return diffs
 
     # object behaviour
     def __lt__(self, other: "Topic"):
