@@ -49,7 +49,7 @@ class InstallWithPostCommand(install):
 setup(
     name="esque",
     version=about["__version__"],
-    description="A usable kafka tool.",
+    description="esque - an operational kafka tool.",
     keywords="kafka commandline apache",
     long_description=long_description,
     long_description_content_type="text/markdown",

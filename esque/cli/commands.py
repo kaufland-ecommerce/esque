@@ -1,6 +1,7 @@
 import pathlib
 import time
 from pathlib import Path
+from shutil import copyfile
 from time import sleep
 
 import click
@@ -22,16 +23,22 @@ from esque.cli.output import (
 )
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
-from esque.config import PING_TOPIC, Config, PING_GROUP_ID
+from esque.config import PING_TOPIC, Config, PING_GROUP_ID, config_dir, sample_config_path, config_path
 from esque.consumergroup import ConsumerGroupController
 from esque.topic import Topic
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
 
 
-@click.group(help="(Kafka-)esque.")
+@click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
+@click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
+@no_verify_option
 @version_option(__version__)
-def esque():
-    pass
+@pass_state
+def esque(state, recreate_config: bool):
+    if recreate_config:
+        config_dir().mkdir(exist_ok=True)
+        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
+            copyfile(sample_config_path().as_posix(), config_path())
 
 
 @esque.group(help="Get a quick overview of different resources.")
