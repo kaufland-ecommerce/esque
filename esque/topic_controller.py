@@ -1,5 +1,6 @@
 import re
 from enum import Enum
+from time import sleep
 from typing import List, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
@@ -68,6 +69,9 @@ class TopicController:
             )
             future_list = self.cluster.confluent_client.create_topics([new_topic])
             ensure_kafka_futures_done(list(future_list.values()))
+
+        # FIXME testing this for travis test failures
+        sleep(10)
 
     @raise_for_kafka_exception
     @invalidate_cache_after
