@@ -106,10 +106,8 @@ class TopicController:
 
     @raise_for_kafka_exception
     def _get_partition_data(
-            self,
-            confluent_topic: ConfluentTopic,
-            low_watermarks: PartitionInfo,
-            high_watermarks: PartitionInfo) -> List[Partition]:
+        self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
+    ) -> List[Partition]:
 
         partitions = []
 
