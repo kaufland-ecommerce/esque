@@ -3,48 +3,63 @@
 version: '3'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.2.1
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
+    command: >
+      bash -c "/init.sh
+      && confluent-community/bin/zookeeper-server-start confluent-community/etc/kafka/zookeeper.properties"
     hostname: zookeeper
     container_name: zookeeper
     ports:
       - 2181:2181
     environment:
+      CONFIG_PATH: 'confluent-community/etc/kafka/zookeeper.properties'
       ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
-    image: confluentinc/cp-kafka:5.2.1
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
     hostname: kafka
     container_name: kafka
+    command: >
+      bash -c "/wait-for-it.sh zookeeper:2181 -t 60
+      && /init.sh
+      && confluent-community/bin/kafka-server-start confluent-community/etc/kafka/server.properties"
     depends_on:
       - zookeeper
     ports:
-      - 9093:9093
       - 9092:9092
+      - 9093:9093
     environment:
-      KAFKA_BROKER_ID: 1
+      CONFIG_PATH: 'confluent-community/etc/kafka/server.properties'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-
       # We need zookeeper to advertise two different urls since the broker has to be reachable
       # from two different environments (once from inside the docker network and once from the host)
       # However it is neither possible to advertise two listeners but only configure one via KAFKA_LISTENERS
       # nor is it possible to advertise two listeners with the same protocol but different ports and hostnames since
       # they are still considered to have the same name.
       # We can do nothing about the former case but we can trick kafka with a custom protocol in the latter case.
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,LOCAL:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9093,LOCAL://localhost:9092
-
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'LOCAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+      KAFKA_LISTENERS: 'LOCAL://:9092,PLAINTEXT://kafka:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'LOCAL://localhost:9092,PLAINTEXT://kafka:9093'
 
   schema_registry:
-    image: confluentinc/cp-schema-registry:5.2.2
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
     container_name: schema_registry
+    command: >
+      bash -c "/wait-for-it.sh kafka:9093 -t 60
+      && /init.sh
+      && confluent-community/bin/schema-registry-start confluent-community/etc/schema-registry/schema-registry.properties"
     environment:
-      - SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:2181
-      - SCHEMA_REGISTRY_HOST_NAME=schema-registry
-      - SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081
-      - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka:9093
+      CONFIG_PATH: 'confluent-community/etc/schema-registry/schema-registry.properties'
+      SCHEMAREGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMAREGISTRY_HOST_NAME: schema-registry
+      SCHEMAREGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMAREGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9093
     depends_on:
       - kafka
     ports:
