@@ -201,9 +201,9 @@ def apply(state: State, file: str):
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(topic_controller.get_cluster_topic(topic_name))
+        topic_controller.delete_topic(Topic(topic_name))
 
-        assert topic_name not in topic_controller.list_topics()
+        assert topic_name not in (t.name for t in topic_controller.list_topics())
 
 
 @describe.command("topic")
@@ -381,7 +381,7 @@ def ping(state, times, wait):
     except KeyboardInterrupt:
         pass
     finally:
-        topic_controller.delete_topic(topic_controller.get_cluster_topic(PING_TOPIC))
+        topic_controller.delete_topic(Topic(PING_TOPIC))
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
