@@ -3,7 +3,9 @@
 version: '3'
 services:
   zookeeper:
-    build: docker/kafka-stack/
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
     command: >
       bash -c "/init.sh
       && confluent-community/bin/zookeeper-server-start confluent-community/etc/kafka/zookeeper.properties"
@@ -16,7 +18,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
 
   kafka:
-    build: docker/kafka-stack/
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
     hostname: kafka
     container_name: kafka
     command: >
@@ -42,7 +46,9 @@ services:
       KAFKA_ADVERTISED_LISTENERS: 'LOCAL://localhost:9092,PLAINTEXT://kafka:9093'
 
   schema_registry:
-    build: docker/kafka-stack/
+    build:
+      context: .
+      dockerfile: kafka.Dockerfile
     container_name: schema_registry
     command: >
       bash -c "/wait-for-it.sh kafka:9093 -t 60
