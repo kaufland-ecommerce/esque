@@ -21,7 +21,7 @@ class Partition(KafkaResource):
         high_watermark: int,
         partition_isrs,
         partition_leader,
-        partition_replicas,
+        partition_replicas: List[int],  # list of brokers holding a replica
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
@@ -151,13 +151,6 @@ class Topic(KafkaResource):
         return self.partition_data
 
     @property
-    def replication(self) -> int:
-        reps = set(p.partition_replicas for p in self.partitions)
-        if len(reps) != 1:
-            raise ValueError(f"Topic partitions have different replication factors! {reps}")
-        return reps.pop()
-
-    @property
     def offsets(self) -> Dict[int, Watermark]:
         """
         Returns the low and high watermark for each partition in a topic
@@ -174,7 +167,7 @@ class Topic(KafkaResource):
     def replication_factor(self) -> int:
         if self.is_only_local:
             return self.__replication_factor
-        partition_replication_factors = set(r for p in self.partitions for r in p.partition_replicas)
+        partition_replication_factors = set(len(p.partition_replicas) for p in self.partitions)
         assert len(partition_replication_factors) == 1, "Different replication factors for partitions!"
         return partition_replication_factors.pop()
 
