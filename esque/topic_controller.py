@@ -31,11 +31,16 @@ class TopicController:
 
     @raise_for_kafka_exception
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
+        confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
         if client_type == ClientTypes.Confluent:
-            return self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics[topic_name]
+            return confluent_topics[topic_name]
         elif client_type == ClientTypes.PyKafka:
             # at least PyKafka does it's own caching, so we don't have to bother
-            return self.cluster.pykafka_client.cluster.topics[topic_name]
+            pykafka_topics = self.cluster.pykafka_client.cluster.topics
+            # PyKafka will try to auto-create the topic if you use `topic[random_name]`
+            if topic_name not in confluent_topics.keys():
+                raise KeyError(f"Topic {topic_name} does not exist")
+            return pykafka_topics[topic_name]
         else:
             raise ValueError(f"TopicType needs to be part of {ClientTypes}")
 

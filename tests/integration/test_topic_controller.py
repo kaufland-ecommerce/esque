@@ -65,7 +65,7 @@ def test_topic_deletion_works(
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
-    topic_controller.delete_topic(topic_controller.get_cluster_topic(topic))
+    topic_controller.delete_topic(Topic(topic))
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
