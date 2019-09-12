@@ -1,5 +1,6 @@
 import re
 from collections import namedtuple
+from itertools import islice
 from typing import List, Dict, TYPE_CHECKING
 
 from confluent_kafka.admin import ConfigResource
@@ -7,7 +8,7 @@ from confluent_kafka.cimpl import NewTopic
 
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
-from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
+from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.topic import Topic
 
 if TYPE_CHECKING:
@@ -49,8 +50,8 @@ class TopicController:
             new_topic = NewTopic(
                 topic.name, num_partitions=partitions, replication_factor=replicas, config=topic.config
             )
-            future_list = self.cluster.confluent_client.create_topics([new_topic])
-            ensure_kafka_futures_done(list(future_list.values()))
+            future_list = self.cluster.confluent_client.create_topics([new_topic], operation_timeout=60)
+            ensure_kafka_future_done(next(islice(future_list.values(), 1)))
 
     @raise_for_kafka_exception
     @invalidate_cache_after
@@ -58,13 +59,13 @@ class TopicController:
         for topic in topics:
             config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
-            ensure_kafka_futures_done(list(future_list.values()))
+            ensure_kafka_future_done(next(islice(future_list.values(), 1)))
 
     @raise_for_kafka_exception
     @invalidate_cache_after
     def delete_topic(self, topic: Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
-        ensure_kafka_futures_done([future])
+        ensure_kafka_future_done(future)
 
     def get_cluster_topic(self, topic_name: str) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
