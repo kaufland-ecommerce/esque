@@ -74,7 +74,6 @@ class TopicController:
             future_list = self.cluster.confluent_client.create_topics([new_topic])
             ensure_kafka_futures_done(list(future_list.values()))
 
-
     @raise_for_kafka_exception
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
