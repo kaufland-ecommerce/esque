@@ -1,3 +1,5 @@
+# All credit to: https://github.com/wurstmeister/kafka-docker/blob/master/start-kafka.sh
+
 function updateConfig() {
     key=$1
     value=$2
@@ -12,10 +14,6 @@ function updateConfig() {
         echo "[Appended] '$key' in '$file' [$key=$value]"
     fi
 }
-
-# Fixes #312
-# KAFKA_VERSION + KAFKA_HOME + grep -rohe KAFKA[A-Z0-0_]* /opt/kafka/bin | sort | uniq | tr '\n' '|'
-EXCLUSIONS="|KAFKA_VERSION|KAFKA_HOME|KAFKA_DEBUG|KAFKA_GC_LOG_OPTS|KAFKA_HEAP_OPTS|KAFKA_JMX_OPTS|KAFKA_JVM_PERFORMANCE_OPTS|KAFKA_LOG|KAFKA_OPTS|"
 
 # Read in env as a new-line separated array. This handles the case of env variables have spaces and/or carriage returns. See #313
 IFS=$'\n'
