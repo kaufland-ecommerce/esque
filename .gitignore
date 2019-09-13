@@ -1,4 +1,5 @@
-# JetBrains
+# Editor
+.vscode/
 .idea/
 
 # macOS

@@ -1,6 +1,6 @@
 from collections import namedtuple
 from functools import total_ordering
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
@@ -12,7 +12,6 @@ TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
-AttributeDiff = namedtuple("AttributeDiff", ["old", "new"])
 
 
 class Partition(KafkaResource):
@@ -23,7 +22,7 @@ class Partition(KafkaResource):
         high_watermark: int,
         partition_isrs,
         partition_leader,
-        partition_replicas,
+        partition_replicas: List[int],  # list of brokers holding a replica
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
@@ -42,6 +41,87 @@ class Partition(KafkaResource):
         }
 
 
+class AttributeDiff:
+    def __init__(self, remote, local):
+        self.remote = remote
+        self.local = local
+        assert type(remote) == type(
+            local
+        ), f"Attributes should be given as the same type, not {type(remote)} and {type(local)}"
+
+    @property
+    def old(self):
+        return self.remote
+
+    @property
+    def new(self):
+        return self.local
+
+    def __eq__(self, other: "AttributeDiff"):
+        return self.remote == other.remote and self.local == other.local
+
+    def __hash__(self):
+        return hash(hash(self.remote) + hash(self.local))
+
+    def __repr__(self):
+        return f"<AttributeDiff[remote:{self.remote}, local:{self.local}]>"
+
+
+class TopicDiff:
+    INVALID_CHANGES = ["num_partitions", "replication_factor"]
+
+    def __init__(self):
+        self._diffs: Dict[str, AttributeDiff] = {}
+
+    def set_diff(self, name: str, remote, local) -> "TopicDiff":
+
+        # config values of local topics can be set as int or string
+        # since all "config" variables we get from cluster topics are sent to us as strings,
+        # we need to convert the local ones to string to match them correctly (exclude None's)
+        local = str(local) if isinstance(remote, str) and local is not None else local
+
+        if remote == local:
+            return self
+
+        # TODO: this should be handled correctly by checking the cluster defaults, like
+        # if remote == cluster_default(name) and local is None: return
+        # currently, if an attribute that was set get's un-set, it's ignored
+        if local is None:
+            return self
+
+        assert type(remote) == type(
+            local
+        ), f"Attributes for {name} should be given as the same type, not {type(remote)} and {type(local)}"
+        self._diffs[name] = AttributeDiff(remote, local)
+
+        # allow chaining of set-calls
+        return self
+
+    @property
+    def is_valid(self) -> bool:
+        return set(self._diffs.get(a, None) for a in self.INVALID_CHANGES) == {None}
+
+    @classmethod
+    def from_dict(cls, diff_dict: Dict[str, AttributeDiff]) -> "TopicDiff":
+        td = TopicDiff()
+        td._diffs = diff_dict
+        return td
+
+    @property
+    def has_changes(self) -> bool:
+        return len(self._diffs.keys()) > 0
+
+    def changes(self) -> Generator[Tuple[str, Any, Any], None, None]:
+        for key, val in self._diffs.items():
+            yield key, val.remote, val.local
+
+    def __eq__(self, other: "TopicDiff") -> bool:
+        return self._diffs == other._diffs
+
+    def __repr__(self):
+        return f"<TopicDiff[{str(self._diffs)}>"
+
+
 @total_ordering
 class Topic(KafkaResource):
     def __init__(
@@ -57,9 +137,10 @@ class Topic(KafkaResource):
             name = name.decode("ascii")
         self.name = name
 
-        # TODO remove those two, replace with the properties below
+        # those settings are only used until the topic is updated from cluster
         self.__num_partitions = num_partitions
         self.__replication_factor = replication_factor
+
         self.config = config if config is not None else {}
 
         self._partition_assignment: Dict[int, List[int]] = partitions
@@ -67,6 +148,7 @@ class Topic(KafkaResource):
         self._pykafka_topic = None
         self._confluent_topic = None
 
+        self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
 
     @property
@@ -79,14 +161,7 @@ class Topic(KafkaResource):
     @property
     def partitions(self) -> List[Partition]:
         assert not self.is_only_local, "Need to update topic before updating partitions"
-        return self._partitions
-
-    @property
-    def replication(self) -> int:
-        reps = set(p.partition_replicas for p in self.partitions)
-        if len(reps) != 1:
-            raise ValueError(f"Topic partitions have different replication factors! {reps}")
-        return reps.pop()
+        return self.partition_data
 
     @property
     def offsets(self) -> Dict[int, Watermark]:
@@ -105,7 +180,7 @@ class Topic(KafkaResource):
     def replication_factor(self) -> int:
         if self.is_only_local:
             return self.__replication_factor
-        partition_replication_factors = set(r for p in self.partitions for r in p.partition_replicas)
+        partition_replication_factors = set(len(p.partition_replicas) for p in self.partitions)
         assert len(partition_replication_factors) == 1, "Different replication factors for partitions!"
         return partition_replication_factors.pop()
 
