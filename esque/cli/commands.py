@@ -20,7 +20,7 @@ from esque.cli.output import (
     blue_bold,
     green_bold,
     pretty_unchanged_topic_configs,
-)
+    pretty_consumergroup_simple_overview)
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID, config_dir, sample_config_path, config_path
@@ -248,9 +248,8 @@ def describe_broker(state, broker_id):
 def describe_consumergroup(state, consumer_id, verbose):
     try:
         consumer_group = state.cluster.consumergroup_controller.get_cluster_consumergroup(consumer_id)
-        consumer_group_desc = consumer_group.describe(verbose=verbose)
 
-        click.echo(pretty(consumer_group_desc, break_lists=True))
+        click.echo(pretty_consumergroup_simple_overview(consumer_group))
     except ConsumerGroupDoesNotExistException:
         click.echo(bold(f"Consumer Group {consumer_id} not found."))
 
