@@ -247,7 +247,7 @@ def describe_broker(state, broker_id):
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
     try:
-        consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
+        consumer_group = state.cluster.consumergroup_controller.get_cluster_consumergroup(consumer_id)
         consumer_group_desc = consumer_group.describe(verbose=verbose)
 
         click.echo(pretty(consumer_group_desc, break_lists=True))
@@ -266,7 +266,7 @@ def get_brokers(state):
 @get.command("consumergroups")
 @pass_state
 def get_consumergroups(state):
-    groups = ConsumerGroupController(state.cluster).list_consumer_groups()
+    groups = state.cluster.consumergroup_controller.list_consumer_groups()
     for group in groups:
         click.echo(group)
 

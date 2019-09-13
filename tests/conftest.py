@@ -8,12 +8,11 @@ import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import TopicPartition, Producer
+from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
 from esque.config import Config, sample_config_path
-from esque.consumergroup import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
 from esque.topic import Topic
 
@@ -81,7 +80,7 @@ def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]
 
 @pytest.fixture()
 def source_topic(
-    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+        num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
 ) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
@@ -89,7 +88,7 @@ def source_topic(
 
 @pytest.fixture()
 def target_topic(
-    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+        num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
 ) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
@@ -145,25 +144,25 @@ def avro_producer(test_config: Config):
 
 @pytest.fixture()
 def consumergroup_controller(cluster: Cluster):
-    yield ConsumerGroupController(cluster)
+    yield cluster.consumergroup_controller
 
 
-@pytest.fixture()
-def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
-    yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
+@pytest.fixture
+def consumed_topic(topic_object: Topic, producer: Producer) -> Tuple[str, str, int, int]:
+    total, consumed = 12, 5
 
+    rand_str = lambda x: "".join(random.choices(ascii_letters, k=x))
+    consumer_group_id = rand_str(5)
 
-@pytest.fixture()
-def consumer_group():
-    yield "".join(random.choices(ascii_letters, k=5))
+    for _ in range(total):
+        random_value = rand_str(5).encode("utf-8")
+        producer.produce(topic=topic_object.name, key=random_value, value=random_value)
+        producer.flush()
 
-
-@pytest.fixture()
-def consumer(topic_object: Topic, consumer_group):
-    _config = Config().create_confluent_config()
-    _config.update(
+    config = Config().create_confluent_config()
+    config.update(
         {
-            "group.id": consumer_group,
+            "group.id": consumer_group_id,
             "error_cb": raise_for_kafka_error,
             # We need to commit offsets manually once we"re sure it got saved
             # to the sink
@@ -174,26 +173,13 @@ def consumer(topic_object: Topic, consumer_group):
             "default.topic.config": {"auto.offset.reset": "latest"},
         }
     )
-    _consumer = confluent_kafka.Consumer(_config)
-    _consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
-    yield _consumer
+    consumer = confluent_kafka.Consumer(config)
+    consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
 
-
-@pytest.fixture()
-def filled_topic(producer, topic_object):
-    for _ in range(10):
-        random_value = "".join(random.choices(ascii_letters, k=5)).encode("utf-8")
-        producer.produce(topic=topic_object.name, key=random_value, value=random_value)
-        producer.flush()
-    yield topic_object
-
-
-@pytest.fixture()
-def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
-    for i in range(5):
+    for i in range(consumed):
         msg = consumer.consume(timeout=10)[0]
         consumer.commit(msg, asynchronous=False)
-    yield consumer_group
+    return consumer_group_id, topic_object.name, total, consumed
 
 
 @pytest.fixture()

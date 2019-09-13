@@ -1,17 +1,23 @@
-from typing import Any, Dict, List, Optional, cast
+from collections import namedtuple, defaultdict
+from functools import reduce
+from operator import add
+from typing import Any, Dict, List, Optional, cast, TYPE_CHECKING
 
 import pykafka
 from pykafka.protocol import OffsetFetchResponseV1, PartitionOffsetFetchRequest
-from pykafka.protocol.admin import DescribeGroupResponse
+from pykafka.protocol.admin import DescribeGroupResponse, GroupMember
 
-from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
+
+if TYPE_CHECKING:
+    from esque.cluster import Cluster
+
 
 # TODO: Refactor this shit hole
 
 
 class ConsumerGroup:
-    def __init__(self, id: str, cluster: Cluster):
+    def __init__(self, id: str, cluster: "Cluster"):
         self.id = id
         self.cluster = cluster
         self._pykafka_group_coordinator_instance: Optional[pykafka.Broker] = None
@@ -144,12 +150,75 @@ class ConsumerGroup:
         }
 
 
+OffsetInfo = namedtuple("OffsetInfo", ["low_watermark", "high_watermark", "current", "lag"])
+MemberInfo = namedtuple("MemberInfo", ["id", "client", "host", "subscriptions", "assignments"])
+
+TopicPartitionOffset = Dict[str, Dict[int, OffsetInfo]]
+
+
+class NewConsumerGroup:
+    def __init__(self, group_id: str):
+        self.group_id = group_id.encode("UTF-8")
+        self.state: Optional[str] = None
+        self.members: Optional[List[MemberInfo]] = None
+        self.topic_partition_offset: Optional[TopicPartitionOffset] = None
+
+    @property
+    def topics(self) -> List[str]:
+        return list(self.topic_partition_offset.keys())
+
+    @property
+    def total_lag(self) -> int:
+        lags = [offsets.lag for _, po in self.topic_partition_offset.items() for p, offsets in po.items()]
+        return reduce(add, lags)
+
+
 class ConsumerGroupController:
-    def __init__(self, cluster: Cluster):
+    def __init__(self, cluster: "Cluster"):
         self.cluster = cluster
 
-    def get_consumergroup(self, consumer_id) -> ConsumerGroup:
-        return ConsumerGroup(consumer_id, self.cluster)
+    def get_cluster_consumergroup(self, group_id: str) -> NewConsumerGroup:
+        if group_id not in self.list_consumer_groups():
+            raise ValueError(f"No consumer group with id {group_id} found on the cluster")
+
+        group = NewConsumerGroup(group_id)
+        self.update_from_cluster(group)
+        return group
+
+    def update_from_cluster(self, group: NewConsumerGroup):
+        coordinator = self.cluster.pykafka_client.cluster.get_group_coordinator(group.group_id)
+        self._update_members(coordinator, group)
+        self._update_offsets(coordinator, group)
+
+    def _update_offsets(self, coordinator, group: NewConsumerGroup):
+
+        offsets = coordinator.fetch_consumer_group_offsets(group.group_id, preqs=[])
+        tpo = {}
+        for topic, partition_offsets in offsets.topics.items():
+            topic_name = topic.decode("utf-8")
+            topic_offsets = self.cluster.topic_controller.get_cluster_topic(topic).offsets
+            part_offs = {}
+
+            for partition, offset_data in partition_offsets.items():
+                current = offset_data.offset
+                low = topic_offsets[partition].low
+                high = topic_offsets[partition].high
+                part_offs[partition] = OffsetInfo(low, high, current, high - current)
+            tpo[topic_name] = part_offs
+
+        group.topic_partition_offset = tpo
+
+    def _update_members(self, coordinator, group: NewConsumerGroup):
+        desc = coordinator.describe_groups([group.group_id]).groups[bytes(group.group_id)]
+
+        group.state = desc.state
+
+        members = []
+        for _, m in desc.members.items():
+            subs = [topic for topic in m.member_metadata.topic_names]
+            assignments = {assign[0]: assign[1] for assign in m.member_assignment.partition_assignment}
+            m_info = MemberInfo(m.member_id, m.client_id, m.client_host, subs, assignments)
+            members.append(m_info)
 
     def list_consumer_groups(self) -> List[str]:
         brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers

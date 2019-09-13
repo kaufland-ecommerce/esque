@@ -4,6 +4,7 @@ import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
+from esque.consumergroup import ConsumerGroupController
 from esque.helpers import ensure_kafka_futures_done, unpack_confluent_config
 from esque.topic_controller import TopicController
 
@@ -17,12 +18,19 @@ class Cluster:
         )
         self.confluent_client.poll(timeout=1)
         self.__topic_controller = None
+        self.__consumergroup_controller = None
 
     @property
     def topic_controller(self) -> TopicController:
         if self.__topic_controller is None:
             self.__topic_controller = TopicController(self, self._config)
         return self.__topic_controller
+
+    @property
+    def consumergroup_controller(self) -> ConsumerGroupController:
+        if self.__consumergroup_controller is None:
+            self.__consumergroup_controller = ConsumerGroupController(self)
+        return self.__consumergroup_controller
 
     @property
     def bootstrap_servers(self):

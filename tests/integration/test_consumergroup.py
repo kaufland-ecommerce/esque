@@ -1,15 +1,14 @@
 import pytest
 
-from esque.consumergroup import ConsumerGroup
+from esque.consumergroup import ConsumerGroupController
 
 
 @pytest.mark.integration
-def test_describe(consumergroup_instance: ConsumerGroup):
-    consumer_offset = consumergroup_instance.describe()
+def test_basics(consumed_topic, consumergroup_controller: ConsumerGroupController):
+    consumer_group_id, topic_name, total, consumed = consumed_topic
+    group = consumergroup_controller.get_cluster_consumergroup(consumer_group_id)
 
-    offset = consumer_offset["offsets"]
-
-    assert offset["consumer_offset"] == (5, 5)
-    assert offset["topic_low_watermark"] == (0, 0)
-    assert offset["topic_high_watermark"] == (10, 10)
-    assert offset["consumer_lag"] == (5, 5)
+    assert consumer_group_id in consumergroup_controller.list_consumer_groups(), "Group should be known by broker"
+    assert group.total_lag == total - consumed, f"Total lag should be the same as lag for {topic_name} partition 0"
+    assert group.topics == [topic_name], f"Should only be subscribed to topic {topic_name}"
+    assert group.topic_partition_offset[topic_name][0] == (0, total, consumed, total - consumed), "It's broken, yo!"
