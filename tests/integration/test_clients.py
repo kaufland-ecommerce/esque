@@ -17,12 +17,12 @@ from confluent_kafka.avro import loads as load_schema, AvroProducer
 
 @pytest.mark.integration
 def test_plain_text_consume_to_file(
-    consumer_group, producer: ConfluenceProducer, source_topic: Tuple[str, int], tmpdir_factory
+    random_id, producer: ConfluenceProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = FileConsumer(random_id, source_topic_id, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(working_dir, False)
@@ -33,12 +33,12 @@ def test_plain_text_consume_to_file(
 
 @pytest.mark.integration
 def test_avro_consume_to_file(
-    consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory
+    random_id, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
-    file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = AvroFileConsumer(random_id, source_topic_id, working_dir, False)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(working_dir, True)
@@ -49,7 +49,7 @@ def test_avro_consume_to_file(
 
 @pytest.mark.integration
 def test_plain_text_consume_and_produce(
-    consumer_group,
+    random_id,
     producer: ConfluenceProducer,
     source_topic: Tuple[str, int],
     target_topic: Tuple[str, int],
@@ -59,7 +59,7 @@ def test_plain_text_consume_and_produce(
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = FileConsumer(random_id, source_topic_id, working_dir, False)
     file_consumer.consume(10)
 
     producer = FileProducer(working_dir)
@@ -68,7 +68,7 @@ def test_plain_text_consume_and_produce(
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
     file_consumer = FileConsumer(
-        (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False
+        (random_id + "assertion_check"), target_topic_id, assertion_check_directory, False
     )
     file_consumer.consume(10)
 
@@ -79,7 +79,7 @@ def test_plain_text_consume_and_produce(
 
 @pytest.mark.integration
 def test_avro_consume_and_produce(
-    consumer_group,
+    random_id,
     avro_producer: AvroProducer,
     source_topic: Tuple[str, int],
     target_topic: Tuple[str, int],
@@ -89,7 +89,7 @@ def test_avro_consume_and_produce(
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
-    file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = AvroFileConsumer(random_id, source_topic_id, working_dir, False)
     file_consumer.consume(10)
 
     producer = AvroFileProducer(working_dir)
@@ -98,7 +98,7 @@ def test_avro_consume_and_produce(
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
     file_consumer = AvroFileConsumer(
-        (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False
+        (random_id + "assertion_check"), target_topic_id, assertion_check_directory, False
     )
     file_consumer.consume(10)
 

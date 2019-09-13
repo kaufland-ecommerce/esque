@@ -5,9 +5,10 @@ from esque.topic_controller import TopicController
 
 
 @pytest.mark.integration
-def test_offsets(filled_topic: Topic, topic_controller: TopicController):
-    topic_controller.update_from_cluster(filled_topic)
-    assert filled_topic.offsets == {0: Watermark(10, 0)}
+def test_offsets(consumed_topic, topic_controller: TopicController):
+    consumer_group_id, topic_name, total, consumed = consumed_topic
+    filled_topic = topic_controller.get_cluster_topic(topic_name)
+    assert filled_topic.offsets == {0: Watermark(12, 0)}
 
 
 @pytest.mark.integration

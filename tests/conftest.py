@@ -146,6 +146,10 @@ def avro_producer(test_config: Config):
 def consumergroup_controller(cluster: Cluster):
     yield cluster.consumergroup_controller
 
+@pytest.fixture
+def random_id() -> str:
+    return "".join(random.choices(ascii_letters, k=5))
+
 
 @pytest.fixture
 def consumed_topic(topic_object: Topic, producer: Producer) -> Tuple[str, str, int, int]:
