@@ -76,9 +76,9 @@ def get_value(unit: str, value: Any) -> str:
     if isinstance(value, str) and " -> " in value:
         values = value.split(" -> ")
         return (
-                click.style(get_value(unit, values[0]), fg="red")
-                + " -> "
-                + click.style(get_value(unit, values[1]), fg="green")
+            click.style(get_value(unit, values[0]), fg="red")
+            + " -> "
+            + click.style(get_value(unit, values[1]), fg="green")
         )
 
     if unit in CONVERSION_MAPPING:
@@ -135,12 +135,14 @@ def pretty_topic_diffs(topics_config_diff: Dict[str, TopicDiff]) -> str:
 
 
 def pretty_consumergroup_simple_overview(group: ConsumerGroup) -> str:
-    highlight = lambda x: click.style(str(x), bold=True, fg="yellow")
+    def highlight(x):
+        return click.style(str(x), bold=True, fg="yellow")
+
     output = [
-        f"reading from topics {highlight(', '.join(group.topics))} on {highlight(group.partition_amount)} partitions\n",
+        f"reading from topics {highlight(group.topics)} on {highlight(group.partition_amount)} partitions\n",
         f"currently at offsets (min, avg, max) {highlight(group.offset_overview)}\n",
         f"with a total lag of {highlight(group.total_lag)}\n",
-        f"by members {highlight(group.member_names)}"
+        f"by members {highlight(group.member_names)}",
     ]
     return pretty({f"ConsumerGroup {highlight(group.group_id)}": output})
 

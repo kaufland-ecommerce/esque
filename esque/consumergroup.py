@@ -1,6 +1,4 @@
 from collections import namedtuple
-from functools import reduce
-from operator import add
 from typing import Dict, List, Optional, TYPE_CHECKING, Tuple
 
 import pykafka
@@ -23,7 +21,6 @@ class ConsumerGroup:
         self.members: Optional[List[MemberInfo]] = None
         self.topic_partition_offset: Optional[TopicPartitionOffset] = None
 
-
     @property
     def id_bytes(self) -> bytes:
         return self.group_id.encode("UTF-8")
@@ -34,17 +31,17 @@ class ConsumerGroup:
 
     @property
     def member_names(self) -> List[str]:
-        return [f"{m.id} / {m.client} @ {m.host}" for m in self.members]
+        return [f"{m.id} : {m.client} @ {m.host}" for m in self.members]
 
     @property
     def partition_amount(self) -> int:
         return sum([len(po.values()) for t, po in self.topic_partition_offset.items()])
 
-
     @property
     def offset_overview(self) -> Tuple[int, int, int]:
         offsets = [o.current for t, po in self.topic_partition_offset.items() for p, o in po.items()]
-        return min(offsets), sum(offsets) // len(offsets), max(offsets)
+        offsets = [0] if len(offsets) == 0 else offsets
+        return min(offsets), round(sum(offsets) / len(offsets), 1), max(offsets)
 
     @property
     def total_lag(self) -> int:
@@ -97,7 +94,13 @@ class ConsumerGroupController:
         for _, m in desc.members.items():
             subs = [topic for topic in m.member_metadata.topic_names]
             assignments = {assign[0]: assign[1] for assign in m.member_assignment.partition_assignment}
-            m_info = MemberInfo(m.member_id, m.client_id, m.client_host, subs, assignments)
+            m_info = MemberInfo(
+                m.member_id.decode("UTF-8"),
+                m.client_id.decode("UTF-8"),
+                m.client_host.decode("UTF-8"),
+                subs,
+                assignments,
+            )
             members.append(m_info)
 
         group.members = members

@@ -20,13 +20,13 @@ from esque.cli.output import (
     blue_bold,
     green_bold,
     pretty_unchanged_topic_configs,
-    pretty_consumergroup_simple_overview)
+    pretty_consumergroup_simple_overview,
+)
 from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_TOPIC, Config, PING_GROUP_ID, config_dir, sample_config_path, config_path
-from esque.consumergroup import ConsumerGroupController
-from esque.topic import Topic
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
+from esque.topic import Topic
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)

@@ -32,9 +32,7 @@ def test_plain_text_consume_to_file(
 
 
 @pytest.mark.integration
-def test_avro_consume_to_file(
-    random_id, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory
-):
+def test_avro_consume_to_file(random_id, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory):
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
@@ -67,9 +65,7 @@ def test_plain_text_consume_and_produce(
 
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
-    file_consumer = FileConsumer(
-        (random_id + "assertion_check"), target_topic_id, assertion_check_directory, False
-    )
+    file_consumer = FileConsumer((random_id + "assertion_check"), target_topic_id, assertion_check_directory, False)
     file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(assertion_check_directory, False)

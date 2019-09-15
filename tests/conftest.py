@@ -80,7 +80,7 @@ def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]
 
 @pytest.fixture()
 def source_topic(
-        num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
 ) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
@@ -88,7 +88,7 @@ def source_topic(
 
 @pytest.fixture()
 def target_topic(
-        num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
 ) -> Iterable[Tuple[str, int]]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     yield from topic_factory(num_partitions, topic_id)
@@ -146,6 +146,7 @@ def avro_producer(test_config: Config):
 def consumergroup_controller(cluster: Cluster):
     yield cluster.consumergroup_controller
 
+
 @pytest.fixture
 def random_id() -> str:
     return "".join(random.choices(ascii_letters, k=5))
@@ -155,7 +156,9 @@ def random_id() -> str:
 def consumed_topic(topic_object: Topic, producer: Producer) -> Tuple[str, str, int, int]:
     total, consumed = 12, 5
 
-    rand_str = lambda x: "".join(random.choices(ascii_letters, k=x))
+    def rand_str(x):
+        return "".join(random.choices(ascii_letters, k=x))
+
     consumer_group_id = rand_str(5)
 
     for _ in range(total):
@@ -163,10 +166,20 @@ def consumed_topic(topic_object: Topic, producer: Producer) -> Tuple[str, str, i
         producer.produce(topic=topic_object.name, key=random_value, value=random_value)
         producer.flush()
 
+    consumer = consumer_with_id(consumer_group_id)
+    consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
+
+    for i in range(consumed):
+        msg = consumer.consume(timeout=10)[0]
+        consumer.commit(msg, asynchronous=False)
+    return consumer_group_id, topic_object.name, total, consumed
+
+
+def consumer_with_id(group_id: str) -> confluent_kafka.Consumer:
     config = Config().create_confluent_config()
     config.update(
         {
-            "group.id": consumer_group_id,
+            "group.id": group_id,
             "error_cb": raise_for_kafka_error,
             # We need to commit offsets manually once we"re sure it got saved
             # to the sink
@@ -178,12 +191,7 @@ def consumed_topic(topic_object: Topic, producer: Producer) -> Tuple[str, str, i
         }
     )
     consumer = confluent_kafka.Consumer(config)
-    consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
-
-    for i in range(consumed):
-        msg = consumer.consume(timeout=10)[0]
-        consumer.commit(msg, asynchronous=False)
-    return consumer_group_id, topic_object.name, total, consumed
+    return consumer
 
 
 @pytest.fixture()
