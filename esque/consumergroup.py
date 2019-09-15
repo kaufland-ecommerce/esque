@@ -31,7 +31,7 @@ class ConsumerGroup:
 
     @property
     def member_names(self) -> List[str]:
-        return [f"{m.id} : {m.client} @ {m.host}" for m in self.members]
+        return [f"{m.id} : {m.client} @ {m.host} -> {', '.join(m.subscriptions)}" for m in self.members]
 
     @property
     def partition_amount(self) -> int:
@@ -98,7 +98,7 @@ class ConsumerGroupController:
                 m.member_id.decode("UTF-8"),
                 m.client_id.decode("UTF-8"),
                 m.client_host.decode("UTF-8"),
-                subs,
+                [s.decode("UTF-8") for s in subs],
                 assignments,
             )
             members.append(m_info)

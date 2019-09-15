@@ -138,13 +138,12 @@ def pretty_consumergroup_simple_overview(group: ConsumerGroup) -> str:
     def highlight(x):
         return click.style(str(x), bold=True, fg="yellow")
 
-    output = [
-        f"reading from topics {highlight(group.topics)} on {highlight(group.partition_amount)} partitions\n",
-        f"currently at offsets (min, avg, max) {highlight(group.offset_overview)}\n",
-        f"with a total lag of {highlight(group.total_lag)}\n",
-        f"by members {highlight(group.member_names)}",
-    ]
-    return pretty({f"ConsumerGroup {highlight(group.group_id)}": output})
+    output = f"""ConsumerGroup {highlight(group.group_id)}
+        with {highlight(len(group.members))} active member(s)
+        reading from topics {highlight(group.topics)} on {highlight(group.partition_amount)} partition(s)
+        currently at offsets (min, avg, max) {highlight(group.offset_overview)}
+        having a total lag of {highlight(group.total_lag)}"""
+    return pretty(output)
 
 
 def pretty_new_topic_configs(new_topics: List[Topic]) -> str:
