@@ -171,6 +171,10 @@ class Topic(KafkaResource):
         return {partition.partition_id: partition.watermark for partition in self.partitions}
 
     @property
+    def partition_ids(self):
+        return [partition.partition_id for partition in self.partitions]
+
+    @property
     def num_partitions(self) -> int:
         if self.is_only_local:
             return self.__num_partitions

@@ -36,6 +36,12 @@ class KafkaException(Exception):
         self.message = message
 
 
+class ValidationError(Exception):
+    def __init__(self, code, message):
+        self.code = code
+        self.message = message
+
+
 class ConsumerGroupDoesNotExistException(Exception):
     pass
 

@@ -1,4 +1,5 @@
 import pathlib
+import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -25,8 +26,14 @@ from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, File
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.consumergroup import ConsumerGroupController
-from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
-from esque.topic import Topic
+from esque.errors import (
+    ConsumerGroupDoesNotExistException,
+    ContextNotDefinedException,
+    TopicAlreadyExistsException,
+    ValidationError,
+)
+from esque.topic import Topic, Partition
+from esque.topic_controller import TopicController
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -127,6 +134,55 @@ def edit_topic(state: State, topic_name: str):
         controller.alter_configs([topic])
 
 
+def validate_plan(topic_controller: TopicController, plan) -> bool:
+    brokers_ids = [broker["id"] for broker in topic_controller.cluster.brokers]
+    for partition in plan["partitions"]:
+        cluster_topic = topic_controller.get_cluster_topic(partition["topic"])
+        partition_id = partition["partition"]
+        replicas = partition["replicas"]
+
+        if partition_id not in cluster_topic.partition_ids:
+            raise ValidationError(
+                "E01", f"Partition {partition_id} of topic {cluster_topic.name} does not exist on the " "cluster."
+            )
+
+        cluster_partition: Partition = cluster_topic.partitions[partition_id]
+
+        if len(replicas) != cluster_topic.replication_factor:
+            raise ValidationError(
+                "E02",
+                f"Number of replicas for partition {partition_id} of topic {cluster_topic.name} does not"
+                f"match the current replication factor of {cluster_topic.replication_factor}",
+            )
+
+        if not all(replica in brokers_ids for replica in replicas):
+            raise ValidationError(
+                "E03",
+                f"At least one of the chosen replicas for Partition {partition_id} of topic {cluster_topic.name} does not"
+                f"exist on the cluster.",
+            )
+
+        if len(replicas) != len(set(replicas)):
+            raise ValidationError(
+                "E04",
+                f"The replicas for partition {partition_id} of topic {cluster_topic.name} contains at least one "
+                f"duplicate.",
+            )
+
+        if set(cluster_partition.partition_replicas) == set(replicas):
+            raise ValidationError(
+                "E05", f"The replicas for partition {partition_id} of topic {cluster_topic.name} are unchanged."
+            )
+
+        # Should not move leadership away if broker stays replica
+        if cluster_partition.partition_leader in replicas:
+            raise ValidationError(
+                "E06",
+                f"The replicas for partition {partition_id} of topic {cluster_topic.name} moves leadership to a new "
+                f"broker without removing the old one.",
+            )
+
+
 @esque.command("reassign_partitions")
 @click.option("-f")
 @pass_state
@@ -137,6 +193,11 @@ def reassign_partitions(state, f):
         for topic in plan["topics"]
         for id, assignment in topic["partitions"].items()
     }
+
+    if not validate_plan(plan):
+        click.echo("Found errors in the plan:")
+        sys.exit(1)
+
     state.cluster.topic_controller.execute_cluster_assignment(plan)
 
 
