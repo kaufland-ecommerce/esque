@@ -14,7 +14,7 @@ from esque.topic_controller import TopicController
 
 
 @pytest.fixture()
-def state():
+def state(test_config):
     yield State()
 
 
