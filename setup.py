@@ -28,7 +28,7 @@ required = [
     "virtualenv",
     "confluent-kafka",
     "click>=7.0",
-    "kazoo",
+    "kazoo==2.5.0",  # Just because pykafka has it locked to this
     "pykafka",
     "pendulum",
     "pyyaml",
