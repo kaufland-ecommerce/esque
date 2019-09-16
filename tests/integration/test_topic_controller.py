@@ -266,7 +266,7 @@ def test_topic_creation_with_template_works(
         [Topic(topic_1, replication_factor=replication_factor, num_partitions=num_partitions, config=config)]
     )
     runner = CliRunner()
-    runner.invoke(create_topic, ['--no-verify', '-l', topic_1, topic_2])
+    runner.invoke(create_topic, ["--no-verify", "-l", topic_1, topic_2])
     config_from_template = state.cluster.topic_controller.get_cluster_topic(topic_2)
     assert config_from_template.replication_factor == replication_factor
     assert config_from_template.num_partitions == num_partitions
