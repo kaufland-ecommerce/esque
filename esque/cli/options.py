@@ -7,7 +7,7 @@ from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
-from esque.config import Config, config_dir, config_path, sample_config_path
+from esque.config.config import Config, config_dir, config_path, sample_config_path
 from esque.errors import ConfigNotExistsException
 
 

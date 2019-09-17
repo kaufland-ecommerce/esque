@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from esque.config import Config
+from esque.config.config import Config
 from esque.errors import ContextNotDefinedException
 
 DUMMY_CONFIG = """

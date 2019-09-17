@@ -22,7 +22,7 @@ from esque.cli.output import (
 )
 from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, FileProducer, PingConsumer, PingProducer
 from esque.cluster import Cluster
-from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroupController
