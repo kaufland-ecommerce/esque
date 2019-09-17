@@ -191,7 +191,7 @@ class Topic(KafkaResource):
         }
 
     def to_yaml(self, only_editable=False) -> str:
-        return yaml.dump(self.as_dict(only_editable=only_editable))
+        return yaml.dump(self.as_dict(only_editable=only_editable), default_flow_style=False)
 
     def from_yaml(self, data) -> None:
         new_values = yaml.safe_load(data)
