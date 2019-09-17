@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import click
 
-from esque.environment import ESQUE_CONF_PATH
+from esque.cli.environment import ESQUE_CONF_PATH
 from esque.errors import ConfigNotExistsException, ContextNotDefinedException
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))

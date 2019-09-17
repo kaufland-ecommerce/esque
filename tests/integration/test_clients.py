@@ -3,16 +3,16 @@ import pathlib
 import random
 from contextlib import ExitStack
 from glob import glob
-from typing import Iterable, List, Tuple
 from string import ascii_letters
+from typing import Iterable, List, Tuple
 
 import pytest
+from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.avromessage import AvroFileReader
-from esque.clients import FileConsumer, AvroFileConsumer, FileProducer, AvroFileProducer
-from esque.message import PlainTextFileReader, KafkaMessage
-from confluent_kafka.avro import loads as load_schema, AvroProducer
+from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, FileProducer
+from esque.messages.avromessage import AvroFileReader
+from esque.messages.message import KafkaMessage, PlainTextFileReader
 
 
 @pytest.mark.integration

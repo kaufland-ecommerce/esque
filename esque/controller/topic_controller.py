@@ -8,8 +8,8 @@ from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
-from esque.helpers import invalidate_cache_after, ensure_kafka_futures_done
-from esque.topic import Topic, PartitionInfo, Partition, TopicDiff
+from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
+from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster

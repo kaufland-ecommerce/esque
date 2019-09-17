@@ -7,6 +7,7 @@ from pykafka.protocol.admin import DescribeGroupResponse
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
 
+
 # TODO: Refactor this shit hole
 
 

@@ -1,6 +1,6 @@
 import json
 import pathlib
-from typing import Iterable, NamedTuple, Any
+from typing import Any, Iterable, NamedTuple
 
 from confluent_kafka.cimpl import Message
 

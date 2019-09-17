@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any
+from typing import Any, Dict
 
 import confluent_kafka
 import pytest
@@ -7,9 +7,9 @@ import yaml
 from click.testing import CliRunner
 
 from esque.cli.commands import apply
+from esque.controller.topic_controller import TopicController
 from esque.errors import KafkaException
-from esque.topic import Topic, TopicDiff
-from esque.topic_controller import TopicController
+from esque.resources.topic import Topic, TopicDiff
 
 
 @pytest.fixture()
