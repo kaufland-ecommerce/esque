@@ -236,26 +236,6 @@ class Topic(KafkaResource):
 
         self._partitions = partitions
 
-    def diff_settings(self, other: "Topic") -> Dict[str, AttributeDiff]:
-
-        diffs = {}
-        if self.num_partitions != other.num_partitions:
-            diffs["num_partitions"] = AttributeDiff(other.num_partitions, self.num_partitions)
-
-        if self.replication_factor != other.replication_factor:
-            diffs["replication_factor"] = AttributeDiff(other.replication_factor, self.replication_factor)
-
-        if self.partition_assignment and self.partition_assignment != other.partition_assignment:
-            diffs["partition_assignment"] = AttributeDiff(other.partition_assignment, self.partition_assignment)
-
-        for name, old_value in other.config.items():
-            new_val = self.config.get(name)
-            if not new_val or str(new_val) == str(old_value):
-                continue
-            diffs[name] = AttributeDiff(str(old_value), str(new_val))
-
-        return diffs
-
     # object behaviour
     def __lt__(self, other: "Topic"):
         return self.name < other.name
