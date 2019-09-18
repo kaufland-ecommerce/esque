@@ -32,7 +32,6 @@ class TopicController:
     @raise_for_kafka_exception
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
-        print(confluent_topics)
         # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
         topic_metadata: TopicMetadata = confluent_topics[topic_name]
         raise_for_kafka_error(topic_metadata.error)
