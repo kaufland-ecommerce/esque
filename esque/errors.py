@@ -17,9 +17,12 @@ def raise_for_kafka_exception(func):
 
 
 def raise_for_kafka_error(err: KafkaError):
+    if not err:
+        return None
+
     if err.code() in ERROR_LOOKUP.keys():
         raise ERROR_LOOKUP[err.code()](err.code(), err.str())
-    elif err.code() is not None:
+    else:
         raise KafkaException(err.code(), err.str())
 
 
