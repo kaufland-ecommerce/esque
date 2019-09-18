@@ -9,6 +9,11 @@ from esque.topic_controller import TopicController
 
 
 @pytest.fixture()
+def state(test_config):
+    yield State()
+
+
+@pytest.fixture()
 def topic_controller(cluster):
     yield cluster.topic_controller
 

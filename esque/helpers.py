@@ -1,13 +1,12 @@
 import functools
 from concurrent.futures import Future, wait
 from itertools import islice
-from typing import List
 
 import click
 import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
 
-from esque.errors import raise_for_kafka_error
+from esque.errors import raise_for_kafka_error, FutureTimeoutException
 
 
 def invalidate_cache_before(func):
@@ -29,12 +28,14 @@ def invalidate_cache_after(func):
     return wrapper
 
 
-def ensure_kafka_futures_done(future: List[Future]) -> Future:
+def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:
     # Clients, such as confluents AdminClient, may return a done future with an exception
-    done, failed = wait(future, timeout=15)
-    assert len(failed) + len(done) == 1
+    done, not_done = wait({future}, timeout=timeout)
 
-    result = next(islice(done, 1)) if len(done) == 1 else next(islice(failed, 1))
+    if not_done:
+        raise FutureTimeoutException("Future timed out after {} seconds".format(timeout))
+
+    result = next(islice(done, 1))
 
     exception = result.exception()
 
