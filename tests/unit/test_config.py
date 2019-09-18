@@ -36,7 +36,7 @@ security_protocol = PLAINTEXT
 def dummy_config(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
     fn.write_text(DUMMY_CONFIG, encoding="UTF-8")
-    mocker.patch("esque.config.config_path", return_value=fn)
+    mocker.patch("esque.config.config.config_path", return_value=fn)
     yield fn
 
 

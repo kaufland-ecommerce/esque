@@ -10,7 +10,8 @@ import pytest
 from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, FileProducer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer
+from esque.clients.producer import AvroFileProducer, FileProducer
 from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import KafkaMessage, PlainTextFileReader
 

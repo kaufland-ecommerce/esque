@@ -42,7 +42,7 @@ def pytest_collection_modifyitems(config, items):
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
     fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
-    mocker.patch("esque.config.config_path", return_value=fn)
+    mocker.patch("esque.config.config.config_path", return_value=fn)
     yield fn
 
 

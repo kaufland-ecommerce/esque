@@ -20,7 +20,8 @@ from esque.cli.output import (
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
 )
-from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, FileProducer, PingConsumer, PingProducer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
+from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
