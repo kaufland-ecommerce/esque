@@ -2,13 +2,14 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Iterable, Tuple, Callable
+from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
+from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import TopicPartition, Producer
+from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
@@ -36,6 +37,11 @@ def pytest_collection_modifyitems(config, items):
     for item in items:
         if "integration" in item.keywords:
             item.add_marker(integration)
+
+
+@pytest.fixture()
+def cli_runner():
+    yield CliRunner()
 
 
 @pytest.fixture()
