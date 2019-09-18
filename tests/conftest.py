@@ -12,7 +12,7 @@ from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config.config import Config, sample_config_path
+from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
 from esque.resources.consumergroup import ConsumerGroupController
 from esque.resources.topic import Topic
@@ -42,7 +42,7 @@ def pytest_collection_modifyitems(config, items):
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
     fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
-    mocker.patch("esque.config.config.config_path", return_value=fn)
+    mocker.patch("esque.config.config_path", return_value=fn)
     yield fn
 
 

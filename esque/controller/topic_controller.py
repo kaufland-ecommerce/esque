@@ -6,7 +6,7 @@ from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopi
 from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.config.config import Config
+from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import ensure_kafka_futures_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff

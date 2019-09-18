@@ -8,7 +8,7 @@ import pendulum
 from confluent_kafka.cimpl import Message
 
 from esque.clients.schemaregistry import SchemaRegistryClient
-from esque.config.config import Config
+from esque.config import Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
