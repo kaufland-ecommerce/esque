@@ -1,5 +1,6 @@
 import json
 import pathlib
+from abc import ABC, abstractmethod
 from contextlib import ExitStack
 from glob import glob
 from typing import Optional, Tuple
@@ -9,14 +10,14 @@ import confluent_kafka
 import pendulum
 from confluent_kafka import Message
 from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.avromessage import AvroFileReader, AvroFileWriter
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, raise_for_message, MessageEmptyException
+from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
 from esque.helpers import delivery_callback, delta_t
-from esque.message import KafkaMessage, PlainTextFileReader, PlainTextFileWriter, FileReader, FileWriter
+from esque.message import FileReader, FileWriter, KafkaMessage, PlainTextFileReader, PlainTextFileWriter
 from esque.schemaregistry import SchemaRegistryClient
-from abc import ABC, abstractmethod
 
 
 class AbstractConsumer(ABC):
@@ -56,8 +57,32 @@ class AbstractConsumer(ABC):
 
 
 class PingConsumer(AbstractConsumer):
+    def __init__(self, group_id: str, topic_name: str, last: bool):
+        offset_reset = "earliest"
+        if last:
+            offset_reset = "latest"
+        self._config = Config().create_confluent_config()
+        self._config.update(
+            {
+                "group.id": group_id,
+                "error_cb": raise_for_kafka_error,
+                # We need to commit offsets manually once we"re sure it got saved
+                # to the sink
+                "enable.auto.commit": True,
+                "enable.partition.eof": False,
+                # We need this to start at the last committed offset instead of the
+                # latest when subscribing for the first time
+                "default.topic.config": {"auto.offset.reset": offset_reset},
+            }
+        )
+        self._consumer = confluent_kafka.Consumer(self._config)
+        self._assign_exact_partitions(topic_name)
+
+    def _assign_exact_partitions(self, topic: str) -> None:
+        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
+
     def consume(self, amount: int) -> Optional[Tuple[str, int]]:
-        message = self._consume_single_message()
+        message = self._consume_single_message(timeout=1)
 
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at

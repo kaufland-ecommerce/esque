@@ -363,7 +363,7 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
+            topic_controller.create_topics([Topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
@@ -374,7 +374,7 @@ def ping(state, times, wait):
 
         for i in range(times):
             producer.produce(PING_TOPIC)
-            _, delta = consumer.consume()
+            _, delta = consumer.consume(1)
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)
