@@ -19,7 +19,7 @@ def raise_for_kafka_exception(func):
 def raise_for_kafka_error(err: KafkaError):
     if err.code() in ERROR_LOOKUP.keys():
         raise ERROR_LOOKUP[err.code()](err.code(), err.str())
-    else:
+    elif err.code() is not None:
         raise KafkaException(err.code(), err.str())
 
 
@@ -74,7 +74,11 @@ class TopicDoesNotExistException(Exception):
     pass
 
 
-ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {36: TopicAlreadyExistsException, -191: EndOfPartitionReachedException}
+ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
+    3: TopicDoesNotExistException,
+    36: TopicAlreadyExistsException,
+    -191: EndOfPartitionReachedException,
+}
 
 # BROKER_NOT_AVAILABLE = 8
 #     CLUSTER_AUTHORIZATION_FAILED = 31
