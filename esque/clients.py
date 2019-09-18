@@ -56,7 +56,8 @@ class AbstractConsumer(ABC):
 
 
 class PingConsumer(AbstractConsumer):
-    def consume(self, amount: int) -> Optional[Tuple[str, int]]:
+    def consume(self, amount: int) -> Tuple[str, int]:
+        assert amount == 1, "PingConsumer can only consume one message at a time"  # TODO: hmmm...
         message = self._consume_single_message()
 
         msg_sent_at = pendulum.from_timestamp(float(message.value()))

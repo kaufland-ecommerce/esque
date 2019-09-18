@@ -371,18 +371,18 @@ def ping(state, times, wait):
     deltas = []
     try:
         try:
-            topic_controller.create_topics([topic_controller.get_cluster_topic(PING_TOPIC)])
+            topic_controller.create_topics([Topic(PING_TOPIC)])
         except TopicAlreadyExistsException:
             click.echo("Topic already exists.")
 
         producer = PingProducer()
-        consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
+        consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, False)
 
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
         for i in range(times):
             producer.produce(PING_TOPIC)
-            _, delta = consumer.consume()
+            _, delta = consumer.consume(1)
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)
@@ -391,5 +391,7 @@ def ping(state, times, wait):
     finally:
         topic_controller.delete_topic(Topic(PING_TOPIC))
         click.echo("--- statistics ---")
-        click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+        len_deltas = len(deltas)
+        click.echo(f"{len_deltas} messages sent/received")
+        if len_deltas > 0:
+            click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
