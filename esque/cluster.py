@@ -5,7 +5,7 @@ from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
 from esque.controller.topic_controller import TopicController
-from esque.helpers import ensure_kafka_futures_done, unpack_confluent_config
+from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 
 
 class Cluster:
@@ -43,6 +43,6 @@ class Cluster:
         requested_resources = [ConfigResource(config_type, str(id))]
         futures = self.confluent_client.describe_configs(requested_resources)
         (old_resource, future), = futures.items()
-        future = ensure_kafka_futures_done([future])
+        future = ensure_kafka_future_done(future)
         result = future.result()
         return unpack_confluent_config(result)
