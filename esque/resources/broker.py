@@ -1,9 +1,9 @@
-from typing import List
 import operator
+from typing import List
 
 from confluent_kafka.admin import ConfigResource
 
-from esque.resource import KafkaResource
+from esque.resources.resource import KafkaResource
 
 
 class Broker(KafkaResource):

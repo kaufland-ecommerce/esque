@@ -4,8 +4,8 @@ import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
+from esque.controller.topic_controller import TopicController
 from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
-from esque.topic_controller import TopicController
 
 
 class Cluster:

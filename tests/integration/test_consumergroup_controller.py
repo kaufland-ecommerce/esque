@@ -1,6 +1,7 @@
 import pytest
 
-from esque.consumergroup import ConsumerGroup, ConsumerGroupController
+from esque.resources.consumergroup import ConsumerGroup
+from esque.controller.consumergroup_controller import ConsumerGroupController
 
 
 @pytest.mark.integration
