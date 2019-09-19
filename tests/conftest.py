@@ -12,6 +12,7 @@ from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
+from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
@@ -211,3 +212,8 @@ def cluster(test_config):
         raise ex
 
     yield cluster
+
+
+@pytest.fixture()
+def state(test_config):
+    yield State()

@@ -3,15 +3,9 @@ import json
 import confluent_kafka
 import pytest
 
-from esque.cli.options import State
 from esque.controller.topic_controller import TopicController
 from esque.errors import KafkaException
 from esque.resources.topic import Topic, TopicDiff
-
-
-@pytest.fixture()
-def state(test_config):
-    yield State()
 
 
 @pytest.fixture()
