@@ -41,7 +41,7 @@ class AbstractConsumer(ABC):
         self._consumer.subscribe([topic])
 
     @abstractmethod
-    def consume(self, amount: int) -> int:
+    def consume(self, **kwargs) -> int:
         pass
 
     def _consume_single_message(self, timeout=30) -> Optional[Message]:
@@ -55,7 +55,7 @@ class PingConsumer(AbstractConsumer):
         super().__init__(group_id, topic_name, last)
         self._assign_exact_partitions(topic_name)
 
-    def consume(self, amount: int) -> Optional[Tuple[str, int]]:
+    def consume(self) -> Optional[Tuple[str, int]]:
         message = self._consume_single_message(timeout=1)
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
