@@ -383,7 +383,7 @@ def ping(state, times, wait):
 
         for i in range(times):
             producer.produce(PING_TOPIC)
-            _, delta = consumer.consume(1)
+            _, delta = consumer.consume()
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)

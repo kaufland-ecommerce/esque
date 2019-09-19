@@ -32,7 +32,7 @@ def test_topic_deletion_works(
 
 
 @pytest.mark.integration
-def test_keep_kafka_duplicated(
+def test_keep_minus_delete_period(
     cli_runner: CliRunner,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     basic_topic: str,

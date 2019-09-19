@@ -44,7 +44,7 @@ class AbstractConsumer(ABC):
     def consume(self, **kwargs) -> int:
         pass
 
-    def _consume_single_message(self, timeout=30) -> Optional[Message]:
+    def _consume_single_message(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
