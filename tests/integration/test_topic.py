@@ -1,7 +1,7 @@
 import pytest
 
-from esque.topic import Topic, Watermark
-from esque.topic_controller import TopicController
+from esque.controller.topic_controller import TopicController
+from esque.resources.topic import Topic, Watermark
 
 
 @pytest.mark.integration

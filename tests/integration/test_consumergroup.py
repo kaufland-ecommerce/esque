@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from esque.cli.commands import get_consumergroups, describe_consumergroup
-from esque.consumergroup import ConsumerGroupController
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from tests.conftest import consumer_with_id
 
 

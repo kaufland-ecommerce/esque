@@ -9,24 +9,26 @@ import yaml
 from click import version_option
 
 from esque.__version__ import __version__
-from esque.broker import Broker
-from esque.cli.helpers import ensure_approval, HandleFileOnFinished
+from esque.cli.helpers import HandleFileOnFinished, ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import (
-    bold,
-    pretty,
-    pretty_topic_diffs,
-    pretty_new_topic_configs,
     blue_bold,
+    bold,
     green_bold,
+    pretty,
+    pretty_new_topic_configs,
+    pretty_topic_diffs,
     pretty_unchanged_topic_configs,
     pretty_consumergroup_simple_overview,
 )
-from esque.clients import FileConsumer, FileProducer, AvroFileProducer, AvroFileConsumer, PingConsumer, PingProducer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
+from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
-from esque.config import PING_TOPIC, Config, PING_GROUP_ID, config_dir, sample_config_path, config_path
+
+from esque.config import PING_TOPIC, PING_GROUP_ID, config_dir, config_path, sample_config_path, Config
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
-from esque.topic import Topic
+from esque.resources.broker import Broker
+from esque.resources.topic import Topic
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -97,14 +99,22 @@ def ctx(state, context):
 @create.command("topic")
 @click.argument("topic-name", required=True)
 @no_verify_option
+@click.option("-l", "--like", help="Topic to use as template", required=False)
 @pass_state
-def create_topic(state: State, topic_name: str):
+def create_topic(state: State, topic_name: str, like=None):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
 
     topic_controller = state.cluster.topic_controller
-    topic_controller.create_topics([Topic(topic_name)])
+    if like:
+        template_config = topic_controller.get_cluster_topic(like)
+        topic = Topic(
+            topic_name, template_config.num_partitions, template_config.replication_factor, template_config.config
+        )
+    else:
+        topic = Topic(topic_name)
+    topic_controller.create_topics([topic])
 
 
 @edit.command("topic")
