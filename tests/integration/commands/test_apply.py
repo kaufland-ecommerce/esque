@@ -3,8 +3,8 @@ from typing import Any, Dict
 import pytest
 import yaml
 from click.testing import CliRunner
-from esque.topic import Topic
-from esque.topic_controller import TopicController
+from esque.resources.topic import Topic
+from esque.controller.topic_controller import TopicController
 
 from esque.cli.commands import apply
 from esque.errors import KafkaException
