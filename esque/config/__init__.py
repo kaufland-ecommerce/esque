@@ -2,18 +2,16 @@ import configparser
 import random
 import string
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, Any, Optional, List, Tuple
 
 import click
 
-from esque.environment import ESQUE_CONF_PATH
+from esque.cli.environment import ESQUE_CONF_PATH
 from esque.errors import ConfigNotExistsException, ContextNotDefinedException
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
-
 PING_TOPIC = f"ping-{RANDOM}"
 PING_GROUP_ID = f"ping-{RANDOM}"
-
 SLEEP_INTERVAL = 2
 
 
@@ -28,7 +26,7 @@ def config_path() -> Path:
 
 
 def sample_config_path() -> Path:
-    return Path(__file__).parent / "config" / "sample_config.cfg"
+    return Path(__file__).parent / "sample_config.cfg"
 
 
 class Config:

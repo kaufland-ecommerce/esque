@@ -1,6 +1,6 @@
 import re
-from itertools import islice
 from enum import Enum
+from itertools import islice
 from typing import List, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
@@ -10,7 +10,7 @@ from pykafka.topic import Topic as PyKafkaTopic
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
-from esque.topic import Topic, PartitionInfo, Partition, TopicDiff
+from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
