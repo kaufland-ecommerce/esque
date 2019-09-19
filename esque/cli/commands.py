@@ -26,7 +26,7 @@ from esque.cluster import Cluster
 from esque.config import PING_TOPIC, PING_GROUP_ID, config_dir, config_path, sample_config_path, Config
 from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
 from esque.resources.broker import Broker
-from esque.resources.consumergroup import ConsumerGroupController
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.topic import Topic
 
 

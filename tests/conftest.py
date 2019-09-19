@@ -14,7 +14,7 @@ from pykafka.exceptions import NoBrokersAvailableError
 from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
-from esque.resources.consumergroup import ConsumerGroupController
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.topic import Topic
 
 
