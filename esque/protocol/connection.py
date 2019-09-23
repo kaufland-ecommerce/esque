@@ -5,13 +5,101 @@ from typing import BinaryIO, Dict, List, Tuple, overload
 
 from .api import (
     ApiKey,
-    ApiVersionRequestData,
-    ApiVersionResponseData,
-    ApiSupportRange,
+    ApiVersions,
     Request,
     RequestData,
     ResponseData,
     SUPPORTED_API_VERSIONS,
+    ProduceRequestData,
+    ProduceResponseData,
+    FetchRequestData,
+    FetchResponseData,
+    ListOffsetsRequestData,
+    ListOffsetsResponseData,
+    MetadataRequestData,
+    MetadataResponseData,
+    LeaderAndIsrRequestData,
+    LeaderAndIsrResponseData,
+    StopReplicaRequestData,
+    StopReplicaResponseData,
+    UpdateMetadataRequestData,
+    UpdateMetadataResponseData,
+    ControlledShutdownRequestData,
+    ControlledShutdownResponseData,
+    OffsetCommitRequestData,
+    OffsetCommitResponseData,
+    OffsetFetchRequestData,
+    OffsetFetchResponseData,
+    FindCoordinatorRequestData,
+    FindCoordinatorResponseData,
+    JoinGroupRequestData,
+    JoinGroupResponseData,
+    HeartbeatRequestData,
+    HeartbeatResponseData,
+    LeaveGroupRequestData,
+    LeaveGroupResponseData,
+    SyncGroupRequestData,
+    SyncGroupResponseData,
+    DescribeGroupsRequestData,
+    DescribeGroupsResponseData,
+    ListGroupsRequestData,
+    ListGroupsResponseData,
+    SaslHandshakeRequestData,
+    SaslHandshakeResponseData,
+    ApiVersionsRequestData,
+    ApiVersionsResponseData,
+    CreateTopicsRequestData,
+    CreateTopicsResponseData,
+    DeleteTopicsRequestData,
+    DeleteTopicsResponseData,
+    DeleteRecordsRequestData,
+    DeleteRecordsResponseData,
+    InitProducerIdRequestData,
+    InitProducerIdResponseData,
+    OffsetForLeaderEpochRequestData,
+    OffsetForLeaderEpochResponseData,
+    AddPartitionsToTxnRequestData,
+    AddPartitionsToTxnResponseData,
+    AddOffsetsToTxnRequestData,
+    AddOffsetsToTxnResponseData,
+    EndTxnRequestData,
+    EndTxnResponseData,
+    WriteTxnMarkersRequestData,
+    WriteTxnMarkersResponseData,
+    TxnOffsetCommitRequestData,
+    TxnOffsetCommitResponseData,
+    DescribeAclsRequestData,
+    DescribeAclsResponseData,
+    CreateAclsRequestData,
+    CreateAclsResponseData,
+    DeleteAclsRequestData,
+    DeleteAclsResponseData,
+    DescribeConfigsRequestData,
+    DescribeConfigsResponseData,
+    AlterConfigsRequestData,
+    AlterConfigsResponseData,
+    AlterReplicaLogDirsRequestData,
+    AlterReplicaLogDirsResponseData,
+    DescribeLogDirsRequestData,
+    DescribeLogDirsResponseData,
+    SaslAuthenticateRequestData,
+    SaslAuthenticateResponseData,
+    CreatePartitionsRequestData,
+    CreatePartitionsResponseData,
+    CreateDelegationTokenRequestData,
+    CreateDelegationTokenResponseData,
+    RenewDelegationTokenRequestData,
+    RenewDelegationTokenResponseData,
+    ExpireDelegationTokenRequestData,
+    ExpireDelegationTokenResponseData,
+    DescribeDelegationTokenRequestData,
+    DescribeDelegationTokenResponseData,
+    DeleteGroupsRequestData,
+    DeleteGroupsResponseData,
+    ElectPreferredLeadersRequestData,
+    ElectPreferredLeadersResponseData,
+    IncrementalAlterConfigsRequestData,
+    IncrementalAlterConfigsResponseData,
 )
 from .serializers import int32Serializer
 
@@ -25,14 +113,15 @@ class BrokerConnection:
         self._query_api_versions()
 
     def _query_api_versions(self) -> None:
-        request = self.send(ApiVersionRequestData())
-        all_server_supported_versions = {support_range.api_key: support_range for
-                                         support_range in request.response_data.api_versions}
+        request = self.send(ApiVersionsRequestData())
+        all_server_supported_versions = {
+            support_range.api_key: support_range for support_range in request.response_data.api_versions
+        }
         server_api_keys = set(all_server_supported_versions)
         client_api_keys = set(SUPPORTED_API_VERSIONS)
         for api_key in server_api_keys | client_api_keys:
-            client_supported_version = SUPPORTED_API_VERSIONS.get(api_key, ApiSupportRange(api_key, -2, -1))
-            server_supported_version = all_server_supported_versions.get(api_key, ApiSupportRange(api_key, -4, -3))
+            client_supported_version = SUPPORTED_API_VERSIONS.get(api_key, ApiVersions(api_key, -2, -1))
+            server_supported_version = all_server_supported_versions.get(api_key, ApiVersions(api_key, -4, -3))
             effective_version = min(client_supported_version.max_version, server_supported_version.max_version)
 
             # TODO messages say something like server only supports api ... up to version -4
@@ -43,18 +132,230 @@ class BrokerConnection:
             # function requires the server to support api LIST_OFFSETS of at least version 2
             if client_supported_version.min_version <= effective_version:
                 raise Warning(
-                    f"Server only supports api {api_key.name} up to version {server_supported_version.max_version}," +
-                    f"but client needs at least {client_supported_version.min_version}. You cannot use this API."
+                    f"Server only supports api {api_key.name} up to version {server_supported_version.max_version},"
+                    + f"but client needs at least {client_supported_version.min_version}. You cannot use this API."
                 )
             if server_supported_version.min_version <= effective_version:
                 raise Warning(
-                    f"Client only supports api {api_key.name} up to version {client_supported_version.max_version}," +
-                    f"but server needs at least {server_supported_version.min_version}. You cannot use this API."
+                    f"Client only supports api {api_key.name} up to version {client_supported_version.max_version},"
+                    + f"but server needs at least {server_supported_version.min_version}. You cannot use this API."
                 )
             self.api_versions[api_key] = effective_version
 
     @overload
-    def send(self, data: ApiVersionRequestData) -> Request[ApiVersionRequestData, ApiVersionResponseData]:
+    def send(self, data: ProduceRequestData) -> Request[ProduceRequestData, ProduceResponseData]:
+        ...
+
+    @overload
+    def send(self, data: FetchRequestData) -> Request[FetchRequestData, FetchResponseData]:
+        ...
+
+    @overload
+    def send(self, data: ListOffsetsRequestData) -> Request[ListOffsetsRequestData, ListOffsetsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: MetadataRequestData) -> Request[MetadataRequestData, MetadataResponseData]:
+        ...
+
+    @overload
+    def send(self, data: LeaderAndIsrRequestData) -> Request[LeaderAndIsrRequestData, LeaderAndIsrResponseData]:
+        ...
+
+    @overload
+    def send(self, data: StopReplicaRequestData) -> Request[StopReplicaRequestData, StopReplicaResponseData]:
+        ...
+
+    @overload
+    def send(self, data: UpdateMetadataRequestData) -> Request[UpdateMetadataRequestData, UpdateMetadataResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: ControlledShutdownRequestData
+    ) -> Request[ControlledShutdownRequestData, ControlledShutdownResponseData]:
+        ...
+
+    @overload
+    def send(self, data: OffsetCommitRequestData) -> Request[OffsetCommitRequestData, OffsetCommitResponseData]:
+        ...
+
+    @overload
+    def send(self, data: OffsetFetchRequestData) -> Request[OffsetFetchRequestData, OffsetFetchResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: FindCoordinatorRequestData
+    ) -> Request[FindCoordinatorRequestData, FindCoordinatorResponseData]:
+        ...
+
+    @overload
+    def send(self, data: JoinGroupRequestData) -> Request[JoinGroupRequestData, JoinGroupResponseData]:
+        ...
+
+    @overload
+    def send(self, data: HeartbeatRequestData) -> Request[HeartbeatRequestData, HeartbeatResponseData]:
+        ...
+
+    @overload
+    def send(self, data: LeaveGroupRequestData) -> Request[LeaveGroupRequestData, LeaveGroupResponseData]:
+        ...
+
+    @overload
+    def send(self, data: SyncGroupRequestData) -> Request[SyncGroupRequestData, SyncGroupResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DescribeGroupsRequestData) -> Request[DescribeGroupsRequestData, DescribeGroupsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: ListGroupsRequestData) -> Request[ListGroupsRequestData, ListGroupsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: SaslHandshakeRequestData) -> Request[SaslHandshakeRequestData, SaslHandshakeResponseData]:
+        ...
+
+    @overload
+    def send(self, data: ApiVersionsRequestData) -> Request[ApiVersionsRequestData, ApiVersionsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: CreateTopicsRequestData) -> Request[CreateTopicsRequestData, CreateTopicsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DeleteTopicsRequestData) -> Request[DeleteTopicsRequestData, DeleteTopicsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DeleteRecordsRequestData) -> Request[DeleteRecordsRequestData, DeleteRecordsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: InitProducerIdRequestData) -> Request[InitProducerIdRequestData, InitProducerIdResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: OffsetForLeaderEpochRequestData
+    ) -> Request[OffsetForLeaderEpochRequestData, OffsetForLeaderEpochResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: AddPartitionsToTxnRequestData
+    ) -> Request[AddPartitionsToTxnRequestData, AddPartitionsToTxnResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: AddOffsetsToTxnRequestData
+    ) -> Request[AddOffsetsToTxnRequestData, AddOffsetsToTxnResponseData]:
+        ...
+
+    @overload
+    def send(self, data: EndTxnRequestData) -> Request[EndTxnRequestData, EndTxnResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: WriteTxnMarkersRequestData
+    ) -> Request[WriteTxnMarkersRequestData, WriteTxnMarkersResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: TxnOffsetCommitRequestData
+    ) -> Request[TxnOffsetCommitRequestData, TxnOffsetCommitResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DescribeAclsRequestData) -> Request[DescribeAclsRequestData, DescribeAclsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: CreateAclsRequestData) -> Request[CreateAclsRequestData, CreateAclsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DeleteAclsRequestData) -> Request[DeleteAclsRequestData, DeleteAclsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: DescribeConfigsRequestData
+    ) -> Request[DescribeConfigsRequestData, DescribeConfigsResponseData]:
+        ...
+
+    @overload
+    def send(self, data: AlterConfigsRequestData) -> Request[AlterConfigsRequestData, AlterConfigsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: AlterReplicaLogDirsRequestData
+    ) -> Request[AlterReplicaLogDirsRequestData, AlterReplicaLogDirsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: DescribeLogDirsRequestData
+    ) -> Request[DescribeLogDirsRequestData, DescribeLogDirsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: SaslAuthenticateRequestData
+    ) -> Request[SaslAuthenticateRequestData, SaslAuthenticateResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: CreatePartitionsRequestData
+    ) -> Request[CreatePartitionsRequestData, CreatePartitionsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: CreateDelegationTokenRequestData
+    ) -> Request[CreateDelegationTokenRequestData, CreateDelegationTokenResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: RenewDelegationTokenRequestData
+    ) -> Request[RenewDelegationTokenRequestData, RenewDelegationTokenResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: ExpireDelegationTokenRequestData
+    ) -> Request[ExpireDelegationTokenRequestData, ExpireDelegationTokenResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: DescribeDelegationTokenRequestData
+    ) -> Request[DescribeDelegationTokenRequestData, DescribeDelegationTokenResponseData]:
+        ...
+
+    @overload
+    def send(self, data: DeleteGroupsRequestData) -> Request[DeleteGroupsRequestData, DeleteGroupsResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: ElectPreferredLeadersRequestData
+    ) -> Request[ElectPreferredLeadersRequestData, ElectPreferredLeadersResponseData]:
+        ...
+
+    @overload
+    def send(
+        self, data: IncrementalAlterConfigsRequestData
+    ) -> Request[IncrementalAlterConfigsRequestData, IncrementalAlterConfigsResponseData]:
         ...
 
     def send(self, request_data: RequestData) -> Request[RequestData, ResponseData]:
