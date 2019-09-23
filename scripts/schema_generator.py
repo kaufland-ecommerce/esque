@@ -3,13 +3,60 @@ from collections import defaultdict
 from operator import itemgetter
 from typing import Union, List, Iterator, Optional, Dict, Tuple
 from dataclasses import dataclass
+from enum import IntEnum
 
-from esque.protocol.api import ApiKey
 import bs4
 import requests
 import re
 import textwrap
 
+
+class ApiKey(IntEnum):
+    PRODUCE = 0
+    FETCH = 1
+    LIST_OFFSETS = 2
+    METADATA = 3
+    LEADER_AND_ISR = 4
+    STOP_REPLICA = 5
+    UPDATE_METADATA = 6
+    CONTROLLED_SHUTDOWN = 7
+    OFFSET_COMMIT = 8
+    OFFSET_FETCH = 9
+    FIND_COORDINATOR = 10
+    JOIN_GROUP = 11
+    HEARTBEAT = 12
+    LEAVE_GROUP = 13
+    SYNC_GROUP = 14
+    DESCRIBE_GROUPS = 15
+    LIST_GROUPS = 16
+    SASL_HANDSHAKE = 17
+    API_VERSIONS = 18
+    CREATE_TOPICS = 19
+    DELETE_TOPICS = 20
+    DELETE_RECORDS = 21
+    INIT_PRODUCER_ID = 22
+    OFFSET_FOR_LEADER_EPOCH = 23
+    ADD_PARTITIONS_TO_TXN = 24
+    ADD_OFFSETS_TO_TXN = 25
+    END_TXN = 26
+    WRITE_TXN_MARKERS = 27
+    TXN_OFFSET_COMMIT = 28
+    DESCRIBE_ACLS = 29
+    CREATE_ACLS = 30
+    DELETE_ACLS = 31
+    DESCRIBE_CONFIGS = 32
+    ALTER_CONFIGS = 33
+    ALTER_REPLICA_LOG_DIRS = 34
+    DESCRIBE_LOG_DIRS = 35
+    SASL_AUTHENTICATE = 36
+    CREATE_PARTITIONS = 37
+    CREATE_DELEGATION_TOKEN = 38
+    RENEW_DELEGATION_TOKEN = 39
+    EXPIRE_DELEGATION_TOKEN = 40
+    DESCRIBE_DELEGATION_TOKEN = 41
+    DELETE_GROUPS = 42
+    ELECT_PREFERRED_LEADERS = 43
+    INCREMENTAL_ALTER_CONFIGS = 44
 
 heading_pattern = re.compile(r"(?P<name>\w+) API[^\(]*\(Key: (?P<api_version>\d+)\).*")
 schema_pattern = re.compile(
@@ -102,7 +149,7 @@ def yield_schemas(
 
     kind = mtch.group("kind")
     if kind:
-        name += kind
+        name += kind + "Data"
 
     fields: List["Field"] = []
     array_dimensions = [int(f.startswith("[")) for f in field_names]
@@ -232,6 +279,63 @@ def render_schema(schema: Union[ApiSchema, Schema]) -> str:
 
 def main():
     data = find_api_schemas_and_descriptions()
+    names = []
+    for api_key in ApiKey:
+        name_snake = api_key.name.lower()
+        name_camel = snake_to_camelcase(name_snake)
+        name_camel_lower = name_camel[0].lower() + name_camel[1:]
+        names.append((name_snake, name_camel, name_camel_lower))
+
+    with open("./output/__init__.py", 'w') as o:
+        o.write("from io import BytesIO\n")
+        o.write("from typing import BinaryIO, Dict, Generic, Optional, TypeVar\n")
+        o.write("from .base import (\n")
+        o.write("    ApiKey,\n")
+        o.write("    RequestData,\n")
+        o.write("    RequestHeader,\n")
+        o.write("    ResponseData,\n")
+        o.write("    ResponseHeader,\n")
+        o.write("    requestHeaderSerializer,\n")
+        o.write("    responseHeaderSerializer,\n")
+        o.write(")\n")
+        o.write("from ..serializers import BaseSerializer\n")
+        for name_snake, name_camel, name_camel_lower in names:
+            o.write(f"from .{name_snake} import (")
+            o.write(f"  {name_camel}RequestData,\n")
+            o.write(f"  {name_camel}ResponseData,\n")
+            o.write(f"  {name_camel_lower}RequestDataSerializers,\n")
+            o.write(f"  {name_camel_lower}ResponseDataSerializers,\n")
+            o.write(")\n")
+        o.write("\n\n")
+
+        o.write("REQUEST_SERIALIZERS: Dict[ApiKey, Dict[int, BaseSerializer[RequestData]]] = {\n")
+        for name_snake, name_camel, name_camel_lower in names:
+            o.write(f"  ApiKey.{name_snake.upper()}: {name_camel_lower}RequestDataSerializers,\n")
+        o.write("}\n\n")
+
+        o.write("RESPONSE_SERIALIZERS: Dict[ApiKey, Dict[int, BaseSerializer[ResponseData]]] = {\n")
+        for name_snake, name_camel, name_camel_lower in names:
+            o.write(f"  ApiKey.{name_snake.upper()}: {name_camel_lower}ResponseDataSerializers,\n")
+        o.write("}\n\n")
+
+    with open("./output/overload.py", 'w') as o:
+        o.write("from .api import (\n")
+        o.write("ApiKey,\n")
+        o.write("ApiVersions,\n")
+        o.write("Request,\n")
+        o.write("RequestData,\n")
+        o.write("ResponseData,\n")
+        o.write("SUPPORTED_API_VERSIONS,\n")
+        for _, name_camel, _ in names:
+            o.write(f"{name_camel}RequestData,\n")
+            o.write(f"{name_camel}ResponseData,\n")
+        o.write(")\n\n")
+        o.write("class BrokerConnection:\n")
+        for name_snake, name_camel, name_camel_lower in names:
+            o.write("    @overload\n")
+            o.write(f"    def send(self, data: {name_camel}RequestData) -> Request[{name_camel}RequestData, {name_camel}ResponseData]:\n")
+            o.write("        ...\n\n")
+
     for api_key, api_data in data.items():
         name = api_data["name"]
         max_version = max(api_data["request_schemas"])
@@ -257,7 +361,8 @@ def main():
                 print(request_data["schema"])
                 raise
             try:
-                schemas.extend(parse_schema(response_data["schema"], response_data["description"], api_key))
+                response_schemas = parse_schema(response_data["schema"], response_data["description"], api_key)
+                schemas.extend(response_schemas)
             except:
                 print(response_data["schema"])
                 raise
