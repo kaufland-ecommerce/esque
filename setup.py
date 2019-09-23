@@ -3,9 +3,10 @@
 import codecs
 import os
 import sys
-import warnings
+from subprocess import call
 
 from setuptools import find_packages, setup
+from setuptools.command.install import install
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -30,18 +31,25 @@ required = [
     "pykafka",
     "pendulum",
     "pyyaml",
+    "requests",
+    "fastavro>=0.22.3",
+    "avro-python3==1.8.2",
 ]
-if sys.version_info < (3, 6):
-    warnings.warn(
-        "Esque is neither tested nor developed for Python versions < 3.6. Use at your own risk.", RuntimeWarning
-    )
-if sys.version_info < (3, 7):
-    required.append("dataclasses")
+
+
+class InstallWithPostCommand(install):
+    """Post-installation for installation mode."""
+
+    def run(self):
+        install.run(self)
+        print("installing auto completion")
+        call(["./scripts/auto_completion.sh"])
+
 
 setup(
     name="esque",
     version=about["__version__"],
-    description="A usable kafka tool.",
+    description="esque - an operational kafka tool.",
     keywords="kafka commandline apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -50,11 +58,10 @@ setup(
     author_email="opensource@real-digital.de",
     packages=find_packages(exclude=["tests", "tests.*"]),
     entry_points={"console_scripts": ["esque=esque.cli.commands:esque"]},
-    package_data={"config": ["sample_config.cfg"]},
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
-    extras_require={"test": ["pytest", "pytest-mock"], "dev": ["black", "flake8", "beautifulsoup4", "requests"]},
+    extras_require={"test": ["pytest", "pytest-mock", "pytest-cov"], "dev": ["black", "flake8", "beautifulsoup4", "requests"]},
     include_package_data=True,
     license="MIT",
     classifiers=[
@@ -65,4 +72,5 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
+    cmdclass={"install": InstallWithPostCommand},
 )

@@ -55,11 +55,7 @@ def test_current_context(config: Config):
 
 
 def test_current_context_dict(config: Config):
-    expected = {
-        "bootstrap_hosts": "localhost",
-        "bootstrap_port": "9091",
-        "security_protocol": "PLAINTEXT",
-    }
+    expected = {"bootstrap_hosts": "localhost", "bootstrap_port": "9091", "security_protocol": "PLAINTEXT"}
     assert config.current_context_dict == expected
 
 

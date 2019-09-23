@@ -1,13 +1,13 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, List, MutableMapping, Dict, Tuple
+from typing import Any, Dict, List, MutableMapping
 
 import click
 import pendulum
 
-from esque.topic import Topic
+from esque.resources.topic import Topic, TopicDiff
 
-C_MAX_INT = 2 ** 31 - 1
+MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 
 
 def _indent(level: int):
@@ -39,9 +39,7 @@ def pretty_list(l: List[Any], *, break_lists=False, list_separator: str = ", ") 
         break_lists = True
 
     if break_lists:
-        sub_elements = (
-            "\n  ".join(elem.splitlines(keepends=False)) for elem in list_output
-        )
+        sub_elements = ("\n  ".join(elem.splitlines(keepends=False)) for elem in list_output)
         return "- " + "\n- ".join(sub_elements)
     else:
         return list_separator.join(list_output)
@@ -119,33 +117,25 @@ def pretty_duration(orig_value: Any, *, multiplier: int = 1) -> str:
     value *= multiplier
 
     # Fix for conversion errors of ms > C_MAX_INT in some internal lib
-    if value > C_MAX_INT:
-        value = int(value / 1000 / 3600 / 24 / 365)
+    if value > MILLISECONDS_PER_YEAR:
+        value = int(value / MILLISECONDS_PER_YEAR)
         return f"{orig_value} ({pendulum.duration(years=value).in_words()})"
 
     return f"{orig_value} ({pendulum.duration(milliseconds=value).in_words()})"
 
 
-def get_output_topic_diffs(
-    topics_config_diff: Dict[str, Dict[str, Tuple[str, str]]]
-) -> str:
+def pretty_topic_diffs(topics_config_diff: Dict[str, TopicDiff]) -> str:
     output = []
     for name, diff in topics_config_diff.items():
         config_diff_attributes = {}
-        for attribute, value in diff.items():
-            config_diff_attributes[attribute] = value[0] + " -> " + value[1]
-        output.append(
-            {
-                click.style(name, bold=True, fg="yellow"): {
-                    "Config Diff": config_diff_attributes
-                }
-            }
-        )
+        for attr, old, new in diff.changes():
+            config_diff_attributes[attr] = f"{old} -> {new}"
+        output.append({click.style(name, bold=True, fg="yellow"): {"Config Diff": config_diff_attributes}})
 
-    return pretty({"Topics to change": output})
+    return pretty({"Configuration changes": output})
 
 
-def get_output_new_topics(new_topics: List[Topic]) -> str:
+def pretty_new_topic_configs(new_topics: List[Topic]) -> str:
     new_topic_configs = []
     for topic in new_topics:
         new_topic_config = {
@@ -153,11 +143,22 @@ def get_output_new_topics(new_topics: List[Topic]) -> str:
             "replication_factor: ": topic.replication_factor,
             "config": topic.config,
         }
-        new_topic_configs.append(
-            {click.style(topic.name, bold=True, fg="green"): new_topic_config}
-        )
+        new_topic_configs.append({click.style(topic.name, bold=True, fg="green"): new_topic_config})
 
     return pretty({"New topics to create": new_topic_configs})
+
+
+def pretty_unchanged_topic_configs(new_topics: List[Topic]) -> str:
+    new_topic_configs = []
+    for topic in new_topics:
+        new_topic_config = {
+            "num_partitions: ": topic.num_partitions,
+            "replication_factor: ": topic.replication_factor,
+            "config": topic.config,
+        }
+        new_topic_configs.append({click.style(topic.name, bold=True, fg="blue"): new_topic_config})
+
+    return pretty({"No changes": new_topic_configs})
 
 
 def pretty_size(value: Any) -> str:
@@ -174,7 +175,7 @@ def pretty_size(value: Any) -> str:
     ]
     for sign, size in units:
         if value >= size:
-            return f"{value} ({pretty_float(value/size)} {sign})"
+            return f"{value} ({pretty_float(value / size)} {sign})"
 
 
 def bold(s: str) -> str:
@@ -182,7 +183,11 @@ def bold(s: str) -> str:
 
 
 def blue_bold(s: str) -> str:
-    return click.style(s, fg="blue", bold=True)
+    return bold(click.style(s, fg="blue"))
+
+
+def green_bold(s: str) -> str:
+    return bold(click.style(s, fg="green"))
 
 
 STYLE_MAPPING = {
@@ -194,7 +199,6 @@ STYLE_MAPPING = {
     "high_watermark": blue_bold,
     "member_id": bold,
 }
-
 
 CONVERSION_MAPPING = {
     "ms": pretty_duration,

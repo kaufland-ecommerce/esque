@@ -48,8 +48,14 @@ class ContextNotDefinedException(Exception):
     pass
 
 
+class FutureTimeoutException(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
 class MessageEmptyException(KafkaException):
-    pass
+    def __init__(self):
+        super().__init__(-185, None)
 
 
 class TopicAlreadyExistsException(KafkaException):
@@ -68,10 +74,7 @@ class TopicDoesNotExistException(Exception):
     pass
 
 
-ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
-    36: TopicAlreadyExistsException,
-    -191: EndOfPartitionReachedException,
-}
+ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {36: TopicAlreadyExistsException, -191: EndOfPartitionReachedException}
 
 # BROKER_NOT_AVAILABLE = 8
 #     CLUSTER_AUTHORIZATION_FAILED = 31

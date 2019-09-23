@@ -2,37 +2,29 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
+from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka.cimpl import TopicPartition
-from pykafka import Producer
+from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config import Config
-from esque.consumergroup import ConsumerGroupController
+from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic, TopicController
-
-TEST_CONFIG = """
-[Context]
-current = local
-
-[Context.local]
-bootstrap_hosts = localhost
-bootstrap_port = 9092
-security_protocol = PLAINTEXT
-"""
+from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.topic import Topic
 
 
 def pytest_addoption(parser):
+    parser.addoption("--integration", action="store_true", default=False, help="run integration tests")
     parser.addoption(
-        "--integration",
+        "--local",
         action="store_true",
         default=False,
-        help="run integration tests",
+        help="run against the 'local' context of the sample config instead of the default 'docker' context for CI",
     )
 
 
@@ -49,17 +41,17 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture()
 def test_config_path(mocker, tmpdir_factory):
     fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(TEST_CONFIG, encoding="UTF-8")
+    fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
     mocker.patch("esque.config.config_path", return_value=fn)
     yield fn
 
 
 @pytest.fixture()
-def test_config(test_config_path):
-    config = Config()
-    # if os.getenv("ESQUE_TEST_ENV") == "ci":
-    #     config.context_switch("ci")
-    yield config
+def test_config(test_config_path, request):
+    esque_config = Config()
+    if request.config.getoption("--local"):
+        esque_config.context_switch("local")
+    yield esque_config
 
 
 @pytest.fixture()
@@ -72,34 +64,63 @@ def topic_id(confluent_admin_client) -> str:
 
 @pytest.fixture()
 def topic_object(cluster, topic):
-    yield TopicController(cluster).get_topic(topic)
+    yield cluster.topic_controller.get_cluster_topic(topic)
 
 
 @pytest.fixture()
 def changed_topic_object(cluster, topic):
-    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
+    yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
-def topic(confluent_admin_client: AdminClient, topic_id: str) -> str:
-    """
-    Creates a kafka topic consisting of a random 5 character string.
+def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    for topic, _ in topic_factory(1, topic_id):
+        yield topic
 
-    :return: Topic (str)
-    """
-    future: Future = confluent_admin_client.create_topics(
-        [NewTopic(topic_id, num_partitions=1, replication_factor=1)]
-    )[topic_id]
-    while not future.done() or future.cancelled():
-        if future.result():
-            raise RuntimeError
-    confluent_admin_client.poll(timeout=1)
 
-    yield topic_id
+@pytest.fixture()
+def source_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
 
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    if topic_id in topics:
+
+@pytest.fixture()
+def target_topic(
+    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
+) -> Iterable[Tuple[str, int]]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    yield from topic_factory(num_partitions, topic_id)
+
+
+@pytest.fixture(params=[1, 10], ids=["num_partitions=1", "num_partitions=10"])
+def num_partitions(request) -> int:
+    return request.param
+
+
+@pytest.fixture()
+def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Iterable[Tuple[str, int]]]:
+    def factory(partitions: int, topic_id: str) -> Iterable[Tuple[str, int]]:
+        future: Future = confluent_admin_client.create_topics(
+            [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
+        )[topic_id]
+        while not future.done() or future.cancelled():
+            if future.result():
+                raise RuntimeError
+        confluent_admin_client.poll(timeout=1)
+
+        yield (topic_id, partitions)
+
         confluent_admin_client.delete_topics([topic_id]).popitem()
+
+    return factory
+
+
+@pytest.fixture()
+def topic_controller(cluster):
+    yield cluster.topic_controller
 
 
 @pytest.fixture()
@@ -110,13 +131,16 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(topic_object: Topic):
-    # Send messages synchronously so we can be sure offset has been commited in tests.
-    yield Producer(
-        topic_object.cluster.pykafka_client.cluster,
-        topic_object._pykafka_topic,
-        sync=True,
-    )
+def producer(test_config: Config):
+    producer_config = test_config.create_confluent_config()
+    yield Producer(producer_config)
+
+
+@pytest.fixture()
+def avro_producer(test_config: Config):
+    producer_config = test_config.create_confluent_config()
+    producer_config.update({"schema.registry.url": Config().schema_registry})
+    yield AvroProducer(producer_config)
 
 
 @pytest.fixture()
@@ -125,9 +149,7 @@ def consumergroup_controller(cluster: Cluster):
 
 
 @pytest.fixture()
-def consumergroup_instance(
-    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
-):
+def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
     yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
 
 
@@ -160,14 +182,14 @@ def consumer(topic_object: Topic, consumer_group):
 @pytest.fixture()
 def filled_topic(producer, topic_object):
     for _ in range(10):
-        producer.produce("".join(random.choices(ascii_letters, k=5)).encode("utf-8"))
+        random_value = "".join(random.choices(ascii_letters, k=5)).encode("utf-8")
+        producer.produce(topic=topic_object.name, key=random_value, value=random_value)
+        producer.flush()
     yield topic_object
 
 
 @pytest.fixture()
-def partly_read_consumer_group(
-    consumer: confluent_kafka.Consumer, filled_topic, consumer_group
-):
+def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
     for i in range(5):
         msg = consumer.consume(timeout=10)[0]
         consumer.commit(msg, asynchronous=False)

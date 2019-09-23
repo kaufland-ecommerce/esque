@@ -2,14 +2,20 @@ dist: xenial
 language: python
 cache: pip
 env:
-- TEST_CMD="pytest tests/ --integration"
+- >
+  ESQUE_ENV=dev TEST_CMD="pytest tests/ --integration --cov=esque --local"
+  BROKER_URL="localhost:9092"
+  ZOOKEEPER_URL="localhost:2181"
+  SCHEMA_REGISTRY_URL="localhost:8081"
 before_install:
-- wget https://mirror.netcologne.de/apache.org/kafka/2.2.0/kafka_2.12-2.2.0.tgz -O kafka.tgz
-- mkdir -p kafka && tar xzf kafka.tgz -C kafka --strip-components 1
-- nohup bash -c "cd kafka && bin/zookeeper-server-start.sh config/zookeeper.properties  &"
-- nohup bash -c "cd kafka && bin/kafka-server-start.sh config/server.properties &"
-- scripts/wait-for-it.sh localhost:9092
-- scripts/wait-for-it.sh localhost:2181
+- wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz
+- mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
+- confluent-community/bin/zookeeper-server-start -daemon confluent-community/etc/kafka/zookeeper.properties
+- bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60"
+- confluent-community/bin/kafka-server-start -daemon confluent-community/etc/kafka/server.properties
+- bash -c "scripts/wait-for-it.sh ${BROKER_URL} -t 60"
+- confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
+- bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install coverage coveralls flake8 pipenv
 - pipenv install --system --dev --deploy
@@ -26,23 +32,63 @@ notifications:
 matrix:
   include:
   - name: black
+    before_install: []
     python: 3.7
     env:
     - TEST_CMD="black --check --verbose ."
   - name: flake8
     python: 3.7
+    before_install: []
     env:
     - TEST_CMD="flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
     python: 3.7
+  - name: 'Test install'
+    python: 3.6
+    env: []
+    before_install:
+      - mkdir -p ~/.esque
+      - touch ~/.esque/esque.cfg
+    install: []
+    script:
+      - python setup.py sdist
+      - pip install --no-cache-dir dist/esque-*.tar.gz
+      - esque --recreate-config --no-verify
+  - name: 'Test upload'
+    python: 3.6
+    env:
+      - secure: "znXxvfZqJEMKlu1f78uqvdnZh9y0GAzgPbJK5mBiyQxgIAooELcQnyot811fuQ35dwv5WJv19XeyosJPPVZldUmJMZmfLOa+cxBAWonVpNYNdY6iHk8Yyeoy8V43tc8fGlyG90wiw3h3Phefb9arXPCWZTNrrFSDZZGdU8/4isxLvXUENpQlBXsmi91Q755VHIyuNm9JqpAZk5eLatiE/U35SIncuPSZVtC1B1ZIJ0Bhkf9aVNNusWdeXe2B6c2tTI/rWfFDJfHUPswE+tN2Bw04uCJz7CZDjv8gZKPklNK8noeeZGNsE4X0VFnbKBVUjTWQUPpEuIzQ6Zng/ajlSP7+OhBBLMBsHutP96FwlwT7WqU4V/nK7CajU0B+ZVM8TkEvJwxJDt3+26hc/WzyxqXqNR2qcd70vG6SvGC6JosYEZxOzxmHMYWo5Aff+HMq5Is2NrI6x2kAGJEQnGfpg6S0LGBVrye8i1vzuunZGiT0oVgae5PCt+NZrJq4JFFbkV12NcPg8agNU+LOE9fd2YZCcM9ciGr09vCPgV3kID6k5pK92Lq1mVUBWqAdYsEASbUrgHOMcebtBFoMXIzo4z970DmVFeqdHX/QC1Ofp9+JROQiI/6/6UqIme5TWyTsVLrD76lP5oYD4l5xXj5VFpxCPZjaayvuNIn/eDj1/Dc="
+    before_install:
+      - pip install devpi-server devpi "pluggy<1,>=0.12.0"
+      - devpi-server --serverdir=/tmp/devpi --init
+      - devpi-server --serverdir=/tmp/devpi --start
+      - scripts/wait-for-it.sh localhost:3141 -t 60
+      - devpi use http://localhost:3141
+      - devpi login root --password=
+      - devpi index -c root/stable bases=root/pypi volatile=True
+      - mkdir -p ~/.esque
+      - touch ~/.esque/esque.cfg
+    install:
+      - pip install twine
+    script:
+      - export VERSION=$(date +"%s")
+      - echo "__version__ = \"$VERSION\"" > esque/__version__.py
+      - python setup.py sdist
+      - twine upload --repository-url http://localhost:3141/root/stable/ dist/esque-*.tar.gz --user root --password ''
+      - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
+      - esque --recreate-config --no-verify
+  allow_failures:
+    - name: '3.8-dev'
+      python: 3.8-dev
+
 deploy:
-  provider: pypi
-  user: real.digital
-  on:
-    tags: true
-    condition: $TRAVIS_PYTHON_VERSION == '3.6'
-    repo: real-digital/esque
-  password:
-    secure: L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WHRahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPkdwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs=
+  - provider: pypi
+    user: real.digital
+    on:
+      tags: true
+      condition: $TRAVIS_PYTHON_VERSION == '3.6'
+      repo: real-digital/esque
+    password:
+      secure: L7lAviuPS2FijT/t01t0SVHuxfl3/6jcSU3anWkcJdWsa9ktujvdJ6QoX0VE+niUyAwnJ6HJUNWloG1EuuRPiaVO+vIU0t39oKtP/3KKGz6zQPme4p0tpgxvPCjxzBxlaj3zs+3KlfqT7ig5EllgLcAkyCmMpvYgpPY8pCsIY/ipZ+zzQvrA9glCQex9LPhdWH7yaHgx9eGM/dQumn9J/+/CtEkbxLpmw/WHRahCgoODFBMQjTQsVleiHZqedx7gQsSD7lqbdsUkBujawdYIrGnBVIjMdqXT7nQPbKmntKf+5GMcPdFaOqgciQYYgIRLixP1JWPoHzTvsmp0Jfmd8/4u4Eh/zLOKjdsdlNk/X2hNYae+YvKXMSwYqY33cDezsIpkvbz+Vfu3Ch97c2pmp3pSTTkcxKMqnoQJ3aqZENveCPOgfb3PSrzwYBKENaFLZ45l9eU1CPgCNNa7oX/CA1+kb1wY6AMCLW4ZxOe4I3EoUpNyn4lOIEkeOsHIB5d9DJvphd5UrFgUdnADzsnAsr38Gq+Haz9YmaXscUIRvQR27HDqCwfsSn9XPkdwImIjzhPrgM5kGXm0UPsf7nGZiYwEuB2fDTji4YneDhCF4aCKzr7Txlo1BtWp5ue6kbjCARBkwgCO/uHkl8AYos/tUmZe6vl6p3kwYf8sl3i9bOs=
