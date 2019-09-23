@@ -60,6 +60,7 @@ class ApiKey(IntEnum):
     DESCRIBE_DELEGATION_TOKEN = 41
     DELETE_GROUPS = 42
     ELECT_PREFERRED_LEADERS = 43
+    INCREMENTAL_ALTER_CONFIGS = 44
 
 
 apiKeySerializer: BaseSerializer[ApiKey] = EnumSerializer(ApiKey, int16Serializer)
