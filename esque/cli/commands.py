@@ -332,10 +332,15 @@ def transfer(
         _produce_from_files(topic, to_context, working_dir, avro)
 
 
-@esque.command("produce", help="Produce messages from directory based on output from transfer command")
+@esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
 @click.argument("topic", required=True)
 @click.option(
-    "-d", "--directory", help="Sets the directory that contains Kafka messages", type=click.STRING, required=True
+    "-d",
+    "--directory",
+    metavar="<directory>",
+    help="Sets the directory that contains Kafka messages",
+    type=click.STRING,
+    required=True,
 )
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @pass_state
