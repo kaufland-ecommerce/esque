@@ -1,6 +1,7 @@
 import pathlib
 from abc import ABC, abstractmethod
 from contextlib import ExitStack
+from datetime import datetime
 from typing import Optional, Tuple
 
 import confluent_kafka
@@ -12,6 +13,7 @@ from esque.config import Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
+from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
@@ -41,7 +43,7 @@ class AbstractConsumer(ABC):
         self._consumer.subscribe([topic])
 
     @abstractmethod
-    def consume(self, amount: int) -> int:
+    def consume(self, amount: int, match: str = None) -> int:
         pass
 
     def _consume_single_message(self, timeout=30) -> Optional[Message]:
@@ -71,9 +73,13 @@ class FileConsumer(AbstractConsumer):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
 
-    def consume(self, amount: int) -> int:
+    def consume(self, amount: int, match: str = None) -> int:
         counter = 0
         file_writers = {}
+        if match is not None:
+            rule_tree = RuleTree(expression_string=match)
+        else:
+            rule_tree = None
         with ExitStack() as stack:
             while counter < amount:
                 try:
@@ -81,15 +87,24 @@ class FileConsumer(AbstractConsumer):
                 except MessageEmptyException:
                     return counter
 
-                if message.partition() not in file_writers:
+                evaluation_result = True
+                if rule_tree is not None:
+                    try:
+                        evaluation_result = rule_tree.evaluate(message)
+                        if not isinstance(evaluation_result, bool):
+                            evaluation_result = True
+                    except:
+                        evaluation_result = True
+                if evaluation_result and message.partition() not in file_writers:
                     partition = message.partition()
                     file_writer = self.get_file_writer(partition)
                     stack.enter_context(file_writer)
                     file_writers[partition] = file_writer
 
-                file_writer = file_writers[partition]
-                file_writer.write_message_to_file(message)
-                counter += 1
+                if evaluation_result:
+                    file_writer = file_writers[partition]
+                    file_writer.write_message_to_file(message)
+                    counter += 1
 
         return counter
 
