@@ -64,7 +64,10 @@ setup(
     python_requires=">=3.6",
     setup_requires=[],
     install_requires=required,
-    extras_require={"test": ["pytest", "pytest-mock", "pytest-cov"], "dev": ["black", "flake8", "beautifulsoup4", "requests"]},
+    extras_require={
+        "test": ["pytest", "pytest-mock", "pytest-cov"],
+        "dev": ["black", "flake8", "beautifulsoup4", "requests"],
+    },
     include_package_data=True,
     license="MIT",
     classifiers=[

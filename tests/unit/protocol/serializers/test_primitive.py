@@ -108,8 +108,9 @@ def test_decode_boolean(sample: Sample[bool]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BOOLEAN"])
 def test_serde_boolean(sample: Sample[bool]) -> None:
 
-    recreated_original_value = serializers.booleanSerializer.read(BytesIO(serializers.booleanSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.booleanSerializer.read(
+        BytesIO(serializers.booleanSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -132,8 +133,9 @@ def test_decode_int8(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT8"])
 def test_serde_int8(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.int8Serializer.read(BytesIO(serializers.int8Serializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.int8Serializer.read(
+        BytesIO(serializers.int8Serializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -157,8 +159,9 @@ def test_decode_int16(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT16"])
 def test_serde_int16(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.int16Serializer.read(BytesIO(serializers.int16Serializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.int16Serializer.read(
+        BytesIO(serializers.int16Serializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -182,8 +185,9 @@ def test_decode_int32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT32"])
 def test_serde_int32(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.int32Serializer.read(BytesIO(serializers.int32Serializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.int32Serializer.read(
+        BytesIO(serializers.int32Serializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -207,8 +211,9 @@ def test_decode_int64(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["INT64"])
 def test_serde_int64(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.int64Serializer.read(BytesIO(serializers.int64Serializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.int64Serializer.read(
+        BytesIO(serializers.int64Serializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -232,8 +237,9 @@ def test_decode_uint32(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["UINT32"])
 def test_serde_uint32(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.uint32Serializer.read(BytesIO(serializers.uint32Serializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.uint32Serializer.read(
+        BytesIO(serializers.uint32Serializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -257,8 +263,9 @@ def test_decode_varint(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARINT"])
 def test_serde_varint(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.varIntSerializer.read(BytesIO(serializers.varIntSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.varIntSerializer.read(
+        BytesIO(serializers.varIntSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -282,8 +289,9 @@ def test_decode_varlong(sample: Sample[int]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["VARLONG"])
 def test_serde_varlong(sample: Sample[int]) -> None:
 
-    recreated_original_value = serializers.varLongSerializer.read(BytesIO(serializers.varLongSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.varLongSerializer.read(
+        BytesIO(serializers.varLongSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -307,8 +315,9 @@ def test_decode_string(sample: Sample[str]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["STRING"])
 def test_serde_string(sample: Sample[str]) -> None:
 
-    recreated_original_value = serializers.stringSerializer.read(BytesIO(serializers.stringSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.stringSerializer.read(
+        BytesIO(serializers.stringSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -358,8 +367,9 @@ def test_decode_bytes(sample: Sample[bytes]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["BYTES"])
 def test_serde_bytes(sample: Sample[bytes]) -> None:
 
-    recreated_original_value = serializers.bytesSerializer.read(BytesIO(serializers.bytesSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.bytesSerializer.read(
+        BytesIO(serializers.bytesSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value
 
@@ -410,7 +420,8 @@ def test_decode_records(sample: Sample[Optional[bytes]]) -> None:
 @pytest.mark.parametrize("sample", SAMPLES["RECORDS"])
 def test_serde_records(sample: Sample[Optional[bytes]]) -> None:
 
-    recreated_original_value = serializers.recordsSerializer.read(BytesIO(serializers.recordsSerializer.encode(
-        sample.decoded_value)))
+    recreated_original_value = serializers.recordsSerializer.read(
+        BytesIO(serializers.recordsSerializer.encode(sample.decoded_value))
+    )
 
     assert sample.decoded_value == recreated_original_value

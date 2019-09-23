@@ -25,8 +25,7 @@ class Broker(KafkaResource):
     def get_all(cls, cluster) -> List["Broker"]:
         metadata = cluster.get_metadata().brokers.values()
         brokers = [
-            cls.from_attributes(cluster, broker_id=broker.id, host=broker.host, port=broker.port)
-            for broker in metadata
+            cls.from_attributes(cluster, broker_id=broker.id, host=broker.host, port=broker.port) for broker in metadata
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 

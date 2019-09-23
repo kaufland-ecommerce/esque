@@ -86,11 +86,7 @@ electPreferredLeadersRequestDataSerializers: Dict[int, BaseSerializer[ElectPrefe
 
 
 partitionResultSchemas: Dict[int, Schema] = {
-    0: [
-        ("partition_id", int32Serializer),
-        ("error_code", int16Serializer),
-        ("error_message", nullableStringSerializer),
-    ]
+    0: [("partition_id", int32Serializer), ("error_code", int16Serializer), ("error_message", nullableStringSerializer)]
 }
 
 

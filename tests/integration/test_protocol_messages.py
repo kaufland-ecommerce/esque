@@ -2,7 +2,7 @@ from esque.protocol import ApiVersionsRequestData, BrokerConnection
 
 
 def test_simple():
-    with BrokerConnection(('localhost', 9092), 'esque_integration_test') as connection:
+    with BrokerConnection(("localhost", 9092), "esque_integration_test") as connection:
         data = ApiVersionsRequestData()
 
         request = connection.send(data)

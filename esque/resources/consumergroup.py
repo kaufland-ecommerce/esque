@@ -135,8 +135,7 @@ class ConsumerGroup:
                     "member_assignment": {
                         # "version": member.member_assignment.version,
                         "partition": {
-                            assignment[0]: assignment[1]
-                            for assignment in member.member_assignment.partition_assignment
+                            assignment[0]: assignment[1] for assignment in member.member_assignment.partition_assignment
                         }
                     },
                 }

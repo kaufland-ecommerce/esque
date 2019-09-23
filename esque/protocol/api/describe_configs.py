@@ -116,6 +116,25 @@ describeConfigsRequestDataSerializers: Dict[int, BaseSerializer[DescribeConfigsR
 }
 
 
+configSynonymsSchemas: Dict[int, Schema] = {
+    1: [
+        ("config_name", stringSerializer),
+        ("config_value", nullableStringSerializer),
+        ("config_source", int8Serializer),
+    ],
+    2: [
+        ("config_name", stringSerializer),
+        ("config_value", nullableStringSerializer),
+        ("config_source", int8Serializer),
+    ],
+}
+
+
+configSynonymsSerializers: Dict[int, BaseSerializer[ConfigSynonyms]] = {
+    version: NamedTupleSerializer(ConfigSynonyms, schema) for version, schema in configSynonymsSchemas.items()
+}
+
+
 configEntriesSchemas: Dict[int, Schema] = {
     0: [
         ("config_name", stringSerializer),
@@ -190,23 +209,4 @@ describeConfigsResponseDataSchemas: Dict[int, Schema] = {
 describeConfigsResponseDataSerializers: Dict[int, BaseSerializer[DescribeConfigsResponseData]] = {
     version: NamedTupleSerializer(DescribeConfigsResponseData, schema)
     for version, schema in describeConfigsResponseDataSchemas.items()
-}
-
-
-configSynonymsSchemas: Dict[int, Schema] = {
-    1: [
-        ("config_name", stringSerializer),
-        ("config_value", nullableStringSerializer),
-        ("config_source", int8Serializer),
-    ],
-    2: [
-        ("config_name", stringSerializer),
-        ("config_value", nullableStringSerializer),
-        ("config_source", int8Serializer),
-    ],
-}
-
-
-configSynonymsSerializers: Dict[int, BaseSerializer[ConfigSynonyms]] = {
-    version: NamedTupleSerializer(ConfigSynonyms, schema) for version, schema in configSynonymsSchemas.items()
 }

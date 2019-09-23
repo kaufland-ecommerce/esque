@@ -271,6 +271,20 @@ topicsSerializers: Dict[int, BaseSerializer[Topics]] = {
 }
 
 
+forgottenTopicsDataSchemas: Dict[int, Schema] = {
+    7: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+    8: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+    9: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+    10: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+    11: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+}
+
+
+forgottenTopicsDataSerializers: Dict[int, BaseSerializer[ForgottenTopicsData]] = {
+    version: NamedTupleSerializer(ForgottenTopicsData, schema) for version, schema in forgottenTopicsDataSchemas.items()
+}
+
+
 fetchRequestDataSchemas: Dict[int, Schema] = {
     0: [
         ("replica_id", int32Serializer),
@@ -424,18 +438,20 @@ fetchRequestDataSerializers: Dict[int, BaseSerializer[FetchRequestData]] = {
 }
 
 
-forgottenTopicsDataSchemas: Dict[int, Schema] = {
-    7: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
-    8: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
-    9: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
-    10: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
-    11: [("topic", stringSerializer), ("partitions", ArraySerializer(int32Serializer))],
+abortedTransactionsSchemas: Dict[int, Schema] = {
+    4: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    5: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    6: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    7: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    8: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    9: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    10: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
+    11: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
 }
 
 
-forgottenTopicsDataSerializers: Dict[int, BaseSerializer[ForgottenTopicsData]] = {
-    version: NamedTupleSerializer(ForgottenTopicsData, schema)
-    for version, schema in forgottenTopicsDataSchemas.items()
+abortedTransactionsSerializers: Dict[int, BaseSerializer[AbortedTransactions]] = {
+    version: NamedTupleSerializer(AbortedTransactions, schema) for version, schema in abortedTransactionsSchemas.items()
 }
 
 
@@ -676,22 +692,4 @@ fetchResponseDataSchemas: Dict[int, Schema] = {
 
 fetchResponseDataSerializers: Dict[int, BaseSerializer[FetchResponseData]] = {
     version: NamedTupleSerializer(FetchResponseData, schema) for version, schema in fetchResponseDataSchemas.items()
-}
-
-
-abortedTransactionsSchemas: Dict[int, Schema] = {
-    4: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    5: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    6: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    7: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    8: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    9: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    10: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-    11: [("producer_id", int64Serializer), ("first_offset", int64Serializer)],
-}
-
-
-abortedTransactionsSerializers: Dict[int, BaseSerializer[AbortedTransactions]] = {
-    version: NamedTupleSerializer(AbortedTransactions, schema)
-    for version, schema in abortedTransactionsSchemas.items()
 }

@@ -62,8 +62,7 @@ remainingPartitionsSchemas: Dict[int, Schema] = {
 
 
 remainingPartitionsSerializers: Dict[int, BaseSerializer[RemainingPartitions]] = {
-    version: NamedTupleSerializer(RemainingPartitions, schema)
-    for version, schema in remainingPartitionsSchemas.items()
+    version: NamedTupleSerializer(RemainingPartitions, schema) for version, schema in remainingPartitionsSchemas.items()
 }
 
 

@@ -192,8 +192,7 @@ metadataRequestDataSchemas: Dict[int, Schema] = {
 
 
 metadataRequestDataSerializers: Dict[int, BaseSerializer[MetadataRequestData]] = {
-    version: NamedTupleSerializer(MetadataRequestData, schema)
-    for version, schema in metadataRequestDataSchemas.items()
+    version: NamedTupleSerializer(MetadataRequestData, schema) for version, schema in metadataRequestDataSchemas.items()
 }
 
 

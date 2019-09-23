@@ -165,31 +165,11 @@ joinGroupRequestDataSerializers: Dict[int, BaseSerializer[JoinGroupRequestData]]
 
 
 membersSchemas: Dict[int, Schema] = {
-    0: [
-        ("member_id", stringSerializer),
-        ("metadata", bytesSerializer),
-        ("group_instance_id", DummySerializer(None)),
-    ],
-    1: [
-        ("member_id", stringSerializer),
-        ("metadata", bytesSerializer),
-        ("group_instance_id", DummySerializer(None)),
-    ],
-    2: [
-        ("member_id", stringSerializer),
-        ("metadata", bytesSerializer),
-        ("group_instance_id", DummySerializer(None)),
-    ],
-    3: [
-        ("member_id", stringSerializer),
-        ("metadata", bytesSerializer),
-        ("group_instance_id", DummySerializer(None)),
-    ],
-    4: [
-        ("member_id", stringSerializer),
-        ("metadata", bytesSerializer),
-        ("group_instance_id", DummySerializer(None)),
-    ],
+    0: [("member_id", stringSerializer), ("metadata", bytesSerializer), ("group_instance_id", DummySerializer(None))],
+    1: [("member_id", stringSerializer), ("metadata", bytesSerializer), ("group_instance_id", DummySerializer(None))],
+    2: [("member_id", stringSerializer), ("metadata", bytesSerializer), ("group_instance_id", DummySerializer(None))],
+    3: [("member_id", stringSerializer), ("metadata", bytesSerializer), ("group_instance_id", DummySerializer(None))],
+    4: [("member_id", stringSerializer), ("metadata", bytesSerializer), ("group_instance_id", DummySerializer(None))],
     5: [
         ("member_id", stringSerializer),
         ("group_instance_id", nullableStringSerializer),

@@ -180,11 +180,7 @@ createTopicsRequestDataSerializers: Dict[int, BaseSerializer[CreateTopicsRequest
 
 
 topicsSchemas: Dict[int, Schema] = {
-    0: [
-        ("name", stringSerializer),
-        ("error_code", int16Serializer),
-        ("error_message", DummySerializer(None)),
-    ],
+    0: [("name", stringSerializer), ("error_code", int16Serializer), ("error_message", DummySerializer(None))],
     1: [("name", stringSerializer), ("error_code", int16Serializer), ("error_message", nullableStringSerializer)],
     2: [("name", stringSerializer), ("error_code", int16Serializer), ("error_message", nullableStringSerializer)],
     3: [("name", stringSerializer), ("error_code", int16Serializer), ("error_message", nullableStringSerializer)],
