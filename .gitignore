@@ -1,5 +1,7 @@
 # JetBrains
 .idea/
+.pytest_cache/
+.vscode/
 
 # macOS
 .DS_Store
