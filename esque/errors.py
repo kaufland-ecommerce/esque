@@ -48,6 +48,11 @@ class ContextNotDefinedException(Exception):
     pass
 
 
+class FutureTimeoutException(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
 class MessageEmptyException(KafkaException):
     def __init__(self):
         super().__init__(-185, None)

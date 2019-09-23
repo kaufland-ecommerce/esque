@@ -33,7 +33,7 @@ required = [
     "pyyaml",
     "requests",
     "fastavro>=0.22.3",
-    "avro-python3",
+    "avro-python3==1.8.2",
 ]
 
 
@@ -49,7 +49,7 @@ class InstallWithPostCommand(install):
 setup(
     name="esque",
     version=about["__version__"],
-    description="A usable kafka tool.",
+    description="esque - an operational kafka tool.",
     keywords="kafka commandline apache",
     long_description=long_description,
     long_description_content_type="text/markdown",

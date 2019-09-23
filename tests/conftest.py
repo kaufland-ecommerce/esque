@@ -2,20 +2,20 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Iterable, Tuple, Callable
+from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import TopicPartition, Producer
+from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config import Config, sample_config_path
-from esque.consumergroup import ConsumerGroupController
+from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic, TopicController
+from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.topic import Topic
 
 
 def pytest_addoption(parser):
@@ -63,13 +63,13 @@ def topic_id(confluent_admin_client) -> str:
 
 
 @pytest.fixture()
-def topic_object(cluster, topic: str):
-    yield TopicController(cluster).get_topic(topic)
+def topic_object(cluster, topic):
+    yield cluster.topic_controller.get_cluster_topic(topic)
 
 
 @pytest.fixture()
-def changed_topic_object(cluster, topic: str):
-    yield TopicController(cluster).get_topic(topic, 1, 3, {"cleanup.policy": "compact"})
+def changed_topic_object(cluster, topic):
+    yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
 @pytest.fixture()
@@ -119,6 +119,11 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], I
 
 
 @pytest.fixture()
+def topic_controller(cluster):
+    yield cluster.topic_controller
+
+
+@pytest.fixture()
 def confluent_admin_client(test_config: Config) -> AdminClient:
     admin = AdminClient(test_config.create_confluent_config())
     admin.poll(timeout=5)
@@ -127,7 +132,8 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 @pytest.fixture()
 def producer(test_config: Config):
-    yield Producer(test_config.create_confluent_config())
+    producer_config = test_config.create_confluent_config()
+    yield Producer(producer_config)
 
 
 @pytest.fixture()

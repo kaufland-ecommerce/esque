@@ -1,17 +1,17 @@
+import itertools as it
 import json
 import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Optional, Tuple, Dict, Iterable, NamedTuple, Any
-import itertools as it
+from typing import Any, Dict, Iterable, NamedTuple, Optional, Tuple
 
 import fastavro
-from confluent_kafka.cimpl import Message
 from confluent_kafka.avro import loads as load_schema
+from confluent_kafka.cimpl import Message
 
-from esque.message import FileWriter, FileReader, KafkaMessage
-from esque.schemaregistry import SchemaRegistryClient
+from esque.clients.schemaregistry import SchemaRegistryClient
+from esque.messages.message import FileReader, FileWriter, KafkaMessage
 
 
 class DecodedAvroMessage(NamedTuple):
