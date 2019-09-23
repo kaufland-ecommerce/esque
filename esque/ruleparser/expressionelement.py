@@ -8,8 +8,8 @@ GenericOperator = namedtuple("GenericOperator", "name type regex input_priority 
 
 
 class OperatorType(Enum):
-    ARITHMETIC = 1,
-    COMPARISON = 2,
+    ARITHMETIC = (1,)
+    COMPARISON = (2,)
     PARENTHESIS = 3
 
 
@@ -28,8 +28,7 @@ class Operator(ABC):
         "MESSAGE_HEADER": "message\\.header\\.[a-zA-Z0-9_]+",
         "MESSAGE_OFFSET": "message\\.offset",
         "MESSAGE_TIMESTAMP": "message\\.timestamp",
-        "SYSTEM_TIMESTAMP": "system\\.timestamp"
-
+        "SYSTEM_TIMESTAMP": "system\\.timestamp",
     }
     OPERATORS = {
         "ADDITION": GenericOperator("ADDITION", OperatorType.ARITHMETIC, "\\+", 20, 20, False),
@@ -53,7 +52,7 @@ class Operator(ABC):
         "LIKE": GenericOperator("LIKE", OperatorType.COMPARISON, "like", 15, 15, False),
         "NOT_LIKE": GenericOperator("NOT_LIKE", OperatorType.COMPARISON, "notlike", 15, 15, False),
         "PARENTHESIS_OPEN": GenericOperator("PARENTHESIS_OPEN", OperatorType.PARENTHESIS, "\\(", 10000, 0, False),
-        "PARENTHESIS_CLOSED": GenericOperator("PARENTHESIS_CLOSED", OperatorType.PARENTHESIS, "\\)", 1, 0, False)
+        "PARENTHESIS_CLOSED": GenericOperator("PARENTHESIS_CLOSED", OperatorType.PARENTHESIS, "\\)", 1, 0, False),
     }
 
 
@@ -77,7 +76,9 @@ class ArithmeticBinaryOperator(AbstractBinaryOperator):
             op1_converted = int(operand1)
             op2_converted = int(operand2)
             integer_operands = True
-        elif (h.is_float(operand1) and h.is_any_numeric_type(operand2)) or (h.is_any_numeric_type(operand1) and h.is_float(operand2)):
+        elif (h.is_float(operand1) and h.is_any_numeric_type(operand2)) or (
+            h.is_any_numeric_type(operand1) and h.is_float(operand2)
+        ):
             op1_converted = float(operand1)
             op2_converted = float(operand2)
         elif h.is_boolean(operand1) and h.is_boolean(operand2):
@@ -85,7 +86,13 @@ class ArithmeticBinaryOperator(AbstractBinaryOperator):
             op2_converted = h.to_boolean(operand2)
             boolean_operands = True
         if op1_converted is None or op2_converted is None:
-            raise TypeError("One or two operands (" + operand1 + ", " + operand2 + ") cannot be converted to any recognizable form.")
+            raise TypeError(
+                "One or two operands ("
+                + operand1
+                + ", "
+                + operand2
+                + ") cannot be converted to any recognizable form."
+            )
         if self.generic_operator.name == Operator.OPERATORS["ADDITION"].name:
             return op1_converted + op2_converted
         elif self.generic_operator.name == Operator.OPERATORS["SUBTRACTION"].name:
@@ -144,7 +151,9 @@ class ComparisonBinaryOperator(AbstractBinaryOperator):
             # if they are numeric, it doesn't matter if they are integer or not
             op1_converted = float(operand1)
             op2_converted = float(operand2)
-        elif (h.is_date_string(operand1) or h.to_date_time(operand1)) and (h.is_date_string(operand2) or h.is_date_time_string(operand2)):
+        elif (h.is_date_string(operand1) or h.to_date_time(operand1)) and (
+            h.is_date_string(operand2) or h.is_date_time_string(operand2)
+        ):
             # maybe they are date strings
             op1_converted = h.to_date_time(operand1)
             op2_converted = h.to_date_time(operand2)

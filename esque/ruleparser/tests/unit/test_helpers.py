@@ -4,7 +4,6 @@ import esque.ruleparser.helpers as h
 
 
 class HelperDateFunctionsTest(TestCase):
-
     def test_only_date(self):
         parsed_date = h.to_date_time("2010-09-08")
         self.assertEqual(parsed_date.month, 9)

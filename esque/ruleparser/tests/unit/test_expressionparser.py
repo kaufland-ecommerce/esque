@@ -6,7 +6,6 @@ from esque.ruleparser.ruleengine import RuleTree
 
 
 class OperatorCalculationsTest(TestCase):
-
     def test_addition(self):
         operator = ArithmeticBinaryOperator(literal="+", generic_operator=Operator.OPERATORS["ADDITION"])
         self.assertEqual(operator.evaluate("5", "3"), 8)

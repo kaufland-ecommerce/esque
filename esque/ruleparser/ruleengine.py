@@ -57,7 +57,10 @@ class RuleTree:
                         raise ExpressionSyntaxError("Malformed parentheses in pattern")
             elif isinstance(element, Operator):
                 operator: Operator = element
-                while len(operator_stack) > 0 and operator_stack[-1].generic_operator.stack_priority >= operator.generic_operator.input_priority:
+                while (
+                    len(operator_stack) > 0
+                    and operator_stack[-1].generic_operator.stack_priority >= operator.generic_operator.input_priority
+                ):
                     self.__postfix_expression.append(operator_stack.pop())
                     rank = rank - 1
                 if rank < 0:
@@ -87,9 +90,13 @@ class RuleTree:
         operand_stack = []
         field_evaluator = FieldEval(message)
         if not self.__tree_valid:
-            raise RuleTreeInvalidError("The rule tree is not valid. The expression must be parsed before evaluating the tree.")
+            raise RuleTreeInvalidError(
+                "The rule tree is not valid. The expression must be parsed before evaluating the tree."
+            )
         for tree_element in self.__postfix_expression:
-            if isinstance(tree_element, ArithmeticBinaryOperator) or isinstance(tree_element, ComparisonBinaryOperator):
+            if isinstance(tree_element, ArithmeticBinaryOperator) or isinstance(
+                tree_element, ComparisonBinaryOperator
+            ):
                 # we need to have 2 operands on stack at this point, otherwise the expression is malformed
                 if len(operand_stack) < 2:
                     raise MalformedExpressionError("Operator " + tree_element.literal + " requires 2 operands.")
@@ -118,14 +125,14 @@ class RuleTree:
 
 class ExpressionParser:
 
-    RE_SPACE: str = h.zero_or_more("[\" \"]|\t")
+    RE_SPACE: str = h.zero_or_more('[" "]|\t')
     RE_LITERALS = [
-        '[1-9][0-9]{3}(-([0-9]{2})){2}T([0-9]{2})(:([0-9]{2})){2}',            # DATE TIME STAMP: YYYY-MM-DDTHH:mm:ss
-        '[1-9][0-9]{3}(-([0-9]{2})){2}',                                        # DATESTAMP: YYYY-MM-DD
-        '[-+]?[1-9]+[0-9]*',                                                    # INTEGER
-        '[+-]?[0-9]+.[0-9]*[eE]*[+-]?[0-9]*',                                   # FLOATING POINT
-        '(true|false)',                                                         # BOOLEAN
-        '[a-zA-Z0-9\\-\\._\\%]+'                                                # STRING
+        "[1-9][0-9]{3}(-([0-9]{2})){2}T([0-9]{2})(:([0-9]{2})){2}",  # DATE TIME STAMP: YYYY-MM-DDTHH:mm:ss
+        "[1-9][0-9]{3}(-([0-9]{2})){2}",  # DATESTAMP: YYYY-MM-DD
+        "[-+]?[1-9]+[0-9]*",  # INTEGER
+        "[+-]?[0-9]+.[0-9]*[eE]*[+-]?[0-9]*",  # FLOATING POINT
+        "(true|false)",  # BOOLEAN
+        "[a-zA-Z0-9\\-\\._\\%]+",  # STRING
     ]
 
     expression: str = ""
@@ -137,11 +144,48 @@ class ExpressionParser:
 
     def __init__(self, expression: str = ""):
         self.expression = expression.strip()
-        self.arithmetic_operators_pattern = re.compile(ExpressionParser.RE_SPACE + h.either_of(list(map(lambda x: x.regex, filter(lambda y: y.type == OperatorType.ARITHMETIC, Operator.OPERATORS.values())))), flags=re.IGNORECASE | re.UNICODE)
-        self.comparison_operators_pattern = re.compile(ExpressionParser.RE_SPACE + h.either_of(list(map(lambda x: x.regex, filter(lambda y: y.type == OperatorType.COMPARISON, Operator.OPERATORS.values())))), flags=re.IGNORECASE | re.UNICODE)
-        self.parenthesis_pattern = re.compile(ExpressionParser.RE_SPACE + h.either_of(list(map(lambda x: x.regex, filter(lambda y: y.type == OperatorType.PARENTHESIS, Operator.OPERATORS.values())))), flags=re.IGNORECASE | re.UNICODE)
-        self.fields_pattern = re.compile(ExpressionParser.RE_SPACE + h.either_of(Operator.FIELDS.values()), flags=re.IGNORECASE | re.UNICODE)
-        self.literals_pattern = re.compile(ExpressionParser.RE_SPACE + h.either_of(ExpressionParser.RE_LITERALS), flags=re.IGNORECASE)
+        self.arithmetic_operators_pattern = re.compile(
+            ExpressionParser.RE_SPACE
+            + h.either_of(
+                list(
+                    map(
+                        lambda x: x.regex,
+                        filter(lambda y: y.type == OperatorType.ARITHMETIC, Operator.OPERATORS.values()),
+                    )
+                )
+            ),
+            flags=re.IGNORECASE | re.UNICODE,
+        )
+        self.comparison_operators_pattern = re.compile(
+            ExpressionParser.RE_SPACE
+            + h.either_of(
+                list(
+                    map(
+                        lambda x: x.regex,
+                        filter(lambda y: y.type == OperatorType.COMPARISON, Operator.OPERATORS.values()),
+                    )
+                )
+            ),
+            flags=re.IGNORECASE | re.UNICODE,
+        )
+        self.parenthesis_pattern = re.compile(
+            ExpressionParser.RE_SPACE
+            + h.either_of(
+                list(
+                    map(
+                        lambda x: x.regex,
+                        filter(lambda y: y.type == OperatorType.PARENTHESIS, Operator.OPERATORS.values()),
+                    )
+                )
+            ),
+            flags=re.IGNORECASE | re.UNICODE,
+        )
+        self.fields_pattern = re.compile(
+            ExpressionParser.RE_SPACE + h.either_of(Operator.FIELDS.values()), flags=re.IGNORECASE | re.UNICODE
+        )
+        self.literals_pattern = re.compile(
+            ExpressionParser.RE_SPACE + h.either_of(ExpressionParser.RE_LITERALS), flags=re.IGNORECASE
+        )
 
     def parse_expression(self):
         """
@@ -155,8 +199,12 @@ class ExpressionParser:
         match_end = 0
 
         while previous_position < len(self.expression):
-            match_arithmetic_operator = self.arithmetic_operators_pattern.match(string=self.expression, pos=previous_position)
-            match_comparison_operator = self.comparison_operators_pattern.match(string=self.expression, pos=previous_position)
+            match_arithmetic_operator = self.arithmetic_operators_pattern.match(
+                string=self.expression, pos=previous_position
+            )
+            match_comparison_operator = self.comparison_operators_pattern.match(
+                string=self.expression, pos=previous_position
+            )
             match_parenthesis_operator = self.parenthesis_pattern.match(string=self.expression, pos=previous_position)
             match_field = self.fields_pattern.match(string=self.expression, pos=previous_position)
             match_literal = self.literals_pattern.match(string=self.expression, pos=previous_position)
@@ -166,24 +214,36 @@ class ExpressionParser:
                     match_found = True
                     match_end = match_arithmetic_operator.end(0)
                     content = match_arithmetic_operator.group(0).strip()
-                    generic_operator: GenericOperator = list(filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values()))[0]
-                    parsed_elements.append(ArithmeticBinaryOperator(literal=content, generic_operator=generic_operator))
+                    generic_operator: GenericOperator = list(
+                        filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values())
+                    )[0]
+                    parsed_elements.append(
+                        ArithmeticBinaryOperator(literal=content, generic_operator=generic_operator)
+                    )
             if not match_found and match_comparison_operator is not None:
                 if match_comparison_operator.start(0) == previous_position:
                     match_found = True
                     match_end = match_comparison_operator.end(0)
                     content = match_comparison_operator.group(0).strip()
-                    generic_operator: GenericOperator = list(filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values()))[0]
+                    generic_operator: GenericOperator = list(
+                        filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values())
+                    )[0]
                     if generic_operator.is_unary:
-                        parsed_elements.append(ComparisonUnaryOperator(literal=content, generic_operator=generic_operator))
+                        parsed_elements.append(
+                            ComparisonUnaryOperator(literal=content, generic_operator=generic_operator)
+                        )
                     else:
-                        parsed_elements.append(ComparisonBinaryOperator(literal=content, generic_operator=generic_operator))
+                        parsed_elements.append(
+                            ComparisonBinaryOperator(literal=content, generic_operator=generic_operator)
+                        )
             if not match_found and match_parenthesis_operator is not None:
                 if match_parenthesis_operator.start(0) == previous_position:
                     match_found = True
                     match_end = match_parenthesis_operator.end(0)
                     content = match_parenthesis_operator.group(0).strip()
-                    generic_operator: GenericOperator = list(filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values()))[0]
+                    generic_operator: GenericOperator = list(
+                        filter(lambda x: x.regex.replace("\\", "") == content, Operator.OPERATORS.values())
+                    )[0]
                     parsed_elements.append(ParenthesisOperator(literal=content, generic_operator=generic_operator))
             if not match_found and match_field is not None:
                 if match_field.start(0) == previous_position:

@@ -307,7 +307,15 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-    state: State, topic: str, from_context: str, to_context: str, numbers: int, match: str, last: bool, avro: bool, keep_file: bool
+    state: State,
+    topic: str,
+    from_context: str,
+    to_context: str,
+    numbers: int,
+    match: str,
+    last: bool,
+    avro: bool,
+    keep_file: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -317,7 +325,9 @@ def transfer(
     state.config.context_switch(from_context)
 
     with HandleFileOnFinished(base_dir, keep_file) as working_dir:
-        number_consumed_messages = _consume_to_file(working_dir, topic, group_id, from_context, numbers, avro, match, last)
+        number_consumed_messages = _consume_to_file(
+            working_dir, topic, group_id, from_context, numbers, avro, match, last
+        )
 
         if number_consumed_messages == 0:
             click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
@@ -351,7 +361,14 @@ def _produce_from_file(topic: str, to_context: str, working_dir: pathlib.Path, a
 
 
 def _consume_to_file(
-    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, match:str, last: bool
+    working_dir: pathlib.Path,
+    topic: str,
+    group_id: str,
+    from_context: str,
+    numbers: int,
+    avro: bool,
+    match: str,
+    last: bool,
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
