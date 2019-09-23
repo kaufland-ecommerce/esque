@@ -1,6 +1,6 @@
 import pytest
 
-from esque.consumergroup import ConsumerGroup
+from esque.resources.consumergroup import ConsumerGroup
 
 
 @pytest.mark.integration

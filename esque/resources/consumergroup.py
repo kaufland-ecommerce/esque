@@ -6,7 +6,6 @@ from pykafka.protocol.admin import DescribeGroupResponse
 
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
-from esque.topic_controller import TopicController
 
 
 # TODO: Refactor this shit hole
@@ -17,7 +16,7 @@ class ConsumerGroup:
         self.id = id
         self.cluster = cluster
         self._pykafka_group_coordinator_instance: Optional[pykafka.Broker] = None
-        self.topic_controller = TopicController(self.cluster)
+        self.topic_controller = cluster.topic_controller
 
     @property
     def _pykafka_group_coordinator(self) -> pykafka.Broker:
@@ -31,43 +30,40 @@ class ConsumerGroup:
 
     def describe(self, *, verbose=False):
         consumer_id = self.id.encode("UTF-8")
-        if consumer_id in self._pykafka_group_coordinator.list_groups().groups:
-            resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
-            assert len(resp.groups) == 1
+        if consumer_id not in self._pykafka_group_coordinator.list_groups().groups:
+            raise ConsumerGroupDoesNotExistException()
 
-            meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
-            topic_assignment = self._get_member_assignment(meta["members"])
+        resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
+        assert len(resp.groups) == 1
 
-            consumer_offsets = self.get_consumer_offsets(
-                self._pykafka_group_coordinator, consumer_id, topic_assignment, verbose=verbose
-            )
+        meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
+        consumer_offsets = self._get_consumer_offsets(self._pykafka_group_coordinator, consumer_id, verbose=verbose)
 
-            return {
-                "group_id": consumer_id,
-                "group_coordinator": self._pykafka_group_coordinator.host,
-                "offsets": consumer_offsets,
-                "meta": meta,
-            }
-        raise ConsumerGroupDoesNotExistException()
+        return {
+            "group_id": consumer_id,
+            "group_coordinator": self._pykafka_group_coordinator.host,
+            "offsets": consumer_offsets,
+            "meta": meta,
+        }
 
-    def get_consumer_offsets(self, group_coordinator, consumer_id, topic_assignment, verbose):
+    def _get_consumer_offsets(self, group_coordinator, consumer_id, verbose: bool):
         consumer_offsets = self._unpack_offset_response(
             group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
         )
 
         if verbose:
             for topic in consumer_offsets.keys():
-                topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
+                topic_offsets = self.topic_controller.get_cluster_topic(topic).offsets
                 for partition_id, consumer_offset in consumer_offsets[topic].items():
                     consumer_offsets[topic][partition_id] = {
                         "consumer_offset": consumer_offset,
-                        "topic_low_watermark": topic_offsets[partition_id][0],
-                        "topic_high_watermark": topic_offsets[partition_id][1],
-                        "consumer_lag": topic_offsets[partition_id][1] - consumer_offset,
+                        "topic_low_watermark": topic_offsets[partition_id].low,
+                        "topic_high_watermark": topic_offsets[partition_id].high,
+                        "consumer_lag": topic_offsets[partition_id].high - consumer_offset,
                     }
             return consumer_offsets
         for topic in consumer_offsets.keys():
-            topic_offsets = self.topic_controller.get_cluster_topic(topic).get_offsets()
+            topic_offsets = self.topic_controller.get_cluster_topic(topic).offsets
             new_consumer_offsets = {
                 "consumer_offset": (float("inf"), float("-inf")),
                 "topic_low_watermark": (float("inf"), float("-inf")),
@@ -81,20 +77,20 @@ class ConsumerGroup:
 
                 old_min, old_max = new_consumer_offsets["topic_low_watermark"]
                 new_consumer_offsets["topic_low_watermark"] = (
-                    min(old_min, topic_offsets[partition_id][0]),
-                    max(old_max, topic_offsets[partition_id][0]),
+                    min(old_min, topic_offsets[partition_id].low),
+                    max(old_max, topic_offsets[partition_id].low),
                 )
 
                 old_min, old_max = new_consumer_offsets["topic_high_watermark"]
                 new_consumer_offsets["topic_high_watermark"] = (
-                    min(old_min, topic_offsets[partition_id][1]),
-                    max(old_max, topic_offsets[partition_id][1]),
+                    min(old_min, topic_offsets[partition_id].high),
+                    max(old_max, topic_offsets[partition_id].high),
                 )
 
                 old_min, old_max = new_consumer_offsets["consumer_lag"]
                 new_consumer_offsets["consumer_lag"] = (
-                    min(old_min, topic_offsets[partition_id][1] - current_offset),
-                    max(old_max, topic_offsets[partition_id][1] - current_offset),
+                    min(old_min, topic_offsets[partition_id].high - current_offset),
+                    max(old_max, topic_offsets[partition_id].high - current_offset),
                 )
 
             return new_consumer_offsets
@@ -147,17 +143,3 @@ class ConsumerGroup:
                 for _, member in resp.members.items()
             ],
         }
-
-
-class ConsumerGroupController:
-    def __init__(self, cluster: Cluster):
-        self.cluster = cluster
-
-    def get_consumergroup(self, consumer_id) -> ConsumerGroup:
-        return ConsumerGroup(consumer_id, self.cluster)
-
-    def list_consumer_groups(self) -> List[str]:
-        brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers
-        return list(
-            set(group.decode("UTF-8") for _, broker in brokers.items() for group in broker.list_groups().groups)
-        )

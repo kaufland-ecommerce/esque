@@ -1,20 +1,26 @@
 import json
-from typing import Dict, Any
+from typing import Any, Dict
 
 import confluent_kafka
 import pytest
 import yaml
 from click.testing import CliRunner
 
-from esque.topic import Topic
-from esque.topic_controller import TopicController, AttributeDiff
+from esque.cli.commands import apply, create_topic
+from esque.cli.options import State
+from esque.controller.topic_controller import TopicController
 from esque.errors import KafkaException
-from esque.cli.commands import apply
+from esque.resources.topic import Topic, TopicDiff
+
+
+@pytest.fixture()
+def state(test_config):
+    yield State()
 
 
 @pytest.fixture()
 def topic_controller(cluster):
-    yield TopicController(cluster)
+    yield cluster.topic_controller
 
 
 @pytest.mark.integration
@@ -48,15 +54,15 @@ def test_alter_topic_config_works(topic_controller: TopicController, topic_id: s
 
     topic_controller.create_topics([initial_topic])
     topic_controller.update_from_cluster(initial_topic)
-    replicas, config = initial_topic.describe()
-    assert config.get("Config").get("cleanup.policy") == "delete"
+    config = initial_topic.config
+    assert config.get("cleanup.policy") == "delete"
     change_topic = Topic(topic_id, config={"cleanup.policy": "compact"})
     topic_controller.alter_configs([change_topic])
     topic_controller.update_from_cluster(change_topic)
     after_changes_applied_topic = topic_controller.get_cluster_topic(topic_id)
 
-    replicas, final_config = after_changes_applied_topic.describe()
-    assert final_config.get("Config").get("cleanup.policy") == "compact"
+    final_config = after_changes_applied_topic.config
+    assert final_config.get("cleanup.policy") == "compact"
 
 
 @pytest.mark.integration
@@ -65,7 +71,7 @@ def test_topic_deletion_works(
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
-    topic_controller.delete_topic(topic_controller.get_cluster_topic(topic))
+    topic_controller.delete_topic(Topic(topic))
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -82,11 +88,13 @@ def test_topic_listing_works(topic_controller: TopicController, topic: str):
 def test_topic_object_works(topic_controller: TopicController, topic: str):
     topic = topic_controller.get_cluster_topic(topic)
     assert isinstance(topic, Topic)
-    assert len(topic.get_offsets()) != 0
+    assert len(topic.offsets) != 0
 
 
 @pytest.mark.integration
 def test_topic_diff(topic_controller: TopicController, topic_id: str):
+    # the value we get from cluster configs is as string
+    # testing against this is important to ensure consistency
     default_delete_retention = "86400000"
     topic_conf = {
         "name": topic_id,
@@ -94,35 +102,43 @@ def test_topic_diff(topic_controller: TopicController, topic_id: str):
         "num_partitions": 50,
         "config": {"cleanup.policy": "compact"},
     }
+    get_diff = topic_controller.diff_with_cluster
 
     conf = json.loads(json.dumps(topic_conf))
     topic = Topic.from_dict(conf)
     topic_controller.create_topics([topic])
-    assert topic_controller.diff_with_cluster(topic) == {}, "Diff on just created topic?!"
+    assert not get_diff(topic).has_changes, "Shouldn't have diff on just created topic"
 
     conf = json.loads(json.dumps(topic_conf))
     conf["config"]["cleanup.policy"] = "delete"
     topic = Topic.from_dict(conf)
-    diff = {"cleanup.policy": AttributeDiff("compact", "delete")}
-    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on cleanup.policy"
+    diff = TopicDiff().set_diff("cleanup.policy", "compact", "delete")
+    assert get_diff(topic) == diff, "Should have a diff on cleanup.policy"
 
     conf = json.loads(json.dumps(topic_conf))
     conf["config"]["delete.retention.ms"] = 1500
     topic = Topic.from_dict(conf)
-    diff = {"delete.retention.ms": AttributeDiff(default_delete_retention, "1500")}
-    assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on delete.retention.ms"
+    diff = TopicDiff().set_diff("delete.retention.ms", default_delete_retention, 1500)
+    assert get_diff(topic) == diff, "Should have a diff on delete.retention.ms"
 
-    # conf = json.loads(json.dumps(topic_conf))
-    # conf["num_partitions"] = 3
-    # topic = Topic.from_dict(conf)
-    # diff = {"num_partitions": AttributeDiff('50', '3')}
-    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on num_partitions"
+    # the same as before, but this time with string values
+    conf = json.loads(json.dumps(topic_conf))
+    conf["config"]["delete.retention.ms"] = "1500"
+    topic = Topic.from_dict(conf)
+    diff = TopicDiff().set_diff("delete.retention.ms", default_delete_retention, "1500")
+    assert get_diff(topic) == diff, "Should have a diff on delete.retention.ms"
 
-    # conf = json.loads(json.dumps(topic_conf))
-    # conf["replication_factor"] = 3
-    # topic = Topic.from_dict(conf)
-    # diff = {"replication_factor": AttributeDiff('1', '3')}
-    # assert topic_controller.diff_with_cluster(topic) == diff, "Should have a diff on replication_factor"
+    conf = json.loads(json.dumps(topic_conf))
+    conf["num_partitions"] = 3
+    topic = Topic.from_dict(conf)
+    diff = TopicDiff().set_diff("num_partitions", 50, 3)
+    assert get_diff(topic) == diff, "Should have a diff on num_partitions"
+
+    conf = json.loads(json.dumps(topic_conf))
+    conf["replication_factor"] = 3
+    topic = Topic.from_dict(conf)
+    diff = TopicDiff().set_diff("replication_factor", 1, 3)
+    assert get_diff(topic) == diff, "Should have a diff on replication_factor"
 
 
 @pytest.mark.integration
@@ -173,23 +189,24 @@ def test_apply(topic_controller: TopicController, topic_id: str):
         result.exit_code == 0 and "No changes detected, aborting" in result.output
     ), f"Calling apply failed, error: {result.output}"
 
-    # 5: change partitions - this should be ignored
+    # 5: change partitions - this attempt should be cancelled
     topic_1["num_partitions"] = 3
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
     result = runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
-        result.exit_code == 0 and "changes to `replication_factor` and `num_partitions`" in result.output
+        result.exit_code == 0 and "to `replication_factor` and `num_partitions`" in result.output
     ), f"Calling apply failed, error: {result.output}"
-    # reset partitions to the correct number again
+    # reset config to the old settings again
     topic_1["num_partitions"] = 50
+    topic_1["config"]["cleanup.policy"] = "compact"
 
     # final: check results in the cluster to make sure they match
     for topic_conf in apply_conf["topics"]:
         topic_from_conf = Topic.from_dict(topic_conf)
-        assert (
-            topic_controller.diff_with_cluster(topic_from_conf) == {}
-        ), f"Topic configs don't match, diff is {topic_controller.diff_with_cluster(topic_from_conf)}"
+        assert not topic_controller.diff_with_cluster(
+            topic_from_conf
+        ).has_changes, f"Topic configs don't match, diff is {topic_controller.diff_with_cluster(topic_from_conf)}"
 
 
 @pytest.mark.integration
@@ -208,6 +225,53 @@ def test_apply_duplicate_names(topic_controller: TopicController, topic_id: str)
     path = save_yaml(topic_id, apply_conf)
     result = runner.invoke(apply, ["-f", path], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, ValueError), f"Calling apply should have failed"
+
+
+@pytest.mark.integration
+def test_apply_invalid_replicas(topic_controller: TopicController, topic_id: str):
+    runner = CliRunner()
+    topic_name = f"apply_{topic_id}"
+    topic_1 = {
+        "name": topic_name,
+        "replication_factor": 100,
+        "num_partitions": 50,
+        "config": {"cleanup.policy": "compact"},
+    }
+    apply_conf = {"topics": [topic_1]}
+
+    # having the same topic name twice in apply should raise an ValueError
+    path = save_yaml(topic_id, apply_conf)
+    result = runner.invoke(apply, ["-f", path], input="Y\n")
+    assert result.exit_code != 0 and isinstance(result.exception, KafkaException), f"Calling apply should have failed"
+
+
+@pytest.mark.integration
+def test_topic_creation_with_template_works(
+    state: State, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+):
+    topic_1 = topic_id + "_1"
+    topic_2 = topic_id + "_2"
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_1 not in topics
+    replication_factor = 1
+    num_partitions = 1
+    config = {
+        "cleanup.policy": "delete",
+        "delete.retention.ms": "123456",
+        "file.delete.delay.ms": "789101112",
+        "flush.messages": "12345678910111213",
+        "flush.ms": "123456789",
+    }
+    state.cluster.topic_controller.create_topics(
+        [Topic(topic_1, replication_factor=replication_factor, num_partitions=num_partitions, config=config)]
+    )
+    runner = CliRunner()
+    runner.invoke(create_topic, ["--no-verify", "-l", topic_1, topic_2])
+    config_from_template = state.cluster.topic_controller.get_cluster_topic(topic_2)
+    assert config_from_template.replication_factor == replication_factor
+    assert config_from_template.num_partitions == num_partitions
+    for config_key, value in config.items():
+        assert config_from_template.config[config_key] == value
 
 
 def save_yaml(fname: str, data: Dict[str, Any]) -> str:
