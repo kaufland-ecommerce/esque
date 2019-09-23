@@ -36,6 +36,9 @@ required = [
     "avro-python3==1.8.2",
 ]
 
+if sys.version_info < (3, 7, 0):
+    required.append("dataclasses")
+
 
 class InstallWithPostCommand(install):
     """Post-installation for installation mode."""
