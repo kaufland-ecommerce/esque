@@ -1,11 +1,11 @@
 from collections import namedtuple
 from functools import total_ordering
-from typing import Dict, List, Union, Optional, Tuple, Any, Generator
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
 
-from esque.resource import KafkaResource
+from esque.resources.resource import KafkaResource
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]

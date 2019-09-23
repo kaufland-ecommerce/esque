@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, List, MutableMapping, Dict
+from typing import Any, Dict, List, MutableMapping
 
 import click
 import pendulum
 
-from esque.topic import Topic, TopicDiff
+from esque.resources.topic import Topic, TopicDiff
 
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 

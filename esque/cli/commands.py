@@ -10,7 +10,6 @@ import yaml
 from click import version_option
 
 from esque.__version__ import __version__
-from esque.broker import Broker
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
 from esque.cli.options import State, no_verify_option, pass_state
 from esque.cli.output import (
@@ -22,17 +21,19 @@ from esque.cli.output import (
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
 )
-from esque.clients import AvroFileConsumer, AvroFileProducer, FileConsumer, FileProducer, PingConsumer, PingProducer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
+from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
-from esque.consumergroup import ConsumerGroupController
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import (
     ConsumerGroupDoesNotExistException,
     ContextNotDefinedException,
     TopicAlreadyExistsException,
     TopicDoesNotExistException,
 )
-from esque.topic import Topic
+from esque.resources.broker import Broker
+from esque.resources.topic import Topic
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)

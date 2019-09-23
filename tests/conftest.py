@@ -2,20 +2,20 @@ import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Iterable, Tuple, Callable
+from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import TopicPartition, Producer
+from confluent_kafka.cimpl import Producer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cluster import Cluster
-from esque.config import Config, sample_config_path
-from esque.consumergroup import ConsumerGroupController
+from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
-from esque.topic import Topic
+from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.topic import Topic
 
 
 def pytest_addoption(parser):
