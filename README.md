@@ -8,7 +8,7 @@ Esque is a user-centric command line interface for Kafka administration.
 
 ## Why should you care?
 
-Some stuff is hard, and that is okay, listing your kafka topics shouldn't be.
+Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be.
 
 While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
 We can't recount how often we wrote Slack messages asking for the script to check the 
@@ -21,9 +21,9 @@ In a wide array of administration tools, `esque` distances itself by striving to
 Our driving objectives can be summed up through these four principles:
 * comes with batteries included,
 * feature rich,
-* robust / general purpose / wide scope,
+* robust,
 * insightful,
-* made by data engineers for data engineers
+* made by engineers for engineers
 
 ## Basic Features
 
@@ -154,6 +154,9 @@ pip install pre-commit
 pre-commit install
 pre-commit install-hooks
 ```
+## Additional information
+
+You can find additional information, development cycle and release information on our [wiki page](https://github.com/real-digital/esque/wiki).
 
 
 ## Alternatives
