@@ -107,21 +107,23 @@ def pretty_bytes(value: bytes) -> str:
     return value.decode("UTF-8")
 
 
-def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
-    if not value:
+def pretty_duration(orig_value: Any, *, multiplier: int = 1) -> str:
+    if not orig_value:
         return ""
 
-    if type(value) != int:
-        value = int(value)
+    if type(orig_value) != int:
+        value = int(orig_value)
+    else:
+        value = orig_value
 
     value *= multiplier
 
     # Fix for conversion errors of ms > C_MAX_INT in some internal lib
     if value > C_MAX_INT:
         value = int(value / 1000 / 3600 / 24 / 365)
-        return pendulum.duration(years=value).in_words()
+        return f"{orig_value} ({pendulum.duration(years=value).in_words()})"
 
-    return pendulum.duration(milliseconds=value).in_words()
+    return f"{orig_value} ({pendulum.duration(milliseconds=value).in_words()})"
 
 
 def get_output_topic_diffs(
@@ -172,7 +174,7 @@ def pretty_size(value: Any) -> str:
     ]
     for sign, size in units:
         if value >= size:
-            return f"{pretty_float(value/size)} {sign}"
+            return f"{value} ({pretty_float(value/size)} {sign})"
 
 
 def bold(s: str) -> str:

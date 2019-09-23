@@ -1,13 +1,19 @@
-import functools
 import itertools as it
 import queue
 import socket
-from concurrent import futures
-from contextlib import contextmanager
-from typing import BinaryIO, Dict, List, Optional, Set, Tuple, overload
+from typing import BinaryIO, Dict, List, Tuple, overload
 
+from .api import (
+    ApiKey,
+    ApiVersionRequestData,
+    ApiVersionResponseData,
+    ApiSupportRange,
+    Request,
+    RequestData,
+    ResponseData,
+    SUPPORTED_API_VERSIONS,
+)
 from .serializers import int32Serializer
-from .api import ApiVersionRequestData, ApiVersionResponseData, Request, RequestData, ResponseData, ApiKey
 
 
 class BrokerConnection:
@@ -16,6 +22,36 @@ class BrokerConnection:
         self.client_id = client_id
         self._correlation_id_counter = it.count()
         self.api_versions: Dict[ApiKey, int] = {ApiKey.API_VERSIONS: 1}
+        self._query_api_versions()
+
+    def _query_api_versions(self) -> None:
+        request = self.send(ApiVersionRequestData())
+        all_server_supported_versions = {support_range.api_key: support_range for
+                                         support_range in request.response_data.api_versions}
+        server_api_keys = set(all_server_supported_versions)
+        client_api_keys = set(SUPPORTED_API_VERSIONS)
+        for api_key in server_api_keys | client_api_keys:
+            client_supported_version = SUPPORTED_API_VERSIONS.get(api_key, ApiSupportRange(api_key, -2, -1))
+            server_supported_version = all_server_supported_versions.get(api_key, ApiSupportRange(api_key, -4, -3))
+            effective_version = min(client_supported_version.max_version, server_supported_version.max_version)
+
+            # TODO messages say something like server only supports api ... up to version -4
+            #  better say server doesn't support api ... PERIOD
+            # I'd like to do warings/exceptions during runtime once a feature is actually needed. This makes sure the
+            # client can be used for everything where the api versions match and/or are high enough.
+            # In the high level part, I imagine function annotations like @requires(ApiKey.LIST_OFFSETS, 2) if a
+            # function requires the server to support api LIST_OFFSETS of at least version 2
+            if client_supported_version.min_version <= effective_version:
+                raise Warning(
+                    f"Server only supports api {api_key.name} up to version {server_supported_version.max_version}," +
+                    f"but client needs at least {client_supported_version.min_version}. You cannot use this API."
+                )
+            if server_supported_version.min_version <= effective_version:
+                raise Warning(
+                    f"Client only supports api {api_key.name} up to version {client_supported_version.max_version}," +
+                    f"but server needs at least {server_supported_version.min_version}. You cannot use this API."
+                )
+            self.api_versions[api_key] = effective_version
 
     @overload
     def send(self, data: ApiVersionRequestData) -> Request[ApiVersionRequestData, ApiVersionResponseData]:
@@ -33,17 +69,12 @@ class BrokerConnection:
         if len_ == 0:
             return []
 
-        with self.kafka_io.no_blocking():
-            while len(received_requests) < len_:
-
-                self._try_send_and_pop(requests_to_send)
-                try:
-                    received_requests.append(self.kafka_io.receive())
-                except queue.Empty:
-                    pass
+        while len(received_requests) < len_:
+            self._try_send_and_pop_from(requests_to_send)
+            self._try_receive_and_append_to(received_requests)
         return received_requests
 
-    def _try_send_and_pop(self, requests_to_send: List[Request]) -> None:
+    def _try_send_and_pop_from(self, requests_to_send: List[Request]) -> None:
         if requests_to_send:
             try:
                 self.kafka_io.send(requests_to_send[0])
@@ -53,6 +84,12 @@ class BrokerConnection:
                     self.kafka_io.flush()
             except queue.Full:  # make sure we flush so some messages can be read to make place for new ones
                 self.kafka_io.flush()
+
+    def _try_receive_and_append_to(self, received_requests: List[Request]) -> None:
+        try:
+            received_requests.append(self.kafka_io.receive())
+        except queue.Empty:
+            pass
 
     def _request_from_data(self, request_data: RequestData) -> Request:
         api_key = request_data.api_key()
@@ -70,19 +107,17 @@ class BrokerConnection:
 
 
 class KafkaIO:
-    def __init__(self, in_stream: BinaryIO, out_stream: BinaryIO, pool: Optional[futures.Executor] = None):
-        self._in_flight: "queue.Queue[Request]" = queue.Queue()
+    def __init__(self, in_stream: BinaryIO, out_stream: BinaryIO):
+        self._in_flight: "queue.Queue[Request]" = queue.Queue(maxsize=10)  # TODO make this configurable
         self._in_stream: BinaryIO = in_stream
         self._out_stream: BinaryIO = out_stream
-        self._pool: Optional[futures.Executor] = pool
-        self.blocking: bool = True
 
     def send(self, request: Request) -> None:
         data = request.encode_request()
         self._send_req_data(request, data)
 
     def _send_req_data(self, request: Request, data: bytes) -> None:
-        self._in_flight.put(request, block=self.blocking)
+        self._in_flight.put(request, block=False)
         self._out_stream.write(int32Serializer.encode(len(data)))
         self._out_stream.write(data)
 
@@ -93,7 +128,7 @@ class KafkaIO:
         return request
 
     def _receive_req_data(self) -> Tuple[Request, bytes]:
-        request = self._in_flight.get(block=self.blocking)
+        request = self._in_flight.get(block=False)
         len_ = int32Serializer.read(self._in_stream)
         data = self._in_stream.read(len_)
         return request, data
@@ -101,22 +136,16 @@ class KafkaIO:
     def flush(self):
         self._out_stream.flush()
 
-    @contextmanager
-    def no_blocking(self):
-        self.blocking = False
-        yield self
-        self.blocking = True
-
     @classmethod
-    def from_socket(cls, io_socket: socket.SocketType, *args, **kwargs) -> "KafkaIO":
+    def from_socket(cls, io_socket: socket.SocketType) -> "KafkaIO":
         in_stream = io_socket.makefile(mode="rb", buffering=4096)
         out_stream = io_socket.makefile(mode="wb", buffering=4096)
-        return cls(in_stream, out_stream, *args, **kwargs)
+        return cls(in_stream, out_stream)
 
     @classmethod
-    def from_address(cls, address: Tuple[str, int], *args, **kwargs) -> "KafkaIO":
+    def from_address(cls, address: Tuple[str, int]) -> "KafkaIO":
         io_socket = socket.create_connection(address)
-        return cls.from_socket(io_socket, *args, **kwargs)
+        return cls.from_socket(io_socket)
 
     def close(self):
         self._in_stream.close()
@@ -127,28 +156,3 @@ class KafkaIO:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return self.close()
-
-
-class AsyncKafkaIO(KafkaIO):
-    def __init__(self, in_stream: BinaryIO, out_stream: BinaryIO, pool: Optional[futures.Executor]):
-        super().__init__(in_stream, out_stream)
-        self._pool: futures.Executor = pool
-        self._receive_futures: Set[futures.Future] = set()
-        self._send_futures: Set[futures.Future] = set()
-
-    def receive_async(self) -> futures.Future:
-        request, data = self._receive_req_data()
-        fut: futures.Future = self._pool.submit(request.decode_response, data)
-        self._receive_futures.add(fut)
-        fut.add_done_callback(self._receive_futures.remove)
-        return fut
-
-    def send_async(self, request: Request) -> futures.Future:
-        fut: futures.Future = self._pool.submit(request.encode_request)
-        callback = functools.partial(self.serialization_done_cb, request=request)
-        fut.add_done_callback(callback)
-        return fut
-
-    def serialization_done_cb(self, request: Request, fut: futures.Future):
-        data = fut.result()
-        self._send_req_data(request, data)

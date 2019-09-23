@@ -6,6 +6,7 @@ from .api_versions import (
     ApiVersionResponseData,
     apiVersionRequestSerializers,
     apiVersionResponseSerializers,
+    ApiSupportRange,
 )
 from .base import (
     ApiKey,
@@ -23,6 +24,11 @@ REQUEST_SERIALIZERS: Dict[ApiKey, Dict[int, BaseSerializer[RequestData]]] = {
 }
 RESPONSE_SERIALIZERS: Dict[ApiKey, Dict[int, BaseSerializer[ResponseData]]] = {
     ApiKey.API_VERSIONS: apiVersionResponseSerializers
+}
+
+SUPPORTED_API_VERSIONS: Dict[ApiKey, ApiSupportRange] = {
+    api_key: ApiSupportRange(api_key, min(serializers.keys()), max(serializers.keys()))
+    for api_key, serializers in REQUEST_SERIALIZERS.items()
 }
 
 
