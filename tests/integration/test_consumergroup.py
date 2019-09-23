@@ -7,7 +7,7 @@ from esque.consumergroup import ConsumerGroup
 def test_describe(consumergroup_instance: ConsumerGroup):
     consumer_offset = consumergroup_instance.describe()
 
-    offset = consumer_offset["offsets"]
+    offset = next(iter(consumer_offset["offsets"].values()))
 
     assert offset["consumer_offset"] == (5, 5)
     assert offset["topic_low_watermark"] == (0, 0)
