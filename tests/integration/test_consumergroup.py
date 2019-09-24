@@ -3,18 +3,18 @@ from typing import Tuple
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import get_consumergroups, describe_consumergroup
+from esque.cli.commands import describe_consumergroup, get_consumergroups
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from tests.conftest import consumer_with_id
 
 
 @pytest.mark.integration
-def test_new_group(random_id: str, topic_id: str, consumergroup_controller: ConsumerGroupController):
+def test_new_group(random_id: str, topic: str, consumergroup_controller: ConsumerGroupController):
     group_id = f"new_group_{random_id}"
     runner = CliRunner()
 
     consumer = consumer_with_id(group_id)
-    consumer.subscribe([topic_id])
+    consumer.subscribe([topic])
     # need to call `poll` to make sure all assignments etc.
     # are done and the CG is known by the cluster
     consumer.poll(10)

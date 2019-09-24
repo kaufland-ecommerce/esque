@@ -3,6 +3,7 @@ from typing import Dict, List, TYPE_CHECKING
 import pykafka
 
 from esque.errors import ConsumerGroupDoesNotExistException
+from esque.helpers import invalidate_cache_before
 from esque.resources.consumergroup import ConsumerGroup, MemberInfo, OffsetInfo
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ class ConsumerGroupController:
 
         group.members = members
 
+    @invalidate_cache_before
     def list_consumer_groups(self) -> List[str]:
         brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers
         return list(

@@ -26,7 +26,7 @@ required = [
     "pip>=9.0.1",
     "setuptools>=36.2.1",
     "virtualenv",
-    "confluent-kafka",
+    "confluent-kafka>=1.1.0",
     "click>=7.0",
     "pykafka",
     "pendulum",

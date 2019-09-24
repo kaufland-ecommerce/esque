@@ -62,7 +62,7 @@ def test_config(test_config_path, request):
 
 
 @pytest.fixture()
-def topic_id(confluent_admin_client) -> str:
+def topic_id(confluent_admin_client, topic) -> str:
     yield "".join(random.choices(ascii_letters, k=5))
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     if topic_id in topics:

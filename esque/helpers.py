@@ -12,7 +12,7 @@ from esque.errors import raise_for_kafka_error, FutureTimeoutException
 def invalidate_cache_before(func):
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        self._client.poll(timeout=1)
+        self.cluster.confluent_client.poll(timeout=1)
         return func(self, *args, **kwargs)
 
     return wrapper
