@@ -33,7 +33,7 @@ required = [
     "pyyaml",
     "requests",
     "fastavro>=0.22.3",
-    "avro-python3",
+    "avro-python3==1.8.2",
 ]
 
 

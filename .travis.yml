@@ -7,11 +7,14 @@ env:
   BROKER_URL="localhost:9092"
   ZOOKEEPER_URL="localhost:2181"
   SCHEMA_REGISTRY_URL="localhost:8081"
+  CONFIG_PATH="confluent-community/etc/kafka/server.properties"
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE="False"
 before_install:
 - wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz
 - mkdir -p confluent-community && tar xzf confluent-community.tgz -C confluent-community --strip-components 1
 - confluent-community/bin/zookeeper-server-start -daemon confluent-community/etc/kafka/zookeeper.properties
 - bash -c "scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60"
+- bash -c "scripts/init.sh"
 - confluent-community/bin/kafka-server-start -daemon confluent-community/etc/kafka/server.properties
 - bash -c "scripts/wait-for-it.sh ${BROKER_URL} -t 60"
 - confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties

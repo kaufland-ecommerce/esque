@@ -2,6 +2,7 @@ import json
 import pathlib
 from typing import Any, Iterable, NamedTuple
 
+from avro.schema import RecordSchema
 from confluent_kafka.cimpl import Message
 
 
@@ -15,8 +16,8 @@ class KafkaMessage(NamedTuple):
     key: Any
     value: Any
     partition: int
-    key_schema: str = None
-    value_schema: str = None
+    key_schema: RecordSchema = None
+    value_schema: RecordSchema = None
 
 
 class IOHandler:
