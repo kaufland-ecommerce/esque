@@ -1,6 +1,7 @@
 import itertools as it
 import queue
 import socket
+import warnings
 from typing import BinaryIO, Dict, List, Tuple, overload
 
 from .api import (
@@ -104,6 +105,10 @@ from .api import (
 from .serializers import int32Serializer
 
 
+class ApiNotSupportedWarning(UserWarning):
+    pass
+
+
 class BrokerConnection:
     def __init__(self, address: Tuple[str, int], client_id: str):
         self.kafka_io = KafkaIO.from_address(address)
@@ -115,7 +120,7 @@ class BrokerConnection:
     def _query_api_versions(self) -> None:
         request = self.send(ApiVersionsRequestData())
         all_server_supported_versions = {
-            support_range.api_key: support_range for support_range in request.response_data.api_versions
+            ApiKey(support_range.api_key): support_range for support_range in request.response_data.api_versions
         }
         server_api_keys = set(all_server_supported_versions)
         client_api_keys = set(SUPPORTED_API_VERSIONS)
@@ -130,16 +135,38 @@ class BrokerConnection:
             # client can be used for everything where the api versions match and/or are high enough.
             # In the high level part, I imagine function annotations like @requires(ApiKey.LIST_OFFSETS, 2) if a
             # function requires the server to support api LIST_OFFSETS of at least version 2
-            if client_supported_version.min_version <= effective_version:
-                raise Warning(
-                    f"Server only supports api {api_key.name} up to version {server_supported_version.max_version},"
-                    + f"but client needs at least {client_supported_version.min_version}. You cannot use this API."
-                )
-            if server_supported_version.min_version <= effective_version:
-                raise Warning(
-                    f"Client only supports api {api_key.name} up to version {client_supported_version.max_version},"
-                    + f"but server needs at least {server_supported_version.min_version}. You cannot use this API."
-                )
+            if effective_version < client_supported_version.min_version:
+                if server_supported_version.max_version == -3:
+                    warnings.warn(
+                        ApiNotSupportedWarning(
+                            f"Client supports API {api_key.name} up to version {client_supported_version.max_version}, "
+                            + f"but server does not support the API at all. You cannot use this API."
+                        )
+                    )
+                else:
+                    warnings.warn(
+                        ApiNotSupportedWarning(
+                            f"Server only supports API {api_key.name} up to version"
+                            f"{server_supported_version.max_version}, but client needs at least "
+                            f"{client_supported_version.min_version}. You cannot use this API."
+                        )
+                    )
+            if effective_version < server_supported_version.min_version:
+                if client_supported_version.max_version == -1:
+                    warnings.warn(
+                        ApiNotSupportedWarning(
+                            f"Server supports api {api_key.name} up to version {server_supported_version.max_version}, "
+                            + f"but client does not support the API at all. You cannot use this API."
+                        )
+                    )
+                else:
+                    warnings.warn(
+                        ApiNotSupportedWarning(
+                            f"Client only supports API {api_key.name} up to version"
+                            f"{client_supported_version.max_version}, but server needs at least "
+                            f"{server_supported_version.min_version}. You cannot use this API."
+                        )
+                    )
             self.api_versions[api_key] = effective_version
 
     @overload
