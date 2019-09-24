@@ -1,4 +1,4 @@
-# esque - an operational Kafka ecosystem administration tool
+# esque - an operational Kafka tool
 
 [![pypi Version](https://img.shields.io/pypi/v/esque.svg)](https://pypi.org/project/esque/) [![Python Versions](https://img.shields.io/pypi/pyversions/esque.svg)](https://pypi.org/project/esque/) [![Build Status](https://travis-ci.org/real-digital/esque.svg?branch=master)](https://travis-ci.org/real-digital/esque) [![Coverage Status](https://coveralls.io/repos/github/real-digital/esque/badge.svg)](https://coveralls.io/github/real-digital/esque?branch=add-coverage) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
