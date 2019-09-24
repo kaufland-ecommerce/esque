@@ -2,8 +2,14 @@ from typing import List, Dict
 
 import pykafka
 
+
 from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.consumergroup import ConsumerGroup, OffsetInfo, MemberInfo
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from esque.cluster import Cluster
 
 
 class ConsumerGroupController:
