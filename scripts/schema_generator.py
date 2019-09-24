@@ -58,6 +58,7 @@ class ApiKey(IntEnum):
     ELECT_PREFERRED_LEADERS = 43
     INCREMENTAL_ALTER_CONFIGS = 44
 
+
 heading_pattern = re.compile(r"(?P<name>\w+) API[^\(]*\(Key: (?P<api_version>\d+)\).*")
 schema_pattern = re.compile(
     r"\s*(?P<name>\w+?)(?: (?P<kind>Request|Response) \(Version: (?P<version>\d+)\))? => (?P<field_names>.*)"
@@ -93,7 +94,11 @@ def find_api_schemas_and_descriptions():
             api_key = int(mtch.group("api_version"))
             request_schemas = {}
             response_schemas = {}
-            data[api_key] = {"name": api_name, "request_schemas": request_schemas, "response_schemas": response_schemas}
+            data[api_key] = {
+                "name": api_name,
+                "request_schemas": request_schemas,
+                "response_schemas": response_schemas,
+            }
 
         if child.name == "p" and child.pre:
             schema = child.pre.get_text()
@@ -136,9 +141,7 @@ def camel_to_snakecase(name: str) -> str:
 #     data => partition record_set
 #       partition => INT32
 #       record_set => RECORDS
-def yield_schemas(
-        lines: List[str], descriptions: Dict[str, str], api_key: Optional[int] = None,
-) -> Iterator["Schema"]:
+def yield_schemas(lines: List[str], descriptions: Dict[str, str], api_key: Optional[int] = None) -> Iterator["Schema"]:
     first_line = lines.pop(0)
     mtch = schema_pattern.match(first_line)
     if not mtch:
@@ -171,7 +174,7 @@ def yield_schemas(
             type_ = snake_to_camelcase(field_name)
         else:
             del lines[0]
-            while type_.startswith('ARRAY('):
+            while type_.startswith("ARRAY("):
                 array_dimensions[-1] += 1
                 type_ = type_[6:-1]
 
@@ -243,7 +246,7 @@ def render_schema(schema: Union[ApiSchema, Schema]) -> str:
 
         type_str = f'"{real_type}"'
         for _ in range(field.array_dimensions):
-            type_str = f'List[{type_str}]'
+            type_str = f"List[{type_str}]"
 
         if real_type != type_:
             type_str += f"  # {type_}"
@@ -286,7 +289,7 @@ def main():
         name_camel_lower = name_camel[0].lower() + name_camel[1:]
         names.append((name_snake, name_camel, name_camel_lower))
 
-    with open("./output/__init__.py", 'w') as o:
+    with open("./output/__init__.py", "w") as o:
         o.write("from io import BytesIO\n")
         o.write("from typing import BinaryIO, Dict, Generic, Optional, TypeVar\n")
         o.write("from .base import (\n")
@@ -318,7 +321,7 @@ def main():
             o.write(f"  ApiKey.{name_snake.upper()}: {name_camel_lower}ResponseDataSerializers,\n")
         o.write("}\n\n")
 
-    with open("./output/overload.py", 'w') as o:
+    with open("./output/overload.py", "w") as o:
         o.write("from .api import (\n")
         o.write("ApiKey,\n")
         o.write("ApiVersions,\n")
@@ -333,7 +336,9 @@ def main():
         o.write("class BrokerConnection:\n")
         for name_snake, name_camel, name_camel_lower in names:
             o.write("    @overload\n")
-            o.write(f"    def send(self, data: {name_camel}RequestData) -> Request[{name_camel}RequestData, {name_camel}ResponseData]:\n")
+            o.write(
+                f"    def send(self, data: {name_camel}RequestData) -> Request[{name_camel}RequestData, {name_camel}ResponseData]:\n"
+            )
             o.write("        ...\n\n")
 
     for api_key, api_data in data.items():
@@ -387,7 +392,7 @@ def main():
 
             for version_schemas in all_schemas.values():
                 fp.write(render_serializer_schemas(version_schemas) + "\n")
-    subprocess.call(['black', f"./output"])
+    subprocess.call(["black", f"./output"])
 
 
 SERIALIZER_MAP = {
@@ -450,13 +455,15 @@ def render_serializer_schemas(schemas: List[Tuple[int, Schema]]) -> str:
     lines.append("}")
     lines.append("")
     lines.append("")
-    lines.extend([
-        name[0].lower() + name[1:] + f'Serializers: Dict[int, BaseSerializer[{name}]] = {{',
-        f"    version: NamedTupleSerializer({name}, schema)",
-        f"    for version, schema in {name[0].lower() + name[1:]}Schemas.items()",
-        "}",
-        ""
-    ])
+    lines.extend(
+        [
+            name[0].lower() + name[1:] + f"Serializers: Dict[int, BaseSerializer[{name}]] = {{",
+            f"    version: NamedTupleSerializer({name}, schema)",
+            f"    for version, schema in {name[0].lower() + name[1:]}Schemas.items()",
+            "}",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
