@@ -51,7 +51,7 @@ def is_date_string(input_string: str):
 
 def is_date_time_string(input_string: str):
     try:
-        datetime.datetime.strptime(input_string, "%Y-%m-%dT%H%M%S")
+        datetime.datetime.strptime(input_string, "%Y-%m-%dT%H:%M:%S")
         return True
     except ValueError:
         return False
@@ -93,27 +93,36 @@ def to_date_time(input_string: str):
                     result = result.replace(year=year)
                 result = result.replace(month=int(date_segments[1]), day=int(date_segments[2]))
             if len(main_segments) == 2:
-                time_segments = main_segments[1].split(":")
                 try:
+                    time_segments = main_segments[1].split(":")
                     result = result.replace(hour=int(time_segments[0]))
+                    if len(time_segments) > 1:
+                        result = result.replace(minute=int(time_segments[1]))
+                    else:
+                        result = result.replace(minute=0)
+                    if len(time_segments) > 2:
+                        result = result.replace(second=int(time_segments[2]))
+                    else:
+                        result = result.replace(second=0)
                 except ValueError:
                     return None
-                if len(time_segments) > 1:
-                    try:
-                        result = result.replace(minute=int(time_segments[1]))
-                    except ValueError:
-                        return None
-                else:
-                    result = result.replace(minute=0)
-                if len(time_segments) > 2:
-                    try:
-                        result = result.replace(second=int(time_segments[2]))
-                    except ValueError:
-                        return None
-                else:
-                    result = result.replace(second=0)
             else:
                 result = result.replace(hour=0, minute=0, second=0)
     except:
         raise ValueError("Datetime string is malformed.")
     return result
+
+
+def string_like(haystack: str, needle: str):
+    if needle.startswith("%") and needle.endswith("%"):
+        return haystack.find(needle.replace("%", "")) != -1
+    elif needle.startswith("%"):
+        return haystack.endswith(needle.replace("%", ""))
+    elif needle.endswith("%"):
+        return haystack.startswith(needle.replace("%", ""))
+    else:
+        return haystack == needle.replace("%", "")
+
+
+def string_not_like(haystack: str, needle: str):
+    return not string_like(haystack, needle)

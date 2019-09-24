@@ -1,16 +1,27 @@
 from abc import ABC
 from enum import Enum
 from collections import namedtuple
+import pendulum
 import esque.ruleparser.helpers as h
 
 
-GenericOperator = namedtuple("GenericOperator", "name type regex input_priority stack_priority is_unary")
+GenericOperator = namedtuple(
+    "GenericOperator", "name type regex input_priority stack_priority is_unary calculation_function operand_types"
+)
 
 
 class OperatorType(Enum):
     ARITHMETIC = (1,)
     COMPARISON = (2,)
     PARENTHESIS = 3
+
+
+class OperandType(Enum):
+    NUMERIC = (1,)
+    NUMERIC_INT = (2,)
+    BOOLEAN = (3,)
+    DATETIME = (4,)
+    STRING = 5
 
 
 class Operator(ABC):
@@ -31,28 +42,184 @@ class Operator(ABC):
         "SYSTEM_TIMESTAMP": "system\\.timestamp",
     }
     OPERATORS = {
-        "ADDITION": GenericOperator("ADDITION", OperatorType.ARITHMETIC, "\\+", 20, 20, False),
-        "SUBTRACTION": GenericOperator("SUBTRACTION", OperatorType.ARITHMETIC, "-", 20, 20, False),
-        "MULTIPLICATION": GenericOperator("MULTIPLICATION", OperatorType.ARITHMETIC, "\\*", 30, 30, False),
-        "DIVISION": GenericOperator("DIVISION", OperatorType.ARITHMETIC, "\\/", 30, 30, False),
-        "REMAINDER": GenericOperator("REMAINDER", OperatorType.ARITHMETIC, "mod", 20, 20, False),
-        "BINARY_AND": GenericOperator("BINARY_AND", OperatorType.ARITHMETIC, "&", 20, 20, False),
-        "BINARY_OR": GenericOperator("BINARY_OR", OperatorType.ARITHMETIC, "\\|", 20, 20, False),
-        "BINARY_XOR": GenericOperator("BINARY_XOR", OperatorType.ARITHMETIC, "\\^", 20, 20, False),
-        "GREATER_THAN": GenericOperator("GREATER_THAN", OperatorType.COMPARISON, ">", 15, 15, False),
-        "LESS_THAN": GenericOperator("LESS_THAN", OperatorType.COMPARISON, "<", 15, 15, False),
-        "GREATER_OR_EQUAL": GenericOperator("GREATER_OR_EQUAL", OperatorType.COMPARISON, ">=", 15, 15, False),
-        "LESS_OR_EQUAL": GenericOperator("LESS_OR_EQUAL", OperatorType.COMPARISON, "<=", 15, 15, False),
-        "EQUAL": GenericOperator("EQUAL", OperatorType.COMPARISON, "==", 15, 15, False),
-        "NOT_EQUAL": GenericOperator("NOT_EQUAL", OperatorType.COMPARISON, "!=", 15, 15, False),
-        "LOGICAL_AND": GenericOperator("LOGICAL_AND", OperatorType.ARITHMETIC, "and", 10, 10, False),
-        "LOGICAL_OR": GenericOperator("LOGICAL_OR", OperatorType.ARITHMETIC, "or", 10, 10, False),
-        "LOGICAL_NOT": GenericOperator("LOGICAL_NOT", OperatorType.COMPARISON, "neg", 100, 100, True),
-        "LOGICAL_XOR": GenericOperator("LOGICAL_XOR", OperatorType.ARITHMETIC, "xor", 10, 10, False),
-        "LIKE": GenericOperator("LIKE", OperatorType.COMPARISON, "like", 15, 15, False),
-        "NOT_LIKE": GenericOperator("NOT_LIKE", OperatorType.COMPARISON, "notlike", 15, 15, False),
-        "PARENTHESIS_OPEN": GenericOperator("PARENTHESIS_OPEN", OperatorType.PARENTHESIS, "\\(", 10000, 0, False),
-        "PARENTHESIS_CLOSED": GenericOperator("PARENTHESIS_CLOSED", OperatorType.PARENTHESIS, "\\)", 1, 0, False),
+        "ADDITION": GenericOperator(
+            "ADDITION", OperatorType.ARITHMETIC, "\\+", 20, 20, False, (lambda o1, o2: o1 + o2), [OperandType.NUMERIC]
+        ),
+        "SUBTRACTION": GenericOperator(
+            "SUBTRACTION", OperatorType.ARITHMETIC, "-", 20, 20, False, (lambda o1, o2: o1 - o2), [OperandType.NUMERIC]
+        ),
+        "MULTIPLICATION": GenericOperator(
+            "MULTIPLICATION",
+            OperatorType.ARITHMETIC,
+            "\\*",
+            30,
+            30,
+            False,
+            (lambda o1, o2: o1 * o2),
+            [OperandType.NUMERIC],
+        ),
+        "DIVISION": GenericOperator(
+            "DIVISION", OperatorType.ARITHMETIC, "\\/", 30, 30, False, (lambda o1, o2: o1 / o2), [OperandType.NUMERIC]
+        ),
+        "REMAINDER": GenericOperator(
+            "REMAINDER",
+            OperatorType.ARITHMETIC,
+            "mod",
+            20,
+            20,
+            False,
+            (lambda o1, o2: o1 % o2),
+            [OperandType.NUMERIC_INT],
+        ),
+        "BINARY_AND": GenericOperator(
+            "BINARY_AND",
+            OperatorType.ARITHMETIC,
+            "&",
+            20,
+            20,
+            False,
+            (lambda o1, o2: o1 & o2),
+            [OperandType.NUMERIC_INT],
+        ),
+        "BINARY_OR": GenericOperator(
+            "BINARY_OR",
+            OperatorType.ARITHMETIC,
+            "\\|",
+            20,
+            20,
+            False,
+            (lambda o1, o2: o1 | o2),
+            [OperandType.NUMERIC_INT],
+        ),
+        "BINARY_XOR": GenericOperator(
+            "BINARY_XOR",
+            OperatorType.ARITHMETIC,
+            "\\^",
+            20,
+            20,
+            False,
+            (lambda o1, o2: o1 ^ o2),
+            [OperandType.NUMERIC_INT],
+        ),
+        "GREATER_THAN": GenericOperator(
+            "GREATER_THAN",
+            OperatorType.COMPARISON,
+            ">",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 > o2),
+            [OperandType.NUMERIC, OperandType.DATETIME],
+        ),
+        "LESS_THAN": GenericOperator(
+            "LESS_THAN",
+            OperatorType.COMPARISON,
+            "<",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 < o2),
+            [OperandType.NUMERIC, OperandType.DATETIME],
+        ),
+        "GREATER_OR_EQUAL": GenericOperator(
+            "GREATER_OR_EQUAL",
+            OperatorType.COMPARISON,
+            ">=",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 >= o2),
+            [OperandType.NUMERIC, OperandType.DATETIME],
+        ),
+        "LESS_OR_EQUAL": GenericOperator(
+            "LESS_OR_EQUAL",
+            OperatorType.COMPARISON,
+            "<=",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 <= o2),
+            [OperandType.NUMERIC, OperandType.DATETIME],
+        ),
+        "EQUAL": GenericOperator(
+            "EQUAL",
+            OperatorType.COMPARISON,
+            "==",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 == o2),
+            [OperandType.NUMERIC, OperandType.DATETIME, OperandType.BOOLEAN, OperandType.STRING],
+        ),
+        "NOT_EQUAL": GenericOperator(
+            "NOT_EQUAL",
+            OperatorType.COMPARISON,
+            "!=",
+            15,
+            15,
+            False,
+            (lambda o1, o2: o1 != o2),
+            [OperandType.NUMERIC, OperandType.DATETIME, OperandType.BOOLEAN, OperandType.STRING],
+        ),
+        "LOGICAL_AND": GenericOperator(
+            "LOGICAL_AND",
+            OperatorType.ARITHMETIC,
+            "and",
+            10,
+            10,
+            False,
+            (lambda o1, o2: o1 and o2),
+            [OperandType.BOOLEAN],
+        ),
+        "LOGICAL_OR": GenericOperator(
+            "LOGICAL_OR",
+            OperatorType.ARITHMETIC,
+            "or",
+            10,
+            10,
+            False,
+            (lambda o1, o2: o1 or o2),
+            [OperandType.BOOLEAN],
+        ),
+        "LOGICAL_NOT": GenericOperator(
+            "LOGICAL_NOT", OperatorType.COMPARISON, "neg", 100, 100, True, (lambda o1: not o1), [OperandType.BOOLEAN]
+        ),
+        "LOGICAL_XOR": GenericOperator(
+            "LOGICAL_XOR",
+            OperatorType.ARITHMETIC,
+            "xor",
+            10,
+            10,
+            False,
+            (lambda o1, o2: (o1 and not o2) or (not o1 and o2)),
+            [OperandType.BOOLEAN],
+        ),
+        "LIKE": GenericOperator(
+            "LIKE",
+            OperatorType.COMPARISON,
+            "like",
+            15,
+            15,
+            False,
+            (lambda o1, o2: h.string_like(haystack=o1, needle=o2)),
+            [OperandType.STRING],
+        ),
+        "NOT_LIKE": GenericOperator(
+            "NOT_LIKE",
+            OperatorType.COMPARISON,
+            "notlike",
+            15,
+            15,
+            False,
+            (lambda o1, o2: h.string_not_like(haystack=o1, needle=o2)),
+            [OperandType.STRING],
+        ),
+        "PARENTHESIS_OPEN": GenericOperator(
+            "PARENTHESIS_OPEN", OperatorType.PARENTHESIS, "\\(", 10000, 0, False, None, None
+        ),
+        "PARENTHESIS_CLOSED": GenericOperator(
+            "PARENTHESIS_CLOSED", OperatorType.PARENTHESIS, "\\)", 1, 0, False, None, None
+        ),
     }
 
 
@@ -60,150 +227,79 @@ class AbstractBinaryOperator(Operator):
     def evaluate(self, operand1, operand2):
         pass
 
+    def validate_operands(self, operand1, operand2):
+        for operand_type in self.generic_operator.operand_types:
+            if (
+                (operand_type == OperandType.NUMERIC_INT or operand_type == OperandType.NUMERIC)
+                and h.is_int(operand1)
+                and h.is_int(operand2)
+            ):
+                return [int(operand1), int(operand2)]
+            elif operand_type == OperandType.NUMERIC and h.is_float(operand1) and h.is_float(operand2):
+                return [float(operand1), float(operand2)]
+            elif (
+                operand_type == OperandType.DATETIME
+                and (h.is_date_time_string(operand1) or h.is_date_string(operand1))
+                and (h.is_date_time_string(operand2) or h.is_date_string(operand2))
+            ):
+                return [pendulum.parse(operand1), pendulum.parse(operand2)]
+            elif operand_type == OperandType.BOOLEAN and h.is_boolean(operand1) and h.is_boolean(operand2):
+                return [h.to_boolean(operand1), h.to_boolean(operand2)]
+            elif operand_type == OperandType.STRING:
+                return [operand1, operand2]
+        raise ValueError(
+            "One or both operands ({}, {}) are not applicable to this operator ({})".format(
+                operand1, operand2, self.literal
+            )
+        )
+
 
 class AbstractUnaryOperator(Operator):
     def evaluate(self, operand1):
         pass
 
+    def validate_operands(self, operand1):
+        for operand_type in self.generic_operator.operand_types:
+            if (operand_type == OperandType.NUMERIC_INT or operand_type == OperandType.NUMERIC) and h.is_int(operand1):
+                return [int(operand1)]
+            elif operand_type == OperandType.NUMERIC and h.is_float(operand1):
+                return [float(operand1)]
+            elif operand_type == OperandType.DATETIME and (
+                h.is_date_time_string(operand1) or h.is_date_string(operand1)
+            ):
+                return [pendulum.parse(operand1)]
+            elif operand_type == OperandType.BOOLEAN and h.is_boolean(operand1):
+                return [h.to_boolean(operand1)]
+            elif operand_type == OperandType.STRING:
+                return [operand1]
+        raise ValueError("Operand ({}) is not applicable to this operator ({})".format(operand1, self.literal))
+
 
 class ArithmeticBinaryOperator(AbstractBinaryOperator):
     def evaluate(self, operand1: str, operand2: str):
-        op1_converted = None
-        op2_converted = None
-        integer_operands = False
-        boolean_operands = False
-        if h.is_int(operand1) and h.is_int(operand2):
-            op1_converted = int(operand1)
-            op2_converted = int(operand2)
-            integer_operands = True
-        elif (h.is_float(operand1) and h.is_any_numeric_type(operand2)) or (
-            h.is_any_numeric_type(operand1) and h.is_float(operand2)
-        ):
-            op1_converted = float(operand1)
-            op2_converted = float(operand2)
-        elif h.is_boolean(operand1) and h.is_boolean(operand2):
-            op1_converted = h.to_boolean(operand1)
-            op2_converted = h.to_boolean(operand2)
-            boolean_operands = True
-        if op1_converted is None or op2_converted is None:
-            raise TypeError(
-                "One or two operands ("
-                + operand1
-                + ", "
-                + operand2
-                + ") cannot be converted to any recognizable form."
-            )
-        if self.generic_operator.name == Operator.OPERATORS["ADDITION"].name:
-            return op1_converted + op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["SUBTRACTION"].name:
-            return op1_converted - op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["MULTIPLICATION"].name:
-            return op1_converted * op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["DIVISION"].name:
-            if op2_converted == 0:
-                raise ValueError("Division by zero")
-            return op1_converted / op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["REMAINDER"].name:
-            if integer_operands:
-                return op1_converted % op2_converted
-            else:
-                raise TypeError("Remainder can only be used with integer arguments")
-        elif self.generic_operator.name == Operator.OPERATORS["BINARY_AND"].name:
-            if integer_operands:
-                return op1_converted & op2_converted
-            else:
-                raise TypeError("Binary operators can only be used with integer arguments")
-        elif self.generic_operator.name == Operator.OPERATORS["BINARY_OR"].name:
-            if integer_operands:
-                return op1_converted | op2_converted
-            else:
-                raise TypeError("Binary operators can only be used with integer arguments")
-        elif self.generic_operator.name == Operator.OPERATORS["BINARY_XOR"].name:
-            if integer_operands:
-                return op1_converted ^ op2_converted
-            else:
-                raise TypeError("Binary operators can only be used with integer arguments")
-        elif self.generic_operator.name == Operator.OPERATORS["LOGICAL_AND"].name:
-            if boolean_operands:
-                return op1_converted and op2_converted
-            else:
-                raise TypeError("Logical operators can only be used with boolean values")
-        elif self.generic_operator.name == Operator.OPERATORS["LOGICAL_OR"].name:
-            if boolean_operands:
-                return op1_converted or op2_converted
-            else:
-                raise TypeError("Logical operators can only be used with boolean values")
-        elif self.generic_operator.name == Operator.OPERATORS["LOGICAL_XOR"].name:
-            if boolean_operands:
-                return op1_converted ^ op2_converted
-            else:
-                raise TypeError("Logical operators can only be used with boolean values")
+        try:
+            [op1_converted, op2_converted] = self.validate_operands(operand1, operand2)
+            return self.generic_operator.calculation_function(op1_converted, op2_converted)
+        except ValueError:
+            raise
 
 
 class ComparisonBinaryOperator(AbstractBinaryOperator):
     def evaluate(self, operand1: str, operand2: str):
-        op1_converted = None
-        op2_converted = None
-        if h.is_boolean(operand1) and h.is_boolean(operand2):
-            op1_converted = h.to_boolean(operand1)
-            op2_converted = h.to_boolean(operand2)
-        if h.is_float(operand1) and h.is_float(operand2):
-            # if they are numeric, it doesn't matter if they are integer or not
-            op1_converted = float(operand1)
-            op2_converted = float(operand2)
-        elif (h.is_date_string(operand1) or h.to_date_time(operand1)) and (
-            h.is_date_string(operand2) or h.is_date_time_string(operand2)
-        ):
-            # maybe they are date strings
-            op1_converted = h.to_date_time(operand1)
-            op2_converted = h.to_date_time(operand2)
-        else:
-            # otherwise, we'll test them as strings
-            op1_converted = operand1
-            op2_converted = operand2
-        if op1_converted is None or op2_converted is None:
-            raise TypeError("The operands (" + operand1 + ", " + operand2 + ") cannot be compared.")
-        if self.generic_operator.name == Operator.OPERATORS["GREATER_THAN"].name:
-            return op1_converted > op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["LESS_THAN"].name:
-            return op1_converted < op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["GREATER_OR_EQUAL"].name:
-            return op1_converted >= op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["LESS_OR_EQUAL"].name:
-            return op1_converted <= op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["EQUAL"].name:
-            return op1_converted == op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["NOT_EQUAL"].name:
-            return op1_converted != op2_converted
-        elif self.generic_operator.name == Operator.OPERATORS["LIKE"].name:
-            if operand2.startswith("%") and operand2.endswith("%"):
-                return operand1.find(operand2.replace("%", "")) != -1
-            elif operand2.endswith("%"):
-                return operand1.startswith(operand2.replace("%", ""))
-            elif operand2.startswith("%"):
-                return operand1.endswith(operand2.replace("%", ""))
-            else:
-                return operand1 == operand2.replace("%", "")
-        elif self.generic_operator.name == Operator.OPERATORS["NOT_LIKE"].name:
-            if operand2.startswith("%") and operand2.endswith("%"):
-                return operand1.find(operand2.replace("%", "")) == -1
-            elif operand2.endswith("%"):
-                return not operand1.startswith(operand2.replace("%", ""))
-            elif operand2.startswith("%"):
-                return not operand1.endswith(operand2.replace("%", ""))
-            else:
-                return operand1 != operand2.replace("%", "")
+        try:
+            [op1_converted, op2_converted] = self.validate_operands(operand1, operand2)
+            return self.generic_operator.calculation_function(op1_converted, op2_converted)
+        except ValueError:
+            raise
 
 
 class ComparisonUnaryOperator(AbstractUnaryOperator):
     def evaluate(self, operand1: str):
-        op1_converted = None
-        if h.is_boolean(operand1):
-            op1_converted = h.to_boolean(operand1)
-        if op1_converted is None:
-            raise TypeError("The operand (" + operand1 + ") is not a valid boolean value")
-        if self.generic_operator.name == Operator.OPERATORS["LOGICAL_NOT"].name:
-            return not op1_converted
+        try:
+            [op1_converted] = self.validate_operands(operand1)
+            return self.generic_operator.calculation_function(op1_converted)
+        except ValueError:
+            raise
 
 
 class ParenthesisOperator(Operator):

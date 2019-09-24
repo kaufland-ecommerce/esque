@@ -22,40 +22,30 @@ class FieldEval:
         """
         if field_name == Operator.FIELDS["SYSTEM_TIMESTAMP"].replace("\\", ""):
             return datetime.datetime.strftime(datetime.datetime.now(), self.__time_format)
-        elif field_name == Operator.FIELDS["MESSAGE_OFFSET"].replace("\\", ""):
+        else:
             if self.__message is None:
-                return -1
-            return self.__message.offset()
-        elif field_name == Operator.FIELDS["MESSAGE_PARTITION"].replace("\\", ""):
-            if self.__message is None:
-                return -1
-            partition = self.__message.partition()
-            if partition is None:
                 return -1
             else:
-                return partition
-        elif field_name == Operator.FIELDS["MESSAGE_TIMESTAMP"].replace("\\", ""):
-            if self.__message is None:
-                return -1
-            return datetime.datetime.strftime(
-                datetime.datetime.fromtimestamp(self.__message.timestamp()[1] / 1000.0), self.__time_format
-            )
-        elif field_name == Operator.FIELDS["MESSAGE_LENGTH"].replace("\\", ""):
-            if self.__message is None:
-                return -1
-            return len(self.__message)
-        elif field_name == Operator.FIELDS["MESSAGE_KEY"].replace("\\", ""):
-            print(self.__message.key().decode("UTF-8"))
-            if self.__message is None:
-                return -1
-
-            return self.__message.key().decode("UTF-8")
-        elif self.__header_pattern.fullmatch(field_name):
-            if self.__message is None:
-                return -1
-            header_name = field_name.split(".")[-1]
-            header_value = self.__message.headers()[header_name]
-            if header_value is None:
-                return ""
-            else:
-                return header_value
+                if field_name == Operator.FIELDS["MESSAGE_OFFSET"].replace("\\", ""):
+                    return self.__message.offset()
+                elif field_name == Operator.FIELDS["MESSAGE_PARTITION"].replace("\\", ""):
+                    partition = self.__message.partition()
+                    if partition:
+                        return partition
+                    else:
+                        return -1
+                elif field_name == Operator.FIELDS["MESSAGE_TIMESTAMP"].replace("\\", ""):
+                    return datetime.datetime.strftime(
+                        datetime.datetime.fromtimestamp(self.__message.timestamp()[1] / 1000.0), self.__time_format
+                    )
+                elif field_name == Operator.FIELDS["MESSAGE_LENGTH"].replace("\\", ""):
+                    return len(self.__message)
+                elif field_name == Operator.FIELDS["MESSAGE_KEY"].replace("\\", ""):
+                    return self.__message.key().decode("UTF-8")
+                elif self.__header_pattern.fullmatch(field_name):
+                    header_name = field_name.split(".")[-1]
+                    header_value = self.__message.headers()[header_name]
+                    if header_value is None:
+                        return ""
+                    else:
+                        return header_value

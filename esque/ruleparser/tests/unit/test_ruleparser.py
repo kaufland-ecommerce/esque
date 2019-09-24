@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from esque.ruleparser.expressionelement import ArithmeticBinaryOperator, ComparisonUnaryOperator
+from esque.ruleparser.expressionelement import ArithmeticBinaryOperator
+from esque.ruleparser.expressionelement import ComparisonUnaryOperator
 from esque.ruleparser.expressionelement import Operator
 from esque.ruleparser.ruleengine import RuleTree
 
@@ -12,7 +13,7 @@ class OperatorCalculationsTest(TestCase):
         self.assertAlmostEqual(operator.evaluate("5", "3.1"), 8.1)
         self.assertAlmostEqual(operator.evaluate("5.1", "3"), 8.1)
         self.assertAlmostEqual(operator.evaluate("5.1", "3.2"), 8.3)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             operator.evaluate("a", "3")
 
     def test_subtraction(self):
@@ -21,14 +22,14 @@ class OperatorCalculationsTest(TestCase):
         self.assertAlmostEqual(operator.evaluate("5", "3.1"), 1.9)
         self.assertAlmostEqual(operator.evaluate("5.1", "3"), 2.1)
         self.assertAlmostEqual(operator.evaluate("5.1", "3.2"), 1.9)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             operator.evaluate("a", "3")
 
     def test_division(self):
         operator = ArithmeticBinaryOperator(literal="/", generic_operator=Operator.OPERATORS["DIVISION"])
         self.assertEqual(operator.evaluate("5", "2"), 2.5)
         self.assertAlmostEqual(operator.evaluate("2", "4"), 0.5)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ZeroDivisionError):
             operator.evaluate("5", "0")
 
     def test_negation(self):
@@ -62,15 +63,15 @@ class ExpressionTests(TestCase):
         self.assertTrue(rule_tree.evaluate(message=None))
 
     def test6(self):
-        rule_tree = RuleTree("global.timestamp < 2018-10-08")
+        rule_tree = RuleTree("system.timestamp < 2018-10-08")
         self.assertFalse(rule_tree.evaluate(message=None))
 
     def test7(self):
-        rule_tree = RuleTree("(320 + 5)*2-(1-2) < 1 or global.timestamp < 2018-10-08")
+        rule_tree = RuleTree("(320 + 5)*2-(1-2) < 1 or system.timestamp < 2018-10-08")
         self.assertFalse(rule_tree.evaluate(message=None))
 
     def test8(self):
-        rule_tree = RuleTree("(320 + 5)*2-(1-2) < 1 or global.timestamp > 2018-10-08")
+        rule_tree = RuleTree("(320 + 5)*2-(1-2) < 1 or system.timestamp > 2018-10-08")
         self.assertTrue(rule_tree.evaluate(message=None))
 
     def test9(self):

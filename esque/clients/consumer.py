@@ -17,10 +17,12 @@ from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
+        if match is not None:
+            self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
         self._config.update(
@@ -51,6 +53,13 @@ class AbstractConsumer(ABC):
         raise_for_message(message)
         return message
 
+    def consumed_message_matches(self, message: Message):
+        if self.rule_tree is not None:
+            return self.rule_tree.evaluate(message)
+        else:
+            return True
+
+
 
 class PingConsumer(AbstractConsumer):
     def consume(self, amount: int) -> Optional[Tuple[str, int]]:
@@ -62,6 +71,7 @@ class PingConsumer(AbstractConsumer):
 
 
 class FileConsumer(AbstractConsumer):
+
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, last)
         self.working_dir = working_dir
@@ -73,13 +83,10 @@ class FileConsumer(AbstractConsumer):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
 
-    def consume(self, amount: int, match: str = None) -> int:
+    def consume(self, amount: int) -> int:
         counter = 0
         file_writers = {}
-        if match is not None:
-            rule_tree = RuleTree(expression_string=match)
-        else:
-            rule_tree = None
+
         with ExitStack() as stack:
             while counter < amount:
                 try:
@@ -87,24 +94,15 @@ class FileConsumer(AbstractConsumer):
                 except MessageEmptyException:
                     return counter
 
-                evaluation_result = True
-                if rule_tree is not None:
-                    try:
-                        evaluation_result = rule_tree.evaluate(message)
-                        if not isinstance(evaluation_result, bool):
-                            evaluation_result = True
-                    except:
-                        evaluation_result = True
-                if evaluation_result and message.partition() not in file_writers:
+                if message.partition() not in file_writers:
                     partition = message.partition()
                     file_writer = self.get_file_writer(partition)
                     stack.enter_context(file_writer)
                     file_writers[partition] = file_writer
 
-                if evaluation_result:
-                    file_writer = file_writers[partition]
-                    file_writer.write_message_to_file(message)
-                    counter += 1
+                file_writer = file_writers[partition]
+                file_writer.write_message_to_file(message)
+                counter += 1
 
         return counter
 
