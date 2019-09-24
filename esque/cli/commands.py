@@ -1,4 +1,5 @@
 import pathlib
+import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -23,10 +24,15 @@ from esque.cli.output import (
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
-from esque.config import PING_TOPIC, PING_GROUP_ID, config_dir, config_path, sample_config_path, Config
-from esque.errors import ConsumerGroupDoesNotExistException, ContextNotDefinedException, TopicAlreadyExistsException
-from esque.resources.broker import Broker
+from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import (
+    ConsumerGroupDoesNotExistException,
+    ContextNotDefinedException,
+    TopicAlreadyExistsException,
+    TopicDoesNotExistException,
+)
+from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
 
@@ -93,6 +99,7 @@ def ctx(state, context):
             state.config.context_switch(context)
         except ContextNotDefinedException:
             click.echo(f"Context {context} does not exist")
+            sys.exit(1)
 
 
 @create.command("topic")
@@ -219,15 +226,19 @@ def delete_topic(state: State, topic_name: str):
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
-    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    config = {"Config": topic.config}
+    try:
+        topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+        config = {"Config": topic.config}
 
-    click.echo(bold(f"Topic: {topic_name}"))
+        click.echo(bold(f"Topic: {green_bold(topic_name)}"))
 
-    for partition in topic.partitions:
-        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
+        for partition in topic.partitions:
+            click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
 
-    click.echo(pretty(config))
+        click.echo(pretty(config))
+    except TopicDoesNotExistException:
+        click.echo(f"The topic {green_bold(topic_name)} does not exist on the cluster.")
+        sys.exit(1)
 
 
 @get.command("offsets")
@@ -262,6 +273,7 @@ def describe_consumergroup(state, consumer_id, verbose):
         click.echo(pretty(consumer_group_desc, break_lists=True))
     except ConsumerGroupDoesNotExistException:
         click.echo(bold(f"Consumer Group {consumer_id} not found."))
+        sys.exit(1)
 
 
 @get.command("brokers")
