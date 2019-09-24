@@ -200,7 +200,11 @@ STYLE_MAPPING = {
     "member_id": bold,
 }
 
-CONVERSION_MAPPING = {"ms": pretty_duration, "seconds": partial(pretty_duration, multiplier=1000), "bytes": pretty_size}
+CONVERSION_MAPPING = {
+    "ms": pretty_duration,
+    "seconds": partial(pretty_duration, multiplier=1000),
+    "bytes": pretty_size,
+}
 
 TYPE_MAPPING = {
     pendulum.DateTime: pretty_pendulum,

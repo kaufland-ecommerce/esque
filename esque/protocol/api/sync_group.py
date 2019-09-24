@@ -106,7 +106,11 @@ syncGroupRequestDataSerializers: Dict[int, BaseSerializer[SyncGroupRequestData]]
 
 
 syncGroupResponseDataSchemas: Dict[int, Schema] = {
-    0: [("error_code", int16Serializer), ("assignment", bytesSerializer), ("throttle_time_ms", DummySerializer(int()))],
+    0: [
+        ("error_code", int16Serializer),
+        ("assignment", bytesSerializer),
+        ("throttle_time_ms", DummySerializer(int())),
+    ],
     1: [("throttle_time_ms", int32Serializer), ("error_code", int16Serializer), ("assignment", bytesSerializer)],
     2: [("throttle_time_ms", int32Serializer), ("error_code", int16Serializer), ("assignment", bytesSerializer)],
     3: [("throttle_time_ms", int32Serializer), ("error_code", int16Serializer), ("assignment", bytesSerializer)],

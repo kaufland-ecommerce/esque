@@ -281,7 +281,8 @@ forgottenTopicsDataSchemas: Dict[int, Schema] = {
 
 
 forgottenTopicsDataSerializers: Dict[int, BaseSerializer[ForgottenTopicsData]] = {
-    version: NamedTupleSerializer(ForgottenTopicsData, schema) for version, schema in forgottenTopicsDataSchemas.items()
+    version: NamedTupleSerializer(ForgottenTopicsData, schema)
+    for version, schema in forgottenTopicsDataSchemas.items()
 }
 
 
@@ -451,7 +452,8 @@ abortedTransactionsSchemas: Dict[int, Schema] = {
 
 
 abortedTransactionsSerializers: Dict[int, BaseSerializer[AbortedTransactions]] = {
-    version: NamedTupleSerializer(AbortedTransactions, schema) for version, schema in abortedTransactionsSchemas.items()
+    version: NamedTupleSerializer(AbortedTransactions, schema)
+    for version, schema in abortedTransactionsSchemas.items()
 }
 
 

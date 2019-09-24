@@ -268,5 +268,6 @@ produceResponseDataSchemas: Dict[int, Schema] = {
 
 
 produceResponseDataSerializers: Dict[int, BaseSerializer[ProduceResponseData]] = {
-    version: NamedTupleSerializer(ProduceResponseData, schema) for version, schema in produceResponseDataSchemas.items()
+    version: NamedTupleSerializer(ProduceResponseData, schema)
+    for version, schema in produceResponseDataSchemas.items()
 }

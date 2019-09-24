@@ -72,7 +72,10 @@ _ERROR_METADATA: Dict[int, Tuple[bool, str]] = {
         "transactionalId, or the producer's transaction has been expired by the broker.",
     ),
     48: (False, "The producer attempted a transactional operation in an invalid state."),
-    49: (False, "The producer attempted to use a producer id which is not currently assigned to its transactional id."),
+    49: (
+        False,
+        "The producer attempted to use a producer id which is not currently assigned to its transactional id.",
+    ),
     50: (
         False,
         "The transaction timeout is larger than the maximum value allowed by the broker (as configured by "

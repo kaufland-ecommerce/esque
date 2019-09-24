@@ -12,7 +12,9 @@ class Cluster:
     def __init__(self):
         self._config = Config()
         self.confluent_client = AdminClient(self._config.create_confluent_config())
-        self.pykafka_client = pykafka.client.KafkaClient(**self._config.create_pykafka_config(), broker_version="1.0.0")
+        self.pykafka_client = pykafka.client.KafkaClient(
+            **self._config.create_pykafka_config(), broker_version="1.0.0"
+        )
         self.confluent_client.poll(timeout=1)
         self.__topic_controller = None
 

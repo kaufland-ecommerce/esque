@@ -183,7 +183,9 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
+        click.echo(
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+        )
         click.echo("Cancelling due to invalid changes")
         return
 

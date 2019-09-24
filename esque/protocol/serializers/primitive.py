@@ -189,7 +189,9 @@ nullableStringSerializer: BaseSerializer[Optional[str]] = GenericSerializer(
     encode_nullable_string, read_nullable_string
 )
 stringSerializer: BaseSerializer[str] = GenericSerializer(encode_string, read_string)
-nullableBytesSerializer: BaseSerializer[Optional[bytes]] = GenericSerializer(encode_nullable_bytes, read_nullable_bytes)
+nullableBytesSerializer: BaseSerializer[Optional[bytes]] = GenericSerializer(
+    encode_nullable_bytes, read_nullable_bytes
+)
 bytesSerializer: BaseSerializer[bytes] = GenericSerializer(encode_bytes, read_bytes)
 
 # Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see
