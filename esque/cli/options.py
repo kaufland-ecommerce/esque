@@ -3,7 +3,7 @@ from shutil import copyfile
 
 import click
 from click import ClickException, make_pass_decorator, option
-from pykafka.exceptions import NoBrokersAvailableError
+from pykafka.exceptions import NoBrokersAvailableError, SocketDisconnectedError
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
@@ -34,6 +34,8 @@ class State(object):
                 self._cluster = Cluster()
             return self._cluster
         except NoBrokersAvailableError:
+            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
+        except SocketDisconnectedError:
             raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
 
 
