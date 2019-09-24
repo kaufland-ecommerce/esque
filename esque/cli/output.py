@@ -5,6 +5,7 @@ from typing import Any, Dict, List, MutableMapping
 import click
 import pendulum
 
+from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, TopicDiff
 
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
