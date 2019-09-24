@@ -6,7 +6,8 @@ from time import sleep
 
 import click
 import yaml
-from click import version_option
+from click import version_option, echo
+from click.termui import getchar, _build_prompt
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -95,16 +96,74 @@ def ctx(state, context):
             click.echo(f"Context {context} does not exist")
 
 
+def get_required_argument(ctx, param, value):
+    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
+    # read from stdin and after ask for confirmation. We should use click when this functionality
+    # is available.
+
+    if not value and not click.get_text_stream("stdin").isatty():
+        stdin_arg = click.get_text_stream("stdin").read().strip()
+    else:
+        stdin_arg = value
+    if not stdin_arg:
+        raise ValueError(f"ERROR: Missing argument {param.human_readable_name}")
+    return stdin_arg
+
+
+def get_optional_argument(ctx, param, value):
+    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
+    # read from stdin and after ask for confirmation. We should use click when this functionality
+    # is available.
+    if not value and not click.get_text_stream("stdin").isatty():
+        return click.get_text_stream("stdin").read().strip()
+
+    return value
+
+
+def get_terminal_confirmation(text, no_verify: bool = False):
+    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
+    # read from stdin and after ask for confirmation. We should use click when this functionality
+    # is available.
+    if no_verify:
+        return True
+
+    default = False
+    abort = False
+    prompt_suffix = ": "
+    show_default = True
+    err = False
+    prompt = _build_prompt(text, prompt_suffix, show_default, default and "Y/n" or "y/N")
+    echo(prompt, nl=False, err=err)
+    return _get_user_confirmation()
+
+
+def _get_user_confirmation():
+    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
+    # read from stdin and after ask for confirmation. We should use click when this functionality
+    # is available.
+    ret = ""
+    while 1:
+        c = getchar(True)
+        if c == "\r":
+            break
+        elif c in ("\x08", "\x7f") and len(ret) != 0:
+            ret = ret[:-1]
+        else:
+            ret += c
+    echo(nl=True)
+    return ret.lower() == "y"
+
+
 @create.command("topic")
-@click.argument("topic-name", required=True)
+@click.argument("topic-name", callback=get_required_argument, required=False)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
-    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
+    raise ValueError(topic_name)
+    if not get_terminal_confirmation("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
-
     topic_controller = state.cluster.topic_controller
     if like:
         template_config = topic_controller.get_cluster_topic(like)
@@ -117,11 +176,12 @@ def create_topic(state: State, topic_name: str, like=None):
 
 
 @edit.command("topic")
-@click.argument("topic-name", required=True)
+@click.argument("topic-name", callback=get_required_argument, required=False)
 @pass_state
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+
     new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
 
     # edit process can be aborted, ex. in vim via :q!
@@ -132,7 +192,7 @@ def edit_topic(state: State, topic_name: str):
     topic.from_yaml(new_conf)
     diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
     click.echo(diff)
-    if ensure_approval("Are you sure?"):
+    if get_terminal_confirmation("Are you sure?"):
         controller.alter_configs([topic])
 
 
@@ -183,9 +243,7 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo(
-            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
-        )
+        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -204,19 +262,19 @@ def apply(state: State, file: str):
 
 
 @delete.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument("topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics)
 @no_verify_option
 @pass_state
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
+    if get_terminal_confirmation("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
         assert topic_name not in (t.name for t in topic_controller.list_topics())
 
 
 @describe.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument("topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def describe_topic(state, topic_name):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
@@ -243,7 +301,7 @@ def get_offsets(state, topic_name):
 
 
 @describe.command("broker")
-@click.argument("broker-id", required=True)
+@click.argument("broker-id", callback=get_required_argument, required=False)
 @pass_state
 def describe_broker(state, broker_id):
     broker = Broker.from_id(state.cluster, broker_id).describe()
@@ -251,7 +309,7 @@ def describe_broker(state, broker_id):
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", required=False)
+@click.argument("consumer-id", callback=get_optional_argument, required=False)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
@@ -281,7 +339,7 @@ def get_consumergroups(state):
 
 
 @get.command("topics")
-@click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument("topic", callback=get_optional_argument, required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
 def get_topics(state, topic):
     topics = state.cluster.topic_controller.list_topics(search_string=topic)

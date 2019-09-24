@@ -1,4 +1,5 @@
 import json
+from io import StringIO
 from typing import Any, Dict
 
 import confluent_kafka
@@ -35,6 +36,28 @@ def test_topic_creation_works(
     confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_topic_creation_with_stdin_works(
+    monkeypatch,
+    topic_controller: TopicController,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic_id: str,
+):
+    runner = CliRunner()
+    stdin_topic = f"stdin_{topic_id}"
+
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert stdin_topic not in topics
+
+    monkeypatch.setattr("sys.stdin", [StringIO(stdin_topic + "\n")])
+    runner.invoke(create_topic, args="--no-verify", catch_exceptions=False)
+
+    # invalidate cache
+    confluent_admin_client.poll(timeout=1)
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert stdin_topic in topics
 
 
 @pytest.mark.integration
