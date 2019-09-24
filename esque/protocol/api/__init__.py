@@ -1,5 +1,6 @@
 from io import BytesIO
 from typing import BinaryIO, Dict, Generic, Optional, TypeVar
+
 from esque.protocol.api.base import (
     ApiKey,
     RequestData,
@@ -10,194 +11,17 @@ from esque.protocol.api.base import (
     responseHeaderSerializer,
 )
 from esque.protocol.serializers import BaseSerializer
-from .produce import (
-    ProduceRequestData,
-    ProduceResponseData,
-    produceRequestDataSerializers,
-    produceResponseDataSerializers,
-)
-from .fetch import FetchRequestData, FetchResponseData, fetchRequestDataSerializers, fetchResponseDataSerializers
-from .list_offsets import (
-    ListOffsetsRequestData,
-    ListOffsetsResponseData,
-    listOffsetsRequestDataSerializers,
-    listOffsetsResponseDataSerializers,
-)
-from .metadata import (
-    MetadataRequestData,
-    MetadataResponseData,
-    metadataRequestDataSerializers,
-    metadataResponseDataSerializers,
-)
-from .leader_and_isr import (
-    LeaderAndIsrRequestData,
-    LeaderAndIsrResponseData,
-    leaderAndIsrRequestDataSerializers,
-    leaderAndIsrResponseDataSerializers,
-)
-from .stop_replica import (
-    StopReplicaRequestData,
-    StopReplicaResponseData,
-    stopReplicaRequestDataSerializers,
-    stopReplicaResponseDataSerializers,
-)
-from .update_metadata import (
-    UpdateMetadataRequestData,
-    UpdateMetadataResponseData,
-    updateMetadataRequestDataSerializers,
-    updateMetadataResponseDataSerializers,
-)
-from .controlled_shutdown import (
-    ControlledShutdownRequestData,
-    ControlledShutdownResponseData,
-    controlledShutdownRequestDataSerializers,
-    controlledShutdownResponseDataSerializers,
-)
-from .offset_commit import (
-    OffsetCommitRequestData,
-    OffsetCommitResponseData,
-    offsetCommitRequestDataSerializers,
-    offsetCommitResponseDataSerializers,
-)
-from .offset_fetch import (
-    OffsetFetchRequestData,
-    OffsetFetchResponseData,
-    offsetFetchRequestDataSerializers,
-    offsetFetchResponseDataSerializers,
-)
-from .find_coordinator import (
-    FindCoordinatorRequestData,
-    FindCoordinatorResponseData,
-    findCoordinatorRequestDataSerializers,
-    findCoordinatorResponseDataSerializers,
-)
-from .join_group import (
-    JoinGroupRequestData,
-    JoinGroupResponseData,
-    joinGroupRequestDataSerializers,
-    joinGroupResponseDataSerializers,
-)
-from .heartbeat import (
-    HeartbeatRequestData,
-    HeartbeatResponseData,
-    heartbeatRequestDataSerializers,
-    heartbeatResponseDataSerializers,
-)
-from .leave_group import (
-    LeaveGroupRequestData,
-    LeaveGroupResponseData,
-    leaveGroupRequestDataSerializers,
-    leaveGroupResponseDataSerializers,
-)
-from .sync_group import (
-    SyncGroupRequestData,
-    SyncGroupResponseData,
-    syncGroupRequestDataSerializers,
-    syncGroupResponseDataSerializers,
-)
-from .describe_groups import (
-    DescribeGroupsRequestData,
-    DescribeGroupsResponseData,
-    describeGroupsRequestDataSerializers,
-    describeGroupsResponseDataSerializers,
-)
-from .list_groups import (
-    ListGroupsRequestData,
-    ListGroupsResponseData,
-    listGroupsRequestDataSerializers,
-    listGroupsResponseDataSerializers,
-)
-from .sasl_handshake import (
-    SaslHandshakeRequestData,
-    SaslHandshakeResponseData,
-    saslHandshakeRequestDataSerializers,
-    saslHandshakeResponseDataSerializers,
-)
-from .api_versions import (
-    ApiVersionsRequestData,
-    ApiVersionsResponseData,
-    apiVersionsRequestDataSerializers,
-    apiVersionsResponseDataSerializers,
-    ApiVersions,
-)
-from .create_topics import (
-    CreateTopicsRequestData,
-    CreateTopicsResponseData,
-    createTopicsRequestDataSerializers,
-    createTopicsResponseDataSerializers,
-)
-from .delete_topics import (
-    DeleteTopicsRequestData,
-    DeleteTopicsResponseData,
-    deleteTopicsRequestDataSerializers,
-    deleteTopicsResponseDataSerializers,
-)
-from .delete_records import (
-    DeleteRecordsRequestData,
-    DeleteRecordsResponseData,
-    deleteRecordsRequestDataSerializers,
-    deleteRecordsResponseDataSerializers,
-)
-from .init_producer_id import (
-    InitProducerIdRequestData,
-    InitProducerIdResponseData,
-    initProducerIdRequestDataSerializers,
-    initProducerIdResponseDataSerializers,
-)
-from .offset_for_leader_epoch import (
-    OffsetForLeaderEpochRequestData,
-    OffsetForLeaderEpochResponseData,
-    offsetForLeaderEpochRequestDataSerializers,
-    offsetForLeaderEpochResponseDataSerializers,
-)
-from .add_partitions_to_txn import (
-    AddPartitionsToTxnRequestData,
-    AddPartitionsToTxnResponseData,
-    addPartitionsToTxnRequestDataSerializers,
-    addPartitionsToTxnResponseDataSerializers,
-)
 from .add_offsets_to_txn import (
     AddOffsetsToTxnRequestData,
     AddOffsetsToTxnResponseData,
     addOffsetsToTxnRequestDataSerializers,
     addOffsetsToTxnResponseDataSerializers,
 )
-from .end_txn import EndTxnRequestData, EndTxnResponseData, endTxnRequestDataSerializers, endTxnResponseDataSerializers
-from .write_txn_markers import (
-    WriteTxnMarkersRequestData,
-    WriteTxnMarkersResponseData,
-    writeTxnMarkersRequestDataSerializers,
-    writeTxnMarkersResponseDataSerializers,
-)
-from .txn_offset_commit import (
-    TxnOffsetCommitRequestData,
-    TxnOffsetCommitResponseData,
-    txnOffsetCommitRequestDataSerializers,
-    txnOffsetCommitResponseDataSerializers,
-)
-from .describe_acls import (
-    DescribeAclsRequestData,
-    DescribeAclsResponseData,
-    describeAclsRequestDataSerializers,
-    describeAclsResponseDataSerializers,
-)
-from .create_acls import (
-    CreateAclsRequestData,
-    CreateAclsResponseData,
-    createAclsRequestDataSerializers,
-    createAclsResponseDataSerializers,
-)
-from .delete_acls import (
-    DeleteAclsRequestData,
-    DeleteAclsResponseData,
-    deleteAclsRequestDataSerializers,
-    deleteAclsResponseDataSerializers,
-)
-from .describe_configs import (
-    DescribeConfigsRequestData,
-    DescribeConfigsResponseData,
-    describeConfigsRequestDataSerializers,
-    describeConfigsResponseDataSerializers,
+from .add_partitions_to_txn import (
+    AddPartitionsToTxnRequestData,
+    AddPartitionsToTxnResponseData,
+    addPartitionsToTxnRequestDataSerializers,
+    addPartitionsToTxnResponseDataSerializers,
 )
 from .alter_configs import (
     AlterConfigsRequestData,
@@ -211,23 +35,21 @@ from .alter_replica_log_dirs import (
     alterReplicaLogDirsRequestDataSerializers,
     alterReplicaLogDirsResponseDataSerializers,
 )
-from .describe_log_dirs import (
-    DescribeLogDirsRequestData,
-    DescribeLogDirsResponseData,
-    describeLogDirsRequestDataSerializers,
-    describeLogDirsResponseDataSerializers,
+from .api_versions import (
+    ApiVersions, ApiVersionsRequestData, ApiVersionsResponseData, apiVersionsRequestDataSerializers,
+    apiVersionsResponseDataSerializers
 )
-from .sasl_authenticate import (
-    SaslAuthenticateRequestData,
-    SaslAuthenticateResponseData,
-    saslAuthenticateRequestDataSerializers,
-    saslAuthenticateResponseDataSerializers,
+from .controlled_shutdown import (
+    ControlledShutdownRequestData,
+    ControlledShutdownResponseData,
+    controlledShutdownRequestDataSerializers,
+    controlledShutdownResponseDataSerializers,
 )
-from .create_partitions import (
-    CreatePartitionsRequestData,
-    CreatePartitionsResponseData,
-    createPartitionsRequestDataSerializers,
-    createPartitionsResponseDataSerializers,
+from .create_acls import (
+    CreateAclsRequestData,
+    CreateAclsResponseData,
+    createAclsRequestDataSerializers,
+    createAclsResponseDataSerializers,
 )
 from .create_delegation_token import (
     CreateDelegationTokenRequestData,
@@ -235,23 +57,23 @@ from .create_delegation_token import (
     createDelegationTokenRequestDataSerializers,
     createDelegationTokenResponseDataSerializers,
 )
-from .renew_delegation_token import (
-    RenewDelegationTokenRequestData,
-    RenewDelegationTokenResponseData,
-    renewDelegationTokenRequestDataSerializers,
-    renewDelegationTokenResponseDataSerializers,
+from .create_partitions import (
+    CreatePartitionsRequestData,
+    CreatePartitionsResponseData,
+    createPartitionsRequestDataSerializers,
+    createPartitionsResponseDataSerializers,
 )
-from .expire_delegation_token import (
-    ExpireDelegationTokenRequestData,
-    ExpireDelegationTokenResponseData,
-    expireDelegationTokenRequestDataSerializers,
-    expireDelegationTokenResponseDataSerializers,
+from .create_topics import (
+    CreateTopicsRequestData,
+    CreateTopicsResponseData,
+    createTopicsRequestDataSerializers,
+    createTopicsResponseDataSerializers,
 )
-from .describe_delegation_token import (
-    DescribeDelegationTokenRequestData,
-    DescribeDelegationTokenResponseData,
-    describeDelegationTokenRequestDataSerializers,
-    describeDelegationTokenResponseDataSerializers,
+from .delete_acls import (
+    DeleteAclsRequestData,
+    DeleteAclsResponseData,
+    deleteAclsRequestDataSerializers,
+    deleteAclsResponseDataSerializers,
 )
 from .delete_groups import (
     DeleteGroupsRequestData,
@@ -259,11 +81,73 @@ from .delete_groups import (
     deleteGroupsRequestDataSerializers,
     deleteGroupsResponseDataSerializers,
 )
+from .delete_records import (
+    DeleteRecordsRequestData,
+    DeleteRecordsResponseData,
+    deleteRecordsRequestDataSerializers,
+    deleteRecordsResponseDataSerializers,
+)
+from .delete_topics import (
+    DeleteTopicsRequestData,
+    DeleteTopicsResponseData,
+    deleteTopicsRequestDataSerializers,
+    deleteTopicsResponseDataSerializers,
+)
+from .describe_acls import (
+    DescribeAclsRequestData,
+    DescribeAclsResponseData,
+    describeAclsRequestDataSerializers,
+    describeAclsResponseDataSerializers,
+)
+from .describe_configs import (
+    DescribeConfigsRequestData,
+    DescribeConfigsResponseData,
+    describeConfigsRequestDataSerializers,
+    describeConfigsResponseDataSerializers,
+)
+from .describe_delegation_token import (
+    DescribeDelegationTokenRequestData,
+    DescribeDelegationTokenResponseData,
+    describeDelegationTokenRequestDataSerializers,
+    describeDelegationTokenResponseDataSerializers,
+)
+from .describe_groups import (
+    DescribeGroupsRequestData,
+    DescribeGroupsResponseData,
+    describeGroupsRequestDataSerializers,
+    describeGroupsResponseDataSerializers,
+)
+from .describe_log_dirs import (
+    DescribeLogDirsRequestData,
+    DescribeLogDirsResponseData,
+    describeLogDirsRequestDataSerializers,
+    describeLogDirsResponseDataSerializers,
+)
 from .elect_preferred_leaders import (
     ElectPreferredLeadersRequestData,
     ElectPreferredLeadersResponseData,
     electPreferredLeadersRequestDataSerializers,
     electPreferredLeadersResponseDataSerializers,
+)
+from .end_txn import EndTxnRequestData, EndTxnResponseData, endTxnRequestDataSerializers, endTxnResponseDataSerializers
+from .expire_delegation_token import (
+    ExpireDelegationTokenRequestData,
+    ExpireDelegationTokenResponseData,
+    expireDelegationTokenRequestDataSerializers,
+    expireDelegationTokenResponseDataSerializers,
+)
+from .fetch import FetchRequestData, FetchResponseData, fetchRequestDataSerializers, fetchResponseDataSerializers
+from .find_coordinator import (
+    FindCoordinatorRequestData,
+    FindCoordinatorResponseData,
+    findCoordinatorRequestDataSerializers,
+    findCoordinatorResponseDataSerializers,
+)
+from .heartbeat import (
+    HeartbeatRequestData,
+    HeartbeatResponseData,
+    heartbeatRequestDataSerializers,
+    heartbeatResponseDataSerializers,
 )
 from .incremental_alter_configs import (
     IncrementalAlterConfigsRequestData,
@@ -271,7 +155,120 @@ from .incremental_alter_configs import (
     incrementalAlterConfigsRequestDataSerializers,
     incrementalAlterConfigsResponseDataSerializers,
 )
-
+from .init_producer_id import (
+    InitProducerIdRequestData,
+    InitProducerIdResponseData,
+    initProducerIdRequestDataSerializers,
+    initProducerIdResponseDataSerializers,
+)
+from .join_group import (
+    JoinGroupRequestData,
+    JoinGroupResponseData,
+    joinGroupRequestDataSerializers,
+    joinGroupResponseDataSerializers,
+)
+from .leader_and_isr import (
+    LeaderAndIsrRequestData,
+    LeaderAndIsrResponseData,
+    leaderAndIsrRequestDataSerializers,
+    leaderAndIsrResponseDataSerializers,
+)
+from .leave_group import (
+    LeaveGroupRequestData,
+    LeaveGroupResponseData,
+    leaveGroupRequestDataSerializers,
+    leaveGroupResponseDataSerializers,
+)
+from .list_groups import (
+    ListGroupsRequestData,
+    ListGroupsResponseData,
+    listGroupsRequestDataSerializers,
+    listGroupsResponseDataSerializers,
+)
+from .list_offsets import (
+    ListOffsetsRequestData,
+    ListOffsetsResponseData,
+    listOffsetsRequestDataSerializers,
+    listOffsetsResponseDataSerializers,
+)
+from .metadata import (
+    MetadataRequestData,
+    MetadataResponseData,
+    metadataRequestDataSerializers,
+    metadataResponseDataSerializers,
+)
+from .offset_commit import (
+    OffsetCommitRequestData,
+    OffsetCommitResponseData,
+    offsetCommitRequestDataSerializers,
+    offsetCommitResponseDataSerializers,
+)
+from .offset_fetch import (
+    OffsetFetchRequestData,
+    OffsetFetchResponseData,
+    offsetFetchRequestDataSerializers,
+    offsetFetchResponseDataSerializers,
+)
+from .offset_for_leader_epoch import (
+    OffsetForLeaderEpochRequestData,
+    OffsetForLeaderEpochResponseData,
+    offsetForLeaderEpochRequestDataSerializers,
+    offsetForLeaderEpochResponseDataSerializers,
+)
+from .produce import (
+    ProduceRequestData,
+    ProduceResponseData,
+    produceRequestDataSerializers,
+    produceResponseDataSerializers,
+)
+from .renew_delegation_token import (
+    RenewDelegationTokenRequestData,
+    RenewDelegationTokenResponseData,
+    renewDelegationTokenRequestDataSerializers,
+    renewDelegationTokenResponseDataSerializers,
+)
+from .sasl_authenticate import (
+    SaslAuthenticateRequestData,
+    SaslAuthenticateResponseData,
+    saslAuthenticateRequestDataSerializers,
+    saslAuthenticateResponseDataSerializers,
+)
+from .sasl_handshake import (
+    SaslHandshakeRequestData,
+    SaslHandshakeResponseData,
+    saslHandshakeRequestDataSerializers,
+    saslHandshakeResponseDataSerializers,
+)
+from .stop_replica import (
+    StopReplicaRequestData,
+    StopReplicaResponseData,
+    stopReplicaRequestDataSerializers,
+    stopReplicaResponseDataSerializers,
+)
+from .sync_group import (
+    SyncGroupRequestData,
+    SyncGroupResponseData,
+    syncGroupRequestDataSerializers,
+    syncGroupResponseDataSerializers,
+)
+from .txn_offset_commit import (
+    TxnOffsetCommitRequestData,
+    TxnOffsetCommitResponseData,
+    txnOffsetCommitRequestDataSerializers,
+    txnOffsetCommitResponseDataSerializers,
+)
+from .update_metadata import (
+    UpdateMetadataRequestData,
+    UpdateMetadataResponseData,
+    updateMetadataRequestDataSerializers,
+    updateMetadataResponseDataSerializers,
+)
+from .write_txn_markers import (
+    WriteTxnMarkersRequestData,
+    WriteTxnMarkersResponseData,
+    writeTxnMarkersRequestDataSerializers,
+    writeTxnMarkersResponseDataSerializers,
+)
 
 REQUEST_SERIALIZERS: Dict[ApiKey, Dict[int, BaseSerializer[RequestData]]] = {
     ApiKey.PRODUCE: produceRequestDataSerializers,

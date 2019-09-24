@@ -1,3 +1,5 @@
+# noqa: F811,F401
+
 import itertools as it
 import queue
 import socket
