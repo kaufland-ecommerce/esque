@@ -31,6 +31,7 @@ from esque.errors import (
     ContextNotDefinedException,
     TopicAlreadyExistsException,
     TopicDoesNotExistException,
+    TopicCreationException,
 )
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
@@ -120,7 +121,16 @@ def create_topic(state: State, topic_name: str, like=None):
         )
     else:
         topic = Topic(topic_name)
-    topic_controller.create_topics([topic])
+    try:
+        topic_controller.create_topics([topic])
+    except TopicAlreadyExistsException:
+        click.echo(click.style(f"Topic with name {topic.name} already exists", fg="red"))
+        sys.exit(1)
+    except TopicCreationException:
+        click.echo(click.style(f"Topic with name {topic.name} could not be created.", fg="red"))
+        sys.exit(1)
+
+    click.echo(click.style(f"Topic with name {topic.name} successfully created", fg="green"))
 
 
 @edit.command("topic")
@@ -141,6 +151,24 @@ def edit_topic(state: State, topic_name: str):
     click.echo(diff)
     if ensure_approval("Are you sure?"):
         controller.alter_configs([topic])
+
+
+@delete.command("topic")
+@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@no_verify_option
+@pass_state
+def delete_topic(state: State, topic_name: str):
+    topic_controller = state.cluster.topic_controller
+    if ensure_approval("Are you sure?", no_verify=state.no_verify):
+        try:
+            topic_controller.delete_topic(Topic(topic_name))
+        except TopicDoesNotExistException:
+            click.echo(click.style(f"Topic with name {topic_name} is already deleted or did never exist.", fg="red"))
+            sys.exit(1)
+
+        assert topic_name not in (t.name for t in topic_controller.list_topics())
+
+    click.echo(click.style(f"Topic with name {topic_name} successfully deleted", fg="green"))
 
 
 @esque.command("apply", help="Apply a configuration")
@@ -208,18 +236,6 @@ def apply(state: State, file: str):
     # output confirmation
     changes = {"unchanged": len(to_ignore), "created": len(to_create), "changed": len(to_edit)}
     click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
-
-
-@delete.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
-@no_verify_option
-@pass_state
-def delete_topic(state: State, topic_name: str):
-    topic_controller = state.cluster.topic_controller
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(Topic(topic_name))
-
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
 
 
 @describe.command("topic")
