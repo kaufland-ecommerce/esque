@@ -1,12 +1,9 @@
-from typing import List, Dict
+from typing import Dict, List, TYPE_CHECKING
 
 import pykafka
 
-
 from esque.errors import ConsumerGroupDoesNotExistException
-from esque.resources.consumergroup import ConsumerGroup, OffsetInfo, MemberInfo
-
-from typing import TYPE_CHECKING
+from esque.resources.consumergroup import ConsumerGroup, MemberInfo, OffsetInfo
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster

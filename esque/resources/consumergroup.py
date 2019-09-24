@@ -1,12 +1,5 @@
 from collections import namedtuple
-from typing import Dict, List, Optional, TYPE_CHECKING, Tuple
-
-import pykafka
-
-from esque.errors import ConsumerGroupDoesNotExistException
-
-if TYPE_CHECKING:
-    from esque.cluster import Cluster
+from typing import Dict, List, Optional, Tuple
 
 
 OffsetInfo = namedtuple("OffsetInfo", ["low_watermark", "high_watermark", "current", "lag"])
