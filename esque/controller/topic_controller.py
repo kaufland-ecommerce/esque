@@ -56,7 +56,7 @@ class TopicController:
         if sort:
             topic_names = sorted(topic_names)
 
-        topics = list(map(self.get_cluster_topic, topic_names))
+        topics = list(map(lambda topic_name: self.get_local_topic(topic_name, False), topic_names))
         return topics
 
     @raise_for_kafka_exception
@@ -92,6 +92,11 @@ class TopicController:
     def get_cluster_topic(self, topic_name: str) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
         return self.update_from_cluster(Topic(topic_name))
+
+    def get_local_topic(self, topic_name: str, get_from_cluster: bool = True) -> Topic:
+        if get_from_cluster:
+            return self.update_from_cluster(Topic(topic_name))
+        return Topic(topic_name)
 
     @raise_for_kafka_exception
     def update_from_cluster(self, topic: Topic):
