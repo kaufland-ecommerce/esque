@@ -36,8 +36,11 @@ from .alter_replica_log_dirs import (
     alterReplicaLogDirsResponseDataSerializers,
 )
 from .api_versions import (
-    ApiVersions, ApiVersionsRequestData, ApiVersionsResponseData, apiVersionsRequestDataSerializers,
-    apiVersionsResponseDataSerializers
+    ApiVersions,
+    ApiVersionsRequestData,
+    ApiVersionsResponseData,
+    apiVersionsRequestDataSerializers,
+    apiVersionsResponseDataSerializers,
 )
 from .controlled_shutdown import (
     ControlledShutdownRequestData,

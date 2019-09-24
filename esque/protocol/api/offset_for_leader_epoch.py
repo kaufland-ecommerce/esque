@@ -5,8 +5,15 @@ from dataclasses import dataclass
 
 from esque.protocol.api.base import ApiKey, RequestData, ResponseData
 from esque.protocol.serializers import (
-    ArraySerializer, BaseSerializer, DummySerializer, NamedTupleSerializer, Schema, int16Serializer, int32Serializer,
-    int64Serializer, stringSerializer
+    ArraySerializer,
+    BaseSerializer,
+    DummySerializer,
+    NamedTupleSerializer,
+    Schema,
+    int16Serializer,
+    int32Serializer,
+    int64Serializer,
+    stringSerializer,
 )
 
 
