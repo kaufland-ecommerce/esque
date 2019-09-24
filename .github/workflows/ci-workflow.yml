@@ -1,0 +1,22 @@
+name: Build and package esque
+on:
+  push:
+    branches:
+      - 61-installation-and-packaging
+  pull_request:
+    branches:
+      - 61-installation-and-packaging
+
+jobs:
+  build:
+    name: Build deb package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Populate the package staging folder
+        env:
+          DEB_STAGING_PATH: "/tmp/debian"
+        id: deb-staging
+        shell: bash
+        run: ./scripts/prepare_deb_environment.sh $DEB_STAGING_PATH
+      - name: Build the deb package
+        run: echo 'Hello world for now'

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Inspired by: https://qone.io/python/bash/zsh/2016/04/24/python-click-auto-complete-bash-zsh.html
 
-mkdir -p "~/.esque"
+mkdir -p ~/.esque
 
 if [[ $(basename $SHELL) = 'bash' ]];
 then
