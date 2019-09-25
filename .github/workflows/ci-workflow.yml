@@ -19,6 +19,6 @@ jobs:
         shell: bash
         working-directory: ./scripts
         #run: ./prepare_deb_environment.sh $DEB_STAGING_PATH
-        run: pwd && ls
+        run: pwd
       - name: Build the deb package
         run: echo 'Hello world for now'
