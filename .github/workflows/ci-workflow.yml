@@ -35,7 +35,7 @@ jobs:
         run: $SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh $LIBRARY_NAME $PROJECT_HOMEPAGE $PROJECT_MAINTAINER $PROJECT_DESCRIPTION $DEB_STAGING_PATH $SOURCE_CODE_PATH
         shell: bash
       - name: Verify the build (until a package repository is ready)
-          env:
-            DEB_STAGING_PATH: "./debian-staging"
-          run: ls -R $DEB_STAGING_PATH
-          shell: bash
+        env:
+          DEB_STAGING_PATH: "./debian-staging"
+        run: ls -R $DEB_STAGING_PATH
+        shell: bash
