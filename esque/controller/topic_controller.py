@@ -45,7 +45,14 @@ class TopicController:
             raise ValueError(f"TopicType needs to be part of {ClientTypes}")
 
     @raise_for_kafka_exception
-    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
+    def list_topics(
+        self,
+        *,
+        search_string: str = None,
+        sort: bool = True,
+        hide_internal: bool = True,
+        get_topic_objects: bool = True,
+    ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topic_results = self.cluster.confluent_client.list_topics().topics.values()
         topic_names = [t.topic for t in topic_results]
@@ -56,7 +63,10 @@ class TopicController:
         if sort:
             topic_names = sorted(topic_names)
 
-        topics = list(map(lambda topic_name: self.get_local_topic(topic_name, False), topic_names))
+        if get_topic_objects:
+            topics = list(map(self.get_cluster_topic, topic_names))
+        else:
+            topics = list(map(self.get_local_topic, topic_names))
         return topics
 
     @raise_for_kafka_exception
@@ -93,9 +103,7 @@ class TopicController:
         """Convenience function getting an existing topic based on topic_name"""
         return self.update_from_cluster(Topic(topic_name))
 
-    def get_local_topic(self, topic_name: str, get_from_cluster: bool = True) -> Topic:
-        if get_from_cluster:
-            return self.update_from_cluster(Topic(topic_name))
+    def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
     @raise_for_kafka_exception
