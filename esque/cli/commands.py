@@ -6,7 +6,7 @@ from time import sleep
 
 import click
 import yaml
-from click import version_option, echo, getchar
+from click import version_option, echo
 from click.termui import _build_prompt
 
 from esque.__version__ import __version__
@@ -143,7 +143,7 @@ def _get_user_confirmation():
     # is available.
     ret = ""
     while 1:
-        c = getchar(True)
+        c = click.getchar(True)
         if c == "\r":
             break
         elif c in ("\x08", "\x7f") and len(ret) != 0:
