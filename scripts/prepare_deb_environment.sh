@@ -18,6 +18,11 @@ rm -rf $1
 FULL_PACKAGE_ROOT=${DEB_STAGING_PATH}/${NAME}-${VERSION}/DEBIAN
 mkdir --parent ${FULL_PACKAGE_ROOT}/src
 cp ${SOURCE_CODE_PATH}/installation/deb/* ${FULL_PACKAGE_ROOT}/
+sed -i 's/__LIBRARY__/'${NAME}'/g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's/__MAINTAINER__/'${PROJECT_MAINTAINER}'/g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's/__VERSION__/'${VERSION}'/g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's/__HOMEPAGE__/'${PROJECT_HOMEPAGE}'/g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's/__DESCRIPTION__/'${PROJECT_DESCRIPTION}'/g' ${FULL_PACKAGE_ROOT}/control
 cp ${SOURCE_CODE_PATH}/* ${FULL_PACKAGE_ROOT}/src/
 cp -r ${SOURCE_CODE_PATH}/scripts ${FULL_PACKAGE_ROOT}/src/
 cp -r ${SOURCE_CODE_PATH}/esque ${FULL_PACKAGE_ROOT}/src/
