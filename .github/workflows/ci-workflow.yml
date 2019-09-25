@@ -18,11 +18,12 @@ jobs:
           SOURCE_CODE_PATH: "esque"
         id: deb-staging
         shell: bash
-        run: git clone $PROJECT_GIT_LOCATION --branch master $SOURCE_CODE_PATH
+        run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_PATH
       - name: Create the staging directory
         env:
           DEB_STAGING_PATH: "./debian-staging"
         run: mkdir ${DEB_STAGING_PATH}
+        shell: bash
       - name: Populate the staging directory
         env:
           # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
@@ -32,7 +33,7 @@ jobs:
           DEB_STAGING_PATH: "./debian-staging"
           SOURCE_CODE_PATH: "esque"
           LIBRARY_NAME: "esque"
-        run: $SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh $LIBRARY_NAME $PROJECT_HOMEPAGE $PROJECT_MAINTAINER $PROJECT_DESCRIPTION $DEB_STAGING_PATH $SOURCE_CODE_PATH
+        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh $LIBRARY_NAME $PROJECT_HOMEPAGE $PROJECT_MAINTAINER $PROJECT_DESCRIPTION $DEB_STAGING_PATH $SOURCE_CODE_PATH
         shell: bash
       - name: Verify the build (until a package repository is ready)
         env:
