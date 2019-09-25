@@ -9,7 +9,7 @@ DEB_STAGING_PATH=$5
 SOURCE_CODE_PATH=$6
 VERSION="1.0"   # default, if there is no __version__.py for some reason
 # we should be in the package root folder
-echo "Source code path: ${SOURCE_CODE_PATH}, current dir: `pwd`"
+ls -R `pwd`
 exit 0
 cd ./${SOURCE_CODE_PATH}
 if [ -f ../esque/__version__.py ]
