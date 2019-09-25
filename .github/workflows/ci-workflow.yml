@@ -33,7 +33,7 @@ jobs:
           DEB_STAGING_PATH: "./debian-staging"
           SOURCE_CODE_PATH: "esque"
           LIBRARY_NAME: "esque"
-        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh $LIBRARY_NAME $PROJECT_HOMEPAGE $PROJECT_MAINTAINER $PROJECT_DESCRIPTION $DEB_STAGING_PATH $SOURCE_CODE_PATH
+        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_PATH" "$SOURCE_CODE_PATH"
         shell: bash
       - name: Verify the build (until a package repository is ready)
         env:
