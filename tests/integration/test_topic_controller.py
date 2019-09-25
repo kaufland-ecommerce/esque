@@ -1,13 +1,13 @@
 import json
-from io import StringIO
+
 from typing import Any, Dict
 
 import confluent_kafka
 import pytest
 import yaml
 from click.testing import CliRunner
-
-from esque.cli.commands import apply, create_topic
+import esque
+from esque.cli.commands import apply, create_topic, delete_topic
 from esque.cli.options import State
 from esque.controller.topic_controller import TopicController
 from esque.errors import KafkaException
@@ -39,28 +39,6 @@ def test_topic_creation_works(
 
 
 @pytest.mark.integration
-def test_topic_creation_with_stdin_works(
-    monkeypatch,
-    topic_controller: TopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic_id: str,
-):
-    runner = CliRunner()
-    stdin_topic = f"stdin_{topic_id}"
-
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert stdin_topic not in topics
-
-    monkeypatch.setattr("sys.stdin", [StringIO(stdin_topic + "\n")])
-    runner.invoke(create_topic, args="--no-verify", catch_exceptions=False)
-
-    # invalidate cache
-    confluent_admin_client.poll(timeout=1)
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert stdin_topic in topics
-
-
-@pytest.mark.integration
 def test_topic_creation_raises_for_wrong_config(
     topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
@@ -89,9 +67,7 @@ def test_alter_topic_config_works(topic_controller: TopicController, topic_id: s
 
 
 @pytest.mark.integration
-def test_topic_deletion_works(
-    topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
-):
+def test_topic_deletion_works(confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
     topic_controller.delete_topic(Topic(topic))

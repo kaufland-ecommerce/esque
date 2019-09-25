@@ -6,8 +6,8 @@ from time import sleep
 
 import click
 import yaml
-from click import version_option, echo
-from click.termui import getchar, _build_prompt
+from click import version_option, echo, getchar
+from click.termui import _build_prompt
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -102,7 +102,7 @@ def get_required_argument(ctx, param, value):
     # is available.
 
     if not value and not click.get_text_stream("stdin").isatty():
-        stdin_arg = click.get_text_stream("stdin").read().strip()
+        stdin_arg = click.get_text_stream("stdin").readline().strip()
     else:
         stdin_arg = value
     if not stdin_arg:
@@ -160,7 +160,7 @@ def _get_user_confirmation():
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
-    raise ValueError(topic_name)
+
     if not get_terminal_confirmation("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
@@ -262,7 +262,9 @@ def apply(state: State, file: str):
 
 
 @delete.command("topic")
-@click.argument("topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
+)
 @no_verify_option
 @pass_state
 def delete_topic(state: State, topic_name: str):
@@ -274,7 +276,9 @@ def delete_topic(state: State, topic_name: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
+)
 @pass_state
 def describe_topic(state, topic_name):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
