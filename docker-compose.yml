@@ -35,6 +35,7 @@ services:
     environment:
       CONFIG_PATH: 'confluent-community/etc/kafka/server.properties'
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
       # We need zookeeper to advertise two different urls since the broker has to be reachable
       # from two different environments (once from inside the docker network and once from the host)
       # However it is neither possible to advertise two listeners but only configure one via KAFKA_LISTENERS
