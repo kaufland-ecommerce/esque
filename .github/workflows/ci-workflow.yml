@@ -18,7 +18,7 @@ jobs:
           SOURCE_CODE_PATH: "esque"
         id: deb-staging
         shell: bash
-        run: git clone $PROJECT_GIT_LOCATION --branches master $SOURCE_CODE_PATH
+        run: git clone $PROJECT_GIT_LOCATION --branch master $SOURCE_CODE_PATH
       - name: Create the staging directory
         env:
           DEB_STAGING_PATH: "./debian-staging"
