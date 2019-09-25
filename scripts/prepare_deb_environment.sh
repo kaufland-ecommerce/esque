@@ -20,11 +20,11 @@ rm -rf ${DEB_STAGING_PATH}
 FULL_PACKAGE_ROOT=${DEB_STAGING_PATH}/${NAME}-${VERSION}/DEBIAN
 mkdir --parent ${FULL_PACKAGE_ROOT}/src
 cp ./installation/deb/* ${FULL_PACKAGE_ROOT}/
-sed -i 's:__LIBRARY__:'"${NAME}"':g' ${FULL_PACKAGE_ROOT}/control
-sed -i 's:__MAINTAINER__:'"${PROJECT_MAINTAINER}"':g' ${FULL_PACKAGE_ROOT}/control
-sed -i 's:__VERSION__:'"${VERSION}"':g' ${FULL_PACKAGE_ROOT}/control
-sed -i 's:__HOMEPAGE__:'"${PROJECT_HOMEPAGE}"':g' ${FULL_PACKAGE_ROOT}/control
-sed -i 's:__DESCRIPTION__:'"${PROJECT_DESCRIPTION}"':g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's,__LIBRARY__,'"${NAME}"',g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's,__MAINTAINER__,'"${PROJECT_MAINTAINER}"':g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's,__VERSION__,'"${VERSION}"',g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's,__HOMEPAGE__,'"${PROJECT_HOMEPAGE}"',g' ${FULL_PACKAGE_ROOT}/control
+sed -i 's,__DESCRIPTION__,'"${PROJECT_DESCRIPTION}"',g' ${FULL_PACKAGE_ROOT}/control
 cp ./* ${FULL_PACKAGE_ROOT}/src/ 2>/dev/null
 cp -r ./scripts ${FULL_PACKAGE_ROOT}/src/
 cp -r ./esque ${FULL_PACKAGE_ROOT}/src/
