@@ -30,3 +30,4 @@ cp -r ${SOURCE_CODE_PATH}/tests ${FULL_PACKAGE_ROOT}/src/
 # build the package
 cd ${DEB_STAGING_PATH}
 dpkg-deb --build ${NAME}-${VERSION}
+# we would have to send the packaged binary to a repository somewhere
