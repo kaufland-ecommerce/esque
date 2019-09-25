@@ -12,13 +12,30 @@ jobs:
     name: Build deb package
     runs-on: ubuntu-latest
     steps:
-      - name: Populate the package staging folder
+      - name: Clone the current repository
         env:
-          DEB_STAGING_PATH: "/tmp/debian"
+          PROJECT_GIT_LOCATION: "https://github.com/real-digital/esque"
+          SOURCE_CODE_PATH: "esque"
         id: deb-staging
         shell: bash
-        working-directory: ./scripts
-        #run: ./prepare_deb_environment.sh $DEB_STAGING_PATH
-        run: pwd
-      - name: Build the deb package
-        run: echo 'Hello world for now'
+        run: git clone $PROJECT_GIT_LOCATION --branches master $SOURCE_CODE_PATH
+      - name: Create the staging directory
+        env:
+          DEB_STAGING_PATH: "./debian-staging"
+        run: mkdir ${DEB_STAGING_PATH}
+      - name: Populate the staging directory
+        env:
+          # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
+          PROJECT_HOMEPAGE: "https://github.com/real-digital/esque"
+          PROJECT_MAINTAINER: "real.digital <opensource@real-digital.de>"
+          PROJECT_DESCRIPTION: "esque - an operational Kafka tool"
+          DEB_STAGING_PATH: "./debian-staging"
+          SOURCE_CODE_PATH: "esque"
+          LIBRARY_NAME: "esque"
+        run: $SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh $LIBRARY_NAME $PROJECT_HOMEPAGE $PROJECT_MAINTAINER $PROJECT_DESCRIPTION $DEB_STAGING_PATH $SOURCE_CODE_PATH
+        shell: bash
+      - name: Verify the build (until a package repository is ready)
+          env:
+            DEB_STAGING_PATH: "./debian-staging"
+          run: ls -R $DEB_STAGING_PATH
+          shell: bash

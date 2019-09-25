@@ -1,0 +1,13 @@
+#!/bin/bash
+# preinst script for dpkg
+source ./instenv
+
+if [ "$1" == "purge" ]
+then
+  echo "Purging configuration folders for esque"
+  if [ -d "${ESQUE_CONF} "]
+  then
+    rm -rf ${ESQUE_CONF} > /dev/null
+  fi
+fi
+exit 0

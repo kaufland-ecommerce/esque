@@ -1,0 +1,9 @@
+Source: __LIBRARY__
+Section: admin
+Priority: optional
+Maintainer: __MAINTAINER__
+Version: __VERSION__
+Homepage: __HOMEPAGE__
+Package: __LIBRARY__
+Architecture: amd64
+Description: __DESCRIPTION__

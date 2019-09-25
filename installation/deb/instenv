@@ -1,0 +1,12 @@
+#!/bin/bash
+# preinst script for dpkg
+ESQUE_CONF_DIR="~/.esque"
+ESQUE_FILE_LOG="${ESQUE_CONF}/.filelog"
+AUTOCOMPLETION_SCRIPT="${ESQUE_CONF}/autocompletion.sh"
+SHELL_BASENAME=`basename $SHELL`
+PYTHON_INSTALL_SCRIPT="./src/scripts/setup.py"
+ENVIRONMENT_FILE="~/.bashrc"
+if [ "${SHELL_BASENAME}" == 'zsh' ]
+then
+  ENVIRONMENT_FILE="~/.zshrc"
+fi

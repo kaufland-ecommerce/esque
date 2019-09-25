@@ -1,0 +1,31 @@
+#!/bin/bash
+# postinst script for dpkg
+source ./instenv
+
+echo "Running postinstallation tasks for esque"
+
+if [ "$1" == "upgrade" -o "$1" == "install" ]
+then
+	# we only need these two operations from the deb package flow, so we will ignore any possible others
+	# preinstallation script made sure that there is a configuration directory
+	if [ -e "${ESQUE_FILE_LOG}" ]
+	then
+        	# an old installation log exists, delete the files from it first
+        	for f in `cat ${ESQUE_FILE_LOG}`
+        	do
+                	rm -rf ${f} >> /dev/null
+        	done
+	fi
+
+	python3 ${PYTHON_INSTALL_SCRIPT} install --record ${ESQUE_FILE_LOG} 1>/dev/null
+
+	echo "Installing ${SHELL_BASENAME} autocomplete"
+  echo 'eval "$(_ESQUE_COMPLETE=source esque)"' > ${AUTOCOMPLETION_SCRIPT}
+  grep -q ${AUTOCOMPLETION_SCRIPT} ~/.bashrc
+  if [ $? -ne 0 ]; then
+    echo "" >> ${ENVIRONMENT_FILE}
+    echo "source ${AUTOCOMPLETION_SCRIPT}" >> ${ENVIRONMENT_FILE}
+    echo "export ESQUE_CONF=${ESQUE_CONF}" >> ${ENVIRONMENT_FILE}
+  fi
+fi
+

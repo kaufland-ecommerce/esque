@@ -1,8 +1,12 @@
 #!/bin/bash
 
 # this script prepares all the files needed for dpkg-deb
-configuration_path=$1
-NAME="esque"
+NAME=$1
+PROJECT_HOMEPAGE=$2
+PROJECT_MAINTAINER=$3
+PROJECT_DESCRIPTION=$4
+DEB_STAGING_PATH=$5
+SOURCE_CODE_PATH=$6
 VERSION="1.0"   # default, if there is no __version__.py for some reason
 if [ -f ../esque/__version__.py ]
 then
@@ -11,4 +15,13 @@ fi
 # just in case
 rm -rf $1
 # create a new staging environment
-mkdir --parent $1/$NAME_$VERSION-1/DEBIAN
+FULL_PACKAGE_ROOT=${DEB_STAGING_PATH}/${NAME}-${VERSION}/DEBIAN
+mkdir --parent ${FULL_PACKAGE_ROOT}/src
+cp ${SOURCE_CODE_PATH}/installation/deb/* ${FULL_PACKAGE_ROOT}/
+cp ${SOURCE_CODE_PATH}/* ${FULL_PACKAGE_ROOT}/src/
+cp -r ${SOURCE_CODE_PATH}/scripts ${FULL_PACKAGE_ROOT}/src/
+cp -r ${SOURCE_CODE_PATH}/esque ${FULL_PACKAGE_ROOT}/src/
+cp -r ${SOURCE_CODE_PATH}/tests ${FULL_PACKAGE_ROOT}/src/
+# build the package
+cd ${DEB_STAGING_PATH}
+dpkg-deb --build ${NAME}-${VERSION}

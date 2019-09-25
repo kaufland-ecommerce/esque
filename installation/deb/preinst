@@ -1,0 +1,38 @@
+#!/bin/bash
+# preinst script for dpkg
+source ./instenv
+
+echo "Running preinstallation tasks for esque"
+
+# checking to see if all system dependencies are satisfied
+dependencies="python3-setuptools"
+for dependency in ${dependencies}
+do
+	echo -ne "Checking for ${dependency}"
+	available=`dpkg -s python3-setuptools | grep Status | grep installed | wc -l`
+	if [ ${available} -eq 1 ]
+	then
+		echo " ...available"
+	else
+		echo -ne " ...installing"
+		apt-get -qq install ${dependency}
+		if [ $? -eq 0 ]
+		then
+			echo " ...done"
+		else
+			echo " ...error. Try installing ${dependency} manually and re-running the installation"
+			exit 1
+		fi
+	fi
+done
+
+# running python compilation
+echo "Creating the configuration folder"
+if [ -d ~/.esque ]
+then
+	echo "The configuration folder already exists. Reusing existing configurations"
+else
+	mkdir ~/.esque
+fi
+export ESQUE_CONF=${ESQUE_CONF_DIR}
+exit 0

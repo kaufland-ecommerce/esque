@@ -3,7 +3,6 @@
 import codecs
 import os
 import sys
-from subprocess import call
 
 from setuptools import find_packages, setup
 from setuptools.command.install import install
@@ -42,8 +41,6 @@ class InstallWithPostCommand(install):
 
     def run(self):
         install.run(self)
-        print("installing auto completion")
-        call(["./scripts/auto_completion.sh"])
 
 
 setup(

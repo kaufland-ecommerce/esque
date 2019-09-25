@@ -1,0 +1,20 @@
+#!/bin/bash
+# preinst script for dpkg
+source ./instenv
+
+echo "Running removal tasks for esque"
+
+if [ "$1" == "remove" ]
+then
+  if [ -e "${ESQUE_FILE_LOG} "]
+  then
+    for f in `cat ${ESQUE_FILE_LOG}`
+    do
+      rm -rf ${f} > /dev/null
+    done
+    rm -f ${ESQUE_FILE_LOG}
+    sed -i '/'${AUTOCOMPLETION_SCRIPT}'/d' ${ENVIRONMENT_FILE}
+    sed -i '/'${ESQUE_CONF_DIR}'/d' ${ENVIRONMENT_FILE}
+  fi
+fi
+exit 0
