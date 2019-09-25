@@ -31,7 +31,6 @@ from esque.errors import (
     ContextNotDefinedException,
     TopicAlreadyExistsException,
     TopicDoesNotExistException,
-    TopicCreationException,
 )
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
@@ -121,15 +120,7 @@ def create_topic(state: State, topic_name: str, like=None):
         )
     else:
         topic = Topic(topic_name)
-    try:
-        topic_controller.create_topics([topic])
-    except TopicAlreadyExistsException:
-        click.echo(click.style(f"Topic with name {topic.name} already exists", fg="red"))
-        sys.exit(1)
-    except TopicCreationException:
-        click.echo(click.style(f"Topic with name {topic.name} could not be created.", fg="red"))
-        sys.exit(1)
-
+    topic_controller.create_topics([topic])
     click.echo(click.style(f"Topic with name {topic.name} successfully created", fg="green"))
 
 
@@ -160,11 +151,7 @@ def edit_topic(state: State, topic_name: str):
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        try:
-            topic_controller.delete_topic(Topic(topic_name))
-        except TopicDoesNotExistException:
-            click.echo(click.style(f"Topic with name {topic_name} is already deleted or did never exist.", fg="red"))
-            sys.exit(1)
+        topic_controller.delete_topic(Topic(topic_name))
 
         assert topic_name not in (t.name for t in topic_controller.list_topics())
 

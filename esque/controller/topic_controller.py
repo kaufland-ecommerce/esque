@@ -1,14 +1,23 @@
 import re
+import sys
+from abc import ABC
 from enum import Enum
 from itertools import islice
 from typing import List, TYPE_CHECKING, Union
 
+import click
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
-from confluent_kafka.cimpl import NewTopic
+from confluent_kafka.cimpl import NewTopic, KafkaException
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_exception, raise_for_kafka_error
+from esque.errors import (
+    raise_for_kafka_exception,
+    raise_for_kafka_error,
+    TopicAlreadyExistsException,
+    TopicCreationException,
+    TopicDoesNotExistException,
+)
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
@@ -24,7 +33,75 @@ class ClientTypes(Enum):
 ClientType = Union[ConfluentTopic, PyKafkaTopic]
 
 
-class TopicController:
+class TopicController(ABC):
+    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
+        pass
+
+    def create_topics(self, topics: List[Topic]):
+        pass
+
+    def alter_configs(self, topics: List[Topic]):
+        pass
+
+    def delete_topic(self, topic: Topic):
+        pass
+
+    def get_cluster_topic(self, topic_name: str) -> Topic:
+        pass
+
+    def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
+        pass
+
+
+class TopicControllerWithErrorHandling(TopicController):
+    def __init__(self, topic_controller: TopicController):
+        self.topic_controller = topic_controller
+
+    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
+        return self.topic_controller.list_topics(search_string=search_string, sort=sort, hide_internal=hide_internal)
+
+    def create_topics(self, topics: List[Topic]):
+        for topic in topics:
+            try:
+                self.topic_controller.create_topics([topic])
+            except TopicAlreadyExistsException:
+                click.echo(click.style(f"Topic with name {topic.name} already exists", fg="red"))
+                sys.exit(1)
+            except TopicCreationException:
+                click.echo(click.style(f"Topic with name {topic.name} could not be created.", fg="red"))
+                sys.exit(1)
+
+    def alter_configs(self, topics: List[Topic]):
+        for topic in topics:
+            try:
+                self.topic_controller.alter_configs([topic])
+            except KafkaException:
+                click.echo(click.style(f"Config of topic with name {topic.name} could not be changed.", fg="red"))
+                sys.exit(1)
+
+    def delete_topic(self, topic: Topic):
+        try:
+            self.topic_controller.delete_topic(topic)
+        except TopicDoesNotExistException:
+            click.echo(click.style(f"Topic with name {topic.name} is already deleted or did never exist.", fg="red"))
+            sys.exit(1)
+
+    def get_cluster_topic(self, topic_name: str) -> Topic:
+        try:
+            return self.topic_controller.get_cluster_topic(topic_name)
+        except KafkaException:
+            click.echo(click.style(f"Can not fetch config for topic with name {topic_name}.", fg="red"))
+            sys.exit(1)
+
+    def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
+        try:
+            return self.topic_controller.diff_with_cluster(local_topic)
+        except KafkaException:
+            click.echo(click.style(f"Can not get diff from cluster for topic with name {local_topic.name}.", fg="red"))
+            sys.exit(1)
+
+
+class ConfluentTopicController(TopicController):
     def __init__(self, cluster: "Cluster", config: Config):
         self.cluster: "Cluster" = cluster
         self.config = config
@@ -91,10 +168,10 @@ class TopicController:
 
     def get_cluster_topic(self, topic_name: str) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
-        return self.update_from_cluster(Topic(topic_name))
+        return self._update_from_cluster(Topic(topic_name))
 
     @raise_for_kafka_exception
-    def update_from_cluster(self, topic: Topic):
+    def _update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
