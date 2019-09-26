@@ -1,12 +1,18 @@
 #!/bin/bash
-# preinst script for dpkg
-ESQUE_CONF_DIR="~/.esque"
-ESQUE_FILE_LOG="${ESQUE_CONF}/.filelog"
-AUTOCOMPLETION_SCRIPT="${ESQUE_CONF}/autocompletion.sh"
+PACKAGE_ROOT=".."
+LOGGED_USER=$USER
+if [ "x$SUDO_USER" != "x" ]
+then
+  LOGGED_USER=$SUDO_USER
+fi
+USER_HOME=`cat /etc/passwd | grep "^${LOGGED_USER}:" | cut -f6 -d:`
+ESQUE_CONF_DIR="${USER_HOME}/.esque"
+ESQUE_FILE_LOG="${ESQUE_CONF_DIR}/.filelog"
+AUTOCOMPLETION_SCRIPT="${ESQUE_CONF_DIR}/autocompletion.sh"
 SHELL_BASENAME=`basename $SHELL`
-PYTHON_INSTALL_SCRIPT="./src/scripts/setup.py"
-ENVIRONMENT_FILE="~/.bashrc"
+PYTHON_INSTALL_SCRIPT="${PACKAGE_ROOT}/src/setup.py"
+ENVIRONMENT_FILE="${USER_HOME}/.bashrc"
 if [ "${SHELL_BASENAME}" == 'zsh' ]
 then
-  ENVIRONMENT_FILE="~/.zshrc"
+  ENVIRONMENT_FILE="${USER_HOME}/.zshrc"
 fi

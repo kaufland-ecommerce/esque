@@ -16,13 +16,16 @@ jobs:
         env:
           PROJECT_GIT_LOCATION: "https://github.com/real-digital/esque"
           SOURCE_CODE_PATH: "esque"
-        id: deb-staging
         shell: bash
         run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_PATH
+      - name: Build the package contents
+        shell: bash
+        working_dir: $SOURCE_CODE_PATH
+        run: python3 setup.py build
       - name: Create the staging directory
         env:
           DEB_STAGING_PATH: "./debian-staging"
-        run: mkdir ${DEB_STAGING_PATH}
+        run: mkdir $DEB_STAGING_PATH
         shell: bash
       - name: Populate the staging directory
         env:
@@ -30,10 +33,10 @@ jobs:
           PROJECT_HOMEPAGE: "https://github.com/real-digital/esque"
           PROJECT_MAINTAINER: "real.digital <opensource@real-digital.de>"
           PROJECT_DESCRIPTION: "esque - an operational Kafka tool"
-          DEB_STAGING_PATH: "./debian-staging"
-          SOURCE_CODE_PATH: "esque"
+          DEB_STAGING_DIR_NAME: "debian-staging"
+          SOURCE_CODE_DIR_NAME: "esque"
           LIBRARY_NAME: "esque"
-        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_PATH" "$SOURCE_CODE_PATH"
+        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME" "$SOURCE_CODE_DIR_NAME"
         shell: bash
       - name: Verify the build (until a package repository is ready)
         env:

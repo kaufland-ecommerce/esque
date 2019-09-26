@@ -1,6 +1,4 @@
-#!/bin/bash
 # preinst script for dpkg
-source ./instenv
 
 echo "Running removal tasks for esque"
 
