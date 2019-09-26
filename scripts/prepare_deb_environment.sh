@@ -6,24 +6,31 @@ PROJECT_HOMEPAGE=$2
 PROJECT_MAINTAINER=$3
 PROJECT_DESCRIPTION=$4
 DEB_STAGING_PATH=$5
+SOURCE_CODE_PATH=$6
 VERSION="1.0"   # default, if there is no __version__.py for some reason
-# we should be in the package root folder
-cd ./${SOURCE_CODE_PATH}
+
+# create a new staging environment
+rm -rf ${DEB_STAGING_PATH}
+CONTROL_DIRECTORY=${DEB_STAGING_PATH}/DEBIAN
+mkdir --parent ${CONTROL_DIRECTORY}
 if [ -f ./esque/__version__.py ]
 then
   VERSION=`cat ./esque/__version__.py | cut -f2 -d= | sed 's/ //g' | sed 's/"//g'`
 fi
-# just in case
-rm -rf ${DEB_STAGING_PATH}
-# create a new staging environment
-CONTROL_DIRECTORY=${DEB_STAGING_PATH}/DEBIAN
-mkdir --parent ${CONTROL_DIRECTORY}
-cp ./installation/deb/* ${CONTROL_DIRECTORY}/
+ls -lR .
+for ctrlfile in `ls ${SOURCE_CODE_PATH}/installation/deb/`
+do
+  if [ "x${ctrlfile}" != "instenv" -a "x${ctrlfile}" != "control" ]
+  then
+    cat ${SOURCE_CODE_PATH}/installation/deb/instenv >> /tmp/tmpctrl
+    cat ${SOURCE_CODE_PATH}/installation/deb/${ctrlfile} >> /tmp/tmpctrl
+    mv /tmp/tmpctrl ${CONTROL_DIRECTORY}
+done
+rm -rf ${SOURCE_CODE_PATH}/installation/deb
 sed -i 's,__LIBRARY__,'"${NAME}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__MAINTAINER__,'"${PROJECT_MAINTAINER}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__VERSION__,'"${VERSION}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__HOMEPAGE__,'"${PROJECT_HOMEPAGE}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__DESCRIPTION__,'"${PROJECT_DESCRIPTION}"',g' ${CONTROL_DIRECTORY}/control
-cp -r ./* ${DEB_STAGING_PATH}/
-ls -lR ${DEB_STAGING_PATH}
+cp -r ${SOURCE_CODE_PATH}/* ${DEB_STAGING_PATH}/
 exit 0
