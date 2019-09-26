@@ -1,5 +1,4 @@
 import re
-from abc import ABC
 from enum import Enum
 from itertools import islice
 from typing import List, TYPE_CHECKING, Union
@@ -25,27 +24,7 @@ class ClientTypes(Enum):
 ClientType = Union[ConfluentTopic, PyKafkaTopic]
 
 
-class TopicController(ABC):
-    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
-        pass
-
-    def create_topics(self, topics: List[Topic]):
-        pass
-
-    def alter_configs(self, topics: List[Topic]):
-        pass
-
-    def delete_topic(self, topic: Topic):
-        pass
-
-    def get_cluster_topic(self, topic_name: str) -> Topic:
-        pass
-
-    def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
-        pass
-
-
-class ConfluentTopicController(TopicController):
+class TopicController:
     def __init__(self, cluster: "Cluster", config: Config):
         self.cluster: "Cluster" = cluster
         self.config = config

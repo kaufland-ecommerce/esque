@@ -4,14 +4,14 @@ import pytest
 import yaml
 from click.testing import CliRunner
 from esque.resources.topic import Topic
-from esque.controller.topic_controller import ConfluentTopicController
+from esque.controller.topic_controller import TopicController
 
 from esque.cli.commands import apply
 from esque.errors import KafkaException
 
 
 @pytest.mark.integration
-def test_apply(cli_runner, topic_controller: ConfluentTopicController, topic_id: str):
+def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name + "_1",

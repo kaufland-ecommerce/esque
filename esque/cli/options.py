@@ -9,7 +9,7 @@ from pykafka.exceptions import NoBrokersAvailableError, SocketDisconnectedError
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException, KafkaException
+from esque.errors import ConfigNotExistsException, ExceptionWithMessage
 
 
 class State(object):
@@ -71,7 +71,7 @@ def error_handler(f):
             return
         try:
             f(*args, **kwargs)
-        except KafkaException as e:
+        except ExceptionWithMessage as e:
             click.echo(click.style(e.message, fg="red"))
             sys.exit(1)
 

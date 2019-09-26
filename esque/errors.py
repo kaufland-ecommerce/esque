@@ -21,9 +21,9 @@ def raise_for_kafka_error(err: KafkaError):
         return None
 
     if err.code() in ERROR_LOOKUP.keys():
-        raise ERROR_LOOKUP[err.code()](err.code(), err.str())
+        raise ERROR_LOOKUP[err.code()](err.str(), err.code())
     else:
-        raise KafkaException(err.code(), err.str())
+        raise KafkaException(err.str(), err.code())
 
 
 def raise_for_message(message: Message):
@@ -33,32 +33,39 @@ def raise_for_message(message: Message):
         raise_for_kafka_error(message.error())
 
 
-class KafkaException(Exception):
-    def __init__(self, code, message):
+class ExceptionWithMessage(Exception):
+    def __init__(self, message: str):
+        self.message = message
+
+
+class KafkaException(ExceptionWithMessage):
+    def __init__(self, message: str, code: int):
+        super().__init__(message)
         self.code = code
-        self.message = message
 
 
-class ConsumerGroupDoesNotExistException(Exception):
+class ConsumerGroupDoesNotExistException(ExceptionWithMessage):
+    def __init__(self):
+        super().__init__("ConsumerGroup does not exist.")
+
+
+class ConfigNotExistsException(ExceptionWithMessage):
+    def __init__(self):
+        super().__init__("Config does not exist.")
+
+
+class ContextNotDefinedException(ExceptionWithMessage):
+    def __init__(self):
+        super().__init__("Context cannot be found.")
+
+
+class FutureTimeoutException(ExceptionWithMessage):
     pass
-
-
-class ConfigNotExistsException(Exception):
-    pass
-
-
-class ContextNotDefinedException(Exception):
-    pass
-
-
-class FutureTimeoutException(Exception):
-    def __init__(self, message):
-        self.message = message
 
 
 class MessageEmptyException(KafkaException):
     def __init__(self):
-        super().__init__(-185, None)
+        super().__init__("Consumed Message is empty.", -185)
 
 
 class TopicAlreadyExistsException(KafkaException):
@@ -69,11 +76,11 @@ class EndOfPartitionReachedException(KafkaException):
     pass
 
 
-class TopicCreationException(Exception):
+class TopicCreationException(ExceptionWithMessage):
     pass
 
 
-class TopicDoesNotExistException(Exception):
+class TopicDoesNotExistException(KafkaException):
     pass
 
 

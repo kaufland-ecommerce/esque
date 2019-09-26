@@ -3,7 +3,7 @@ import json
 import confluent_kafka
 import pytest
 
-from esque.controller.topic_controller import ConfluentTopicController
+from esque.controller.topic_controller import TopicController
 from esque.errors import KafkaException
 from esque.resources.topic import Topic, TopicDiff
 
@@ -15,9 +15,7 @@ def topic_controller(cluster):
 
 @pytest.mark.integration
 def test_topic_creation_works(
-    topic_controller: ConfluentTopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic_id: str,
+    topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
@@ -31,9 +29,7 @@ def test_topic_creation_works(
 
 @pytest.mark.integration
 def test_topic_creation_raises_for_wrong_config(
-    topic_controller: ConfluentTopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic_id: str,
+    topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
@@ -43,7 +39,7 @@ def test_topic_creation_raises_for_wrong_config(
 
 
 @pytest.mark.integration
-def test_alter_topic_config_works(topic_controller: ConfluentTopicController, topic_id: str):
+def test_alter_topic_config_works(topic_controller: TopicController, topic_id: str):
     initial_topic = Topic(topic_id, config={"cleanup.policy": "delete"})
 
     topic_controller.create_topics([initial_topic])
@@ -60,20 +56,20 @@ def test_alter_topic_config_works(topic_controller: ConfluentTopicController, to
 
 
 @pytest.mark.integration
-def test_topic_listing_works(topic_controller: ConfluentTopicController, topic: str):
+def test_topic_listing_works(topic_controller: TopicController, topic: str):
     topics = topic_controller.list_topics()
     assert topic in [t.name for t in topics]
 
 
 @pytest.mark.integration
-def test_topic_object_works(topic_controller: ConfluentTopicController, topic: str):
+def test_topic_object_works(topic_controller: TopicController, topic: str):
     topic = topic_controller.get_cluster_topic(topic)
     assert isinstance(topic, Topic)
     assert len(topic.offsets) != 0
 
 
 @pytest.mark.integration
-def test_topic_diff(topic_controller: ConfluentTopicController, topic_id: str):
+def test_topic_diff(topic_controller: TopicController, topic_id: str):
     # the value we get from cluster configs is as string
     # testing against this is important to ensure consistency
     default_delete_retention = "86400000"

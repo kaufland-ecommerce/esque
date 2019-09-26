@@ -1,5 +1,4 @@
 import pathlib
-import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -26,12 +25,6 @@ from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import (
-    ConsumerGroupDoesNotExistException,
-    ContextNotDefinedException,
-    TopicAlreadyExistsException,
-    TopicDoesNotExistException,
-)
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
@@ -96,11 +89,7 @@ def ctx(state, context):
             else:
                 click.echo(c)
     if context:
-        try:
-            state.config.context_switch(context)
-        except ContextNotDefinedException:
-            click.echo(f"Context {context} does not exist")
-            sys.exit(1)
+        state.config.context_switch(context)
 
 
 @create.command("topic")
@@ -123,7 +112,7 @@ def create_topic(state: State, topic_name: str, like=None):
     else:
         topic = Topic(topic_name)
     topic_controller.create_topics([topic])
-    click.echo(click.style(f"Topic with name {topic.name} successfully created", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic.name}'' successfully created", fg="green"))
 
 
 @edit.command("topic")
@@ -159,7 +148,7 @@ def delete_topic(state: State, topic_name: str):
 
         assert topic_name not in (t.name for t in topic_controller.list_topics())
 
-    click.echo(click.style(f"Topic with name {topic_name} successfully deleted", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
 
 
 @esque.command("apply", help="Apply a configuration")
@@ -235,19 +224,15 @@ def apply(state: State, file: str):
 @error_handler
 @pass_state
 def describe_topic(state, topic_name):
-    try:
-        topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-        config = {"Config": topic.config}
+    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+    config = {"Config": topic.config}
 
-        click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
 
-        for partition in topic.partitions:
-            click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
+    for partition in topic.partitions:
+        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
 
-        click.echo(pretty(config))
-    except TopicDoesNotExistException:
-        click.echo(f"The topic {green_bold(topic_name)} does not exist on the cluster.")
-        sys.exit(1)
+    click.echo(pretty(config))
 
 
 @get.command("offsets")
@@ -278,14 +263,10 @@ def describe_broker(state, broker_id):
 @error_handler
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
-    try:
-        consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
-        consumer_group_desc = consumer_group.describe(verbose=verbose)
+    consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
+    consumer_group_desc = consumer_group.describe(verbose=verbose)
 
-        click.echo(pretty(consumer_group_desc, break_lists=True))
-    except ConsumerGroupDoesNotExistException:
-        click.echo(bold(f"Consumer Group {consumer_id} not found."))
-        sys.exit(1)
+    click.echo(pretty(consumer_group_desc, break_lists=True))
 
 
 @get.command("brokers")
@@ -417,10 +398,7 @@ def ping(state, times, wait):
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
-        try:
-            topic_controller.create_topics([Topic(PING_TOPIC)])
-        except TopicAlreadyExistsException:
-            click.echo("Topic already exists.")
+        topic_controller.create_topics([Topic(PING_TOPIC)])
 
         producer = PingProducer()
         consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
