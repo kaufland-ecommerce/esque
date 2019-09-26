@@ -33,7 +33,7 @@ from esque.errors import (
     TopicDoesNotExistException,
 )
 from esque.resources.broker import Broker
-from esque.resources.topic import Topic
+from esque.resources.topic import Topic, copy_to_local
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -136,11 +136,13 @@ def edit_topic(state: State, topic_name: str):
         click.echo("Change aborted")
         return
 
-    topic.from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
+    local_topic = copy_to_local(topic)
+    local_topic.update_from_yaml(new_conf)
+    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
     click.echo(diff)
+
     if ensure_approval("Are you sure?"):
-        controller.alter_configs([topic])
+        controller.alter_configs([local_topic])
 
 
 @esque.command("apply", help="Apply a configuration")
