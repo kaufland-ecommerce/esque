@@ -23,7 +23,7 @@ do
   then
     cat ${SOURCE_CODE_PATH}/installation/deb/instenv >> /tmp/tmpctrl
     cat ${SOURCE_CODE_PATH}/installation/deb/${ctrlfile} >> /tmp/tmpctrl
-    mv /tmp/tmpctrl ${CONTROL_DIRECTORY}
+    mv /tmp/tmpctrl ${CONTROL_DIRECTORY}/
   fi
 done
 mv ${SOURCE_CODE_PATH}/installation/deb/control ${CONTROL_DIRECTORY}/

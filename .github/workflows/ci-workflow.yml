@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build deb package
+    name: Build binary packages
     runs-on: ubuntu-latest
     steps:
       - name: Clone the current repository
@@ -18,7 +18,7 @@ jobs:
           SOURCE_CODE_DIR_NAME: "esque"
         shell: bash
         run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_DIR_NAME
-      - name: Populate the staging directory
+      - name: Populate the deb staging directory
         env:
           # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
           PROJECT_HOMEPAGE: "https://github.com/real-digital/esque"
@@ -29,14 +29,29 @@ jobs:
           LIBRARY_NAME: "esque"
         run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME"
         shell: bash
+      - name: Populate the rpm staging directory
+        env:
+        # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
+          PROJECT_HOMEPAGE: "https://github.com/real-digital/esque"
+          PROJECT_MAINTAINER: "real.digital <opensource@real-digital.de>"
+          PROJECT_DESCRIPTION: "esque - an operational Kafka tool"
+          RPM_STAGING_DIR_NAME: "rpm-staging"
+          SOURCE_CODE_DIR_NAME: "esque"
+          LIBRARY_NAME: "esque"
+        run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_rpm_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$RPM_STAGING_DIR_NAME"
+        shell: bash
       - name: Build the deb package
         run: python3 setup.py --command-packages=stdeb.command bdist_deb
         shell: bash
         env:
           DEB_STAGING_DIR_NAME: "debian-staging"
         working-directory: ./$DEB_STAGING_DIR_NAME
+      - name: Build the rpm package
+          run: python3 setup.py bdist_rpm
+          shell: bash
+          env:
+            RPM_STAGING_DIR_NAME: "rpm-staging"
+          working-directory: ./$RPM_STAGING_DIR_NAME
       - name: Verify the build (until a package repository is ready)
-        env:
-          DEB_STAGING_DIR_NAME: "debian-staging"
-        run: ls -R $DEB_STAGING_DIR_NAME
+        run: ls -R .
         shell: bash

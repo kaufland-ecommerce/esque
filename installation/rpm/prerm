@@ -1,0 +1,5 @@
+# preinst script for dpkg
+pip3 uninstall esque > /dev/null
+sed -i '/'${AUTOCOMPLETION_SCRIPT}'/d' ${ENVIRONMENT_FILE}
+sed -i '/'${ESQUE_CONF_DIR}'/d' ${ENVIRONMENT_FILE}
+exit 0
