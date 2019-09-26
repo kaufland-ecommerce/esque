@@ -17,7 +17,6 @@ if [ -f ./esque/__version__.py ]
 then
   VERSION=`cat ./esque/__version__.py | cut -f2 -d= | sed 's/ //g' | sed 's/"//g'`
 fi
-ls -lR .
 for ctrlfile in `ls ${SOURCE_CODE_PATH}/installation/deb/`
 do
   if [ "x${ctrlfile}" != "instenv" -a "x${ctrlfile}" != "control" ]
@@ -25,6 +24,8 @@ do
     cat ${SOURCE_CODE_PATH}/installation/deb/instenv >> /tmp/tmpctrl
     cat ${SOURCE_CODE_PATH}/installation/deb/${ctrlfile} >> /tmp/tmpctrl
     mv /tmp/tmpctrl ${CONTROL_DIRECTORY}
+  fi
+  mv ${SOURCE_CODE_PATH}/installation/deb/control ${CONTROL_DIRECTORY}/
 done
 rm -rf ${SOURCE_CODE_PATH}/installation/deb
 sed -i 's,__LIBRARY__,'"${NAME}"',g' ${CONTROL_DIRECTORY}/control
