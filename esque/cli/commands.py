@@ -11,7 +11,7 @@ from click import version_option
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state
+from esque.cli.options import State, no_verify_option, pass_state, error_handler
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -86,6 +86,7 @@ def list_contexts(ctx, args, incomplete):
 
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
+@error_handler
 @pass_state
 def ctx(state, context):
     if not context:
@@ -106,6 +107,7 @@ def ctx(state, context):
 @click.argument("topic-name", required=True)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
+@error_handler
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -126,6 +128,7 @@ def create_topic(state: State, topic_name: str, like=None):
 
 @edit.command("topic")
 @click.argument("topic-name", required=True)
+@error_handler
 @pass_state
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
@@ -147,6 +150,7 @@ def edit_topic(state: State, topic_name: str):
 @delete.command("topic")
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @no_verify_option
+@error_handler
 @pass_state
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -161,6 +165,7 @@ def delete_topic(state: State, topic_name: str):
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
 @no_verify_option
+@error_handler
 @pass_state
 def apply(state: State, file: str):
     # Get topic data based on the YAML
@@ -227,6 +232,7 @@ def apply(state: State, file: str):
 
 @describe.command("topic")
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def describe_topic(state, topic_name):
     try:
@@ -246,6 +252,7 @@ def describe_topic(state, topic_name):
 
 @get.command("offsets")
 @click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def get_offsets(state, topic_name):
     # TODO: Gathering of all offsets takes super long
@@ -258,6 +265,7 @@ def get_offsets(state, topic_name):
 
 @describe.command("broker")
 @click.argument("broker-id", required=True)
+@error_handler
 @pass_state
 def describe_broker(state, broker_id):
     broker = Broker.from_id(state.cluster, broker_id).describe()
@@ -267,6 +275,7 @@ def describe_broker(state, broker_id):
 @describe.command("consumergroup")
 @click.argument("consumer-id", required=False)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
+@error_handler
 @pass_state
 def describe_consumergroup(state, consumer_id, verbose):
     try:
@@ -280,6 +289,7 @@ def describe_consumergroup(state, consumer_id, verbose):
 
 
 @get.command("brokers")
+@error_handler
 @pass_state
 def get_brokers(state):
     brokers = Broker.get_all(state.cluster)
@@ -288,6 +298,7 @@ def get_brokers(state):
 
 
 @get.command("consumergroups")
+@error_handler
 @pass_state
 def get_consumergroups(state):
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
@@ -297,6 +308,7 @@ def get_consumergroups(state):
 
 @get.command("topics")
 @click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def get_topics(state, topic):
     topics = state.cluster.topic_controller.list_topics(search_string=topic)
@@ -319,6 +331,7 @@ def get_topics(state, topic):
     default=False,
     is_flag=True,
 )
+@error_handler
 @pass_state
 def transfer(
     state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
@@ -358,6 +371,7 @@ def transfer(
     required=True,
 )
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@error_handler
 @pass_state
 def produce(state: State, topic: str, directory: str, avro: bool):
     _produce_from_files(topic, state.config.current_context, Path(directory), avro)
@@ -397,6 +411,7 @@ def _consume_to_files(
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
+@error_handler
 @pass_state
 def ping(state, times, wait):
     topic_controller = state.cluster.topic_controller

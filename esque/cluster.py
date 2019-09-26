@@ -4,11 +4,7 @@ import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
-from esque.controller.topic_controller import (
-    ConfluentTopicController,
-    TopicControllerWithErrorHandling,
-    TopicController,
-)
+from esque.controller.topic_controller import ConfluentTopicController, TopicController
 from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 
 
@@ -26,7 +22,6 @@ class Cluster:
     def topic_controller(self) -> TopicController:
         if self.__topic_controller is None:
             self.__topic_controller = ConfluentTopicController(self, self._config)
-            self.__topic_controller = TopicControllerWithErrorHandling(self.__topic_controller)
         return self.__topic_controller
 
     @property

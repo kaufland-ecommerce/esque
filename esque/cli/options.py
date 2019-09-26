@@ -1,4 +1,5 @@
 import sys
+from functools import wraps
 from shutil import copyfile
 
 import click
@@ -8,7 +9,7 @@ from pykafka.exceptions import NoBrokersAvailableError, SocketDisconnectedError
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException
+from esque.errors import ConfigNotExistsException, KafkaException
 
 
 class State(object):
@@ -57,3 +58,21 @@ def no_verify_option(f):
         default=False,
         callback=callback,
     )(f)
+
+
+def error_handler(f):
+    @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        verbose = kwargs["verbose"]
+        del kwargs["verbose"]
+        if verbose:
+            f(*args, **kwargs)
+            return
+        try:
+            f(*args, **kwargs)
+        except KafkaException as e:
+            click.echo(click.style(e.message, fg="red"))
+            sys.exit(1)
+
+    return wrapper
