@@ -9,9 +9,10 @@ from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
-def test_create(cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str):
+def test_create_without_confirmation(cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str):
 
-    cli_runner.invoke(create_topic, [topic_id])
+    result = cli_runner.invoke(create_topic, [topic_id])
+    assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
@@ -19,7 +20,7 @@ def test_create(cli_runner: CliRunner, confluent_admin_client: confluent_kafka.a
 
 @pytest.mark.integration
 def test_topic_creation_with_template_works(
-    state: State, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+    cli_runner: CliRunner, state: State, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
     topic_1 = topic_id + "_1"
     topic_2 = topic_id + "_2"
@@ -37,8 +38,8 @@ def test_topic_creation_with_template_works(
     state.cluster.topic_controller.create_topics(
         [Topic(topic_1, replication_factor=replication_factor, num_partitions=num_partitions, config=config)]
     )
-    runner = CliRunner()
-    runner.invoke(create_topic, ["--no-verify", "-l", topic_1, topic_2])
+    result = cli_runner.invoke(create_topic, ["--no-verify", "-l", topic_1, topic_2])
+    assert result.exit_code == 0
     config_from_template = state.cluster.topic_controller.get_cluster_topic(topic_2)
     assert config_from_template.replication_factor == replication_factor
     assert config_from_template.num_partitions == num_partitions
@@ -56,8 +57,8 @@ def test_create_topic_with_stdin_works(
     assert stdin_topic not in topics
 
     def confirmation_generator_function():
-        yield "y"
-        yield "\r"
+        for char in ["y", "\r"]:
+            yield char
 
     confirmation_generator = confirmation_generator_function()
 

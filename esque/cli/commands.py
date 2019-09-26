@@ -1,6 +1,8 @@
+import json
 import pathlib
 import sys
 import time
+from collections import OrderedDict
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -36,6 +38,8 @@ from esque.errors import (
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
+CONFIRMATION_FUNCTION = ensure_approval
+
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
 @click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
@@ -45,7 +49,9 @@ from esque.resources.topic import Topic
 def esque(state, recreate_config: bool):
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
-        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
+        if CONFIRMATION_FUNCTION(
+            f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify
+        ):
             copyfile(sample_config_path().as_posix(), config_path())
 
 
@@ -107,9 +113,10 @@ def get_required_argument(ctx, param, value):
     # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
     # read from stdin and after ask for confirmation. We should use click when this functionality
     # is available.
-
+    global CONFIRMATION_FUNCTION
     if not value and not click.get_text_stream("stdin").isatty():
         stdin_arg = click.get_text_stream("stdin").readline().strip()
+        CONFIRMATION_FUNCTION = get_terminal_confirmation
     else:
         stdin_arg = value
     if not stdin_arg:
@@ -168,7 +175,7 @@ def _get_user_confirmation():
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
 
-    if not get_terminal_confirmation("Are you sure?", no_verify=state.no_verify):
+    if not CONFIRMATION_FUNCTION("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
     topic_controller = state.cluster.topic_controller
@@ -199,7 +206,7 @@ def edit_topic(state: State, topic_name: str):
     topic.from_yaml(new_conf)
     diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
     click.echo(diff)
-    if get_terminal_confirmation("Are you sure?"):
+    if CONFIRMATION_FUNCTION("Are you sure?"):
         controller.alter_configs([topic])
 
 
@@ -255,7 +262,7 @@ def apply(state: State, file: str):
         return
 
     # Get approval
-    if not ensure_approval("Apply changes?", no_verify=state.no_verify):
+    if not CONFIRMATION_FUNCTION("Apply changes?", no_verify=state.no_verify):
         click.echo("Cancelling changes")
         return
 
@@ -276,7 +283,7 @@ def apply(state: State, file: str):
 @pass_state
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
-    if get_terminal_confirmation("Are you sure?", no_verify=state.no_verify):
+    if CONFIRMATION_FUNCTION("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
         assert topic_name not in (t.name for t in topic_controller.list_topics())
@@ -286,18 +293,24 @@ def delete_topic(state: State, topic_name: str):
 @click.argument(
     "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
 )
+@click.option("-o", "--output", help="Format of the output", required=False)
 @pass_state
-def describe_topic(state, topic_name):
+def describe_topic(state, topic_name, output):
     try:
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-        config = {"Config": topic.config}
-
-        click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+        output_dict = OrderedDict({"Topic": green_bold(topic_name)})
 
         for partition in topic.partitions:
-            click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
+            output_dict[f"Partition {partition.partition_id}"] = partition.as_dict()
 
-        click.echo(pretty(config))
+        output_dict["Config"] = topic.config
+        if output == "yaml":
+            yaml.dump(output_dict, default_flow_style=False)
+        elif output == "json":
+            json.dumps(output_dict)
+        else:
+            click.echo(pretty(output_dict, break_lists=True))
+
     except TopicDoesNotExistException:
         click.echo(f"The topic {green_bold(topic_name)} does not exist on the cluster.")
         sys.exit(1)
@@ -399,7 +412,7 @@ def transfer(
 
         click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 
-        if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
+        if not CONFIRMATION_FUNCTION("Do you want to proceed?\n", no_verify=state.no_verify):
             return
 
         state.config.context_switch(to_context)
