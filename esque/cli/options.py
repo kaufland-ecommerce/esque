@@ -74,5 +74,10 @@ def error_handler(f):
         except ExceptionWithMessage as e:
             click.echo(click.style(e.message, fg="red"))
             sys.exit(1)
+        except Exception:
+            click.echo(
+                click.style("Unknown error. Use verbose mode with '--verbose' to see more information.", fg="red")
+            )
+            sys.exit(1)
 
     return wrapper

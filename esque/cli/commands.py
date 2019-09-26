@@ -259,12 +259,12 @@ def describe_broker(state, broker_id):
 
 @describe.command("consumergroup")
 @click.argument("consumer-id", required=False)
-@click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
+@click.option("--raw-output", help="Get raw output", default=False, is_flag=True)
 @error_handler
 @pass_state
-def describe_consumergroup(state, consumer_id, verbose):
+def describe_consumergroup(state, consumer_id, raw_output):
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
-    consumer_group_desc = consumer_group.describe(verbose=verbose)
+    consumer_group_desc = consumer_group.describe(verbose=raw_output)
 
     click.echo(pretty(consumer_group_desc, break_lists=True))
 
