@@ -25,5 +25,5 @@ sed -i 's,__MAINTAINER__,'"${PROJECT_MAINTAINER}"',g' ${CONTROL_DIRECTORY}/contr
 sed -i 's,__VERSION__,'"${VERSION}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__HOMEPAGE__,'"${PROJECT_HOMEPAGE}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__DESCRIPTION__,'"${PROJECT_DESCRIPTION}"',g' ${CONTROL_DIRECTORY}/control
-cp ${SOURCE_CODE_PATH}/* ${DEB_STAGING_PATH}/ 2>/dev/null
-
+cp -r ${SOURCE_CODE_PATH}/* ${DEB_STAGING_PATH}/
+exit 0
