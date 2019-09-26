@@ -41,11 +41,11 @@ jobs:
         run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_rpm_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$RPM_STAGING_DIR_NAME" "$SOURCE_CODE_DIR_NAME"
         shell: bash
       - name: Debugging step
-        run: pwd
+        run: ls -R .
         shell: bash
         env:
           DEB_STAGING_DIR_NAME: "debian-staging"
-        working-directory: ./$DEB_STAGING_DIR_NAME
+        #working-directory: ./$DEB_STAGING_DIR_NAME
       - name: Build the deb package
         run: python3 setup.py --command-packages=stdeb.command bdist_deb
         shell: bash
