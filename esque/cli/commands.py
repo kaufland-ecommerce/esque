@@ -10,7 +10,6 @@ from time import sleep
 import click
 import yaml
 from click import version_option, echo
-from click.termui import _build_prompt
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -38,8 +37,6 @@ from esque.errors import (
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
-CONFIRMATION_FUNCTION = ensure_approval
-
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
 @click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
@@ -49,9 +46,7 @@ CONFIRMATION_FUNCTION = ensure_approval
 def esque(state, recreate_config: bool):
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
-        if CONFIRMATION_FUNCTION(
-            f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify
-        ):
+        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
             copyfile(sample_config_path().as_posix(), config_path())
 
 
@@ -113,10 +108,8 @@ def get_required_argument(ctx, param, value):
     # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
     # read from stdin and after ask for confirmation. We should use click when this functionality
     # is available.
-    global CONFIRMATION_FUNCTION
     if not value and not click.get_text_stream("stdin").isatty():
         stdin_arg = click.get_text_stream("stdin").readline().strip()
-        CONFIRMATION_FUNCTION = get_terminal_confirmation
     else:
         stdin_arg = value
     if not stdin_arg:
@@ -134,38 +127,21 @@ def get_optional_argument(ctx, param, value):
     return value
 
 
-def get_terminal_confirmation(text, no_verify: bool = False):
-    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
-    # read from stdin and after ask for confirmation. We should use click when this functionality
-    # is available.
-    if no_verify:
-        return True
-
-    default = False
-    abort = False
-    prompt_suffix = ": "
-    show_default = True
-    err = False
-    prompt = _build_prompt(text, prompt_suffix, show_default, default and "Y/n" or "y/N")
-    echo(prompt, nl=False, err=err)
-    return _get_user_confirmation()
+def check_if_confirmation_possible(state: State):
+    if not sys.__stdin__.isatty() and not state.no_verify:
+        click.echo(
+            "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
+        )
+        sys.exit(1)
 
 
-def _get_user_confirmation():
-    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
-    # read from stdin and after ask for confirmation. We should use click when this functionality
-    # is available.
-    ret = ""
-    while 1:
-        c = click.getchar(True)
-        if c == "\r":
-            break
-        elif c in ("\x08", "\x7f") and len(ret) != 0:
-            ret = ret[:-1]
-        else:
-            ret += c
-    echo(nl=True)
-    return ret.lower() == "y"
+def format_output(output, format):
+    if format == "yaml":
+        return yaml.dump(output, default_flow_style=False)
+    elif format == "json":
+        return json.dumps(output)
+    else:
+        return pretty(output, break_lists=True)
 
 
 @create.command("topic")
@@ -175,7 +151,9 @@ def _get_user_confirmation():
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
 
-    if not CONFIRMATION_FUNCTION("Are you sure?", no_verify=state.no_verify):
+    check_if_confirmation_possible(state)
+
+    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
     topic_controller = state.cluster.topic_controller
@@ -193,6 +171,8 @@ def create_topic(state: State, topic_name: str, like=None):
 @click.argument("topic-name", callback=get_required_argument, required=False)
 @pass_state
 def edit_topic(state: State, topic_name: str):
+
+    check_if_confirmation_possible(state)  # TODO: here maybe we just don't allow it if isatty false
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
@@ -206,7 +186,7 @@ def edit_topic(state: State, topic_name: str):
     topic.from_yaml(new_conf)
     diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
     click.echo(diff)
-    if CONFIRMATION_FUNCTION("Are you sure?"):
+    if ensure_approval("Are you sure?"):
         controller.alter_configs([topic])
 
 
@@ -215,6 +195,7 @@ def edit_topic(state: State, topic_name: str):
 @no_verify_option
 @pass_state
 def apply(state: State, file: str):
+    check_if_confirmation_possible(state)
     # Get topic data based on the YAML
     yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
@@ -262,7 +243,7 @@ def apply(state: State, file: str):
         return
 
     # Get approval
-    if not CONFIRMATION_FUNCTION("Apply changes?", no_verify=state.no_verify):
+    if not ensure_approval("Apply changes?", no_verify=state.no_verify):
         click.echo("Cancelling changes")
         return
 
@@ -282,8 +263,9 @@ def apply(state: State, file: str):
 @no_verify_option
 @pass_state
 def delete_topic(state: State, topic_name: str):
+    check_if_confirmation_possible(state)
     topic_controller = state.cluster.topic_controller
-    if CONFIRMATION_FUNCTION("Are you sure?", no_verify=state.no_verify):
+    if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
         assert topic_name not in (t.name for t in topic_controller.list_topics())
@@ -293,9 +275,15 @@ def delete_topic(state: State, topic_name: str):
 @click.argument(
     "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
 )
-@click.option("-o", "--output", help="Format of the output", required=False)
+@click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)
 @pass_state
-def describe_topic(state, topic_name, output):
+def describe_topic(state, topic_name, output_format):
     try:
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
         output_dict = OrderedDict({"Topic": green_bold(topic_name)})
@@ -304,12 +292,7 @@ def describe_topic(state, topic_name, output):
             output_dict[f"Partition {partition.partition_id}"] = partition.as_dict()
 
         output_dict["Config"] = topic.config
-        if output == "yaml":
-            yaml.dump(output_dict, default_flow_style=False)
-        elif output == "json":
-            json.dumps(output_dict)
-        else:
-            click.echo(pretty(output_dict, break_lists=True))
+        click.echo(format_output(output_dict, output_format))
 
     except TopicDoesNotExistException:
         click.echo(f"The topic {green_bold(topic_name)} does not exist on the cluster.")
@@ -319,21 +302,35 @@ def describe_topic(state, topic_name, output):
 @get.command("offsets")
 @click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-def get_offsets(state, topic_name):
+@click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)
+def get_offsets(state, topic_name, output_format):
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
     offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
 
-    click.echo(pretty(offsets))
+    click.echo(format_output(offsets, output_format))
 
 
 @describe.command("broker")
 @click.argument("broker-id", callback=get_required_argument, required=False)
 @pass_state
-def describe_broker(state, broker_id):
+@click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)
+def describe_broker(state, broker_id, output_format):
     broker = Broker.from_id(state.cluster, broker_id).describe()
-    click.echo(pretty(broker, break_lists=True))
+    click.echo(format_output(broker, output_format))
 
 
 @describe.command("consumergroup")
@@ -412,7 +409,7 @@ def transfer(
 
         click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
 
-        if not CONFIRMATION_FUNCTION("Do you want to proceed?\n", no_verify=state.no_verify):
+        if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
             return
 
         state.config.context_switch(to_context)

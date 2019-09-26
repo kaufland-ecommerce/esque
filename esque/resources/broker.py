@@ -30,7 +30,7 @@ class Broker(KafkaResource):
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 
-    def describe(self):
+    def describe(self) -> dict:
         return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 
     def as_dict(self):
