@@ -27,7 +27,7 @@ jobs:
           DEB_STAGING_DIR_NAME: "debian-staging"
           SOURCE_CODE_DIR_NAME: "esque"
           LIBRARY_NAME: "esque"
-        run: ./$SOURCE_CODE_PATH/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME" "$SOURCE_CODE_DIR_NAME"
+        run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME" "$SOURCE_CODE_DIR_NAME"
         shell: bash
       - name: Build the deb package
         run: python3 setup.py --command-packages=stdeb.command bdist_deb
