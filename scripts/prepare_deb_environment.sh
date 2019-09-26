@@ -6,7 +6,6 @@ PROJECT_HOMEPAGE=$2
 PROJECT_MAINTAINER=$3
 PROJECT_DESCRIPTION=$4
 DEB_STAGING_PATH=$5
-SOURCE_CODE_PATH=$6
 VERSION="1.0"   # default, if there is no __version__.py for some reason
 # we should be in the package root folder
 cd ./${SOURCE_CODE_PATH}
@@ -25,6 +24,6 @@ sed -i 's,__MAINTAINER__,'"${PROJECT_MAINTAINER}"',g' ${CONTROL_DIRECTORY}/contr
 sed -i 's,__VERSION__,'"${VERSION}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__HOMEPAGE__,'"${PROJECT_HOMEPAGE}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__DESCRIPTION__,'"${PROJECT_DESCRIPTION}"',g' ${CONTROL_DIRECTORY}/control
-cp -r ${SOURCE_CODE_PATH}/* ${DEB_STAGING_PATH}/
+cp -r ./* ${DEB_STAGING_PATH}/
 ls -lR ${DEB_STAGING_PATH}
 exit 0

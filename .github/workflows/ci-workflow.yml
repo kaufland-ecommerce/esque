@@ -15,9 +15,9 @@ jobs:
       - name: Clone the current repository
         env:
           PROJECT_GIT_LOCATION: "https://github.com/real-digital/esque"
-          SOURCE_CODE_PATH: "esque"
+          SOURCE_CODE_DIR_NAME: "esque"
         shell: bash
-        run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_PATH
+        run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_DIR_NAME
       - name: Populate the staging directory
         env:
           # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
@@ -27,7 +27,7 @@ jobs:
           DEB_STAGING_DIR_NAME: "debian-staging"
           SOURCE_CODE_DIR_NAME: "esque"
           LIBRARY_NAME: "esque"
-        run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME" "$SOURCE_CODE_DIR_NAME"
+        run: ./$SOURCE_CODE_DIR_NAME/scripts/prepare_deb_environment.sh "$LIBRARY_NAME" "$PROJECT_HOMEPAGE" "$PROJECT_MAINTAINER" "$PROJECT_DESCRIPTION" "$DEB_STAGING_DIR_NAME"
         shell: bash
       - name: Build the deb package
         run: python3 setup.py --command-packages=stdeb.command bdist_deb
