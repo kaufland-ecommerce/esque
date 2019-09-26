@@ -2,17 +2,6 @@
 
 echo "Running postinstallation tasks for esque"
 
-if [ -e "${ESQUE_FILE_LOG}" ]
-then
-    # an old installation log exists, delete the files from it first
-    for f in `cat ${ESQUE_FILE_LOG}`
-    do
-        rm -rf ${f} >> /dev/null
-    done
-fi
-
-python3 ${PYTHON_INSTALL_SCRIPT} install --record ${ESQUE_FILE_LOG}
-
 echo "Installing ${SHELL_BASENAME} autocomplete"
 echo 'eval "$(_ESQUE_COMPLETE=source esque)"' > ${AUTOCOMPLETION_SCRIPT}
 grep -q ${AUTOCOMPLETION_SCRIPT} ${ENVIRONMENT_FILE}
