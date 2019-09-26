@@ -107,7 +107,7 @@ def test_apply_invalid_replicas(cli_runner: CliRunner, topic_id: str):
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = cli_runner.invoke(apply, ["-f", path, "--verbose"], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, KafkaException), f"Calling apply should have failed"
 
 
