@@ -7,4 +7,4 @@ Homepage: __HOMEPAGE__
 Package: __LIBRARY__
 Architecture: amd64
 Description: __DESCRIPTION__
-Depends: python3, python3-pip, python3-setuptools
+Depends: python3, python3-pip, python3-setuptools, python3-all

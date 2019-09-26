@@ -18,15 +18,6 @@ jobs:
           SOURCE_CODE_PATH: "esque"
         shell: bash
         run: git clone $PROJECT_GIT_LOCATION --branch 61-installation-and-packaging $SOURCE_CODE_PATH
-      - name: Create the staging directory
-        env:
-          DEB_STAGING_PATH: "./debian-staging"
-        run: mkdir $DEB_STAGING_PATH
-        shell: bash
-      - name: Build the deb package
-        run: python3 setup.py --command-packages=stdeb.command bdist_deb
-        shell: bash
-        working-directory: ./$DEBIAN_STAGING
       - name: Populate the staging directory
         env:
           # at the time of writing this, github actions do not support global variables. It is announced, though. Until that, we have to redefine the same variable we need in various steps
@@ -41,9 +32,11 @@ jobs:
       - name: Build the deb package
         run: python3 setup.py --command-packages=stdeb.command bdist_deb
         shell: bash
-        working-directory: ./$DEBIAN_STAGING
+        env:
+          DEB_STAGING_DIR_NAME: "debian-staging"
+        working-directory: ./$DEB_STAGING_DIR_NAME
       - name: Verify the build (until a package repository is ready)
         env:
-          DEB_STAGING_PATH: "./debian-staging"
-        run: ls -R $DEB_STAGING_PATH
+          DEB_STAGING_DIR_NAME: "debian-staging"
+        run: ls -R $DEB_STAGING_DIR_NAME
         shell: bash
