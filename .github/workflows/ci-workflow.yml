@@ -47,11 +47,11 @@ jobs:
           DEB_STAGING_DIR_NAME: "debian-staging"
         working-directory: ./$DEB_STAGING_DIR_NAME
       - name: Build the rpm package
-          run: python3 setup.py bdist_rpm
-          shell: bash
-          env:
-            RPM_STAGING_DIR_NAME: "rpm-staging"
-          working-directory: ./$RPM_STAGING_DIR_NAME
+        run: python3 setup.py bdist_rpm
+        shell: bash
+        env:
+          RPM_STAGING_DIR_NAME: "rpm-staging"
+        working-directory: ./$RPM_STAGING_DIR_NAME
       - name: Verify the build (until a package repository is ready)
         run: ls -R .
         shell: bash
