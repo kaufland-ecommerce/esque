@@ -25,8 +25,8 @@ do
     cat ${SOURCE_CODE_PATH}/installation/deb/${ctrlfile} >> /tmp/tmpctrl
     mv /tmp/tmpctrl ${CONTROL_DIRECTORY}
   fi
-  mv ${SOURCE_CODE_PATH}/installation/deb/control ${CONTROL_DIRECTORY}/
 done
+mv ${SOURCE_CODE_PATH}/installation/deb/control ${CONTROL_DIRECTORY}/
 rm -rf ${SOURCE_CODE_PATH}/installation/deb
 sed -i 's,__LIBRARY__,'"${NAME}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__MAINTAINER__,'"${PROJECT_MAINTAINER}"',g' ${CONTROL_DIRECTORY}/control
