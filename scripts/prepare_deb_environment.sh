@@ -26,4 +26,5 @@ sed -i 's,__VERSION__,'"${VERSION}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__HOMEPAGE__,'"${PROJECT_HOMEPAGE}"',g' ${CONTROL_DIRECTORY}/control
 sed -i 's,__DESCRIPTION__,'"${PROJECT_DESCRIPTION}"',g' ${CONTROL_DIRECTORY}/control
 cp -r ${SOURCE_CODE_PATH}/* ${DEB_STAGING_PATH}/
+ls -lR ${DEB_STAGING_PATH}
 exit 0
