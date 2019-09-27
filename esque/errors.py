@@ -55,8 +55,10 @@ class ConfigNotExistsException(ExceptionWithMessage):
 
 
 class ContextNotDefinedException(ExceptionWithMessage):
-    def __init__(self):
-        super().__init__("Context cannot be found.")
+    def __init__(self, message: str = None):
+        if message is None:
+            message = "Context cannot be found."
+        super().__init__(message)
 
 
 class FutureTimeoutException(ExceptionWithMessage):
