@@ -3,6 +3,7 @@ from typing import List
 
 from confluent_kafka.admin import ConfigResource
 
+from esque.errors import raise_for_kafka_exception
 from esque.resources.resource import KafkaResource
 
 
@@ -30,6 +31,7 @@ class Broker(KafkaResource):
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 
+    @raise_for_kafka_exception
     def describe(self):
         return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 

@@ -13,10 +13,10 @@ def raise_for_kafka_exception(func):
             return func(*args, **kwargs)
         except confluent_kafka.KafkaException as ex:
             raise_for_kafka_error(ex.args[0])
-        except pykafka.exceptions.NoBrokersAvailableError:
-            raise ConnectionFailedException
-        except pykafka.exceptions.SocketDisconnectedError:
-            raise ConnectionFailedException
+        except pykafka.exceptions.NoBrokersAvailableError as exception:
+            raise ConnectionFailedException(exception)
+        except pykafka.exceptions.SocketDisconnectedError as exception:
+            raise ConnectionFailedException(exception)
 
     return wrapper
 
@@ -39,24 +39,30 @@ def raise_for_message(message: Message):
 
 
 class ExceptionWithMessage(Exception):
-    def __init__(self, message: str):
-        self.message = message
+    def describe(self) -> str:
+        pass
 
 
 class KafkaException(ExceptionWithMessage):
     def __init__(self, message: str, code: int):
-        super().__init__(message)
+        self.message = message
         self.code = code
+
+    def describe(self) -> str:
+        return f"{self.message} with code {self.code}"
 
 
 class ConsumerGroupDoesNotExistException(ExceptionWithMessage):
-    def __init__(self):
-        super().__init__("ConsumerGroup does not exist.")
+    def __init__(self, consumer_id: str):
+        self.consumer_id = consumer_id
+
+    def describe(self) -> str:
+        return f"Consumer Group does not exist for consumer id '{self.consumer_id}'"
 
 
 class ConfigNotExistsException(ExceptionWithMessage):
-    def __init__(self):
-        super().__init__("Config does not exist.")
+    def describe(self) -> str:
+        return "Config does not exist."
 
 
 class ContextNotDefinedException(ExceptionWithMessage):
@@ -83,17 +89,19 @@ class EndOfPartitionReachedException(KafkaException):
     pass
 
 
-class TopicCreationException(ExceptionWithMessage):
-    pass
-
-
 class TopicDoesNotExistException(KafkaException):
     pass
 
 
 class ConnectionFailedException(ExceptionWithMessage):
-    def __init__(self):
-        super().__init__("Could not reach Kafka Brokers")
+    def __init__(self, pykafka_exception: pykafka.exceptions.KafkaException):
+        self.pykafka_exception = pykafka_exception
+
+    def describe(self) -> str:
+        if isinstance(self.pykafka_exception.args, str):
+            return self.pykafka_exception.args
+
+        return f"Connection to brokers failed."
 
 
 ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {

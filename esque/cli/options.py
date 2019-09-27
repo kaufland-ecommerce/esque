@@ -8,7 +8,7 @@ from click import make_pass_decorator, option
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException, ExceptionWithMessage, raise_for_kafka_exception
+from esque.errors import ConfigNotExistsException, ExceptionWithMessage
 
 
 class State(object):
@@ -55,28 +55,27 @@ def no_verify_option(f):
 
 
 def error_handler(f):
-    @raise_for_kafka_exception
-    @wraps(f)
-    def raise_kafka_exception_wrapper(*args, **kwargs):
-        f(*args, **kwargs)
-
     @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
     @wraps(f)
     def wrapper(*args, **kwargs):
         verbose = kwargs["verbose"]
         del kwargs["verbose"]
-        if verbose:
-            f(*args, **kwargs)
-            sys.exit(0)
         try:
-            raise_kafka_exception_wrapper(*args, **kwargs)
-        except ExceptionWithMessage as e:
-            click.echo(click.style(e.message, fg="red"))
-            sys.exit(1)
-        except Exception:
-            click.echo(
-                click.style("Unknown error. Use verbose mode with '--verbose' to see more information.", fg="red")
-            )
+            f(*args, **kwargs)
+        except Exception as e:
+            if verbose:
+                raise
+
+            if isinstance(e, ExceptionWithMessage):
+                click.echo(click.style(e.describe(), fg="red"))
+            else:
+                click.echo(
+                    click.style(
+                        f"An Exception of type {type(e).__name__} occured. Use verbose mode with '--verbose' "
+                        f"to see more information.",
+                        fg="red",
+                    )
+                )
             sys.exit(1)
 
     return wrapper
