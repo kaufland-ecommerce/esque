@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, Dict, List, MutableMapping, Tuple
+from typing import Any, Dict, List, MutableMapping, Tuple, Optional
 
 import click
 import pendulum
@@ -106,9 +106,11 @@ def pretty_bytes(value: bytes) -> str:
     return value.decode("UTF-8")
 
 
-def color_code_float(value: float, color_codes: List[Tuple[float, str]]):
+def color_code_float(value: float, *, color_codes: Optional[List[Tuple[float, str]]] = None):
     str_value = f"{value:.2f}"
     result = str_value
+    if not color_codes:
+        color_codes = [(0.0, "white"), (75.0, "yellow"), (90.0, "bright_blue"), (95.0, "blue")]
     for color_code in color_codes:
         if value >= color_code[0]:
             result = f"{click.style(str_value, bold=True, fg=color_code[1])}"
@@ -147,15 +149,12 @@ def pretty_consumergroup_simple_overview(group: ConsumerGroup) -> str:
     def highlight(x):
         return click.style(str(x), bold=True, fg="green")
 
-    def green_to_red(x):
-        return color_code_float(x, [(0.0, "green"), (75.0, "yellow"), (90.0, "bright_red"), (95.0, "red")])
-
     output = f"""ConsumerGroup {highlight(group.group_id)}
         active members: {highlight(len(group.members))}
         topics: {highlight(group.topics)}
         partitions: {highlight(group.partition_amount)}
         offsets: {highlight(group.offset_overview)}
-        relative lag: {green_to_red(100)} %
+        relative lag: {color_code_float(100)} %
         total lag: {highlight(group.total_lag)}"""
     return pretty(output)
 
