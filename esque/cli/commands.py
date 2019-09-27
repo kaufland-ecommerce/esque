@@ -26,7 +26,7 @@ from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
-from esque.resources.topic import Topic
+from esque.resources.topic import Topic, copy_to_local
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -129,11 +129,13 @@ def edit_topic(state: State, topic_name: str):
         click.echo("Change aborted")
         return
 
-    topic.from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(topic)})
+    local_topic = copy_to_local(topic)
+    local_topic.update_from_yaml(new_conf)
+    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
     click.echo(diff)
+
     if ensure_approval("Are you sure?"):
-        controller.alter_configs([topic])
+        controller.alter_configs([local_topic])
 
 
 @delete.command("topic")
@@ -292,7 +294,7 @@ def get_consumergroups(state):
 @error_handler
 @pass_state
 def get_topics(state, topic):
-    topics = state.cluster.topic_controller.list_topics(search_string=topic)
+    topics = state.cluster.topic_controller.list_topics(search_string=topic, get_topic_objects=False)
     for topic in topics:
         click.echo(topic.name)
 

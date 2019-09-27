@@ -43,7 +43,14 @@ class TopicController:
         else:
             raise ValueError(f"TopicType needs to be part of {ClientTypes}")
 
-    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
+    def list_topics(
+        self,
+        *,
+        search_string: str = None,
+        sort: bool = True,
+        hide_internal: bool = True,
+        get_topic_objects: bool = True,
+    ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topic_results = self.cluster.confluent_client.list_topics().topics.values()
         topic_names = [t.topic for t in topic_results]
@@ -54,7 +61,10 @@ class TopicController:
         if sort:
             topic_names = sorted(topic_names)
 
-        topics = list(map(self.get_cluster_topic, topic_names))
+        if get_topic_objects:
+            topics = list(map(self.get_cluster_topic, topic_names))
+        else:
+            topics = list(map(self.get_local_topic, topic_names))
         return topics
 
     @invalidate_cache_after
@@ -86,9 +96,12 @@ class TopicController:
 
     def get_cluster_topic(self, topic_name: str) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
-        return self._update_from_cluster(Topic(topic_name))
+        return self.update_from_cluster(Topic(topic_name))
 
-    def _update_from_cluster(self, topic: Topic):
+    def get_local_topic(self, topic_name: str) -> Topic:
+        return Topic(topic_name)
+
+    def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
