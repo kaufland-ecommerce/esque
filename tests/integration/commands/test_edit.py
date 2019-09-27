@@ -55,6 +55,5 @@ def test_topic_creation_with_template_works(
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
-    print(result.output)
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
     assert topic_config_dict == config_dict

@@ -3,11 +3,12 @@ from typing import Any, Dict
 import pytest
 import yaml
 from click.testing import CliRunner
+from confluent_kafka.cimpl import KafkaException
+
 from esque.resources.topic import Topic
 from esque.controller.topic_controller import TopicController
 
 from esque.cli.commands import apply
-from esque.errors import KafkaException
 
 
 @pytest.mark.integration
@@ -29,7 +30,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
 
     # 1: topic creation
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = cli_runner.invoke(apply, ["-f", path, "--verbose"], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -61,7 +62,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
     topic_1["num_partitions"] = 3
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = cli_runner.invoke(apply, ["-f", path, "--verbose"], input="Y\n")
     assert (
         result.exit_code == 0 and "to `replication_factor` and `num_partitions`" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -90,7 +91,7 @@ def test_apply_duplicate_names(cli_runner: CliRunner, topic_id: str):
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = cli_runner.invoke(apply, ["-f", path, "--verbose"], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, ValueError), f"Calling apply should have failed"
 
 
@@ -107,7 +108,7 @@ def test_apply_invalid_replicas(cli_runner: CliRunner, topic_id: str):
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = cli_runner.invoke(apply, ["-f", path, "--verbose"], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, KafkaException), f"Calling apply should have failed"
 
 
