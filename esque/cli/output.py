@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from functools import partial
-from typing import Any, Dict, List, MutableMapping
+from typing import Any, Dict, List, MutableMapping, Tuple
 
 import click
 import pendulum
@@ -106,6 +106,15 @@ def pretty_bytes(value: bytes) -> str:
     return value.decode("UTF-8")
 
 
+def color_code_float(value: float, color_codes: List[Tuple[float, str]]):
+    str_value = f"{value:.2f}"
+    result = str_value
+    for color_code in color_codes:
+        if value >= color_code[0]:
+            result = f"{click.style(str_value, bold=True, fg=color_code[1])}"
+    return result
+
+
 def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     if not value:
         return ""
@@ -136,13 +145,18 @@ def pretty_topic_diffs(topics_config_diff: Dict[str, TopicDiff]) -> str:
 
 def pretty_consumergroup_simple_overview(group: ConsumerGroup) -> str:
     def highlight(x):
-        return click.style(str(x), bold=True, fg="yellow")
+        return click.style(str(x), bold=True, fg="green")
+
+    def green_to_red(x):
+        return color_code_float(x, [(0.0, "green"), (75.0, "yellow"), (90.0, "bright_red"), (95.0, "red")])
 
     output = f"""ConsumerGroup {highlight(group.group_id)}
-        with {highlight(len(group.members))} active member(s)
-        reading from topics {highlight(group.topics)} on {highlight(group.partition_amount)} partition(s)
-        currently at offsets (min, avg, max) {highlight(group.offset_overview)}
-        having a total lag of {highlight(group.total_lag)}"""
+        active members: {highlight(len(group.members))}
+        topics: {highlight(group.topics)}
+        partitions: {highlight(group.partition_amount)}
+        offsets: {highlight(group.offset_overview)}
+        relative lag: {green_to_red(100)} %
+        total lag: {highlight(group.total_lag)}"""
     return pretty(output)
 
 
