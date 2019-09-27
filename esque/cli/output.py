@@ -1,9 +1,12 @@
+import json
 from collections import OrderedDict
 from functools import partial
-from typing import Any, Dict, List, MutableMapping
+from typing import Any, Dict, List, MutableMapping, Tuple
 
 import click
 import pendulum
+import yaml
+from yaml import SafeDumper
 
 from esque.resources.topic import Topic, TopicDiff
 
@@ -189,6 +192,7 @@ def green_bold(s: str) -> str:
 
 
 STYLE_MAPPING = {
+    "Topic": green_bold,
     "cleanup.policy": bold,
     "flush.ms": bold,
     "delete.retention.ms": bold,
@@ -198,11 +202,7 @@ STYLE_MAPPING = {
     "member_id": bold,
 }
 
-CONVERSION_MAPPING = {
-    "ms": pretty_duration,
-    "seconds": partial(pretty_duration, multiplier=1000),
-    "bytes": pretty_size,
-}
+CONVERSION_MAPPING = {"ms": pretty_duration, "seconds": partial(pretty_duration, multiplier=1000), "bytes": pretty_size}
 
 TYPE_MAPPING = {
     pendulum.DateTime: pretty_pendulum,
@@ -213,3 +213,32 @@ TYPE_MAPPING = {
     list: pretty_list,
     bytes: pretty_bytes,
 }
+
+
+def tuple_representer(dumper, data):
+    return dumper.represent_list(list(data))
+
+
+def bytes_representer(dumper, data):
+    return dumper.represent_str(data.decode("UTF-8"))
+
+
+SafeDumper.add_representer(Tuple, tuple_representer)
+SafeDumper.add_representer(bytes, bytes_representer)
+
+
+class BytesEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return obj.decode("UTF-8")
+            # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
+
+
+def format_output(output, output_format):
+    if output_format == "yaml":
+        return yaml.dump(output, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
+    elif output_format == "json":
+        return json.dumps(output, indent=4, cls=BytesEncoder)
+    else:
+        return pretty(output, break_lists=True)

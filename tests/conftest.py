@@ -17,6 +17,7 @@ from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
 
@@ -67,6 +68,12 @@ def topic_id(confluent_admin_client) -> str:
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     if topic_id in topics:
         confluent_admin_client.delete_topics([topic_id]).popitem()
+
+
+@pytest.fixture()
+def broker_id(state) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield str(brokers[0].broker_id)
 
 
 @pytest.fixture()

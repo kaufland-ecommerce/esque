@@ -1,4 +1,3 @@
-import click
 import confluent_kafka
 import pytest
 from click.testing import CliRunner
@@ -9,11 +8,64 @@ from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
-def test_create_without_confirmation(cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str):
-
+def test_create_without_confirmation_does_not_create_topic(
+    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+):
     result = cli_runner.invoke(create_topic, [topic_id])
     assert result.exit_code == 0
 
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id not in topics
+
+
+@pytest.mark.integration
+def test_create_topic_as_argument_with_verification_works(
+    confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+):
+
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id not in topics
+
+    result = CliRunner().invoke(create_topic, args=topic_id, input="Y\n")
+    assert result.exit_code == 0
+    # invalidate cache
+    confluent_admin_client.poll(timeout=1)
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_create_topic_with_stdin_works(
+    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+):
+
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id not in topics
+
+    result = cli_runner.invoke(create_topic, args="--no-verify", input=topic_id)
+    assert result.exit_code == 0
+    # invalidate cache
+    confluent_admin_client.poll(timeout=1)
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_topic_creation_stops_in_non_interactive_mode_without_no_verify(
+    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+):
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert topic_id not in topics
+
+    result = cli_runner.invoke(create_topic, input=topic_id)
+    assert (
+        "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
+        in result.output
+    )
+    assert result.exit_code == 1
+
+    # Invalidate cache
+    confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
@@ -45,33 +97,3 @@ def test_topic_creation_with_template_works(
     assert config_from_template.num_partitions == num_partitions
     for config_key, value in config.items():
         assert config_from_template.config[config_key] == value
-
-
-@pytest.mark.integration
-def test_create_topic_with_stdin_works(
-    monkeypatch, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
-):
-    stdin_topic = f"stdin_{topic_id}"
-
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert stdin_topic not in topics
-
-    def confirmation_generator_function():
-        for char in ["y", "\r"]:
-            yield char
-
-    confirmation_generator = confirmation_generator_function()
-
-    def mock_confirmation(echo):
-        return next(confirmation_generator)
-
-    monkeypatch.setattr(
-        click, "getchar", mock_confirmation
-    )
-
-    result = CliRunner().invoke(create_topic, input=stdin_topic, catch_exceptions=False)
-    assert result.exit_code == 0
-    # invalidate cache
-    confluent_admin_client.poll(timeout=1)
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert stdin_topic in topics

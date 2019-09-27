@@ -139,7 +139,6 @@ class TopicController:
 
     @raise_for_kafka_exception
     def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
-        print(local_topic.is_only_local)
         assert local_topic.is_only_local, "Can only diff local topics with remote"
 
         cluster_topic = self.get_cluster_topic(local_topic.name)

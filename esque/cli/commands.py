@@ -1,15 +1,13 @@
-import json
 import pathlib
 import sys
 import time
-from collections import OrderedDict
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
 
 import click
 import yaml
-from click import version_option, echo
+from click import version_option
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -22,6 +20,7 @@ from esque.cli.output import (
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
+    format_output,
 )
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
@@ -135,15 +134,6 @@ def check_if_confirmation_possible(state: State):
         sys.exit(1)
 
 
-def format_output(output, format):
-    if format == "yaml":
-        return yaml.dump(output, default_flow_style=False)
-    elif format == "json":
-        return json.dumps(output)
-    else:
-        return pretty(output, break_lists=True)
-
-
 @create.command("topic")
 @click.argument("topic-name", callback=get_required_argument, required=False)
 @no_verify_option
@@ -172,7 +162,10 @@ def create_topic(state: State, topic_name: str, like=None):
 @pass_state
 def edit_topic(state: State, topic_name: str):
 
-    check_if_confirmation_possible(state)  # TODO: here maybe we just don't allow it if isatty false
+    if not sys.__stdin__.isatty():
+        click.echo("This command cannot be run in a non-interactive mode.")
+        sys.exit(1)
+
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
@@ -288,7 +281,8 @@ def delete_topic(state: State, topic_name: str):
 def describe_topic(state, topic_name, output_format):
     try:
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-        output_dict = OrderedDict({"Topic": green_bold(topic_name)})
+
+        output_dict = {"Topic": topic_name}
 
         for partition in topic.partitions:
             output_dict[f"Partition {partition.partition_id}"] = partition.as_dict()
@@ -304,20 +298,13 @@ def describe_topic(state, topic_name, output_format):
 @get.command("offsets")
 @click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-@click.option(
-    "-o",
-    "--output-format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    help="Format of the output",
-    required=False,
-)
-def get_offsets(state, topic_name, output_format):
+def get_offsets(state, topic_name):
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
     offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
 
-    click.echo(format_output(offsets, output_format))
+    click.echo(pretty(offsets))
 
 
 @describe.command("broker")
@@ -339,12 +326,19 @@ def describe_broker(state, broker_id, output_format):
 @click.argument("consumer-id", callback=get_optional_argument, required=False)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
-def describe_consumergroup(state, consumer_id, verbose):
+@click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)
+def describe_consumergroup(state, consumer_id, verbose, output_format):
     try:
         consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
         consumer_group_desc = consumer_group.describe(verbose=verbose)
 
-        click.echo(pretty(consumer_group_desc, break_lists=True))
+        click.echo(format_output(consumer_group_desc, output_format))
     except ConsumerGroupDoesNotExistException:
         click.echo(bold(f"Consumer Group {consumer_id} not found."))
         sys.exit(1)
@@ -367,10 +361,10 @@ def get_consumergroups(state):
 
 
 @get.command("topics")
-@click.argument("topic", callback=get_optional_argument, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument("prefix", callback=get_optional_argument, required=False, type=click.STRING, autocompletion=list_topics)
 @pass_state
-def get_topics(state, topic):
-    topics = state.cluster.topic_controller.list_topics(search_string=topic, get_topic_objects=False)
+def get_topics(state, prefix):
+    topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
     for topic in topics:
         click.echo(topic.name)
 
