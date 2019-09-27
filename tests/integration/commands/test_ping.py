@@ -8,7 +8,7 @@ from esque.controller.topic_controller import TopicController
 
 @pytest.mark.integration
 def test_smoke_test_ping(cli_runner: CliRunner):
-    result = cli_runner.invoke(ping)
+    result = cli_runner.invoke(ping, ["--verbose"])
 
     assert result.exit_code == 0
 
