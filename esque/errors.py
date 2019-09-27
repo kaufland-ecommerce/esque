@@ -2,6 +2,7 @@ import functools
 from typing import Dict, Type
 
 import confluent_kafka
+import pykafka.exceptions
 from confluent_kafka import KafkaError, Message
 
 
@@ -12,6 +13,10 @@ def raise_for_kafka_exception(func):
             return func(*args, **kwargs)
         except confluent_kafka.KafkaException as ex:
             raise_for_kafka_error(ex.args[0])
+        except pykafka.exceptions.NoBrokersAvailableError:
+            raise ConnectionFailedException
+        except pykafka.exceptions.SocketDisconnectedError:
+            raise ConnectionFailedException
 
     return wrapper
 
@@ -84,6 +89,11 @@ class TopicCreationException(ExceptionWithMessage):
 
 class TopicDoesNotExistException(KafkaException):
     pass
+
+
+class ConnectionFailedException(ExceptionWithMessage):
+    def __init__(self):
+        super().__init__("Could not reach Kafka Brokers")
 
 
 ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {

@@ -3,13 +3,12 @@ from functools import wraps
 from shutil import copyfile
 
 import click
-from click import ClickException, make_pass_decorator, option
-from pykafka.exceptions import NoBrokersAvailableError, SocketDisconnectedError
+from click import make_pass_decorator, option
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException, ExceptionWithMessage
+from esque.errors import ConfigNotExistsException, ExceptionWithMessage, raise_for_kafka_exception
 
 
 class State(object):
@@ -30,14 +29,9 @@ class State(object):
 
     @property
     def cluster(self):
-        try:
-            if not self._cluster:
-                self._cluster = Cluster()
-            return self._cluster
-        except NoBrokersAvailableError:
-            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
-        except SocketDisconnectedError:
-            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
+        if not self._cluster:
+            self._cluster = Cluster()
+        return self._cluster
 
 
 pass_state = make_pass_decorator(State, ensure=True)
@@ -61,6 +55,11 @@ def no_verify_option(f):
 
 
 def error_handler(f):
+    @raise_for_kafka_exception
+    @wraps(f)
+    def raise_kafka_exception_wrapper(*args, **kwargs):
+        f(*args, **kwargs)
+
     @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -70,7 +69,7 @@ def error_handler(f):
             f(*args, **kwargs)
             return
         try:
-            f(*args, **kwargs)
+            raise_kafka_exception_wrapper(*args, **kwargs)
         except ExceptionWithMessage as e:
             click.echo(click.style(e.message, fg="red"))
             sys.exit(1)
