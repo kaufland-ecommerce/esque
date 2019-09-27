@@ -67,7 +67,7 @@ def error_handler(f):
         del kwargs["verbose"]
         if verbose:
             f(*args, **kwargs)
-            return
+            sys.exit(0)
         try:
             raise_kafka_exception_wrapper(*args, **kwargs)
         except ExceptionWithMessage as e:
