@@ -2,9 +2,9 @@ import json
 
 import confluent_kafka
 import pytest
+from confluent_kafka.cimpl import KafkaException
 
 from esque.controller.topic_controller import TopicController
-from esque.errors import KafkaException
 from esque.resources.topic import Topic, TopicDiff
 
 
