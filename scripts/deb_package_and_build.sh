@@ -20,3 +20,5 @@ dpkg-buildpackage -rfakeroot -uc -us
 # the resulting deb package is one directory up, in deb_final
 cd ..
 deb_package=`ls *.deb | head -1`
+mkdir ../../deb_binary
+cp ${deb_package} ../../deb_binary/

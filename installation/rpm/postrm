@@ -1,7 +1,0 @@
-# preinst script for dpkg
-echo "Purging configuration folders for esque"
-if [ -d "${ESQUE_CONF_DIR} "]
-then
-  rm -rf ${ESQUE_CONF_DIR} > /dev/null
-fi
-exit 0

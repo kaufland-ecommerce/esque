@@ -1,9 +1,0 @@
-# preinst script for dpkg
-echo "Creating the configuration folder"
-if [ -d ${ESQUE_CONF_DIR} ]
-then
-	echo "The configuration folder already exists. Reusing existing configurations"
-else
-	mkdir ${ESQUE_CONF_DIR}
-fi
-exit 0
