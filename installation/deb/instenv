@@ -13,3 +13,4 @@ if [ "${SHELL_BASENAME}" == 'zsh' ]
 then
   ENVIRONMENT_FILE="${USER_HOME}/.zshrc"
 fi
+
