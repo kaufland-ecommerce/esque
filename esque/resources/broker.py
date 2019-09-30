@@ -18,6 +18,13 @@ class Broker(KafkaResource):
         return cls(cluster=cluster, broker_id=broker_id)
 
     @classmethod
+    def from_host_and_port(cls, cluster, host: str, port: int) -> "Broker":
+        brokers = cluster.get_metadata().brokers.values()
+        for broker in brokers:
+            if broker.host == host and broker.port == port:
+                return cls(cluster, broker_id=broker.id, host=host, port=port)
+
+    @classmethod
     def from_attributes(cls, cluster, broker_id: int, host: str, port: int) -> "Broker":
         return cls(cluster, broker_id=broker_id, host=host, port=port)
 

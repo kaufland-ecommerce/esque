@@ -256,10 +256,18 @@ def get_offsets(state, topic_name):
 
 
 @describe.command("broker")
-@click.argument("broker-id", required=True)
+@click.argument("broker-id", required=True, type=str)
 @pass_state
-def describe_broker(state, broker_id):
-    broker = Broker.from_id(state.cluster, broker_id).describe()
+def describe_broker(state, broker_id: str):
+    if broker_id.isdigit():
+        broker = Broker.from_id(state.cluster, broker_id).describe()
+    else:
+        try:
+            host, port = broker_id.split(":")
+            broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
+        except ValueError:
+            click.echo("broker-id must either be an integer or in the form 'host:port'")
+            sys.exit(1)
     click.echo(pretty(broker, break_lists=True))
 
 
