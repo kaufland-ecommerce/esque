@@ -6,6 +6,7 @@ import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
+from esque.errors import TopicConfigNotValidException
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
@@ -236,7 +237,9 @@ class Topic(KafkaResource):
 
     def validate(self):
         if not set(self.config).issubset(allowed_configs.keys()):
-            raise Exception()  # TODO
+            raise TopicConfigNotValidException(
+                f"Unknown config key(s): {set(self.config).difference(allowed_configs.keys())}"
+            )
         for key, value in self.config.items():
             self._verify_type(key, value)
 
@@ -255,7 +258,7 @@ class Topic(KafkaResource):
                 return
             except ValueError:
                 pass
-        raise Exception()  # TODO
+        raise TopicConfigNotValidException(f"The following config value is of wrong type: {{{key}: {value}}}")
 
     # object behaviour
     def __lt__(self, other: "Topic"):

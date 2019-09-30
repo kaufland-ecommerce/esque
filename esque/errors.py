@@ -93,6 +93,10 @@ class TopicDoesNotExistException(KafkaException):
     pass
 
 
+class TopicConfigNotValidException(ExceptionWithMessage):
+    pass
+
+
 class ConnectionFailedException(ExceptionWithMessage):
     def __init__(self, pykafka_exception: pykafka.exceptions.KafkaException):
         self.pykafka_exception = pykafka_exception
