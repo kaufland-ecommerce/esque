@@ -80,6 +80,11 @@ def check_described_topic_format(described_topic: dict):
 def check_described_broker_format(described_broker: dict):
     keys = described_broker.keys()
     assert len(keys) == NUMBER_OF_BROKER_OPTIONS
-    config_options = ["advertised.host.name", "advertised.listeners", "advertised.port", "zookeeper.session.timeout.ms"]
+    config_options = [
+        "advertised.host.name",
+        "advertised.listeners",
+        "advertised.port",
+        "zookeeper.session.timeout.ms",
+    ]
     for option in config_options:
         assert option in keys
