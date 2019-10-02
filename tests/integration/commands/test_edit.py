@@ -12,7 +12,7 @@ from esque.controller.topic_controller import TopicController
 
 
 @pytest.mark.integration
-def test_topic_creation_with_template_works(
+def test_edit_topic_works(
     monkeypatch: MonkeyPatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
