@@ -1,5 +1,8 @@
+import sys
+
 import confluent_kafka
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 
 from esque.cli.commands import delete_topic
@@ -17,11 +20,15 @@ def duplicate_topic(num_partitions, topic_factory):
 
 @pytest.mark.integration
 def test_topic_deletion_without_verification_does_not_work(
-    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+    monkeypatch: MonkeyPatch,
+    cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic: str,
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     result = cli_runner.invoke(delete_topic, [topic])
     assert result.exit_code == 0
 
@@ -33,11 +40,15 @@ def test_topic_deletion_without_verification_does_not_work(
 
 @pytest.mark.integration
 def test_topic_deletion_as_argument_works(
-    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+    monkeypatch: MonkeyPatch,
+    cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic: str,
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     result = cli_runner.invoke(delete_topic, [topic], input="y\n")
     assert result.exit_code == 0
 
@@ -85,6 +96,7 @@ def test_topic_deletion_stops_in_non_interactive_mode_without_no_verify(
 
 @pytest.mark.integration
 def test_keep_minus_delete_period(
+    monkeypatch: MonkeyPatch,
     cli_runner: CliRunner,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     basic_topic: str,
@@ -94,6 +106,7 @@ def test_keep_minus_delete_period(
     assert basic_topic[0] in topics
     assert duplicate_topic[0] in topics
 
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     result = cli_runner.invoke(delete_topic, [duplicate_topic[0]], input="y\n")
     assert result.exit_code == 0
 

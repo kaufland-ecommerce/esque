@@ -1,5 +1,8 @@
+import sys
+
 import confluent_kafka
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 
 from esque.cli.commands import create_topic
@@ -9,8 +12,12 @@ from esque.resources.topic import Topic
 
 @pytest.mark.integration
 def test_create_without_confirmation_does_not_create_topic(
-    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+    monkeypatch: MonkeyPatch,
+    cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic_id: str,
 ):
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     result = cli_runner.invoke(create_topic, [topic_id])
     assert result.exit_code == 0
 
@@ -20,12 +27,13 @@ def test_create_without_confirmation_does_not_create_topic(
 
 @pytest.mark.integration
 def test_create_topic_as_argument_with_verification_works(
-    confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
+    monkeypatch: MonkeyPatch, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     result = CliRunner().invoke(create_topic, args=topic_id, input="Y\n")
     assert result.exit_code == 0
     # invalidate cache

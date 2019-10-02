@@ -1,7 +1,10 @@
+import sys
+
 import click
 import confluent_kafka
 import pytest
 import yaml
+from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 
 from esque.cli.commands import edit_topic
@@ -10,7 +13,7 @@ from esque.controller.topic_controller import TopicController
 
 @pytest.mark.integration
 def test_topic_creation_with_template_works(
-    monkeypatch,
+    monkeypatch: MonkeyPatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     topic: str,
@@ -52,6 +55,7 @@ def test_topic_creation_with_template_works(
     def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
 
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
     assert result.exit_code == 0

@@ -20,7 +20,7 @@ def test_smoke_test_get_topics(cli_runner: CliRunner):
 def test_get_topics_with_prefix(
     cli_runner: CliRunner, topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient
 ):
-    topic_base = random.choices(ascii_letters, k=5)
+    topic_base = "".join(random.choices(ascii_letters, k=5))
     prefix_1 = "ab"
     prefix_2 = "fx"
     new_topics = [prefix_1 + topic_base, prefix_2 + topic_base, prefix_1 + prefix_2 + topic_base]
