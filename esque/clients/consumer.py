@@ -49,6 +49,23 @@ class AbstractConsumer(ABC):
         raise_for_message(message)
         return message
 
+    def _assign_exact_partitions(self, topic: str) -> None:
+        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=-11)])
+
+
+# class MessageConsumer(AbstractConsumer):
+#     def __init__(self, group_id: str, topic_name: str, last: bool):
+#         super().__init__(group_id, topic_name, last)
+#         self._assign_exact_partitions(topic_name)
+#
+#     def consume(self) -> Optional[Tuple[str, int]]:
+#         message = self._consume_single_message(timeout=1)
+#         print("MESSAGE")
+#         print(type(message))
+#         msg_sent_at = pendulum.from_timestamp(float(message.value()))
+#         delta_sent = pendulum.now() - msg_sent_at
+#         return message.key(), delta_sent.microseconds / 1000
+
 
 class PingConsumer(AbstractConsumer):
     def __init__(self, group_id: str, topic_name: str, last: bool):
@@ -60,9 +77,6 @@ class PingConsumer(AbstractConsumer):
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
         return message.key(), delta_sent.microseconds / 1000
-
-    def _assign_exact_partitions(self, topic: str) -> None:
-        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
 
 
 class FileConsumer(AbstractConsumer):

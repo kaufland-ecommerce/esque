@@ -21,6 +21,8 @@ from esque.cli.output import (
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
 )
+
+# from esque.clients.consumer import AvroFileConsumer, FileConsumer, MessageConsumer, PingConsumer
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
@@ -232,7 +234,16 @@ def describe_topic(state, topic_name):
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
         config = {"Config": topic.config}
 
+        # print('topic')
+        # pprint(topic.offsets)
+        # consumer = MessageConsumer(PING_GROUP_ID, topic_name, True)
+        # message = consumer.consume()
+        # for partition in topic.partition_data:
+        #     if partition.watermark.high == high_watermarks[0].offset[0]:
+        #         high_watermark_partition_id = partition.partition_id
+
         click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+        click.echo(f"Last message timestamp: {topic.last_message_timestamp}")
 
         for partition in topic.partitions:
             click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))

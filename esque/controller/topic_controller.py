@@ -120,6 +120,25 @@ class TopicController:
 
         topic.is_only_local = False
 
+        topic.last_message_timestamp = None
+
+        # print('TESTING!!')
+        # # loop partitions check latest offset
+        # high_watermark_partition_id = None
+        # print('high_watermarks[0].offset[0]')
+        # print(high_watermarks[0].offset[0])
+        # for partition in topic.partition_data:
+        #     if partition.watermark.high == high_watermarks[0].offset[0]:
+        #         high_watermark_partition_id = partition.partition_id
+
+        # consumer = confluent_topic.partitions.
+        #     print(partition.watermark.high)
+
+        # may offset -1
+        # consume, like pingconsumer
+        # _consumer = confluent_kafka.Consumer(_config) // abstract
+        # _consumer.assign([TopicPartition(topic=topic_object.name, partition=0, offset=0)])
+
         return topic
 
     @raise_for_kafka_exception
