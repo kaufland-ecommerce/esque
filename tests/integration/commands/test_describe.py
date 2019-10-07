@@ -50,6 +50,13 @@ def test_describe_topic_to_json(cli_runner: CliRunner, topic: str):
 
 
 @pytest.mark.integration
+def test_describe_topic_without_topic_name_fails():
+    result = CliRunner().invoke(describe_topic)
+    assert result.exit_code == 1
+    assert "ERROR: Missing argument TOPIC_NAME" in result.output
+
+
+@pytest.mark.integration
 def test_describe_broker_no_flag(cli_runner: CliRunner, broker_id: str):
     result = cli_runner.invoke(describe_broker, broker_id)
     assert result.exit_code == 0
@@ -76,6 +83,13 @@ def test_describe_broker_to_json(cli_runner: CliRunner, broker_id: str):
     check_json_output(output)
     output_dict = json.loads(output)
     check_described_broker(output_dict)
+
+
+@pytest.mark.integration
+def test_describe_broker_without_broker_id_fails():
+    result = CliRunner().invoke(describe_broker)
+    assert result.exit_code == 1
+    assert "ERROR: Missing argument BROKER_ID" in result.output
 
 
 @pytest.mark.integration

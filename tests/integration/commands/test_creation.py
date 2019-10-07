@@ -26,6 +26,13 @@ def test_create_without_confirmation_does_not_create_topic(
 
 
 @pytest.mark.integration
+def test_create_topic_without_topic_name_fails():
+    result = CliRunner().invoke(create_topic)
+    assert result.exit_code == 1
+    assert "ERROR: Missing argument TOPIC_NAME" in result.output
+
+
+@pytest.mark.integration
 def test_create_topic_as_argument_with_verification_works(
     monkeypatch: MonkeyPatch, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):

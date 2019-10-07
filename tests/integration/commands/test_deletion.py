@@ -39,6 +39,13 @@ def test_topic_deletion_without_verification_does_not_work(
 
 
 @pytest.mark.integration
+def test_delete_topic_without_topic_name_fails():
+    result = CliRunner().invoke(delete_topic)
+    assert result.exit_code == 1
+    assert "ERROR: Missing argument TOPIC_NAME" in result.output
+
+
+@pytest.mark.integration
 def test_topic_deletion_as_argument_works(
     monkeypatch: MonkeyPatch,
     cli_runner: CliRunner,

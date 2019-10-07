@@ -62,3 +62,10 @@ def test_edit_topic_works(
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
     assert topic_config_dict == config_dict
+
+
+@pytest.mark.integration
+def test_edit_topic_without_topic_name_fails():
+    result = CliRunner().invoke(edit_topic)
+    assert result.exit_code == 1
+    assert "ERROR: Missing argument TOPIC_NAME" in result.output
