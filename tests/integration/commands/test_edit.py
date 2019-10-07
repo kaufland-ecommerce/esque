@@ -52,7 +52,7 @@ def test_edit_topic_works(
         }
     }
 
-    def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
+    def mock_edit_function(text=None, editor=None, env=None, require_save=None, extension=None, filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
