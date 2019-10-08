@@ -11,7 +11,7 @@ from click import version_option
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state
+from esque.cli.options import State, no_verify_option, pass_state, output_format_option
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -160,7 +160,7 @@ def create_topic(state: State, topic_name: str, like=None):
 
 
 @edit.command("topic")
-@click.argument("topic-name", callback=get_required_argument, required=False)
+@click.argument("topic-name", required=True)
 @pass_state
 def edit_topic(state: State, topic_name: str):
 
@@ -274,13 +274,7 @@ def delete_topic(state: State, topic_name: str):
 @click.argument(
     "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
 )
-@click.option(
-    "-o",
-    "--output-format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    help="Format of the output",
-    required=False,
-)
+@output_format_option
 @pass_state
 def describe_topic(state, topic_name, output_format):
     try:
@@ -314,13 +308,7 @@ def get_offsets(state, topic_name):
 @describe.command("broker")
 @click.argument("broker-id", callback=get_required_argument, required=False)
 @pass_state
-@click.option(
-    "-o",
-    "--output-format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    help="Format of the output",
-    required=False,
-)
+@output_format_option
 def describe_broker(state, broker_id, output_format):
     broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(format_output(broker, output_format))
@@ -330,13 +318,7 @@ def describe_broker(state, broker_id, output_format):
 @click.argument("consumer-id", callback=get_optional_argument, required=False)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
-@click.option(
-    "-o",
-    "--output-format",
-    type=click.Choice(["yaml", "json"], case_sensitive=False),
-    help="Format of the output",
-    required=False,
-)
+@output_format_option
 def describe_consumergroup(state, consumer_id, verbose, output_format):
     try:
         consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)

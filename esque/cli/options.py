@@ -55,3 +55,12 @@ def no_verify_option(f):
         default=False,
         callback=callback,
     )(f)
+
+
+output_format_option = click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)

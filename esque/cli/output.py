@@ -219,11 +219,12 @@ TYPE_MAPPING = {
 }
 
 
-def tuple_representer(dumper, data):
-    return dumper.represent_list(list(data))
+def tuple_representer(dumper, data: Tuple):
+    return dumper.represent_list(list(data))  #TODO: delete line
 
 
-def bytes_representer(dumper, data):
+def bytes_representer(dumper, data: bytes):
+    print(type(dumper))  #TODO: delete line
     return dumper.represent_str(data.decode("UTF-8"))
 
 
