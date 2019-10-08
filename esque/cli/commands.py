@@ -8,6 +8,7 @@ from time import sleep
 import click
 import yaml
 from click import version_option
+import pendulum
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -21,9 +22,7 @@ from esque.cli.output import (
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
 )
-
-# from esque.clients.consumer import AvroFileConsumer, FileConsumer, MessageConsumer, PingConsumer
-from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer, MessageConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
@@ -234,16 +233,22 @@ def describe_topic(state, topic_name):
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
         config = {"Config": topic.config}
 
-        # print('topic')
-        # pprint(topic.offsets)
-        # consumer = MessageConsumer(PING_GROUP_ID, topic_name, True)
-        # message = consumer.consume()
-        # for partition in topic.partition_data:
-        #     if partition.watermark.high == high_watermarks[0].offset[0]:
-        #         high_watermark_partition_id = partition.partition_id
+        high_watermark = 0
+        high_watermark_partition_id = 0
+
+        for partition_id in topic.offsets:
+            if topic.offsets[partition_id].high > high_watermark:
+                high_watermark = topic.offsets[partition_id].high
+                high_watermark_partition_id = partition_id
+
+        consumer = MessageConsumer(
+            PING_GROUP_ID, topic_name, True, starting_offset=high_watermark - 1, partition=high_watermark_partition_id
+        )
+        message = consumer.consume()
+        topic.last_message_timestamp = pendulum.from_timestamp(float(message.timestamp()[1]) / 1000)
 
         click.echo(bold(f"Topic: {green_bold(topic_name)}"))
-        click.echo(f"Last message timestamp: {topic.last_message_timestamp}")
+        click.echo(f"Last message timestamp: {topic.last_message_timestamp.to_datetime_string()}")
 
         for partition in topic.partitions:
             click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))

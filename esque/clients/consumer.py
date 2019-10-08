@@ -15,7 +15,7 @@ from esque.messages.message import FileWriter, PlainTextFileWriter
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool):
+    def __init__(self, group_id: str, topic_name: str, last: bool, **kwargs):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
@@ -49,22 +49,18 @@ class AbstractConsumer(ABC):
         raise_for_message(message)
         return message
 
-    def _assign_exact_partitions(self, topic: str) -> None:
-        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=-11)])
+    def _assign_exact_partitions(self, topic: str, *, offset: int = 0, partition: int = 0) -> None:
+        self._consumer.assign([TopicPartition(topic=topic, partition=partition, offset=offset)])
 
 
-# class MessageConsumer(AbstractConsumer):
-#     def __init__(self, group_id: str, topic_name: str, last: bool):
-#         super().__init__(group_id, topic_name, last)
-#         self._assign_exact_partitions(topic_name)
-#
-#     def consume(self) -> Optional[Tuple[str, int]]:
-#         message = self._consume_single_message(timeout=1)
-#         print("MESSAGE")
-#         print(type(message))
-#         msg_sent_at = pendulum.from_timestamp(float(message.value()))
-#         delta_sent = pendulum.now() - msg_sent_at
-#         return message.key(), delta_sent.microseconds / 1000
+class MessageConsumer(AbstractConsumer):
+    def __init__(self, group_id: str, topic_name: str, last: bool, *, starting_offset=0, partition=0):
+        super().__init__(group_id, topic_name, last)
+        self._assign_exact_partitions(topic_name, offset=starting_offset, partition=partition)
+
+    def consume(self) -> Optional[Tuple[str, int]]:
+        message = self._consume_single_message(timeout=1)
+        return message
 
 
 class PingConsumer(AbstractConsumer):

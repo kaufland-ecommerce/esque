@@ -133,7 +133,6 @@ class Topic(KafkaResource):
         num_partitions: int = None,
         replication_factor: int = None,
         config: Dict[str, str] = None,
-        last_message_timestamp: int = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):
@@ -148,8 +147,6 @@ class Topic(KafkaResource):
 
         self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
-
-        self.last_message_timestamp = last_message_timestamp
 
     # properties
     @property
@@ -186,7 +183,6 @@ class Topic(KafkaResource):
             dict_object.get("num_partitions"),
             dict_object.get("replication_factor"),
             dict_object.get("config"),
-            dict_object.get("last_message_timestamp"),
         )
 
     def as_dict(self, only_editable=False) -> TopicDict:
@@ -196,7 +192,6 @@ class Topic(KafkaResource):
             "num_partitions": self.num_partitions,
             "replication_factor": self.replication_factor,
             "config": self.config,
-            "last_message_timestamp": self.last_message_timestamp,
         }
 
     def to_yaml(self, only_editable=False) -> str:
