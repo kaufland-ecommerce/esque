@@ -3,12 +3,12 @@ from enum import Enum
 from itertools import islice
 from typing import List, TYPE_CHECKING, Union
 
-from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
+from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
 from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_exception
+from esque.errors import raise_for_kafka_exception, raise_for_kafka_error
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
@@ -32,20 +32,27 @@ class TopicController:
     @raise_for_kafka_exception
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
+        # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
+        topic_metadata: TopicMetadata = confluent_topics[topic_name]
+        raise_for_kafka_error(topic_metadata.error)
         if client_type == ClientTypes.Confluent:
             return confluent_topics[topic_name]
         elif client_type == ClientTypes.PyKafka:
             # at least PyKafka does it's own caching, so we don't have to bother
             pykafka_topics = self.cluster.pykafka_client.cluster.topics
-            # PyKafka will try to auto-create the topic if you use `topic[random_name]`
-            if topic_name not in confluent_topics.keys():
-                raise KeyError(f"Topic {topic_name} does not exist")
             return pykafka_topics[topic_name]
         else:
             raise ValueError(f"TopicType needs to be part of {ClientTypes}")
 
     @raise_for_kafka_exception
-    def list_topics(self, *, search_string: str = None, sort: bool = True, hide_internal: bool = True) -> List[Topic]:
+    def list_topics(
+        self,
+        *,
+        search_string: str = None,
+        sort: bool = True,
+        hide_internal: bool = True,
+        get_topic_objects: bool = True,
+    ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
         topic_results = self.cluster.confluent_client.list_topics().topics.values()
         topic_names = [t.topic for t in topic_results]
@@ -56,7 +63,10 @@ class TopicController:
         if sort:
             topic_names = sorted(topic_names)
 
-        topics = list(map(self.get_cluster_topic, topic_names))
+        if get_topic_objects:
+            topics = list(map(self.get_cluster_topic, topic_names))
+        else:
+            topics = list(map(self.get_local_topic, topic_names))
         return topics
 
     @raise_for_kafka_exception
@@ -93,13 +103,15 @@ class TopicController:
         """Convenience function getting an existing topic based on topic_name"""
         return self.update_from_cluster(Topic(topic_name))
 
+    def get_local_topic(self, topic_name: str) -> Topic:
+        return Topic(topic_name)
+
     @raise_for_kafka_exception
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
         pykafka_topic: PyKafkaTopic = self._get_client_topic(topic.name, ClientTypes.PyKafka)
-
         low_watermarks = pykafka_topic.earliest_available_offsets()
         high_watermarks = pykafka_topic.latest_available_offsets()
 
