@@ -6,7 +6,8 @@ from typing import Any, Dict, List, MutableMapping, Tuple
 import click
 import pendulum
 import yaml
-from yaml import SafeDumper
+from yaml import SafeDumper, ScalarNode, SequenceNode
+from yaml.representer import SafeRepresenter
 
 from esque.resources.topic import Topic, TopicDiff
 
@@ -219,12 +220,11 @@ TYPE_MAPPING = {
 }
 
 
-def tuple_representer(dumper, data: Tuple):
-    return dumper.represent_list(list(data))  #TODO: delete line
+def tuple_representer(dumper: SafeRepresenter, data: Tuple) -> SequenceNode:
+    return dumper.represent_list(list(data))
 
 
-def bytes_representer(dumper, data: bytes):
-    print(type(dumper))  #TODO: delete line
+def bytes_representer(dumper: SafeRepresenter, data: bytes) -> ScalarNode:
     return dumper.represent_str(data.decode("UTF-8"))
 
 
