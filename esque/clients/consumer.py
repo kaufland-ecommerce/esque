@@ -1,7 +1,6 @@
 import pathlib
 from abc import ABC, abstractmethod
 from contextlib import ExitStack
-from datetime import datetime
 from typing import Optional, Tuple
 
 import confluent_kafka
@@ -60,7 +59,6 @@ class AbstractConsumer(ABC):
             return True
 
 
-
 class PingConsumer(AbstractConsumer):
     def consume(self, amount: int) -> Optional[Tuple[str, int]]:
         message = self._consume_single_message()
@@ -71,7 +69,6 @@ class PingConsumer(AbstractConsumer):
 
 
 class FileConsumer(AbstractConsumer):
-
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, last)
         self.working_dir = working_dir

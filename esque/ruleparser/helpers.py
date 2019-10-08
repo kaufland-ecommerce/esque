@@ -71,48 +71,6 @@ def to_boolean(input_string: str):
         return None
 
 
-def to_date_time(input_string: str):
-    """This method will try to convert the string into a datetime object even if it is shorter than necessary.
-        If the string is missing the time portion, it will be set to 00:00:00. Likewise, if it missing the seconds value (:00), it will be set to 0.
-        The full format of the date time string is YYYY-MM-DDTHH:MM:SS, but the function tolerates values with less than the required number of digits.
-    """
-    try:
-        main_segments = input_string.split(sep="T")
-        result = datetime.datetime.now()
-        if len(main_segments) == 0:
-            return None
-        else:
-            date_segments = main_segments[0].split("-")
-            if len(date_segments) < 3:
-                return None
-            else:
-                year = int(date_segments[0])
-                if year < 100:
-                    result = result.replace(year=year + 2000)
-                else:
-                    result = result.replace(year=year)
-                result = result.replace(month=int(date_segments[1]), day=int(date_segments[2]))
-            if len(main_segments) == 2:
-                try:
-                    time_segments = main_segments[1].split(":")
-                    result = result.replace(hour=int(time_segments[0]))
-                    if len(time_segments) > 1:
-                        result = result.replace(minute=int(time_segments[1]))
-                    else:
-                        result = result.replace(minute=0)
-                    if len(time_segments) > 2:
-                        result = result.replace(second=int(time_segments[2]))
-                    else:
-                        result = result.replace(second=0)
-                except ValueError:
-                    return None
-            else:
-                result = result.replace(hour=0, minute=0, second=0)
-    except:
-        raise ValueError("Datetime string is malformed.")
-    return result
-
-
 def string_like(haystack: str, needle: str):
     if needle.startswith("%") and needle.endswith("%"):
         return haystack.find(needle.replace("%", "")) != -1

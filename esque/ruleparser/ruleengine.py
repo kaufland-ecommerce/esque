@@ -53,7 +53,7 @@ class RuleTree:
                             self.__postfix_expression.append(operator_stack.pop())
                         operator_stack.pop()
                         parenthesis_balance_counter = parenthesis_balance_counter - 1
-                    except:
+                    except IndexError:
                         raise ExpressionSyntaxError("Malformed parentheses in pattern")
             elif isinstance(element, Operator):
                 operator: Operator = element
