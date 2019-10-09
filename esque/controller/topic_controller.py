@@ -8,7 +8,7 @@ from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.clients.consumer import MessageConsumer
-from esque.config import Config
+from esque.config import Config, PING_GROUP_ID
 from esque.errors import raise_for_kafka_exception, raise_for_kafka_error
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
@@ -128,9 +128,8 @@ class TopicController:
 
     def _get_last_message(self, local_topic: Topic) -> Optional[Tuple[str, int]]:
         high_watermark = local_topic.max_offset()["offset"] - 1
-        # TODO: change group
         consumer = MessageConsumer(
-            "schema-registry",
+            PING_GROUP_ID,
             local_topic.name,
             True,
             starting_offset=high_watermark,
