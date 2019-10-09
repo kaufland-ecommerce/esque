@@ -94,7 +94,11 @@ class TopicDoesNotExistException(KafkaException):
 
 
 class TopicConfigNotValidException(ExceptionWithMessage):
-    pass
+    def __init__(self, message):
+        self.message = message
+
+    def describe(self) -> str:
+        return self.message
 
 
 class ConnectionFailedException(ExceptionWithMessage):

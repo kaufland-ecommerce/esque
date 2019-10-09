@@ -272,6 +272,7 @@ class Topic(KafkaResource):
     def _verify_type(key, value):
         required_type = allowed_configs[key]
         if type(required_type) is list:
+            # for enums
             if value in required_type:
                 return
         else:

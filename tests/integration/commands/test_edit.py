@@ -81,7 +81,7 @@ def test_topic_creation_with_unknown_key_fails(
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
-    assert type(result.exception) is TopicConfigNotValidException
+    assert isinstance(result.exception, TopicConfigNotValidException)
 
 
 @pytest.mark.integration
@@ -104,4 +104,4 @@ def test_topic_creation_with_malformed_key_fails(
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
-    assert type(result.exception) is TopicConfigNotValidException
+    assert isinstance(result.exception, TopicConfigNotValidException)
