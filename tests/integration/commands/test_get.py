@@ -11,6 +11,13 @@ from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
+def test_smoke_test_get_topics_interactive(interactive_cli_runner: CliRunner):  # TODO: delete whole test
+    result = interactive_cli_runner.invoke(get_topics)
+    print(result.output)  # TODO: delete
+    assert result.exit_code == 0
+
+
+@pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(get_topics)
     print(result.output)  # TODO: delete
