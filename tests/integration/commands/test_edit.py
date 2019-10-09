@@ -56,29 +56,27 @@ def test_topic_creation_with_template_works(
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
+
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
     assert topic_config_dict == config_dict
 
 
 @pytest.mark.integration
 def test_topic_creation_with_unknown_key_fails(
-        monkeypatch,
-        topic_controller: TopicController,
-        confluent_admin_client: confluent_kafka.admin.AdminClient,
-        topic: str,
+    monkeypatch,
+    topic_controller: TopicController,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic: str,
 ):
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    config_dict = {
-        "config": {
-            "foo.bar.baz": "true"
-        }
-    }
+    config_dict = {"config": {"foo.bar.baz": "true"}}
 
     def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
+
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
@@ -88,23 +86,20 @@ def test_topic_creation_with_unknown_key_fails(
 
 @pytest.mark.integration
 def test_topic_creation_with_malformed_key_fails(
-        monkeypatch,
-        topic_controller: TopicController,
-        confluent_admin_client: confluent_kafka.admin.AdminClient,
-        topic: str,
+    monkeypatch,
+    topic_controller: TopicController,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic: str,
 ):
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    config_dict = {
-        "config": {
-            "cleanup.policy": "foo_bar_baz"
-        }
-    }
+    config_dict = {"config": {"cleanup.policy": "foo_bar_baz"}}
 
     def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
+
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
