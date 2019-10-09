@@ -1,11 +1,14 @@
 import json
-from typing import Union
+from typing import Union, Callable
 
 import pytest
 import yaml
 from click.testing import CliRunner
 
 from esque.cli.commands import describe_topic, describe_broker
+from tests.conftest import check_and_load_yaml
+
+FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
     "advertised.host.name",
@@ -21,109 +24,77 @@ VARIOUS_IMPORTANT_BROKER_OPTIONS = [
 
 
 @pytest.mark.integration
-def test_describe_topic_no_flag(cli_runner: CliRunner, topic: str):
-    result = cli_runner.invoke(describe_topic, topic)
+def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: str):
+    result = non_interactive_cli_runner.invoke(describe_topic, topic)
     assert result.exit_code == 0
     output = result.output
-    check_no_flag_output(output)
     check_described_topic(output)
 
 
 @pytest.mark.integration
-def test_describe_topic_to_yaml(cli_runner: CliRunner, topic: str):
-    result = cli_runner.invoke(describe_topic, [topic, "-o", "yaml"])
+@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+def test_describe_topic_formatted_output(
+    non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "-o", output_format])
     assert result.exit_code == 0
-    output = result.output
-    check_yaml_output(output)
-    output_dict = yaml.safe_load(output)
+    output_dict = loader(result.output)
     check_described_topic(output_dict)
 
 
 @pytest.mark.integration
-def test_describe_topic_to_json(cli_runner: CliRunner, topic: str):
-    result = cli_runner.invoke(describe_topic, [topic, "-o", "json"])
+@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+def test_describe_topic_from_stdin(
+    non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], topic)
     assert result.exit_code == 0
-    output = result.output
-    check_json_output(output)
-    output_dict = json.loads(output)
+    output_dict = loader(result.output)
     check_described_topic(output_dict)
 
 
 @pytest.mark.integration
-def test_describe_topic_without_topic_name_fails():
-    result = CliRunner().invoke(describe_topic)
+def test_describe_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(describe_topic)
     assert result.exit_code == 1
     assert "ERROR: Missing argument TOPIC_NAME" in result.output
 
 
 @pytest.mark.integration
-def test_describe_broker_no_flag(cli_runner: CliRunner, broker_id: str):
-    result = cli_runner.invoke(describe_broker, broker_id)
+def test_describe_broker_no_flag(non_interactive_cli_runner: CliRunner, broker_id: str):
+    result = non_interactive_cli_runner.invoke(describe_broker, broker_id)
     assert result.exit_code == 0
     output = result.output
-    check_no_flag_output(output)
     check_described_broker(output)
 
 
 @pytest.mark.integration
-def test_describe_broker_to_yaml(cli_runner: CliRunner, broker_id: str):
-    result = cli_runner.invoke(describe_broker, [broker_id, "-o", "yaml"])
+@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+def test_describe_broker_formatted_output(
+    non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_broker, [broker_id, "-o", output_format])
     assert result.exit_code == 0
-    output = result.output
-    check_yaml_output(output)
-    output_dict = yaml.safe_load(output)
+    output_dict = loader(result.output)
     check_described_broker(output_dict)
 
 
 @pytest.mark.integration
-def test_describe_broker_to_json(cli_runner: CliRunner, broker_id: str):
-    result = cli_runner.invoke(describe_broker, [broker_id, "-o", "json"])
-    assert result.exit_code == 0
-    output = result.output
-    check_json_output(output)
-    output_dict = json.loads(output)
-    check_described_broker(output_dict)
-
-
-@pytest.mark.integration
-def test_describe_broker_without_broker_id_fails():
-    result = CliRunner().invoke(describe_broker)
+def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(describe_broker)
     assert result.exit_code == 1
     assert "ERROR: Missing argument BROKER_ID" in result.output
 
 
 @pytest.mark.integration
-def test_describe_topic_from_stdin(cli_runner: CliRunner, topic: str):
-    result = cli_runner.invoke(describe_topic, ["-o", "yaml"], topic)
+@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+def test_describe_broker_from_stdin(
+    non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_broker, ["-o", output_format], broker_id)
     assert result.exit_code == 0
-    output = result.output
-    check_yaml_output(output)
-    output_dict = yaml.safe_load(output)
-    check_described_topic(output_dict)
-
-
-@pytest.mark.integration
-def test_describe_broker_from_stdin(cli_runner: CliRunner, broker_id: str):
-    result = cli_runner.invoke(describe_broker, ["-o", "json"], broker_id)
-    output = result.output
-    check_json_output(output)
-    output_dict = json.loads(output)
+    output_dict = loader(result.output)
     check_described_broker(output_dict)
-
-
-def check_no_flag_output(output: str):
-    assert output[0] != "{", "Non json output starts with '{'"
-    assert output[-2] != "}" and output[-1] != "}", "Non json output ends with '}'"
-
-
-def check_yaml_output(output: str):
-    assert output[0] != "{", "Non json output starts with '{'"
-    assert output[-2] != "}" and output[-1] != "}", "Non json output ends with '}'"
-
-
-def check_json_output(output: str):
-    assert output[0] == "{", "json output doesn't start with '{'"
-    assert output[-2:] == "}\n", "json output doesn't end with '}\\n'"
 
 
 def check_described_topic(described_topic: Union[str, dict]):

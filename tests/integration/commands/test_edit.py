@@ -1,5 +1,3 @@
-import sys
-
 import click
 import confluent_kafka
 import pytest
@@ -13,6 +11,7 @@ from esque.controller.topic_controller import TopicController
 
 @pytest.mark.integration
 def test_edit_topic_works(
+    interactive_cli_runner: CliRunner,
     monkeypatch: MonkeyPatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
@@ -55,9 +54,8 @@ def test_edit_topic_works(
     def mock_edit_function(text=None, editor=None, env=None, require_save=None, extension=None, filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
 
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
@@ -65,7 +63,7 @@ def test_edit_topic_works(
 
 
 @pytest.mark.integration
-def test_edit_topic_without_topic_name_fails():
-    result = CliRunner().invoke(edit_topic)
+def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(edit_topic)
     assert result.exit_code != 0
     assert 'Error: Missing argument "TOPIC_NAME"' in result.output

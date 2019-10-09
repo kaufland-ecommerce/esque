@@ -1,4 +1,5 @@
 import random
+import sys
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
@@ -6,6 +7,7 @@ from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
+import yaml
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -42,7 +44,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def cli_runner():
+def interactive_cli_runner(monkeypatch):
+    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
+    yield CliRunner()
+
+
+@pytest.fixture()
+def non_interactive_cli_runner(monkeypatch):
     yield CliRunner()
 
 
@@ -224,3 +232,9 @@ def cluster(test_config):
 @pytest.fixture()
 def state(test_config):
     yield State()
+
+
+def check_and_load_yaml(output: str) -> dict:
+    assert output[0] != "{", "non json output starts with '{'"
+    assert output[-2] != "}" and output[-1] != "}", "non json output ends with '}'"
+    return yaml.safe_load(output)

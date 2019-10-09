@@ -11,14 +11,16 @@ from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
-def test_smoke_test_get_topics(cli_runner: CliRunner):
-    result = cli_runner.invoke(get_topics)
+def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(get_topics)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 def test_get_topics_with_prefix(
-    cli_runner: CliRunner, topic_controller: TopicController, confluent_admin_client: confluent_kafka.admin.AdminClient
+    non_interactive_cli_runner: CliRunner,
+    topic_controller: TopicController,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
 ):
     topic_base = "".join(random.choices(ascii_letters, k=5))
     prefix_1 = "ab"
@@ -28,7 +30,7 @@ def test_get_topics_with_prefix(
         topic_controller.create_topics([Topic(new_topic, replication_factor=1)])
     confluent_admin_client.poll(timeout=1)
 
-    result = cli_runner.invoke(get_topics, [prefix_1])
+    result = non_interactive_cli_runner.invoke(get_topics, [prefix_1])
 
     assert result.exit_code == 0
     retrieved_topics = result.output.split("\n")
@@ -39,12 +41,12 @@ def test_get_topics_with_prefix(
 
 
 @pytest.mark.integration
-def test_smoke_test_get_consumergroups(cli_runner: CliRunner):
-    result = cli_runner.invoke(get_consumergroups)
+def test_smoke_test_get_consumergroups(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(get_consumergroups)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
-def test_smoke_test_get_brokers(cli_runner: CliRunner):
-    result = cli_runner.invoke(get_brokers)
+def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(get_brokers)
     assert result.exit_code == 0

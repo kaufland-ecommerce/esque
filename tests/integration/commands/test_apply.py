@@ -1,9 +1,7 @@
-import sys
 from typing import Any, Dict
 
 import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from esque.resources.topic import Topic
 from esque.controller.topic_controller import TopicController
@@ -13,7 +11,7 @@ from esque.errors import KafkaException
 
 
 @pytest.mark.integration
-def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller: TopicController, topic_id: str):
+def test_apply(interactive_cli_runner: CliRunner, topic_controller: TopicController, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name + "_1",
@@ -31,8 +29,7 @@ def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller
 
     # 1: topic creation
     path = save_yaml(topic_id, apply_conf)
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -41,7 +38,7 @@ def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
 
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -50,13 +47,13 @@ def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller
     apply_conf["topics"].append(topic_2)
     topic_1["config"]["cleanup.policy"] = "compact"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
 
     # 4: no changes
-    result = cli_runner.invoke(apply, ["-f", path])
+    result = interactive_cli_runner.invoke(apply, ["-f", path])
     assert (
         result.exit_code == 0 and "No changes detected, aborting" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -65,7 +62,7 @@ def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller
     topic_1["num_partitions"] = 3
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "to `replication_factor` and `num_partitions`" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -82,7 +79,7 @@ def test_apply(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_controller
 
 
 @pytest.mark.integration
-def test_apply_duplicate_names(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_id: str):
+def test_apply_duplicate_names(interactive_cli_runner: CliRunner, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name,
@@ -94,13 +91,12 @@ def test_apply_duplicate_names(monkeypatch: MonkeyPatch, cli_runner: CliRunner, 
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, ValueError), f"Calling apply should have failed"
 
 
 @pytest.mark.integration
-def test_apply_invalid_replicas(monkeypatch: MonkeyPatch, cli_runner: CliRunner, topic_id: str):
+def test_apply_invalid_replicas(interactive_cli_runner: CliRunner, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name,
@@ -112,8 +108,7 @@ def test_apply_invalid_replicas(monkeypatch: MonkeyPatch, cli_runner: CliRunner,
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert result.exit_code != 0 and isinstance(result.exception, KafkaException), f"Calling apply should have failed"
 
 

@@ -1,8 +1,5 @@
-import sys
-
 import confluent_kafka
 import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 
 from esque.cli.commands import delete_topic
@@ -20,16 +17,12 @@ def duplicate_topic(num_partitions, topic_factory):
 
 @pytest.mark.integration
 def test_topic_deletion_without_verification_does_not_work(
-    monkeypatch: MonkeyPatch,
-    cli_runner: CliRunner,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic: str,
+    interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(delete_topic, [topic])
+    result = interactive_cli_runner.invoke(delete_topic, [topic])
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -39,24 +32,20 @@ def test_topic_deletion_without_verification_does_not_work(
 
 
 @pytest.mark.integration
-def test_delete_topic_without_topic_name_fails():
-    result = CliRunner().invoke(delete_topic)
+def test_delete_topic_without_topic_name_fails(interactive_cli_runner: CliRunner):
+    result = interactive_cli_runner.invoke(delete_topic)
     assert result.exit_code == 1
     assert "ERROR: Missing argument TOPIC_NAME" in result.output
 
 
 @pytest.mark.integration
 def test_topic_deletion_as_argument_works(
-    monkeypatch: MonkeyPatch,
-    cli_runner: CliRunner,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic: str,
+    interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(delete_topic, [topic], input="y\n")
+    result = interactive_cli_runner.invoke(delete_topic, [topic], input="y\n")
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -67,12 +56,12 @@ def test_topic_deletion_as_argument_works(
 
 @pytest.mark.integration
 def test_topic_deletion_as_stdin_works(
-    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = cli_runner.invoke(delete_topic, "--no-verify", input=topic)
+    result = non_interactive_cli_runner.invoke(delete_topic, "--no-verify", input=topic)
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -83,12 +72,12 @@ def test_topic_deletion_as_stdin_works(
 
 @pytest.mark.integration
 def test_topic_deletion_stops_in_non_interactive_mode_without_no_verify(
-    cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = cli_runner.invoke(delete_topic, input=topic)
+    result = non_interactive_cli_runner.invoke(delete_topic, input=topic)
     assert (
         "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
         in result.output
@@ -103,8 +92,7 @@ def test_topic_deletion_stops_in_non_interactive_mode_without_no_verify(
 
 @pytest.mark.integration
 def test_keep_minus_delete_period(
-    monkeypatch: MonkeyPatch,
-    cli_runner: CliRunner,
+    interactive_cli_runner: CliRunner,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     basic_topic: str,
     duplicate_topic: str,
@@ -113,8 +101,7 @@ def test_keep_minus_delete_period(
     assert basic_topic[0] in topics
     assert duplicate_topic[0] in topics
 
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
-    result = cli_runner.invoke(delete_topic, [duplicate_topic[0]], input="y\n")
+    result = interactive_cli_runner.invoke(delete_topic, [duplicate_topic[0]], input="y\n")
     assert result.exit_code == 0
 
     # Invalidate cache
