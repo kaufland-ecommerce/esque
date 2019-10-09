@@ -13,6 +13,7 @@ from esque.resources.topic import Topic
 @pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(get_topics)
+    print(result.output)  # TODO: delete
     assert result.exit_code == 0
 
 
@@ -43,10 +44,12 @@ def test_get_topics_with_prefix(
 @pytest.mark.integration
 def test_smoke_test_get_consumergroups(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(get_consumergroups)
+    print(result.output)  # TODO: delete
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(get_brokers)
+    print(result.output)  # TODO: delete
     assert result.exit_code == 0
