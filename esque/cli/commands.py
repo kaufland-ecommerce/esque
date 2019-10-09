@@ -22,7 +22,7 @@ from esque.cli.output import (
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
 )
-from esque.clients.consumer import AvroFileConsumer, FileConsumer, MessageConsumer, PingConsumer
+from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
@@ -233,22 +233,10 @@ def describe_topic(state, topic_name):
         topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
         config = {"Config": topic.config}
 
-        high_watermark = 0
-        high_watermark_partition_id = 0
-
-        for partition_id in topic.offsets:
-            if topic.offsets[partition_id].high > high_watermark:
-                high_watermark = topic.offsets[partition_id].high
-                high_watermark_partition_id = partition_id
-
-        consumer = MessageConsumer(
-            PING_GROUP_ID, topic_name, True, starting_offset=high_watermark - 1, partition=high_watermark_partition_id
-        )
-        message = consumer.consume()
-        topic.last_message_timestamp = pendulum.from_timestamp(float(message.timestamp()[1]) / 1000)
+        last_message_timestamp = pendulum.from_timestamp(float(topic.last_message_timestamp) / 1000)
 
         click.echo(bold(f"Topic: {green_bold(topic_name)}"))
-        click.echo(f"Last message timestamp: {topic.last_message_timestamp.to_datetime_string()}")
+        click.echo(f"Last message timestamp: {last_message_timestamp.to_datetime_string()}")
 
         for partition in topic.partitions:
             click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
@@ -324,6 +312,7 @@ def get_topics(state, topic):
 @click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
 @click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
+@click.option("-m", "--match", help="Match expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
@@ -336,7 +325,15 @@ def get_topics(state, topic):
 )
 @pass_state
 def transfer(
-    state: State, topic: str, from_context: str, to_context: str, numbers: int, last: bool, avro: bool, keep_file: bool
+    state: State,
+    topic: str,
+    from_context: str,
+    to_context: str,
+    numbers: int,
+    match: str,
+    last: bool,
+    avro: bool,
+    keep_file: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -346,7 +343,9 @@ def transfer(
     state.config.context_switch(from_context)
 
     with HandleFileOnFinished(base_dir, keep_file) as working_dir:
-        number_consumed_messages = _consume_to_files(working_dir, topic, group_id, from_context, numbers, avro, last)
+        number_consumed_messages = _consume_to_files(
+            working_dir, topic, group_id, from_context, numbers, avro, match, last
+        )
 
         if number_consumed_messages == 0:
             click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
@@ -396,14 +395,21 @@ def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, 
 
 
 def _consume_to_files(
-    working_dir: pathlib.Path, topic: str, group_id: str, from_context: str, numbers: int, avro: bool, last: bool
+    working_dir: pathlib.Path,
+    topic: str,
+    group_id: str,
+    from_context: str,
+    numbers: int,
+    avro: bool,
+    match: str,
+    last: bool,
 ) -> int:
     if avro:
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
     else:
         consumer = FileConsumer(group_id, topic, working_dir, last)
     click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
-    number_consumed_messages = consumer.consume(int(numbers))
+    number_consumed_messages = consumer.consume(int(numbers), match=match)
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 
     return number_consumed_messages

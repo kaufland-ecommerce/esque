@@ -1,12 +1,13 @@
 import re
 from enum import Enum
 from itertools import islice
-from typing import List, TYPE_CHECKING, Union
+from typing import List, Optional, Tuple, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
 from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
+from esque.clients.consumer import MessageConsumer
 from esque.config import Config
 from esque.errors import raise_for_kafka_exception, raise_for_kafka_error
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
@@ -120,7 +121,24 @@ class TopicController:
 
         topic.is_only_local = False
 
+        message = self._get_last_message(topic)
+        topic.last_message_timestamp = message.timestamp()[1]
+
         return topic
+
+    def _get_last_message(self, local_topic: Topic) -> Optional[Tuple[str, int]]:
+        high_watermark = local_topic.max_offset()["offset"] - 1
+        # TODO: change group
+        consumer = MessageConsumer(
+            "schema-registry",
+            local_topic.name,
+            True,
+            starting_offset=high_watermark,
+            partition=local_topic.max_offset()["partition_id"],
+        )
+        message = consumer.consume()
+
+        return message
 
     @raise_for_kafka_exception
     def _get_partition_data(

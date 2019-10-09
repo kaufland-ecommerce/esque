@@ -12,13 +12,16 @@ from esque.config import Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
+from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool, **kwargs):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None, **kwargs):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
+        if match is not None:
+            self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
         self._config.update(
@@ -48,6 +51,12 @@ class AbstractConsumer(ABC):
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
+
+    def consumed_message_matches(self, message: Message):
+        if self.rule_tree is not None:
+            return self.rule_tree.evaluate(message)
+        else:
+            return True
 
     def _assign_exact_partitions(self, topic: str, *, offset: int = 0, partition: int = 0) -> None:
         self._consumer.assign([TopicPartition(topic=topic, partition=partition, offset=offset)])
@@ -90,6 +99,7 @@ class FileConsumer(AbstractConsumer):
     def consume(self, amount: int) -> int:
         counter = 0
         file_writers = {}
+
         with ExitStack() as stack:
             while counter < amount:
                 try:
