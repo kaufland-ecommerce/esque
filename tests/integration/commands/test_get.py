@@ -5,15 +5,17 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import get_topics, get_consumergroups, get_brokers
+from esque.cli.commands import get_topics, get_consumergroups, get_brokers, ctx
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
 def test_smoke_test_get_topics_interactive(interactive_cli_runner: CliRunner):  # TODO: delete whole test
-    result = interactive_cli_runner.invoke(get_topics)
+    result = interactive_cli_runner.invoke(get_topics, input="n\nn\n")
     print(result.output)  # TODO: delete
+    result2 = interactive_cli_runner.invoke(ctx, input="n\nn\n")
+    print(result2.output)
     assert result.exit_code == 1
 
 
