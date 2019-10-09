@@ -1,5 +1,6 @@
 import pathlib
 import shutil
+import sys
 
 import click
 
@@ -7,6 +8,13 @@ import click
 def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
     if no_verify:
         return True
+
+    if not sys.__stdin__.isatty():
+        click.echo(
+            "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
+        )
+        sys.exit(1)
+
     return click.confirm(question)
 
 

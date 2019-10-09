@@ -128,23 +128,12 @@ def get_optional_argument(ctx, param, value):
     return value
 
 
-def check_if_confirmation_possible(state: State):
-    if not sys.__stdin__.isatty() and not state.no_verify:
-        click.echo(
-            "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
-        )
-        sys.exit(1)
-
-
 @create.command("topic")
 @click.argument("topic-name", callback=get_required_argument, required=False)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
-
-    check_if_confirmation_possible(state)
-
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
@@ -192,7 +181,6 @@ def edit_topic(state: State, topic_name: str):
 @no_verify_option
 @pass_state
 def apply(state: State, file: str):
-    check_if_confirmation_possible(state)
     # Get topic data based on the YAML
     yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
@@ -262,7 +250,6 @@ def apply(state: State, file: str):
 @no_verify_option
 @pass_state
 def delete_topic(state: State, topic_name: str):
-    check_if_confirmation_possible(state)
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))

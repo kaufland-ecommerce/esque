@@ -8,13 +8,7 @@ from tests.conftest import check_and_load_yaml
 
 FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
 
-TUPLE_BYTES_DICT = {
-    "list": [1, 2, "3"],
-    "string": "string",
-    "int": 4,
-    "tuple": ("a", "b"),
-    "bytes": str(4).encode(),
-}
+TUPLE_BYTES_DICT = {"list": [1, 2, "3"], "string": "string", "int": 4, "tuple": ("a", "b"), "bytes": str(4).encode()}
 
 
 def test_format_output_default():
