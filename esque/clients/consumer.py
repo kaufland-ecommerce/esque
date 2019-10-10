@@ -13,7 +13,7 @@ from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
 
-# from esque.ruleparser.ruleengine import RuleTree
+from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
@@ -21,8 +21,8 @@ class AbstractConsumer(ABC):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
-        # if match is not None:
-        # self.rule_tree = RuleTree(match)
+        if match is not None:
+            self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
         self._config.update(
