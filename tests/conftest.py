@@ -50,7 +50,7 @@ def interactive_cli_runner(monkeypatch):
 
 
 @pytest.fixture()
-def non_interactive_cli_runner(monkeypatch):
+def non_interactive_cli_runner(test_config, monkeypatch):
     monkeypatch.setattr(sys.__stdin__, "isatty", lambda: False)
     yield CliRunner()
 
