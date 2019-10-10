@@ -3,7 +3,7 @@ from typing import List, Dict
 import pykafka
 
 from esque.cluster import Cluster
-from esque.errors import raise_for_kafka_exception
+from esque.errors import translate_third_party_exceptions
 from esque.resources.consumergroup import ConsumerGroup
 
 
@@ -11,11 +11,11 @@ class ConsumerGroupController:
     def __init__(self, cluster: Cluster):
         self.cluster = cluster
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def get_consumergroup(self, consumer_id) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def list_consumer_groups(self) -> List[str]:
         brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers
         return list(

@@ -6,7 +6,7 @@ import pykafka.exceptions
 from confluent_kafka import KafkaError, Message
 
 
-def raise_for_kafka_exception(func):
+def translate_third_party_exceptions(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
