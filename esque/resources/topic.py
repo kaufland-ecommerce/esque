@@ -3,6 +3,7 @@ from functools import total_ordering
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
+import yamale
 from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
@@ -14,59 +15,6 @@ PartitionInfo = Dict[int, OffsetPartitionResponse]
 Watermark = namedtuple("Watermark", ["high", "low"])
 
 # kafka 2.3 - value of dict is either enum or type
-allowed_configs = {
-    "cleanup.policy": ["compact", "delete"],
-    "compression.type": ["uncompressed", "zstd", "lz4", "snappy", "gzip", "producer"],
-    "delete.retention.ms": int,
-    "file.delete.delay.ms": int,
-    "flush.messages": int,
-    "flush.ms": int,
-    "follower.replication.throttled.replicas": list,
-    "index.interval.bytes": int,
-    "leader.replication.throttled.replicas": list,
-    "max.compaction.lag.ms": int,
-    "max.message.bytes": int,
-    "message.format.version": [
-        "0.8.0",
-        "0.8.1",
-        "0.8.2",
-        "0.9.0",
-        "0.10.0-IV0",
-        "0.10.0-IV1",
-        "0.10.1-IV0",
-        "0.10.1-IV1",
-        "0.10.1-IV2",
-        "0.10.2-IV0",
-        "0.11.0-IV0",
-        "0.11.0-IV1",
-        "0.11.0-IV2",
-        "1.0-IV0",
-        "1.1-IV0",
-        "2.0-IV0",
-        "2.0-IV1",
-        "2.1-IV0",
-        "2.1-IV1",
-        "2.1-IV2",
-        "2.2-IV0",
-        "2.2-IV1",
-        "2.3-IV0",
-        "2.3-IV1",
-    ],
-    "message.timestamp.difference.max.ms": int,
-    "message.timestamp.type": ["CreateTime", "LogAppendTime"],
-    "min.cleanable.dirty.ratio": float,
-    "min.compaction.lag.ms": int,
-    "min.insync.replicas": int,
-    "preallocate": bool,
-    "retention.bytes": int,
-    "retention.ms": int,
-    "segment.bytes": int,
-    "segment.index.bytes": int,
-    "segment.jitter.ms": int,
-    "segment.ms": int,
-    "unclean.leader.election.enable": bool,
-    "message.downconversion.enable": bool,
-}
 
 
 class Partition(KafkaResource):
