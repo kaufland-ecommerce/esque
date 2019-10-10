@@ -261,12 +261,17 @@ def describe_broker(state, broker_id):
 
 @describe.command("consumergroup")
 @click.argument("consumer-id", required=False)
-@click.option("--raw-output", help="Get raw output", default=False, is_flag=True)
+@click.option(
+    "--all-partitions",
+    help="List status for all topic partitions instead of just summarizing each topic.",
+    default=False,
+    is_flag=True,
+)
 @error_handler
 @pass_state
-def describe_consumergroup(state, consumer_id, raw_output):
+def describe_consumergroup(state, consumer_id, all_partitions):
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
-    consumer_group_desc = consumer_group.describe(verbose=raw_output)
+    consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
     click.echo(pretty(consumer_group_desc, break_lists=True))
 
