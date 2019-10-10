@@ -62,7 +62,7 @@ def test_config_path(mocker, tmpdir_factory):
     yield fn
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def test_config(test_config_path, request):
     esque_config = Config()
     if request.config.getoption("--local"):
