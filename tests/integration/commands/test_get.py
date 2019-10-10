@@ -11,7 +11,7 @@ from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
-def test_smoke_test_get_topics_interactive(interactive_cli_runner: CliRunner):  # TODO: delete whole test
+def test_smoke_test_get_topics_interactive(interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient):  # TODO: delete whole test
     result = interactive_cli_runner.invoke(get_topics, input="n\nn\n")
     print(result.output)  # TODO: delete
     result2 = interactive_cli_runner.invoke(ctx, input="n\nn\n")

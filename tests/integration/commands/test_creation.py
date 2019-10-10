@@ -34,7 +34,7 @@ def test_create_topic_as_argument_with_verification_works(
     assert topic_id not in topics
 
     result = interactive_cli_runner.invoke(create_topic, args=topic_id, input="Y\n")
-    print(result.output)
+    print(result.output)  # TODO: Delete line
     assert result.exit_code == 1  # TODO: return to ```assert result.exit_code == 0
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
@@ -51,7 +51,7 @@ def test_create_topic_with_stdin_works(
     assert topic_id not in topics
 
     result = non_interactive_cli_runner.invoke(create_topic, args="--no-verify", input=topic_id)
-    print(result.output)
+    print(result.output)  # TODO: Delete line
     assert result.exit_code == 1  # TODO: return to ```assert result.exit_code == 0
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
