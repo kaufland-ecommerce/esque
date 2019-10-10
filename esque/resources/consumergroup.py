@@ -31,7 +31,7 @@ class ConsumerGroup:
     def describe(self, *, verbose=False):
         consumer_id = self.id.encode("UTF-8")
         if consumer_id not in self._pykafka_group_coordinator.list_groups().groups:
-            raise ConsumerGroupDoesNotExistException()
+            raise ConsumerGroupDoesNotExistException(self.id)
 
         resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
         assert len(resp.groups) == 1
