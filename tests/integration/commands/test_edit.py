@@ -8,6 +8,8 @@ from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import TopicConfigNotValidException
 
+import traceback
+
 
 @pytest.mark.integration
 def test_topic_creation_with_template_works(
@@ -54,7 +56,7 @@ def test_topic_creation_with_template_works(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
+    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
@@ -78,7 +80,7 @@ def test_topic_creation_with_unknown_key_fails(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
+    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
     assert isinstance(result.exception, TopicConfigNotValidException)
@@ -101,7 +103,7 @@ def test_topic_creation_with_malformed_key_fails(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
+    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
     assert isinstance(result.exception, TopicConfigNotValidException)

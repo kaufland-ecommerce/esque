@@ -203,7 +203,7 @@ class Topic(KafkaResource):
 
         self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
-        self.validate()
+        self._validate()
 
     # properties
     @property
@@ -258,9 +258,9 @@ class Topic(KafkaResource):
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-        self.validate()
+        self._validate()
 
-    def validate(self):
+    def _validate(self):
         if not set(self.config).issubset(allowed_configs.keys()):
             raise TopicConfigNotValidException(
                 f"Unknown config key(s): {set(self.config).difference(allowed_configs.keys())}"
