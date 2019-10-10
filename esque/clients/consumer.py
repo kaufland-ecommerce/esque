@@ -12,16 +12,17 @@ from esque.config import Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
-from esque.ruleparser.ruleengine import RuleTree
+
+# from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None, **kwargs):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
-        if match is not None:
-            self.rule_tree = RuleTree(match)
+        # if match is not None:
+        # self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
         self._config.update(
@@ -63,13 +64,12 @@ class AbstractConsumer(ABC):
 
 
 class MessageConsumer(AbstractConsumer):
-    def __init__(self, group_id: str, topic_name: str, last: bool, *, starting_offset=0, partition=0):
-        super().__init__(group_id, topic_name, last)
-        self._assign_exact_partitions(topic_name, offset=starting_offset, partition=partition)
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
+        super().__init__(group_id, topic_name, last, match)
 
-    def consume(self) -> Optional[Tuple[str, int]]:
-        message = self._consume_single_message(timeout=1)
-        return message
+    def consume(self, offset: int = 0, partition: int = 0) -> Message:
+        self._assign_exact_partitions(self._topic_name, offset=offset, partition=partition)
+        return self._consume_single_message(timeout=1)
 
 
 class PingConsumer(AbstractConsumer):

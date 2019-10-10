@@ -133,7 +133,6 @@ class Topic(KafkaResource):
         num_partitions: int = None,
         replication_factor: int = None,
         config: Dict[str, str] = None,
-        last_message_timestamp: int = None,
     ):
         # Should we warn in those cases to force clients to migrate to string-only?
         if isinstance(name, bytes):
@@ -148,8 +147,6 @@ class Topic(KafkaResource):
 
         self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
-
-        self.last_message_timestamp = None
 
     # properties
     @property
@@ -214,14 +211,3 @@ class Topic(KafkaResource):
 
     def __hash__(self):
         return hash(self.name)
-
-    def max_offset(self) -> Dict[str, int]:
-        max_offset = 0
-        max_offset_partition_id = 0
-
-        for partition_id in self.offsets:
-            if self.offsets[partition_id].high > max_offset:
-                max_offset = self.offsets[partition_id].high
-                max_offset_partition_id = partition_id
-
-        return {"offset": max_offset, "partition_id": max_offset_partition_id}

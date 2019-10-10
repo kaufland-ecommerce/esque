@@ -1,10 +1,10 @@
 import re
 from enum import Enum
 from itertools import islice
-from typing import List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import List, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
-from confluent_kafka.cimpl import NewTopic
+from confluent_kafka.cimpl import Message, NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.clients.consumer import MessageConsumer
@@ -12,6 +12,8 @@ from esque.config import Config, PING_GROUP_ID
 from esque.errors import raise_for_kafka_exception, raise_for_kafka_error
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+
+import pendulum
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -122,22 +124,26 @@ class TopicController:
         topic.is_only_local = False
 
         message = self._get_last_message(topic)
+        topic.last_message_timestamp = 0
         topic.last_message_timestamp = message.timestamp()[1]
 
         return topic
 
-    def _get_last_message(self, local_topic: Topic) -> Optional[Tuple[str, int]]:
-        high_watermark = local_topic.max_offset()["offset"] - 1
-        consumer = MessageConsumer(
-            PING_GROUP_ID,
-            local_topic.name,
-            True,
-            starting_offset=high_watermark,
-            partition=local_topic.max_offset()["partition_id"],
-        )
-        message = consumer.consume()
+    def _get_last_message(self, local_topic: Topic) -> Message:
 
-        return message
+        max_timestamp = pendulum.from_timestamp(0)
+        last_message = None
+
+        consumer = MessageConsumer(PING_GROUP_ID, local_topic.name, True)
+
+        for partition_id in local_topic.offsets:
+            message = consumer.consume(local_topic.offsets[partition_id].high - 1, partition_id)
+            timestamp = pendulum.from_timestamp(float(message.timestamp()[1]) / 1000)
+            if timestamp > max_timestamp:
+                max_timestamp = timestamp
+                last_message = message
+
+        return last_message
 
     @raise_for_kafka_exception
     def _get_partition_data(
