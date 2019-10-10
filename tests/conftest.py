@@ -44,14 +44,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def interactive_cli_runner(monkeypatch):
+def interactive_cli_runner(test_config, monkeypatch):
     monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
     yield CliRunner()
 
 
 @pytest.fixture()
 def non_interactive_cli_runner(test_config, monkeypatch):
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: False)
     yield CliRunner()
 
 
@@ -63,7 +62,7 @@ def test_config_path(mocker, tmpdir_factory):
     yield fn
 
 
-@pytest.fixture()
+@pytest.fixture(scope="session")
 def test_config(test_config_path, request):
     esque_config = Config()
     if request.config.getoption("--local"):
@@ -80,7 +79,7 @@ def topic_id(confluent_admin_client) -> str:
 
 
 @pytest.fixture()
-def broker_id(state) -> str:
+def broker_id(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
     yield str(brokers[0].broker_id)
 
@@ -182,7 +181,7 @@ def consumer_group():
 
 
 @pytest.fixture()
-def consumer(topic_object: Topic, consumer_group):
+def consumer(topic_object: Topic, consumer_group: str):
     _config = Config().create_confluent_config()
     _config.update(
         {

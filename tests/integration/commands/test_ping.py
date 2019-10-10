@@ -9,8 +9,7 @@ from esque.controller.topic_controller import TopicController
 @pytest.mark.integration
 def test_smoke_test_ping(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(ping)
-    print(result.output)  # TODO: delete
-
+    assert "No config provided in" not in result.output
     assert result.exit_code == 0
 
 

@@ -3,7 +3,7 @@ language: python
 cache: pip
 env:
 - >
-  ESQUE_ENV=dev TEST_CMD="pytest tests/integration/commands/test_get.py --integration --cov=esque --local"  # TODO: revert me
+  ESQUE_ENV=dev TEST_CMD="pytest tests/ --integration --cov=esque --local"
   BROKER_URL="localhost:9092"
   ZOOKEEPER_URL="localhost:2181"
   SCHEMA_REGISTRY_URL="localhost:8081"
