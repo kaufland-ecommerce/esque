@@ -304,6 +304,41 @@ def get_topics(state, topic):
         click.echo(topic.name)
 
 
+@esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
+@click.argument("topic", required=True)
+@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
+@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option("-o", "--output", help="Output location (default: STDOUT)", type=click.STRING, required=False)
+@pass_state
+def consume(
+    state: State,
+    topic: str,
+    from_context: str,
+    numbers: int,
+    match: str,
+    last: bool,
+    avro: bool,
+    output_directory: str,
+):
+    current_timestamp_milliseconds = int(round(time.time() * 1000))
+    unique_name = topic + "_" + str(current_timestamp_milliseconds)
+    group_id = "group_for_" + unique_name
+    working_dir = "message_" + unique_name
+    topic_info = state.cluster.topic_controller.get_cluster_topic(topic)
+    consumers = []
+    partition_ids = map(lambda x: x.partition_id, topic_info.partitions)
+
+    for partition_id in partition_ids:
+        if avro:
+            consumers.append(AvroFileConsumer(group_id, topic, working_dir, last))
+        else:
+            consumers.append(FileConsumer(group_id, topic, working_dir, last))
+    total_number_of_messages_consumed = 0
+
+
 @esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
 @click.argument("topic", required=True)
 @click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
@@ -391,6 +426,26 @@ def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, 
         + green_bold(topic)
         + "."
     )
+
+def _consume_to_file_ordered(
+        working_dir: pathlib.Path,
+        topic: str,
+        group_id: str,
+        from_context: str,
+        numbers: int,
+        avro: bool,
+        match: str,
+        last: bool,
+) -> int:
+    if avro:
+        consumer = AvroFileConsumer(group_id, topic, working_dir, last, match)
+    else:
+        consumer = FileConsumer(group_id, topic, working_dir, last)
+    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+    number_consumed_messages = consumer.consume(int(numbers))
+    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
+
+    return number_consumed_messages
 
 
 def _consume_to_files(

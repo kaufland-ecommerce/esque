@@ -10,6 +10,8 @@ class DecodedMessage(NamedTuple):
     key: str
     value: str
     partition: int
+    offset: int
+    timestamp: str
 
 
 class KafkaMessage(NamedTuple):
@@ -62,6 +64,8 @@ class PlainTextFileWriter(FileWriter):
             "key": decoded_message.key,
             "value": decoded_message.value,
             "partition": decoded_message.partition,
+            "offset": decoded_message.offset,
+            "timestamp": decoded_message.timestamp
         }
         self.file.write(json.dumps(serializable_message) + "\n")
 
@@ -81,4 +85,4 @@ def decode_message(message: Message) -> DecodedMessage:
     decoded_key = message.key().decode("utf-8")
     decoded_value = message.value().decode("utf-8")
 
-    return DecodedMessage(decoded_key, decoded_value, message.partition())
+    return DecodedMessage(decoded_key, decoded_value, message.partition(), message.offset(), str(message.timestamp()))

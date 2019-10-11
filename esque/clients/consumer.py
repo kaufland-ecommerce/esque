@@ -25,7 +25,8 @@ class AbstractConsumer(ABC):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
-        if match is not None:
+        self.match = match
+        if self.match is not None:
             self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
@@ -59,6 +60,7 @@ class AbstractConsumer(ABC):
         raise_for_message(message)
         return message
 
+    @translate_third_party_exceptions
     def consumed_message_matches(self, message: Message):
         if self.rule_tree is not None:
             return self.rule_tree.evaluate(message)
