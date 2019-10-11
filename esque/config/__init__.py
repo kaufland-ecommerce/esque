@@ -2,17 +2,19 @@ import configparser
 import random
 import string
 from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Any, Dict, List, Optional
 
 import click
+from pykafka.sasl_authenticators import BaseAuthenticator, ScramAuthenticator, PlainAuthenticator
 
 from esque.cli.environment import ESQUE_CONF_PATH
-from esque.errors import ConfigNotExistsException, ContextNotDefinedException
+from esque.errors import ConfigNotExistsException, ContextNotDefinedException, MissingSaslParameter, UnsupportedSaslMechanism
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
 PING_GROUP_ID = f"ping-{RANDOM}"
 SLEEP_INTERVAL = 2
+SUPPORTED_SASL_MECHANISMS = ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512")
 
 
 def config_dir() -> Path:
@@ -94,6 +96,22 @@ class Config:
         config_dict = self.current_context_dict
         return int(config_dict["default_replication_factor"])
 
+    @property
+    def sasl_mechanism(self) -> Optional[str]:
+        if self.sasl_params is None:
+            return None
+        if "mechanism" not in self.sasl_params:
+            raise MissingSaslParameter(f"No sasl mechanism configured, valid values are {SUPPORTED_SASL_MECHANISMS}")
+        return self.sasl_params["mechanism"] if self.sasl_params else None
+
+    @property
+    def sasl_params(self) -> Optional[Dict[str, str]]:
+        return self.current_context_dict.get("sasl", None)
+
+    @property
+    def security_protocol(self) -> str:
+        return self.current_context_dict["security_protocol"]
+
     def context_switch(self, context: str):
         click.echo(f"Switched to context: {context}")
         if context not in self.available_contexts:
@@ -106,22 +124,49 @@ class Config:
             self._cfg.write(f)
 
     def create_pykafka_config(self) -> Dict[str, str]:
-        return {"hosts": ",".join(self.bootstrap_servers)}
+        return {"hosts": ",".join(self.bootstrap_servers), "sasl_authenticator": self.get_pykafka_authenticator()}
 
-    def create_confluent_config(
-        self, *, debug: bool = False, ssl: bool = False, auth: Optional[Tuple[str, str]] = None
-    ) -> Dict[str, str]:
+    def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
 
         base_config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": "PLAINTEXT"}
         config = base_config.copy()
         if debug:
             config.update({"debug": "all", "log_level": "2"})
 
-        if ssl:
-            config.update({"ssl.ca.location": "/etc/ssl/certs/GlobalSign_Root_CA.pem", "security.protocol": "SSL"})
-
-        if auth:
-            user, pw = auth
-            config.update({"sasl.mechanisms": "SCRAM-SHA-512", "sasl.username": user, "sasl.password": pw})
-            config["security.protocol"] = "SASL_" + config["security.protocol"]
+        config.update(self._get_confluent_sasl_config())
         return config
+
+    def _get_confluent_sasl_config(self) -> Dict[str, str]:
+        if self.sasl_mechanism is None:
+            return {}
+        if self.sasl_mechanism in ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"):
+            try:
+                return {
+                    "sasl.mechanisms": self.sasl_mechanism,
+                    "sasl.username": self.sasl_params["user"],
+                    "sasl.password": self.sasl_params["password"],
+                    "security.protocol": self.security_protocol,
+                }
+            except KeyError as e:
+                raise MissingSaslParameter(f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}")
+        else:
+            raise UnsupportedSaslMechanism(
+                f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
+                f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
+            )
+
+    def get_pykafka_authenticator(self) -> BaseAuthenticator:
+        try:
+            if self.sasl_mechanism == "PLAIN":
+                return PlainAuthenticator(user=self.sasl_params["user"], password=self.sasl_params["password"])
+            if self.sasl_mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
+                return ScramAuthenticator(
+                    self.sasl_mechanism, user=self.sasl_params["user"], password=self.sasl_params["password"]
+                )
+            else:
+                raise UnsupportedSaslMechanism(
+                    f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
+                    f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
+                )
+        except KeyError as e:
+            raise MissingSaslParameter(f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}")

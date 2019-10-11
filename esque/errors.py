@@ -45,6 +45,14 @@ class ExceptionWithMessage(ClickException):
         return f"{type(self).__name__}: {self.message}"
 
 
+class MissingSaslParameter(ExceptionWithMessage):
+    pass
+
+
+class UnsupportedSaslMechanism(ExceptionWithMessage):
+    pass
+
+
 class KafkaException(ClickException):
     def __init__(self, message: str, code: int):
         super().__init__(f"{message} with code {code}")
