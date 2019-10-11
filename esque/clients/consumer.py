@@ -9,7 +9,12 @@ from confluent_kafka.cimpl import Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
+from esque.errors import (
+    MessageEmptyException,
+    raise_for_kafka_error,
+    raise_for_message,
+    translate_third_party_exceptions,
+)
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
 from esque.ruleparser.ruleengine import RuleTree
@@ -40,6 +45,7 @@ class AbstractConsumer(ABC):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._topic_name = topic_name
 
+    @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
         self._consumer.subscribe([topic])
 
@@ -47,6 +53,7 @@ class AbstractConsumer(ABC):
     def consume(self, **kwargs) -> int:
         pass
 
+    @translate_third_party_exceptions
     def _consume_single_message(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
@@ -64,12 +71,14 @@ class PingConsumer(AbstractConsumer):
         super().__init__(group_id, topic_name, last)
         self._assign_exact_partitions(topic_name)
 
+    @translate_third_party_exceptions
     def consume(self) -> Optional[Tuple[str, int]]:
         message = self._consume_single_message(timeout=1)
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
         return message.key(), delta_sent.microseconds / 1000
 
+    @translate_third_party_exceptions
     def _assign_exact_partitions(self, topic: str) -> None:
         self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
 
@@ -86,6 +95,7 @@ class FileConsumer(AbstractConsumer):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
 
+    @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
         counter = 0
         file_writers = {}

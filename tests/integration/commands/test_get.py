@@ -5,14 +5,14 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import get_topics, get_consumergroups, get_brokers, ctx
+from esque.cli.commands import get_topics, get_consumergroups, get_brokers
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_topics)
+    result = non_interactive_cli_runner.invoke(get_topics, ["--verbose"])
     assert "No config provided in" not in result.output
     assert result.exit_code == 0
 

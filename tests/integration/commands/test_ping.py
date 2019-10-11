@@ -8,7 +8,7 @@ from esque.controller.topic_controller import TopicController
 
 @pytest.mark.integration
 def test_smoke_test_ping(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(ping)
+    result = non_interactive_cli_runner.invoke(ping, ["--verbose"])
     assert "No config provided in" not in result.output
     assert result.exit_code == 0
 
@@ -17,7 +17,7 @@ def test_smoke_test_ping(non_interactive_cli_runner: CliRunner):
 def test_correct_amount_of_messages(mocker, non_interactive_cli_runner: CliRunner, topic_controller: TopicController):
     topic_controller_delete_topic = mocker.patch.object(TopicController, "delete_topic", mocker.Mock())
 
-    result = non_interactive_cli_runner.invoke(ping)
+    result = non_interactive_cli_runner.invoke(ping, ["--verbose"])
 
     assert result.exit_code == 0
     assert topic_controller_delete_topic.call_count == 1
