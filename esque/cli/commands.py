@@ -109,7 +109,9 @@ def fallback_to_stdin(ctx, param, value):
     # is available.
 
     if not value and not click_stdin.isatty():
-        stdin_arg = click_stdin.readline().strip()
+        stdin_arg = (
+            click.get_text_stream("stdin").readline().strip()
+        )  # click_stdin.readline().strip() gives OSError('reading from stdin while output is captured',)
     else:
         stdin_arg = value
 
