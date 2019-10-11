@@ -408,7 +408,7 @@ def _consume_to_files(
     else:
         consumer = FileConsumer(group_id, topic, working_dir, last)
     click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
-    number_consumed_messages = consumer.consume(int(numbers), match=match)
+    number_consumed_messages = consumer.consume(int(numbers))
     click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 
     return number_consumed_messages
