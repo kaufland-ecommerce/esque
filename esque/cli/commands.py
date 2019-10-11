@@ -10,7 +10,7 @@ import yaml
 from click import version_option
 
 from esque.__version__ import __version__
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval
+from esque.cli.helpers import HandleFileOnFinished, ensure_approval, click_stdin
 from esque.cli.options import State, no_verify_option, pass_state, output_format_option
 from esque.cli.output import (
     blue_bold,
@@ -103,12 +103,13 @@ def ctx(state, context):
             sys.exit(1)
 
 
-def get_required_argument(ctx, param, value):
+def fallback_to_stdin(ctx, param, value):
     # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
     # read from stdin and after ask for confirmation. We should use click when this functionality
     # is available.
-    if not value and not click.get_text_stream("stdin").isatty():
-        stdin_arg = click.get_text_stream("stdin").readline().strip()
+
+    if not value and not click_stdin.isatty():
+        stdin_arg = click_stdin.readline().strip()
     else:
         stdin_arg = value
 
@@ -118,18 +119,8 @@ def get_required_argument(ctx, param, value):
     return stdin_arg
 
 
-def get_optional_argument(ctx, param, value):
-    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
-    # read from stdin and after ask for confirmation. We should use click when this functionality
-    # is available.
-    if not value and not click.get_text_stream("stdin").isatty():
-        return click.get_text_stream("stdin").read().strip()
-
-    return value
-
-
 @create.command("topic")
-@click.argument("topic-name", callback=get_required_argument, required=False)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @pass_state
@@ -153,7 +144,7 @@ def create_topic(state: State, topic_name: str, like=None):
 @pass_state
 def edit_topic(state: State, topic_name: str):
 
-    if not sys.__stdin__.isatty():
+    if not click_stdin.isatty():
         click.echo("This command cannot be run in a non-interactive mode.")
         sys.exit(1)
 
@@ -245,7 +236,7 @@ def apply(state: State, file: str):
 
 @delete.command("topic")
 @click.argument(
-    "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
 @no_verify_option
 @pass_state
@@ -259,7 +250,7 @@ def delete_topic(state: State, topic_name: str):
 
 @describe.command("topic")
 @click.argument(
-    "topic-name", callback=get_required_argument, required=False, type=click.STRING, autocompletion=list_topics
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
 @output_format_option
 @pass_state
@@ -293,7 +284,7 @@ def get_offsets(state, topic_name):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=get_required_argument, required=False)
+@click.argument("broker-id", callback=fallback_to_stdin, required=False)
 @pass_state
 @output_format_option
 def describe_broker(state, broker_id, output_format):
@@ -302,7 +293,7 @@ def describe_broker(state, broker_id, output_format):
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", callback=get_optional_argument, required=False)
+@click.option("-c", "--consumer-id", required=False)
 @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
 @pass_state
 @output_format_option
@@ -334,9 +325,7 @@ def get_consumergroups(state):
 
 
 @get.command("topics")
-@click.argument(
-    "prefix", callback=get_optional_argument, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics, required=False)
 @pass_state
 def get_topics(state, prefix):
     topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)

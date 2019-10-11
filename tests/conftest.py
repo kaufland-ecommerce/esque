@@ -1,5 +1,4 @@
 import random
-import sys
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
@@ -21,6 +20,7 @@ from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
+from esque.cli.helpers import click_stdin
 
 
 def pytest_addoption(parser):
@@ -45,7 +45,7 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture()
 def interactive_cli_runner(test_config, monkeypatch):
-    monkeypatch.setattr(sys.__stdin__, "isatty", lambda: True)
+    monkeypatch.setattr(click_stdin, "isatty", lambda: True)
     yield CliRunner()
 
 

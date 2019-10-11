@@ -31,7 +31,7 @@ def test_get_topics_with_prefix(
         topic_controller.create_topics([Topic(new_topic, replication_factor=1)])
     confluent_admin_client.poll(timeout=1)
 
-    result = non_interactive_cli_runner.invoke(get_topics, [prefix_1])
+    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1])
 
     assert result.exit_code == 0
     retrieved_topics = result.output.split("\n")

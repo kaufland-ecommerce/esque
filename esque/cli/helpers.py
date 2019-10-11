@@ -4,12 +4,14 @@ import sys
 
 import click
 
+click_stdin = click.get_text_stream("stdin")
+
 
 def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
     if no_verify:
         return True
 
-    if not sys.__stdin__.isatty():
+    if not click_stdin.isatty():
         click.echo(
             "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
         )
