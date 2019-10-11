@@ -9,10 +9,14 @@ from confluent_kafka.cimpl import Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
+from esque.errors import (
+    MessageEmptyException,
+    raise_for_kafka_error,
+    raise_for_message,
+    translate_third_party_exceptions,
+)
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
-
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -41,6 +45,7 @@ class AbstractConsumer(ABC):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._topic_name = topic_name
 
+    @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
         self._consumer.subscribe([topic])
 
@@ -48,6 +53,7 @@ class AbstractConsumer(ABC):
     def consume(self, **kwargs) -> int:
         pass
 
+    @translate_third_party_exceptions
     def _consume_single_message(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
@@ -59,6 +65,7 @@ class AbstractConsumer(ABC):
         else:
             return True
 
+    @translate_third_party_exceptions
     def _assign_exact_partitions(self, topic: str, *, offset: int = 0, partition: int = 0) -> None:
         self._consumer.assign([TopicPartition(topic=topic, partition=partition, offset=offset)])
 
@@ -67,6 +74,7 @@ class MessageConsumer(AbstractConsumer):
     def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
         super().__init__(group_id, topic_name, last, match)
 
+    @translate_third_party_exceptions
     def consume(self, offset: int = 0, partition: int = 0) -> Message:
         self._assign_exact_partitions(self._topic_name, offset=offset, partition=partition)
         return self._consume_single_message(timeout=1)
@@ -77,6 +85,7 @@ class PingConsumer(AbstractConsumer):
         super().__init__(group_id, topic_name, last)
         self._assign_exact_partitions(topic_name)
 
+    @translate_third_party_exceptions
     def consume(self) -> Optional[Tuple[str, int]]:
         message = self._consume_single_message(timeout=1)
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
@@ -96,6 +105,7 @@ class FileConsumer(AbstractConsumer):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
 
+    @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
         counter = 0
         file_writers = {}

@@ -1,5 +1,4 @@
 import pathlib
-import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -12,7 +11,7 @@ import pendulum
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state
+from esque.cli.options import State, no_verify_option, pass_state, error_handler
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -27,12 +26,6 @@ from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import (
-    ConsumerGroupDoesNotExistException,
-    ContextNotDefinedException,
-    TopicAlreadyExistsException,
-    TopicDoesNotExistException,
-)
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
@@ -87,6 +80,7 @@ def list_contexts(ctx, args, incomplete):
 
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
+@error_handler
 @pass_state
 def ctx(state, context):
     if not context:
@@ -96,17 +90,14 @@ def ctx(state, context):
             else:
                 click.echo(c)
     if context:
-        try:
-            state.config.context_switch(context)
-        except ContextNotDefinedException:
-            click.echo(f"Context {context} does not exist")
-            sys.exit(1)
+        state.config.context_switch(context)
 
 
 @create.command("topic")
 @click.argument("topic-name", required=True)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
+@error_handler
 @pass_state
 def create_topic(state: State, topic_name: str, like=None):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -122,10 +113,12 @@ def create_topic(state: State, topic_name: str, like=None):
     else:
         topic = Topic(topic_name)
     topic_controller.create_topics([topic])
+    click.echo(click.style(f"Topic with name '{topic.name}'' successfully created", fg="green"))
 
 
 @edit.command("topic")
 @click.argument("topic-name", required=True)
+@error_handler
 @pass_state
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
@@ -146,9 +139,25 @@ def edit_topic(state: State, topic_name: str):
         controller.alter_configs([local_topic])
 
 
+@delete.command("topic")
+@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@no_verify_option
+@error_handler
+@pass_state
+def delete_topic(state: State, topic_name: str):
+    topic_controller = state.cluster.topic_controller
+    if ensure_approval("Are you sure?", no_verify=state.no_verify):
+        topic_controller.delete_topic(Topic(topic_name))
+
+        assert topic_name not in (t.name for t in topic_controller.list_topics())
+
+    click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
+
+
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
 @no_verify_option
+@error_handler
 @pass_state
 def apply(state: State, file: str):
     # Get topic data based on the YAML
@@ -213,42 +222,29 @@ def apply(state: State, file: str):
     click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
 
 
-@delete.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
-@no_verify_option
-@pass_state
-def delete_topic(state: State, topic_name: str):
-    topic_controller = state.cluster.topic_controller
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(Topic(topic_name))
-
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
-
-
 @describe.command("topic")
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def describe_topic(state, topic_name):
-    try:
-        topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-        config = {"Config": topic.config}
+    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+    config = {"Config": topic.config}
 
-        last_message_timestamp = pendulum.from_timestamp(float(topic.last_message_timestamp) / 1000)
+    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+    last_message_timestamp = pendulum.from_timestamp(float(topic.last_message_timestamp) / 1000)
 
-        click.echo(bold(f"Topic: {green_bold(topic_name)}"))
-        click.echo(f"Last message timestamp: {last_message_timestamp.to_datetime_string()}")
+    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+    click.echo(f"Last message timestamp: {last_message_timestamp.to_datetime_string()}")
 
-        for partition in topic.partitions:
-            click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
+    for partition in topic.partitions:
+        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
 
-        click.echo(pretty(config))
-    except TopicDoesNotExistException:
-        click.echo(f"The topic {green_bold(topic_name)} does not exist on the cluster.")
-        sys.exit(1)
+    click.echo(pretty(config))
 
 
 @get.command("offsets")
 @click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def get_offsets(state, topic_name):
     # TODO: Gathering of all offsets takes super long
@@ -261,6 +257,7 @@ def get_offsets(state, topic_name):
 
 @describe.command("broker")
 @click.argument("broker-id", required=True)
+@error_handler
 @pass_state
 def describe_broker(state, broker_id):
     broker = Broker.from_id(state.cluster, broker_id).describe()
@@ -269,20 +266,23 @@ def describe_broker(state, broker_id):
 
 @describe.command("consumergroup")
 @click.argument("consumer-id", required=False)
-@click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
+@click.option(
+    "--all-partitions",
+    help="List status for all topic partitions instead of just summarizing each topic.",
+    default=False,
+    is_flag=True,
+)
+@error_handler
 @pass_state
-def describe_consumergroup(state, consumer_id, verbose):
-    try:
-        consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
-        consumer_group_desc = consumer_group.describe(verbose=verbose)
+def describe_consumergroup(state, consumer_id, all_partitions):
+    consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
+    consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
-        click.echo(pretty(consumer_group_desc, break_lists=True))
-    except ConsumerGroupDoesNotExistException:
-        click.echo(bold(f"Consumer Group {consumer_id} not found."))
-        sys.exit(1)
+    click.echo(pretty(consumer_group_desc, break_lists=True))
 
 
 @get.command("brokers")
+@error_handler
 @pass_state
 def get_brokers(state):
     brokers = Broker.get_all(state.cluster)
@@ -291,6 +291,7 @@ def get_brokers(state):
 
 
 @get.command("consumergroups")
+@error_handler
 @pass_state
 def get_consumergroups(state):
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
@@ -300,6 +301,7 @@ def get_consumergroups(state):
 
 @get.command("topics")
 @click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
+@error_handler
 @pass_state
 def get_topics(state, topic):
     topics = state.cluster.topic_controller.list_topics(search_string=topic, get_topic_objects=False)
@@ -323,6 +325,7 @@ def get_topics(state, topic):
     default=False,
     is_flag=True,
 )
+@error_handler
 @pass_state
 def transfer(
     state: State,
@@ -372,6 +375,7 @@ def transfer(
     required=True,
 )
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@error_handler
 @pass_state
 def produce(state: State, topic: str, directory: str, avro: bool):
     _produce_from_files(topic, state.config.current_context, Path(directory), avro)
@@ -418,15 +422,13 @@ def _consume_to_files(
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
+@error_handler
 @pass_state
 def ping(state, times, wait):
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
-        try:
-            topic_controller.create_topics([Topic(PING_TOPIC)])
-        except TopicAlreadyExistsException:
-            click.echo("Topic already exists.")
+        topic_controller.create_topics([Topic(PING_TOPIC)])
 
         producer = PingProducer()
         consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
