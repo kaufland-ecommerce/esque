@@ -78,7 +78,7 @@ def error_handler(f):
                 raise
 
             if isinstance(e, ExceptionWithMessage):
-                click.echo(click.style(e.describe(), fg="red"))
+                click.echo(click.style(str(e), fg="red"))
             else:
                 click.echo(
                     click.style(
