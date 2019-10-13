@@ -6,6 +6,7 @@ from typing import Callable, Iterable, Tuple
 
 import confluent_kafka
 import pytest
+import yaml
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -17,7 +18,9 @@ from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.broker import Broker
 from esque.resources.topic import Topic
+from esque.cli.helpers import click_stdin
 
 
 def pytest_addoption(parser):
@@ -41,7 +44,14 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def cli_runner():
+def interactive_cli_runner(test_config, monkeypatch):
+    monkeypatch.setattr(click_stdin, "isatty", lambda: True)
+    yield CliRunner()
+
+
+@pytest.fixture()
+def non_interactive_cli_runner(test_config, monkeypatch):
+    monkeypatch.setattr(click_stdin, "isatty", lambda: False)
     yield CliRunner()
 
 
@@ -67,6 +77,12 @@ def topic_id(confluent_admin_client) -> str:
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     if topic_id in topics:
         confluent_admin_client.delete_topics([topic_id]).popitem()
+
+
+@pytest.fixture()
+def broker_id(state: State) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield str(brokers[0].broker_id)
 
 
 @pytest.fixture()
@@ -166,7 +182,7 @@ def consumer_group():
 
 
 @pytest.fixture()
-def consumer(topic_object: Topic, consumer_group):
+def consumer(topic_object: Topic, consumer_group: str):
     _config = Config().create_confluent_config()
     _config.update(
         {
@@ -217,3 +233,9 @@ def cluster(test_config):
 @pytest.fixture()
 def state(test_config):
     yield State()
+
+
+def check_and_load_yaml(output: str) -> dict:
+    assert output[0] != "{", "non json output starts with '{'"
+    assert output[-2] != "}" and output[-1] != "}", "non json output ends with '}'"
+    return yaml.safe_load(output)

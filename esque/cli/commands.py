@@ -10,8 +10,9 @@ import yaml
 from click import version_option
 
 from esque.__version__ import __version__
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state, error_handler
+
+from esque.cli.helpers import HandleFileOnFinished, ensure_approval, click_stdin
+from esque.cli.options import State, no_verify_option, pass_state, error_handler, output_format_option
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -20,6 +21,7 @@ from esque.cli.output import (
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
+    format_output,
 )
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
@@ -93,8 +95,22 @@ def ctx(state, context):
         state.config.context_switch(context)
 
 
+def fallback_to_stdin(ctx, param, value):
+    if not value and not click_stdin.isatty():
+        stdin_arg = (
+            click.get_text_stream("stdin").readline().strip()
+        )  # click_stdin.readline().strip() gives OSError('reading from stdin while output is captured',)
+    else:
+        stdin_arg = value
+
+    if not stdin_arg:
+        click.echo(f"ERROR: Missing argument {param.human_readable_name}")
+        sys.exit(1)
+    return stdin_arg
+
+
 @create.command("topic")
-@click.argument("topic-name", required=True)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False)
 @no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @error_handler
@@ -103,7 +119,6 @@ def create_topic(state: State, topic_name: str, like=None):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
-
     topic_controller = state.cluster.topic_controller
     if like:
         template_config = topic_controller.get_cluster_topic(like)
@@ -121,8 +136,14 @@ def create_topic(state: State, topic_name: str, like=None):
 @error_handler
 @pass_state
 def edit_topic(state: State, topic_name: str):
+
+    if not click_stdin.isatty():
+        click.echo("This command cannot be run in a non-interactive mode.")
+        sys.exit(1)
+
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+
     new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
 
     # edit process can be aborted, ex. in vim via :q!
@@ -140,7 +161,9 @@ def edit_topic(state: State, topic_name: str):
 
 
 @delete.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @no_verify_option
 @error_handler
 @pass_state
@@ -223,19 +246,22 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
+@output_format_option
 @error_handler
 @pass_state
-def describe_topic(state, topic_name):
+def describe_topic(state, topic_name, output_format):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    config = {"Config": topic.config}
 
-    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+    output_dict = {"Topic": topic_name}
 
     for partition in topic.partitions:
-        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
+        output_dict[f"Partition {partition.partition_id}"] = partition.as_dict()
 
-    click.echo(pretty(config))
+    output_dict["Config"] = topic.config
+    click.echo(format_output(output_dict, output_format))
 
 
 @get.command("offsets")
@@ -252,10 +278,11 @@ def get_offsets(state, topic_name):
 
 
 @describe.command("broker")
-@click.argument("broker-id", required=True, type=str)
+@click.argument("broker-id", callback=fallback_to_stdin, required=False)
 @error_handler
 @pass_state
-def describe_broker(state, broker_id: str):
+@output_format_option
+def describe_broker(state, broker_id, output_format):
     if broker_id.isdigit():
         broker = Broker.from_id(state.cluster, broker_id).describe()
     else:
@@ -265,11 +292,11 @@ def describe_broker(state, broker_id: str):
         except ValueError:
             click.echo("broker-id must either be an integer or in the form 'host:port'")
             sys.exit(1)
-    click.echo(pretty(broker, break_lists=True))
+    click.echo(format_output(broker, output_format))
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", required=False)
+@click.option("-c", "--consumer-id", required=False)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",
@@ -278,11 +305,12 @@ def describe_broker(state, broker_id: str):
 )
 @error_handler
 @pass_state
-def describe_consumergroup(state, consumer_id, all_partitions):
+@output_format_option
+def describe_consumergroup(state, consumer_id, all_partitions, output_format):
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
-    click.echo(pretty(consumer_group_desc, break_lists=True))
+    click.echo(format_output(consumer_group_desc, output_format))
 
 
 @get.command("brokers")
@@ -304,11 +332,11 @@ def get_consumergroups(state):
 
 
 @get.command("topics")
-@click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
+@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics, required=False)
 @error_handler
 @pass_state
-def get_topics(state, topic):
-    topics = state.cluster.topic_controller.list_topics(search_string=topic, get_topic_objects=False)
+def get_topics(state, prefix):
+    topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
     for topic in topics:
         click.echo(topic.name)
 
