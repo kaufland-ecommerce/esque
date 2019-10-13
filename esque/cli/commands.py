@@ -1,4 +1,5 @@
 import pathlib
+import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -246,20 +247,6 @@ def apply(state: State, file: str):
     # output confirmation
     changes = {"unchanged": len(to_ignore), "created": len(to_create), "changed": len(to_edit)}
     click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
-
-
-@delete.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
-@no_verify_option
-@pass_state
-def delete_topic(state: State, topic_name: str):
-    topic_controller = state.cluster.topic_controller
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(Topic(topic_name))
-
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
 
 
 @describe.command("topic")
