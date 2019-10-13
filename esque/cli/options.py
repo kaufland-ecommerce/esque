@@ -1,14 +1,14 @@
 import sys
+from functools import wraps
 from shutil import copyfile
 
 import click
-from click import ClickException, make_pass_decorator, option
-from pykafka.exceptions import NoBrokersAvailableError
+from click import make_pass_decorator, option
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException
+from esque.errors import ConfigNotExistsException, ExceptionWithMessage
 
 
 class State(object):
@@ -29,12 +29,9 @@ class State(object):
 
     @property
     def cluster(self):
-        try:
-            if not self._cluster:
-                self._cluster = Cluster()
-            return self._cluster
-        except NoBrokersAvailableError:
-            raise ClickException(f"Could not reach Kafka Brokers {self.config.bootstrap_servers}")
+        if not self._cluster:
+            self._cluster = Cluster()
+        return self._cluster
 
 
 pass_state = make_pass_decorator(State, ensure=True)
@@ -55,3 +52,30 @@ def no_verify_option(f):
         default=False,
         callback=callback,
     )(f)
+
+
+def error_handler(f):
+    @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        verbose = kwargs["verbose"]
+        del kwargs["verbose"]
+        try:
+            f(*args, **kwargs)
+        except Exception as e:
+            if verbose:
+                raise
+
+            if isinstance(e, ExceptionWithMessage):
+                click.echo(click.style(e.describe(), fg="red"))
+            else:
+                click.echo(
+                    click.style(
+                        f"An Exception of type {type(e).__name__} occured. Use verbose mode with '--verbose' "
+                        f"to see more information.",
+                        fg="red",
+                    )
+                )
+            sys.exit(1)
+
+    return wrapper
