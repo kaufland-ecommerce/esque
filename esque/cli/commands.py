@@ -96,10 +96,6 @@ def ctx(state, context):
 
 
 def fallback_to_stdin(ctx, param, value):
-    # There is a pull request "Feat pipeline confirmation #1372" allowing click commands to
-    # read from stdin and after ask for confirmation. We should use click when this functionality
-    # is available.
-
     if not value and not click_stdin.isatty():
         stdin_arg = (
             click.get_text_stream("stdin").readline().strip()
