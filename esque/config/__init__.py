@@ -35,7 +35,7 @@ class Config:
         if config_path().exists():
             self._cfg.read(config_path())
         else:
-            raise ConfigNotExistsException("No config defined.")
+            raise ConfigNotExistsException()
 
     @property
     def available_contexts(self):

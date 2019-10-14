@@ -5,20 +5,28 @@ from typing import Optional, Tuple
 
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import Message
+from confluent_kafka.cimpl import Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import MessageEmptyException, raise_for_kafka_error, raise_for_message
+from esque.errors import (
+    MessageEmptyException,
+    raise_for_kafka_error,
+    raise_for_message,
+    translate_third_party_exceptions,
+)
 from esque.messages.avromessage import AvroFileWriter
 from esque.messages.message import FileWriter, PlainTextFileWriter
+from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
         offset_reset = "earliest"
         if last:
             offset_reset = "latest"
+        if match is not None:
+            self.rule_tree = RuleTree(match)
 
         self._config = Config().create_confluent_config()
         self._config.update(
@@ -35,28 +43,44 @@ class AbstractConsumer(ABC):
             }
         )
         self._consumer = confluent_kafka.Consumer(self._config)
-        self._subscribe(topic_name)
+        self._topic_name = topic_name
 
+    @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
         self._consumer.subscribe([topic])
 
     @abstractmethod
-    def consume(self, amount: int) -> int:
+    def consume(self, **kwargs) -> int:
         pass
 
-    def _consume_single_message(self, timeout=30) -> Optional[Message]:
+    @translate_third_party_exceptions
+    def _consume_single_message(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
 
+    def consumed_message_matches(self, message: Message):
+        if self.rule_tree is not None:
+            return self.rule_tree.evaluate(message)
+        else:
+            return True
+
 
 class PingConsumer(AbstractConsumer):
-    def consume(self, amount: int) -> Optional[Tuple[str, int]]:
-        message = self._consume_single_message()
+    def __init__(self, group_id: str, topic_name: str, last: bool):
+        super().__init__(group_id, topic_name, last)
+        self._assign_exact_partitions(topic_name)
 
+    @translate_third_party_exceptions
+    def consume(self) -> Optional[Tuple[str, int]]:
+        message = self._consume_single_message(timeout=1)
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
         return message.key(), delta_sent.microseconds / 1000
+
+    @translate_third_party_exceptions
+    def _assign_exact_partitions(self, topic: str) -> None:
+        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
 
 
 class FileConsumer(AbstractConsumer):
@@ -71,9 +95,11 @@ class FileConsumer(AbstractConsumer):
         self._consumer = confluent_kafka.Consumer(self._config)
         self._subscribe(topic_name)
 
+    @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
         counter = 0
         file_writers = {}
+
         with ExitStack() as stack:
             while counter < amount:
                 try:
@@ -101,6 +127,7 @@ class AvroFileConsumer(FileConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, working_dir, last)
         self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
+        self._subscribe(topic_name)
 
     def get_file_writer(self, partition: int) -> FileWriter:
         return AvroFileWriter((self.working_dir / f"partition_{partition}"), self.schema_registry_client)
