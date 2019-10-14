@@ -4,7 +4,7 @@
 
 In the Kafka world nothing is easy, but `esque` (pronounced *esk*) is an attempt at it.
 
-Esque is a user-centric command line interface for Kafka administration. 
+`esque` is a user-centric command line interface for Kafka administration. 
 
 ## Why should you care?
 
@@ -14,24 +14,24 @@ While adopting kafka at real.digital we noticed the immense entry barrier it pos
 We can't recount how often we wrote Slack messages asking for the script to check the 
 status of topics or consumer groups. This is partly (but not only) due to a 
 fragmented and unclear definition of tooling and APIs for kafka. 
-In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way. We feel that the goal of Esque embodies one of the Perl design principles: “**keep easy things easy, and make hard things possible**”. 
+In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way. We feel that the goal of `esque` embodies one of the Perl design principles: “**keep easy things easy, and make hard things possible**”. 
 
 ## Principles
 
 Our driving objectives can be summed up through these four principles:
-* comes with batteries included,
-* feature rich,
-* robust,
-* insightful,
+* comes with batteries included
+* feature rich
+* robust
+* insightful
 * made by engineers for engineers
 
 ## Basic Features
 
-* Support for any type of Kafka deployment >1.2,
-* List Resources (Topics, Consumergroups, Brokers),
-* Get detailed Overviews of Resources (Topics, Consumergroups, Brokers),
-* Create/Delete Topics,
-* Context Switch (Easily Switch between pre-defined Clusters),
+* Support for any type of Kafka deployment >1.2
+* List Resources (Topics, Consumergroups, Brokers)
+* Get detailed Overviews of Resources (Topics, Consumergroups, Brokers)
+* Create/Delete Topics
+* Context Switch (Easily Switch between pre-defined Clusters)
 * Kafka Ping (Test roundtrip time to your kafka cluster)
 
 ## Installation and Usage
