@@ -1,6 +1,7 @@
 import pathlib
 from abc import ABC, abstractmethod
 from contextlib import ExitStack
+from os import path
 from typing import Optional, Tuple
 
 import confluent_kafka
@@ -37,7 +38,7 @@ class AbstractConsumer(ABC):
                 # We need to commit offsets manually once we"re sure it got saved
                 # to the sink
                 "enable.auto.commit": True,
-                "enable.partition.eof": False,
+                "enable.partition.eof": True,
                 # We need this to start at the last committed offset instead of the
                 # latest when subscribing for the first time
                 "default.topic.config": {"auto.offset.reset": offset_reset},
@@ -45,6 +46,12 @@ class AbstractConsumer(ABC):
         )
         self._consumer = confluent_kafka.Consumer(self._config)
         self._topic_name = topic_name
+
+    @translate_third_party_exceptions
+    def assign_specific_partitions(self, partitions: list):
+        if partitions is not None:
+            topic_partitions = [TopicPartition(self._topic_name, partition) for partition in partitions]
+            self._consumer.assign(topic_partitions)
 
     @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
@@ -56,6 +63,11 @@ class AbstractConsumer(ABC):
 
     @translate_third_party_exceptions
     def _consume_single_message(self, timeout=30) -> Message:
+        message = self._consumer.poll(timeout=timeout)
+        raise_for_message(message)
+        return message
+
+    def consume_single_message_public(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
@@ -95,7 +107,7 @@ class FileConsumer(AbstractConsumer):
 
         self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
         self._consumer = confluent_kafka.Consumer(self._config)
-        self._subscribe(topic_name)
+        #self._subscribe(topic_name)
 
     @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
@@ -129,7 +141,7 @@ class AvroFileConsumer(FileConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool):
         super().__init__(group_id, topic_name, working_dir, last)
         self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
-        self._subscribe(topic_name)
+        #self._subscribe(topic_name)
 
     def get_file_writer(self, partition: int) -> FileWriter:
         return AvroFileWriter((self.working_dir / f"partition_{partition}"), self.schema_registry_client)
