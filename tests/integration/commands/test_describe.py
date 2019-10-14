@@ -2,7 +2,6 @@ import json
 from typing import Union, Callable
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from esque.cli.commands import describe_topic, describe_broker
