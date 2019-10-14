@@ -8,7 +8,12 @@ import click
 from pykafka.sasl_authenticators import BaseAuthenticator, ScramAuthenticator, PlainAuthenticator
 
 from esque.cli.environment import ESQUE_CONF_PATH
-from esque.errors import ConfigNotExistsException, ContextNotDefinedException, MissingSaslParameter, UnsupportedSaslMechanism
+from esque.errors import (
+    ConfigNotExistsException,
+    ContextNotDefinedException,
+    MissingSaslParameter,
+    UnsupportedSaslMechanism,
+)
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -158,10 +163,17 @@ class Config:
     def get_pykafka_authenticator(self) -> BaseAuthenticator:
         try:
             if self.sasl_mechanism == "PLAIN":
-                return PlainAuthenticator(user=self.sasl_params["user"], password=self.sasl_params["password"])
-            if self.sasl_mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
+                return PlainAuthenticator(
+                    user=self.sasl_params["user"],
+                    password=self.sasl_params["password"],
+                    security_protocol=self.security_protocol,
+                )
+            elif self.sasl_mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
                 return ScramAuthenticator(
-                    self.sasl_mechanism, user=self.sasl_params["user"], password=self.sasl_params["password"]
+                    self.sasl_mechanism,
+                    user=self.sasl_params["user"],
+                    password=self.sasl_params["password"],
+                    security_protocol=self.security_protocol,
                 )
             else:
                 raise UnsupportedSaslMechanism(
