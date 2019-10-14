@@ -2,13 +2,10 @@ import json
 from typing import Union, Callable
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from esque.cli.commands import describe_topic, describe_broker
-from tests.conftest import check_and_load_yaml
-
-FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
+from tests.conftest import parameterized_output_formats
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
     "advertised.host.name",
@@ -32,7 +29,7 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+@parameterized_output_formats
 def test_describe_topic_formatted_output(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
@@ -43,7 +40,7 @@ def test_describe_topic_formatted_output(
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+@parameterized_output_formats
 def test_describe_topic_from_stdin(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
@@ -56,8 +53,7 @@ def test_describe_topic_from_stdin(
 @pytest.mark.integration
 def test_describe_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(describe_topic)
-    assert result.exit_code == 1
-    assert "ERROR: Missing argument TOPIC_NAME" in result.output
+    assert result.exit_code == 2
 
 
 @pytest.mark.integration
@@ -69,7 +65,7 @@ def test_describe_broker_no_flag(non_interactive_cli_runner: CliRunner, broker_i
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+@parameterized_output_formats
 def test_describe_broker_formatted_output(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
@@ -82,12 +78,11 @@ def test_describe_broker_formatted_output(
 @pytest.mark.integration
 def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(describe_broker)
-    assert result.exit_code == 1
-    assert "ERROR: Missing argument BROKER_ID" in result.output
+    assert result.exit_code == 2
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+@parameterized_output_formats
 def test_describe_broker_from_stdin(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
@@ -98,14 +93,12 @@ def test_describe_broker_from_stdin(
 
 
 def check_described_topic(described_topic: Union[str, dict]):
+    topic_description_keys = ["topic", "partitions", "config"]
     if type(described_topic) == str:
-        for option in ["Topic", "Partition", "Config"]:
+        for option in topic_description_keys:
             assert option in described_topic
     else:
-        keys = described_topic.keys()
-        assert "Topic" in keys
-        assert sum("Partition" in key for key in keys) == len(keys) - 2
-        assert "Config" in keys
+        assert list(described_topic.keys()) == topic_description_keys
 
 
 def check_described_broker(described_broker: Union[str, dict]):

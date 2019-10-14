@@ -64,6 +64,5 @@ def test_edit_topic_works(
 
 @pytest.mark.integration
 def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(edit_topic)
-    assert result.exit_code != 0
-    assert 'Error: Missing argument "TOPIC_NAME"' in result.output
+    result = non_interactive_cli_runner.invoke(edit_topic, "--verbose")
+    assert result.exit_code == 2

@@ -19,12 +19,14 @@ class State(object):
             self.config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
-            config_dir().mkdir(exist_ok=True)
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
+                config_dir().mkdir(exist_ok=True)
                 copyfile(sample_config_path().as_posix(), config_path())
+            else:
+                raise
             if ensure_approval("Do you want to modify the config file now?"):
                 click.edit(filename=config_path().as_posix())
-            sys.exit(0)
+            self.config = Config()
         self._cluster = None
 
     @property
@@ -80,7 +82,7 @@ def error_handler(f):
             else:
                 click.echo(
                     click.style(
-                        f"An Exception of type {type(e).__name__} occured. Use verbose mode with '--verbose' "
+                        f"An Exception of type {type(e).__name__} occurred. Use verbose mode with '--verbose' "
                         f"to see more information.",
                         fg="red",
                     )

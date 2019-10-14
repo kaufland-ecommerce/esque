@@ -4,6 +4,7 @@ from click.testing import CliRunner
 
 from esque.cli.commands import create_topic
 from esque.cli.options import State
+from esque.errors import NoConfirmationPossibleException
 from esque.resources.topic import Topic
 
 
@@ -20,9 +21,8 @@ def test_create_without_confirmation_does_not_create_topic(
 
 @pytest.mark.integration
 def test_create_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(create_topic)
-    assert result.exit_code == 1
-    assert "ERROR: Missing argument TOPIC_NAME" in result.output
+    result = non_interactive_cli_runner.invoke(create_topic, "--verbose")
+    assert result.exit_code == 2
 
 
 @pytest.mark.integration
@@ -64,12 +64,8 @@ def test_topic_creation_stops_in_non_interactive_mode_without_no_verify(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
-    result = non_interactive_cli_runner.invoke(create_topic, input=topic_id)
-    assert (
-        "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
-        in result.output
-    )
-    assert result.exit_code == 1
+    result = non_interactive_cli_runner.invoke(create_topic, "--verbose", input=topic_id)
+    assert result.exit_code != 0 and isinstance(result.exception, NoConfirmationPossibleException)
 
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)

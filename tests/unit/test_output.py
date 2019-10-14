@@ -4,9 +4,7 @@ from typing import Callable
 import pytest
 
 from esque.cli.output import format_output
-from tests.conftest import check_and_load_yaml
-
-FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
+from tests.conftest import parameterized_output_formats
 
 TUPLE_BYTES_DICT = {"list": [1, 2, "3"], "string": "string", "int": 4, "tuple": ("a", "b"), "bytes": str(4).encode()}
 
@@ -17,7 +15,7 @@ def test_format_output_default():
         assert key in pretty_output
 
 
-@pytest.mark.parametrize("output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"])
+@parameterized_output_formats
 def test_format_output(output_format: str, loader: Callable):
     dumped_dict = format_output(TUPLE_BYTES_DICT, output_format)
     loaded_dict = loader(dumped_dict)

@@ -1,12 +1,14 @@
+import json
 import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple, Dict
 
 import confluent_kafka
 import pytest
 import yaml
+from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -44,13 +46,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def interactive_cli_runner(test_config, monkeypatch):
+def interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(click_stdin, "isatty", lambda: True)
     yield CliRunner()
 
 
 @pytest.fixture()
-def non_interactive_cli_runner(test_config, monkeypatch):
+def non_interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(click_stdin, "isatty", lambda: False)
     yield CliRunner()
 
@@ -86,12 +88,12 @@ def broker_id(state: State) -> str:
 
 
 @pytest.fixture()
-def topic_object(cluster, topic):
+def topic_object(cluster: Cluster, topic: str):
     yield cluster.topic_controller.get_cluster_topic(topic)
 
 
 @pytest.fixture()
-def changed_topic_object(cluster, topic):
+def changed_topic_object(cluster: Cluster, topic: str):
     yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
@@ -142,7 +144,7 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], I
 
 
 @pytest.fixture()
-def topic_controller(cluster):
+def topic_controller(cluster: Cluster):
     yield cluster.topic_controller
 
 
@@ -220,7 +222,7 @@ def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic,
 
 
 @pytest.fixture()
-def cluster(test_config):
+def cluster(test_config: Config) -> Iterable[Cluster]:
     try:
         cluster = Cluster()
     except NoBrokersAvailableError as ex:
@@ -231,11 +233,18 @@ def cluster(test_config):
 
 
 @pytest.fixture()
-def state(test_config):
+def state(test_config: Config) -> Iterable[State]:
     yield State()
 
 
-def check_and_load_yaml(output: str) -> dict:
+def check_and_load_yaml(output: str) -> Dict:
     assert output[0] != "{", "non json output starts with '{'"
     assert output[-2] != "}" and output[-1] != "}", "non json output ends with '}'"
     return yaml.safe_load(output)
+
+
+FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
+
+parameterized_output_formats = pytest.mark.parametrize(
+    "output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"]
+)

@@ -65,6 +65,13 @@ class ConfigNotExistsException(ExceptionWithMessage):
         return "Config does not exist."
 
 
+class NoConfirmationPossibleException(ExceptionWithMessage):
+    def describe(self) -> str:
+        return (
+            "You are running this command in a non-interactive mode. To do this you must use the --no-verify option."
+        )
+
+
 class ContextNotDefinedException(ExceptionWithMessage):
     def __init__(self, message: str = None):
         if message is None:
