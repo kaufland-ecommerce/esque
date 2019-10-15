@@ -82,9 +82,7 @@ def list_contexts(ctx, args, incomplete):
 def fallback_to_stdin(ctx, param, value):
     stdin = click.get_text_stream("stdin")
     if not value and not isatty(stdin):
-        stdin_arg = (
-            stdin.readline().strip()
-        )
+        stdin_arg = stdin.readline().strip()
     else:
         stdin_arg = value
     if not stdin_arg:
