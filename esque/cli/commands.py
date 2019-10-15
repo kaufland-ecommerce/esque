@@ -259,7 +259,7 @@ def describe_topic(state: State, topic_name: str, output_format: str):
 
 
 @get.command("offsets")
-@click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
 @output_format_option
 @error_handler
 @pass_state
