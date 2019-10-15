@@ -1,4 +1,3 @@
-import sys
 from functools import wraps
 from shutil import copyfile
 
@@ -8,7 +7,7 @@ from click import make_pass_decorator, option, ClickException
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException, ExceptionWithMessage
+from esque.errors import ConfigNotExistsException
 
 
 class State(object):

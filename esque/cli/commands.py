@@ -1,5 +1,4 @@
 import pathlib
-import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -85,7 +84,7 @@ def fallback_to_stdin(ctx, param, value):
     if not value and not isatty(stdin):
         stdin_arg = (
             stdin.readline().strip()
-        )  # click_stdin.readline().strip() gives OSError('reading from stdin while output is captured',)
+        )
     else:
         stdin_arg = value
     if not stdin_arg:

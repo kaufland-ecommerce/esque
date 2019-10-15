@@ -1,5 +1,5 @@
 import json
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 from functools import partial
 from typing import Any, Dict, List, MutableMapping, Tuple
 

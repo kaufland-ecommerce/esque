@@ -99,10 +99,6 @@ class TopicAlreadyExistsException(KafkaException):
     exit_code = 36
 
 
-class TopicAlreadyExistsException(KafkaException):
-    exit_code = 36
-
-
 class EndOfPartitionReachedException(KafkaException):
     exit_code = -191
 
