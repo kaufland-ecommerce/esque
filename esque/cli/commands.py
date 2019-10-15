@@ -1,6 +1,7 @@
 import pathlib
 import time
 from collections import OrderedDict
+from contextlib import ExitStack
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -8,6 +9,10 @@ from time import sleep
 import click
 import yaml
 from click import version_option
+from esque.ruleparser.exception import RuleTreeInvalidError
+
+from esque.ruleparser.exception import MalformedExpressionError
+
 from esque.errors import EndOfPartitionReachedException
 
 from esque.errors import MessageEmptyException
@@ -317,28 +322,40 @@ def get_topics(state, topic):
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
-@click.option("-o", "--output", help="Output location (default: STDOUT)", type=click.STRING, required=False)
 @pass_state
-def consume(
-    state: State,
-    topic: str,
-    from_context: str,
-    numbers: int,
-    match: str,
-    last: bool,
-    avro: bool,
-    output: str,
-):
+def consume(state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
-    working_dir = "message_" + unique_name
-    topic_info = state.cluster.topic_controller.get_cluster_topic(topic)
-    consumers = []
-    partition_ids = map(lambda x: x.partition_id, topic_info.partitions)
+    directory_name = "message_" + unique_name
+    base_dir = Path(directory_name)
+    state.config.context_switch(from_context)
+    partitions = []
+    for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
+        partitions.append(partition.partition_id)
+    with HandleFileOnFinished(base_dir, True) as working_dir:
+        total_number_of_consumed_messages = _consume_to_file_ordered(
+            working_dir=working_dir,
+            topic=topic,
+            group_id=group_id,
+            from_context=from_context,
+            partitions=partitions,
+            numbers=numbers,
+            avro=avro,
+            match=match,
+            last=last,
+        )
 
-    _consume_to_file_ordered(working_dir=working_dir, topic=topic, group_id=group_id, from_context=from_context, partition_ids=partition_ids, numbers=numbers, avro=avro, match=match, last=last)
-    #total_number_of_messages_consumed = 0
+    if total_number_of_consumed_messages == numbers:
+        click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
+    else:
+        click.echo(
+            "Found only "
+            + bold(str(total_number_of_consumed_messages))
+            + " messages in topic, out of "
+            + blue_bold(str(numbers))
+            + " required."
+        )
 
 
 @esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
@@ -431,84 +448,74 @@ def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, 
 
 
 def _consume_to_file_ordered(
-        working_dir: pathlib.Path,
-        topic: str,
-        group_id: str,
-        from_context: str,
-        partition_ids: list,
-        numbers: int,
-        avro: bool,
-        match: str,
-        last: bool,
+    working_dir: pathlib.Path,
+    topic: str,
+    group_id: str,
+    from_context: str,
+    partitions: list,
+    numbers: int,
+    avro: bool,
+    match: str,
+    last: bool,
 ) -> int:
     consumers = []
-    for partition in partition_ids:
+    for partition in partitions:
         if avro:
-            consumer = AvroFileConsumer(group_id + "_" + str(partition), topic, working_dir, last, match)
+            consumer = AvroFileConsumer(group_id + "_" + str(partition), None, working_dir, last, match)
         else:
-            consumer = FileConsumer(group_id + "_" + str(partition), topic, working_dir, last)
-        consumer.assign_specific_partitions([partition])
-        print("Current assignment: " + str(consumer._consumer.assignment()))
+            consumer = FileConsumer(group_id + "_" + str(partition), None, working_dir, last, match)
+        consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
 
     click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     messages_by_partition = {}
-    timestamps_by_partition = {}
+    partitions_by_timestamp = {}
     total_number_of_messages = 0
-    read_counter = 0
     no_more_messages = False
-    message = None
     # get at least one message from each partition, or exclude those that don't have any messages
-    for consumer_counter in range(0, len(partition_ids)):
+    for partition_counter in range(0, len(consumers)):
         try:
-            print("Now trying to read from partition: " + str(consumer_counter))
-            message = consumers[consumer_counter].consume_single_message_public(3)
+            message = consumers[partition_counter].consume_single_acceptable_message(timeout=10)
+            decoded_message = decode_message(message)
         except (MessageEmptyException, EndOfPartitionReachedException):
-            print("No message available")
-            del partition_ids[consumer_counter]
-            if len(partition_ids) == 0:
+            partitions.remove(partition_counter)
+            if len(partitions) == 0:
                 no_more_messages = True
         else:
-            decoded_message = decode_message(message)
-            timestamps_by_partition[decoded_message.timestamp] = decoded_message.partition
+            partitions_by_timestamp[decoded_message.timestamp] = decoded_message.partition
             if decoded_message.partition not in messages_by_partition:
                 messages_by_partition[decoded_message.partition] = []
-            messages_by_partition[decoded_message.partition].append(decoded_message)
+            messages_by_partition[decoded_message.partition].append(message)
 
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
-    while total_number_of_messages < numbers or no_more_messages:
-        if len(timestamps_by_partition) == 0:
-            no_more_messages = True
-        else:
-            first_key = sorted(timestamps_by_partition.keys())[0]
-            partition = timestamps_by_partition[first_key]
-            print("Now outputing message from partition " + str(timestamps_by_partition[first_key]) + ", key: " + messages_by_partition[partition][0].key)
-            del timestamps_by_partition[first_key]
-            messages_by_partition[partition].pop(0)
-            total_number_of_messages += 1
-
-            try:
-                print("Now trying to read from partition: " + str(partition_ids[read_counter % len(partition_ids)]))
-                message = consumers[partition].consume_single_message_public(3)
-                decoded_message = decode_message(message)
-                timestamps_by_partition[decoded_message.timestamp] = decoded_message.partition
-                if decoded_message.partition not in messages_by_partition:
-                    messages_by_partition[decoded_message.partition] = []
-                messages_by_partition[decoded_message.partition].append(decoded_message)
-            except (MessageEmptyException, EndOfPartitionReachedException):
-                print("No message available")
-                partition_ids.remove(partition)
-            if len(partition_ids) == 0:
+    with ExitStack() as stack:
+        file_writer = consumers[0].get_file_writer(-1)
+        stack.enter_context(file_writer)
+        while total_number_of_messages < numbers and not no_more_messages:
+            if len(partitions_by_timestamp) == 0:
                 no_more_messages = True
+            else:
+                first_key = sorted(partitions_by_timestamp.keys())[0]
+                partition = partitions_by_timestamp[first_key]
 
-    #click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
-    return 0
+                message = messages_by_partition[partition].pop(0)
+                file_writer.write_message_to_file(message)
+                del partitions_by_timestamp[first_key]
+                total_number_of_messages += 1
 
+                try:
+                    message = consumers[partition].consume_single_acceptable_message(timeout=10)
+                    decoded_message = decode_message(message)
+                    partitions_by_timestamp[decoded_message.timestamp] = partition
+                    messages_by_partition[partition].append(message)
+                except (MessageEmptyException, EndOfPartitionReachedException):
+                    partitions.remove(partition)
+                    messages_by_partition.pop(partition, None)
+                    if len(partitions) == 0:
+                        no_more_messages = True
 
-_consume_to_file_ordered(Path("/tmp"), "topic7", "randomgroup" + "_" + str(int(round(time.time() * 1000))), "local", [0,1,2,3,4], 11, False, None, False)
-
-
+    return total_number_of_messages
 
 
 def _consume_to_files(
