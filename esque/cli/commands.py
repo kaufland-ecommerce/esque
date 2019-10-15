@@ -106,10 +106,10 @@ def ctx(state: State, context: str):
 
 
 @create.command("topic")
-@error_handler
 @click.argument("topic-name", callback=fallback_to_stdin, required=False)
-@no_verify_option
 @click.option("-l", "--like", help="Topic to use as template", required=False)
+@error_handler
+@no_verify_option
 @pass_state
 def create_topic(state: State, topic_name: str, like: str):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -130,6 +130,7 @@ def create_topic(state: State, topic_name: str, like: str):
 @edit.command("topic")
 @click.argument("topic-name", required=True)
 @pass_state
+@error_handler
 def edit_topic(state: State, topic_name: str):
 
     controller = state.cluster.topic_controller
