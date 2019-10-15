@@ -322,29 +322,51 @@ def get_topics(state, topic):
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option(
+    "-o",
+    "--preserve-order",
+    help="Preserve the order of messages, regardless of their partition",
+    default=False,
+    is_flag=True,
+)
 @pass_state
-def consume(state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool):
+def consume(
+    state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool, preserve_order: bool
+):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
     directory_name = "message_" + unique_name
     base_dir = Path(directory_name)
     state.config.context_switch(from_context)
-    partitions = []
-    for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
-        partitions.append(partition.partition_id)
     with HandleFileOnFinished(base_dir, True) as working_dir:
-        total_number_of_consumed_messages = _consume_to_file_ordered(
-            working_dir=working_dir,
-            topic=topic,
-            group_id=group_id,
-            from_context=from_context,
-            partitions=partitions,
-            numbers=numbers,
-            avro=avro,
-            match=match,
-            last=last,
-        )
+        click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+        if preserve_order:
+            partitions = []
+            for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
+                partitions.append(partition.partition_id)
+            total_number_of_consumed_messages = _consume_to_file_ordered(
+                working_dir=working_dir,
+                topic=topic,
+                group_id=group_id,
+                from_context=from_context,
+                partitions=partitions,
+                numbers=numbers,
+                avro=avro,
+                match=match,
+                last=last,
+            )
+        else:
+            total_number_of_consumed_messages = _consume_to_files(
+                working_dir=working_dir,
+                topic=topic,
+                group_id=group_id,
+                from_context=from_context,
+                numbers=numbers,
+                avro=avro,
+                match=match,
+                last=last,
+            )
 
     if total_number_of_consumed_messages == numbers:
         click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
@@ -467,7 +489,6 @@ def _consume_to_file_ordered(
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
 
-    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     messages_by_partition = {}
     partitions_by_timestamp = {}
     total_number_of_messages = 0
@@ -532,9 +553,7 @@ def _consume_to_files(
         consumer = AvroFileConsumer(group_id, topic, working_dir, last)
     else:
         consumer = FileConsumer(group_id, topic, working_dir, last)
-    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     number_consumed_messages = consumer.consume(int(numbers))
-    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
 
     return number_consumed_messages
 
