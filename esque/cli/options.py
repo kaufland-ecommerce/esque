@@ -3,7 +3,7 @@ from functools import wraps
 from shutil import copyfile
 
 import click
-from click import make_pass_decorator, option
+from click import make_pass_decorator, option, ClickException
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
@@ -66,27 +66,15 @@ output_format_option = click.option(
 
 
 def error_handler(f):
-    @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
     @wraps(f)
     def wrapper(*args, **kwargs):
-        verbose = kwargs["verbose"]
-        del kwargs["verbose"]
         try:
             f(*args, **kwargs)
         except Exception as e:
-            if verbose:
-                raise
 
-            if isinstance(e, ExceptionWithMessage):
-                click.echo(click.style(str(e), fg="red"))
+            if isinstance(e, ClickException):
+                raise
             else:
-                click.echo(
-                    click.style(
-                        f"An Exception of type {type(e).__name__} occurred. Use verbose mode with '--verbose' "
-                        f"to see more information.",
-                        fg="red",
-                    )
-                )
-            sys.exit(1)
+                raise ClickException(f"An Exception of type {type(e).__name__} occurred.")
 
     return wrapper

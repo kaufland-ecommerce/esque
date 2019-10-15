@@ -3,6 +3,7 @@ import confluent_kafka
 import pytest
 import yaml
 from _pytest.monkeypatch import MonkeyPatch
+from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import edit_topic
@@ -64,5 +65,5 @@ def test_edit_topic_works(
 
 @pytest.mark.integration
 def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(edit_topic, "--verbose")
-    assert result.exit_code == 2
+    result = non_interactive_cli_runner.invoke(edit_topic)
+    assert result.exit_code == MissingParameter.exit_code

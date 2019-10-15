@@ -7,11 +7,11 @@ from time import sleep
 
 import click
 import yaml
-from click import version_option
+from click import version_option, MissingParameter, UsageError
 
 from esque.__version__ import __version__
 
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval, click_stdin
+from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
 from esque.cli.options import State, no_verify_option, pass_state, error_handler, output_format_option
 from esque.cli.output import (
     blue_bold,
@@ -81,22 +81,21 @@ def list_contexts(ctx, args, incomplete):
 
 
 def fallback_to_stdin(ctx, param, value):
-    if not value and not click_stdin.isatty():
+    stdin = click.get_text_stream("stdin")
+    if not value and not isatty(stdin):
         stdin_arg = (
-            click.get_text_stream("stdin").readline().strip()
+            stdin.readline().strip()
         )  # click_stdin.readline().strip() gives OSError('reading from stdin while output is captured',)
     else:
         stdin_arg = value
     if not stdin_arg:
-        click.echo(f"ERROR: Missing argument {param.human_readable_name}")
-        sys.exit(2)
+        raise MissingParameter("No value specified")
 
     return stdin_arg
 
 
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
-@error_handler
 @pass_state
 def ctx(state: State, context: str):
     if not context:
@@ -133,7 +132,6 @@ def create_topic(state: State, topic_name: str, like: str):
 
 @edit.command("topic")
 @click.argument("topic-name", required=True)
-@error_handler
 @pass_state
 def edit_topic(state: State, topic_name: str):
 
@@ -184,7 +182,7 @@ def apply(state: State, file: str):
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
     yaml_topic_names = [t.name for t in yaml_topics]
     if not len(yaml_topic_names) == len(set(yaml_topic_names)):
-        raise ValueError("Duplicate topic names in the YAML!")
+        raise UsageError("Duplicate topic names in the YAML!")
 
     # Get topic data based on the cluster state
     topic_controller = state.cluster.topic_controller

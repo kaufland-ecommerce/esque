@@ -4,6 +4,7 @@ from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
 from typing import Callable, Iterable, Tuple, Dict
+from unittest import mock
 
 import confluent_kafka
 import pytest
@@ -22,7 +23,6 @@ from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
-from esque.cli.helpers import click_stdin
 
 
 def pytest_addoption(parser):
@@ -47,14 +47,14 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture()
 def interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
-    monkeypatch.setattr(click_stdin, "isatty", lambda: True)
-    yield CliRunner()
+    with mock.patch("esque.cli.helpers._isatty", return_value=True):
+        yield CliRunner()
 
 
 @pytest.fixture()
 def non_interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
-    monkeypatch.setattr(click_stdin, "isatty", lambda: False)
-    yield CliRunner()
+    with mock.patch("esque.cli.helpers._isatty", return_value=False):
+        yield CliRunner()
 
 
 @pytest.fixture()

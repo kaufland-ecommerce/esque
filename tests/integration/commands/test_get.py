@@ -15,7 +15,7 @@ from tests.conftest import parameterized_output_formats
 
 @pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_topics, ["--verbose"])
+    result = non_interactive_cli_runner.invoke(get_topics)
     assert result.exit_code == 0
 
 
@@ -40,7 +40,7 @@ def test_get_topics_with_prefix(
     topic_controller.create_topics([Topic(new_topic, replication_factor=1) for new_topic in new_topics])
     confluent_admin_client.poll(timeout=1)
 
-    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json", "--verbose"])
+    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json"])
 
     assert result.exit_code == 0
     retrieved_topics = json.loads(result.output)

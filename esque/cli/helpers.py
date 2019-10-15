@@ -5,14 +5,21 @@ import click
 
 from esque.errors import NoConfirmationPossibleException
 
-click_stdin = click.get_text_stream("stdin")
+
+# private function which we can mock
+def _isatty(stream) -> bool:
+    return stream.isatty()
+
+
+def isatty(stream) -> bool:
+    return _isatty(stream)
 
 
 def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
     if no_verify:
         return True
 
-    if not click_stdin.isatty():
+    if not isatty(click.get_text_stream("stdin")):
         raise NoConfirmationPossibleException
 
     return click.confirm(question)

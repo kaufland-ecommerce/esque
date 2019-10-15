@@ -1,7 +1,7 @@
-import json
 from typing import Union, Callable
 
 import pytest
+from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import describe_topic, describe_broker
@@ -53,7 +53,7 @@ def test_describe_topic_from_stdin(
 @pytest.mark.integration
 def test_describe_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(describe_topic)
-    assert result.exit_code == 2
+    assert result.exit_code == MissingParameter.exit_code
 
 
 @pytest.mark.integration
@@ -78,7 +78,7 @@ def test_describe_broker_formatted_output(
 @pytest.mark.integration
 def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(describe_broker)
-    assert result.exit_code == 2
+    assert result.exit_code == MissingParameter.exit_code
 
 
 @pytest.mark.integration

@@ -1,5 +1,6 @@
 import confluent_kafka
 import pytest
+from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import delete_topic
@@ -35,7 +36,7 @@ def test_topic_deletion_without_verification_does_not_work(
 @pytest.mark.integration
 def test_delete_topic_without_topic_name_fails(interactive_cli_runner: CliRunner):
     result = interactive_cli_runner.invoke(delete_topic)
-    assert result.exit_code == 2
+    assert result.exit_code == MissingParameter.exit_code
 
 
 @pytest.mark.integration
@@ -77,8 +78,8 @@ def test_topic_deletion_stops_in_non_interactive_mode_without_no_verify(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = non_interactive_cli_runner.invoke(delete_topic, "--verbose", input=topic)
-    assert result.exit_code != 0 and isinstance(result.exception, NoConfirmationPossibleException)
+    result = non_interactive_cli_runner.invoke(delete_topic, input=topic)
+    assert result.exit_code == NoConfirmationPossibleException.exit_code
 
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
