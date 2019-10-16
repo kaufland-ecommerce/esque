@@ -104,9 +104,9 @@ class TopicConfigNotValidException(ExceptionWithMessage):
 class YamaleValidationException(TopicConfigNotValidException):
     def __init__(self, validation_error: ValueError):
         complete_message = validation_error.args[0]
-        messages = complete_message.split('\n')[2:]
-        stripped_messages = list(map(lambda x: x.strip('\t'), messages))
-        joined_message = '\n'.join(stripped_messages)
+        messages = complete_message.split("\n")[2:]
+        stripped_messages = list(map(lambda x: x.strip("\t"), messages))
+        joined_message = "\n".join(stripped_messages)
         TopicConfigNotValidException.__init__(self, joined_message)
 
 

@@ -20,7 +20,7 @@ before_install:
 - confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
-- pip install coverage coveralls flake8 pipenv
+- pip install coverage coveralls flake8 pipenv yamale
 - pipenv install --system --dev --deploy
 script:
 - "$TEST_CMD"
