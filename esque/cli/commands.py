@@ -63,7 +63,7 @@ def delete():
     pass
 
 
-@esque.group(help="Edit a resource")
+@esque.group(help="Edit a resource or your esque config")
 def edit():
     pass
 
@@ -467,3 +467,9 @@ def ping(state: State, times: int, wait: int):
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+
+
+@edit.command("config", help="Edit your esque config file.")
+@error_handler
+def edit_config():
+    click.edit(filename=config_path().as_posix())
