@@ -195,7 +195,7 @@ def green_bold(s: str) -> str:
 
 
 STYLE_MAPPING = {
-    "Topic": green_bold,
+    "topic": green_bold,
     "cleanup.policy": bold,
     "flush.ms": bold,
     "delete.retention.ms": bold,

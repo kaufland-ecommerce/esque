@@ -20,7 +20,7 @@ def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
         return True
 
     if not isatty(click.get_text_stream("stdin")):
-        raise NoConfirmationPossibleException
+        raise NoConfirmationPossibleException()
 
     return click.confirm(question)
 

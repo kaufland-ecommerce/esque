@@ -46,8 +46,7 @@ def test_get_topics_with_prefix(
     retrieved_topics = json.loads(result.output)
     assert len(retrieved_topics) > 1
     for retrieved_topic in retrieved_topics:
-        if retrieved_topic:
-            assert retrieved_topic[: len(prefix_1)] == prefix_1
+        assert retrieved_topic[: len(prefix_1)] == prefix_1
 
 
 @pytest.mark.integration
@@ -74,7 +73,9 @@ def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
 
 @pytest.mark.integration
 @parameterized_output_formats
-def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
+def test_smoke_test_get_brokers_with_output_format(
+    non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable
+):
     result = non_interactive_cli_runner.invoke(get_brokers, ["-o", output_format])
     assert result.exit_code == 0
     loader(result.output)

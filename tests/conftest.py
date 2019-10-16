@@ -9,7 +9,6 @@ from unittest import mock
 import confluent_kafka
 import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -46,13 +45,13 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
+def interactive_cli_runner(test_config: Config):
     with mock.patch("esque.cli.helpers._isatty", return_value=True):
         yield CliRunner()
 
 
 @pytest.fixture()
-def non_interactive_cli_runner(test_config: Config, monkeypatch: MonkeyPatch):
+def non_interactive_cli_runner(test_config: Config):
     with mock.patch("esque.cli.helpers._isatty", return_value=False):
         yield CliRunner()
 
