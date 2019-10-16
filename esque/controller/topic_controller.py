@@ -4,7 +4,7 @@ from itertools import islice
 from typing import List, TYPE_CHECKING, Union
 
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
-from confluent_kafka.cimpl import Message, NewTopic
+from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.clients.consumer import MessageConsumer
@@ -12,8 +12,6 @@ from esque.config import Config, PING_GROUP_ID
 from esque.errors import translate_third_party_exceptions, raise_for_kafka_error
 from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
-
-import pendulum
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -118,45 +116,30 @@ class TopicController:
         low_watermarks = pykafka_topic.earliest_available_offsets()
         high_watermarks = pykafka_topic.latest_available_offsets()
 
-        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks)
+        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks, topic)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
 
-        message = self._get_last_message(topic)
-        topic.last_message_timestamp = 0
-        topic.last_message_timestamp = message.timestamp()[1]
-
         return topic
 
     @translate_third_party_exceptions
-    def _get_last_message(self, local_topic: Topic) -> Message:
-
-        max_timestamp = pendulum.from_timestamp(0)
-        last_message = None
-
-        consumer = MessageConsumer(PING_GROUP_ID, local_topic.name, True)
-
-        for partition_id in local_topic.offsets:
-            message = consumer.consume(local_topic.offsets[partition_id].high - 1, partition_id)
-            timestamp = pendulum.from_timestamp(float(message.timestamp()[1]) / 1000)
-            if timestamp > max_timestamp:
-                max_timestamp = timestamp
-                last_message = message
-
-        return last_message
-
-    @translate_third_party_exceptions
     def _get_partition_data(
-        self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
+        self,
+        confluent_topic: ConfluentTopic,
+        low_watermarks: PartitionInfo,
+        high_watermarks: PartitionInfo,
+        topic: Topic,
     ) -> List[Partition]:
 
+        consumer = MessageConsumer(PING_GROUP_ID, topic.name, True)
         partitions = []
 
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
-            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas)
+            latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
         return partitions

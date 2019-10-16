@@ -7,6 +7,8 @@ from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
 
+import pendulum
+
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
@@ -22,12 +24,14 @@ class Partition(KafkaResource):
         partition_isrs,
         partition_leader,
         partition_replicas: List[int],  # list of brokers holding a replica
+        latest_message_timestamp: float,
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
         self.partition_isrs = partition_isrs
         self.partition_leader = partition_leader
         self.partition_replicas = partition_replicas
+        self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp)
 
     def as_dict(self):
         return {
@@ -37,6 +41,7 @@ class Partition(KafkaResource):
             "partition_isrs": self.partition_isrs,
             "partition_leader": self.partition_leader,
             "partition_replicas": self.partition_replicas,
+            "latest_message_timestamp": self.latest_message_timestamp,
         }
 
 

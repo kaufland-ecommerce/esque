@@ -7,7 +7,6 @@ from time import sleep
 import click
 import yaml
 from click import version_option
-import pendulum
 
 from esque.__version__ import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
@@ -231,10 +230,6 @@ def describe_topic(state, topic_name):
     config = {"Config": topic.config}
 
     click.echo(bold(f"Topic: {green_bold(topic_name)}"))
-    last_message_timestamp = pendulum.from_timestamp(float(topic.last_message_timestamp) / 1000)
-
-    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
-    click.echo(f"Last message timestamp: {last_message_timestamp.to_datetime_string()}")
 
     for partition in topic.partitions:
         click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
