@@ -45,11 +45,15 @@ class ExceptionWithMessage(ClickException):
         return f"{type(self).__name__}: {self.message}"
 
 
-class MissingSaslParameter(ExceptionWithMessage):
+class ConfigException(ExceptionWithMessage):
     pass
 
 
-class UnsupportedSaslMechanism(ExceptionWithMessage):
+class MissingSaslParameter(ConfigException):
+    pass
+
+
+class UnsupportedSaslMechanism(ConfigException):
     pass
 
 
