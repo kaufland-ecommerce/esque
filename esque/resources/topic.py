@@ -1,5 +1,7 @@
 from collections import namedtuple
 from functools import total_ordering
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
@@ -7,14 +9,14 @@ import yamale
 from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
-from esque.errors import TopicConfigNotValidException
+from esque.errors import YamaleValidationException
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
 
-# kafka 2.3 - value of dict is either enum or type
+SchemaPath = Path(__file__).parent.parent / "yml_schemas" / "topic.yml"
 
 
 class Partition(KafkaResource):
@@ -209,30 +211,17 @@ class Topic(KafkaResource):
         self._validate()
 
     def _validate(self):
-        if not set(self.config).issubset(allowed_configs.keys()):
-            raise TopicConfigNotValidException(
-                f"Unknown config key(s): {set(self.config).difference(allowed_configs.keys())}"
-            )
-        for key, value in self.config.items():
-            self._verify_type(key, value)
-
-    @staticmethod
-    def _verify_type(key, value):
-        required_type = allowed_configs[key]
-        if type(required_type) is list:
-            # for enums
-            if value in required_type:
-                return
-        else:
-            try:
-                # all values come as string so try to cast and see if there are errors, except bool
-                required_type(value)
-                if required_type is bool and value.lower() not in ("true", "false"):
-                    raise ValueError
-                return
-            except ValueError:
-                pass
-        raise TopicConfigNotValidException(f"The following config value is of wrong type: {{{key}: {value}}}")
+        if not self.config:
+            return
+        schema = yamale.make_schema(SchemaPath)
+        with NamedTemporaryFile('w+', suffix='.yml') as current_config:
+            current_config.write(self.to_yaml(only_editable=True))
+            current_config.seek(0)
+            data = yamale.make_data(current_config.name)
+        try:
+            yamale.validate(schema, data, strict=True)
+        except ValueError as validation_error:
+            raise YamaleValidationException(validation_error)
 
     # object behaviour
     def __lt__(self, other: "Topic"):
