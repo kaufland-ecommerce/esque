@@ -54,9 +54,9 @@ matrix:
     before_install:
       - mkdir -p ~/.esque
       - touch ~/.esque/esque.cfg
-    install: []
+    install:
+      - poetry build
     script:
-      - python setup.py sdist
       - pip install --no-cache-dir dist/esque-*.tar.gz
       - esque --recreate-config --no-verify
   - name: 'Test upload'
@@ -74,12 +74,11 @@ matrix:
       - mkdir -p ~/.esque
       - touch ~/.esque/esque.cfg
     install:
-      - pip install twine
+      - pip install poetry
     script:
-      - export VERSION=$(date +"%s")
-      - echo "__version__ = \"$VERSION\"" > esque/__version__.py
-      - python setup.py sdist
-      - twine upload --repository-url http://localhost:3141/root/stable/ dist/esque-*.tar.gz --user root --password ''
+      - export VERSION=$(sed -n -E "s/__version__ = '(.+)'/\1/p" esque/__init__.py)
+      - poetry build
+      - poetry publish --repository=http://localhost:3141/root/stable/ dist/esque-*.tar.gz --username=root --password=''
       - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
