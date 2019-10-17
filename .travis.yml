@@ -76,7 +76,7 @@ matrix:
     install:
       - pip install poetry
     script:
-      - export VERSION=$(sed -n -E "s/__version__ = '(.+)'/\1/p" esque/__init__.py)
+      - export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
       - poetry build
       - poetry publish --repository=http://localhost:3141/root/stable/ dist/esque-*.tar.gz --username=root --password=''
       - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
