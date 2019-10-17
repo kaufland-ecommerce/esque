@@ -20,8 +20,8 @@ before_install:
 - confluent-community/bin/schema-registry-start -daemon confluent-community/etc/schema-registry/schema-registry.properties
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
-- pip install coverage coveralls flake8 pipenv
-- pipenv install --system --dev --deploy
+- pip install coverage coveralls poetry
+- poetry install --develop DEVELOP
 script:
 - "$TEST_CMD"
 after_success:
@@ -38,12 +38,12 @@ matrix:
     before_install: []
     python: 3.7
     env:
-    - TEST_CMD="black --check --verbose ."
+    - TEST_CMD="poetry black --check --verbose ."
   - name: flake8
     python: 3.7
     before_install: []
     env:
-    - TEST_CMD="flake8 esque/"
+    - TEST_CMD="poetry flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
