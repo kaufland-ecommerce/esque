@@ -27,7 +27,7 @@ from esque.clients.consumer import AvroFileConsumer
 from esque.clients.consumer import ConsumerFactory
 from esque.clients.consumer import FileConsumer
 from esque.clients.consumer import PingConsumer
-from esque.clients.producer import AvroFileProducer
+from esque.clients.producer import AvroFileProducer, ProducerFactory
 from esque.clients.producer import FileProducer
 from esque.clients.producer import PingProducer
 from esque.cluster import Cluster
@@ -339,6 +339,7 @@ def get_topics(state, topic):
     is_flag=True,
 )
 @click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT or to an automatically generated file.", default=False, is_flag=True)
+@error_handler
 @pass_state
 def consume(
     state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool, preserve_order: bool, write_to_stdout: bool
@@ -393,95 +394,6 @@ def consume(
                 + blue_bold(str(numbers))
                 + " required."
             )
-
-
-@esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
-@click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
-@click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
-@click.option("-m", "--match", help="Match expression", type=click.STRING, required=False)
-@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
-@click.option(
-    "-k",
-    "--keep",
-    "keep_file",
-    help="Set this flag if the file with consumed messages should be kept.",
-    default=False,
-    is_flag=True,
-)
-@error_handler
-@pass_state
-def transfer(
-    state: State,
-    topic: str,
-    from_context: str,
-    to_context: str,
-    numbers: int,
-    match: str,
-    last: bool,
-    avro: bool,
-    keep_file: bool,
-):
-    current_timestamp_milliseconds = int(round(time.time() * 1000))
-    unique_name = topic + "_" + str(current_timestamp_milliseconds)
-    group_id = "group_for_" + unique_name
-    directory_name = "message_" + unique_name
-    base_dir = Path(directory_name)
-    state.config.context_switch(from_context)
-
-    with HandleFileOnFinished(base_dir, keep_file) as working_dir:
-        number_consumed_messages = _consume_to_files(
-            working_dir, topic, group_id, numbers, avro, match, last
-        )
-
-        if number_consumed_messages == 0:
-            click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
-            click.echo(bold("Possible reasons: The topic is empty or the starting offset was set too high."))
-            return
-
-        click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
-
-        if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
-            return
-
-        state.config.context_switch(to_context)
-        _produce_from_files(topic, to_context, working_dir, avro)
-
-
-@esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
-@click.argument("topic", required=True)
-@click.option(
-    "-d",
-    "--directory",
-    metavar="<directory>",
-    help="Sets the directory that contains Kafka messages",
-    type=click.STRING,
-    required=True,
-)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
-@error_handler
-@pass_state
-def produce(state: State, topic: str, directory: str, avro: bool):
-    _produce_from_files(topic, state.config.current_context, Path(directory), avro)
-
-
-def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, avro: bool):
-    if avro:
-        producer = AvroFileProducer(working_dir)
-    else:
-        producer = FileProducer(working_dir)
-    click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
-    number_produced_messages = producer.produce(topic)
-    click.echo(
-        green_bold(str(number_produced_messages))
-        + " messages successfully produced to context "
-        + green_bold(to_context)
-        + " and topic "
-        + green_bold(topic)
-        + "."
-    )
 
 
 def _consume_to_file_ordered(
@@ -566,6 +478,38 @@ def _consume_to_files(
     number_consumed_messages = consumer.consume(int(numbers))
 
     return number_consumed_messages
+
+
+@esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
+@click.argument("topic", required=True)
+@click.option("-d", "--directory", metavar="<directory>", help="Sets the directory that contains Kafka messages", type=click.STRING, required=False)
+@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=True)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option("-i", "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True)
+@error_handler
+@pass_state
+def produce(state: State, topic: str, to_context: str, directory: str, avro: bool, match: str = None, read_from_stdin: bool = False):
+    if directory is None and not read_from_stdin:
+        click.echo("You have to provide the directory or use a --stdin flag")
+    else:
+        if directory is not None:
+            working_dir = pathlib.Path(directory)
+            if not working_dir.exists():
+                click.echo("You have to provide an existing directory")
+                exit(1)
+        state.config.context_switch(to_context)
+        click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
+        producer = ProducerFactory().create_producer(topic_name=topic, working_dir=working_dir if not read_from_stdin else None, avro=avro, match=match)
+        total_number_of_messages_produced = producer.produce()
+        click.echo(
+            green_bold(str(total_number_of_messages_produced))
+            + " messages successfully produced to context "
+            + blue_bold(to_context)
+            + " and topic "
+            + blue_bold(topic)
+            + "."
+        )
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")

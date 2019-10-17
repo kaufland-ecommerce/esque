@@ -5,6 +5,8 @@ from typing import Any, Iterable, NamedTuple
 from avro.schema import RecordSchema
 from confluent_kafka.cimpl import Message
 
+from esque.errors import translate_third_party_exceptions
+
 
 class DecodedMessage(NamedTuple):
     key: str
@@ -58,19 +60,16 @@ class FileReader(IOHandler):
 
 
 class PlainTextFileWriter(FileWriter):
+    @translate_third_party_exceptions
     def write_message_to_file(self, message: Message):
         self.file.write(serialize_message(message) + "\n")
 
 
 class PlainTextFileReader(FileReader):
+    @translate_third_party_exceptions
     def read_from_file(self) -> Iterable[KafkaMessage]:
         for line in self.file:
-            try:
-                record = json.loads(line)
-            except EOFError:
-                return
-
-            yield KafkaMessage(record["key"], record["value"], record["partition"])
+            yield deserialize_message(line)
 
 
 def decode_message(message: Message) -> DecodedMessage:
@@ -91,3 +90,15 @@ def serialize_message(message: Message):
         "partition": decoded_message.partition
     }
     return json.dumps(serializable_message)
+
+
+def deserialize_message(message_line: str) -> KafkaMessage:
+    json_record = json.loads(message_line)
+    key = None if not json_record["key"] else json_record["key"]
+    value = json_record["value"]
+    partition = json_record["partition"] if json_record["partition"] else 0
+    return KafkaMessage(key=key, value=value, partition=partition)
+
+
+#print(deserialize_message('{"key":"k1","value":"v1","partition":1}'))
+#print(deserialize_message('{"key":None,"value":"v1","partition":1}'))

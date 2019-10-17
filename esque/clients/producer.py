@@ -6,6 +6,7 @@ from glob import glob
 import click
 import confluent_kafka
 import pendulum
+import sys
 from confluent_kafka.avro import AvroProducer
 from esque.ruleparser.ruleengine import RuleTree
 
@@ -13,7 +14,7 @@ from esque.config import Config
 from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
 from esque.helpers import delivery_callback, delta_t
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader
+from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader, deserialize_message
 
 
 class AbstractProducer(ABC):
@@ -88,8 +89,15 @@ class StdInAbstractProducer(AbstractProducer):
     def __init__(self, topic_name: str):
         super().__init__(topic_name=topic_name)
 
+    @translate_third_party_exceptions
     def produce(self) -> int:
-        pass
+        total_number_of_produced_messages = 0
+        # accept lines from stdin until EOF
+        for single_message_line in sys.stdin:
+            record = deserialize_message(single_message_line)
+            self.produce_message(topic_name=self._topic_name, message=KafkaMessage(record["key"], record["value"], record["partition"]))
+            total_number_of_produced_messages += 1
+        return total_number_of_produced_messages
 
 
 class FileProducer(AbstractProducer):
