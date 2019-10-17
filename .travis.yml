@@ -38,12 +38,12 @@ matrix:
     before_install: []
     python: 3.7
     env:
-    - TEST_CMD="poetry black --check --verbose ."
+    - TEST_CMD="poetry run black --check --verbose ."
   - name: flake8
     python: 3.7
     before_install: []
     env:
-    - TEST_CMD="poetry flake8 esque/"
+    - TEST_CMD="poetry run flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
@@ -54,6 +54,7 @@ matrix:
     before_install:
       - mkdir -p ~/.esque
       - touch ~/.esque/esque.cfg
+      - pip install poetry
     install:
       - poetry build
     script:
@@ -73,8 +74,8 @@ matrix:
       - devpi index -c root/stable bases=root/pypi volatile=True
       - mkdir -p ~/.esque
       - touch ~/.esque/esque.cfg
-    install:
       - pip install poetry
+    install: []
     script:
       - export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
       - poetry build
