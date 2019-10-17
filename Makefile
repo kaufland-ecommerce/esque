@@ -31,6 +31,9 @@ format: clean
 test-suite:
 	@docker-compose up -d --build
 
+integration-test:
+	docker-compose -f docker-compose.yml -f docker-compose.test.yml
+
 test:
 	@poetry run pytest --integration --local tests/
 
