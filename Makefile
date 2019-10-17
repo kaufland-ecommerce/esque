@@ -1,4 +1,4 @@
-# This file is part of Poetry
+# This file was part of Poetry
 # https://github.com/sdispater/poetry
 
 # Licensed under the MIT license:
