@@ -1,6 +1,5 @@
 import pathlib
 import time
-from collections import OrderedDict
 from contextlib import ExitStack
 from pathlib import Path
 from shutil import copyfile
@@ -9,35 +8,44 @@ from time import sleep
 import click
 import yaml
 from click import version_option
-from esque.ruleparser.exception import RuleTreeInvalidError
-
-from esque.ruleparser.exception import MalformedExpressionError
-
-from esque.errors import EndOfPartitionReachedException
-
-from esque.errors import MessageEmptyException
-
-from esque.messages.message import decode_message
 
 from esque.__version__ import __version__
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state, error_handler
-from esque.cli.output import (
-    blue_bold,
-    bold,
-    green_bold,
-    pretty,
-    pretty_new_topic_configs,
-    pretty_topic_diffs,
-    pretty_unchanged_topic_configs,
-)
-from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
-from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
+from esque.cli.helpers import ensure_approval
+from esque.cli.helpers import HandleFileOnFinished
+from esque.cli.options import error_handler
+from esque.cli.options import no_verify_option
+from esque.cli.options import pass_state
+from esque.cli.options import State
+from esque.cli.output import blue_bold
+from esque.cli.output import bold
+from esque.cli.output import green_bold
+from esque.cli.output import pretty
+from esque.cli.output import pretty_new_topic_configs
+from esque.cli.output import pretty_topic_diffs
+from esque.cli.output import pretty_unchanged_topic_configs
+from esque.clients.consumer import AvroFileConsumer
+from esque.clients.consumer import ConsumerFactory
+from esque.clients.consumer import FileConsumer
+from esque.clients.consumer import PingConsumer
+from esque.clients.producer import AvroFileProducer
+from esque.clients.producer import FileProducer
+from esque.clients.producer import PingProducer
 from esque.cluster import Cluster
-from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config import Config
+from esque.config import config_dir
+from esque.config import config_path
+from esque.config import PING_GROUP_ID
+from esque.config import PING_TOPIC
+from esque.config import sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import EndOfPartitionReachedException
+from esque.errors import MessageEmptyException
+from esque.messages.message import decode_message
+from esque.messages.message import FileWriter
+from esque.messages.message import serialize_message
 from esque.resources.broker import Broker
-from esque.resources.topic import Topic, copy_to_local
+from esque.resources.topic import copy_to_local
+from esque.resources.topic import Topic
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -100,6 +108,7 @@ def ctx(state, context):
             else:
                 click.echo(c)
     if context:
+        click.echo(f"Switching to context: {context}")
         state.config.context_switch(context)
 
 
@@ -329,18 +338,22 @@ def get_topics(state, topic):
     default=False,
     is_flag=True,
 )
+@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT or to an automatically generated file.", default=False, is_flag=True)
 @pass_state
 def consume(
-    state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool, preserve_order: bool
+    state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool, preserve_order: bool, write_to_stdout: bool
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
     directory_name = "message_" + unique_name
     base_dir = Path(directory_name)
+    if write_to_stdout:
+        click.echo(f"Switching to context: {from_context}")
     state.config.context_switch(from_context)
     with HandleFileOnFinished(base_dir, True) as working_dir:
-        click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+        if not write_to_stdout:
+            click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
         if preserve_order:
             partitions = []
             for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
@@ -349,35 +362,37 @@ def consume(
                 working_dir=working_dir,
                 topic=topic,
                 group_id=group_id,
-                from_context=from_context,
                 partitions=partitions,
                 numbers=numbers,
                 avro=avro,
                 match=match,
                 last=last,
+                write_to_stdout=write_to_stdout
             )
         else:
             total_number_of_consumed_messages = _consume_to_files(
                 working_dir=working_dir,
                 topic=topic,
                 group_id=group_id,
-                from_context=from_context,
                 numbers=numbers,
                 avro=avro,
                 match=match,
                 last=last,
+                write_to_stdout=write_to_stdout
             )
 
-    if total_number_of_consumed_messages == numbers:
-        click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
-    else:
-        click.echo(
-            "Found only "
-            + bold(str(total_number_of_consumed_messages))
-            + " messages in topic, out of "
-            + blue_bold(str(numbers))
-            + " required."
-        )
+    if not write_to_stdout:
+        click.echo("Output generated to " + blue_bold(directory_name))
+        if total_number_of_consumed_messages == numbers:
+            click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
+        else:
+            click.echo(
+                "Found only "
+                + bold(str(total_number_of_consumed_messages))
+                + " messages in topic, out of "
+                + blue_bold(str(numbers))
+                + " required."
+            )
 
 
 @esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
@@ -418,7 +433,7 @@ def transfer(
 
     with HandleFileOnFinished(base_dir, keep_file) as working_dir:
         number_consumed_messages = _consume_to_files(
-            working_dir, topic, group_id, from_context, numbers, avro, match, last
+            working_dir, topic, group_id, numbers, avro, match, last
         )
 
         if number_consumed_messages == 0:
@@ -473,19 +488,17 @@ def _consume_to_file_ordered(
     working_dir: pathlib.Path,
     topic: str,
     group_id: str,
-    from_context: str,
     partitions: list,
     numbers: int,
     avro: bool,
     match: str,
     last: bool,
+    write_to_stdout: bool = False
 ) -> int:
     consumers = []
+    factory = ConsumerFactory()
     for partition in partitions:
-        if avro:
-            consumer = AvroFileConsumer(group_id + "_" + str(partition), None, working_dir, last, match)
-        else:
-            consumer = FileConsumer(group_id + "_" + str(partition), None, working_dir, last, match)
+        consumer = factory.create_consumer(group_id=group_id + "_" + str(partition), topic_name=None, working_dir=working_dir, avro=avro, match=match)
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
 
@@ -521,7 +534,7 @@ def _consume_to_file_ordered(
                 partition = partitions_by_timestamp[first_key]
 
                 message = messages_by_partition[partition].pop(0)
-                file_writer.write_message_to_file(message)
+                consumers[0].output_consumed(message, file_writer if not write_to_stdout else None)
                 del partitions_by_timestamp[first_key]
                 total_number_of_messages += 1
 
@@ -543,16 +556,13 @@ def _consume_to_files(
     working_dir: pathlib.Path,
     topic: str,
     group_id: str,
-    from_context: str,
     numbers: int,
     avro: bool,
     match: str,
     last: bool,
+    write_to_stdout: bool = False
 ) -> int:
-    if avro:
-        consumer = AvroFileConsumer(group_id, topic, working_dir, last)
-    else:
-        consumer = FileConsumer(group_id, topic, working_dir, last)
+    consumer = ConsumerFactory().create_consumer(group_id=group_id, topic_name=topic, working_dir=working_dir if not write_to_stdout else None, last=last, avro=avro, match=match)
     number_consumed_messages = consumer.consume(int(numbers))
 
     return number_consumed_messages

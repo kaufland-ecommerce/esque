@@ -7,6 +7,7 @@ import click
 import confluent_kafka
 import pendulum
 from confluent_kafka.avro import AvroProducer
+from esque.ruleparser.ruleengine import RuleTree
 
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
@@ -15,11 +16,27 @@ from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader
 
 
-class Producer(ABC):
-    def __init__(self):
+class AbstractProducer(ABC):
+    def __init__(self, topic_name: str, match: str = None):
         self.queue_length = 100000
         self.internal_queue_length_limit = self.queue_length / 0.5
         self._config = Config().create_confluent_config()
+        self._setup_config()
+        self._create_internal_producer()
+        self._topic_name = topic_name
+        self._match = match
+        if self._match is not None:
+            self._rule_tree = RuleTree(match)
+        else:
+            self._rule_tree = None
+
+    @translate_third_party_exceptions
+    @abstractmethod
+    def produce(self) -> int:
+        pass
+
+    @translate_third_party_exceptions
+    def _setup_config(self):
         self._config.update(
             {
                 "on_delivery": delivery_callback,
@@ -29,20 +46,31 @@ class Producer(ABC):
         )
 
     @translate_third_party_exceptions
-    @abstractmethod
-    def produce(self, topic_name: str) -> int:
-        pass
-
-
-class PingProducer(Producer):
-    def __init__(self):
-        super().__init__()
-        self._producer = confluent_kafka.Producer(self._config)
+    def flush_all(self):
+        while True:
+            left_messages = self._producer.flush(1)
+            if left_messages == 0:
+                break
+            click.echo(f"Still {left_messages} messages left, flushing...")
 
     @translate_third_party_exceptions
-    def produce(self, topic_name: str) -> int:
+    def _create_internal_producer(self):
+        pass
+
+    @translate_third_party_exceptions
+    def produce_message(self, topic_name: str, message: KafkaMessage):
+        if self._rule_tree is not None and self._rule_tree.evaluate(message):
+            self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+
+
+class PingProducer(AbstractProducer):
+    def __init__(self, topic_name: str, match: str = None):
+        super().__init__(topic_name=topic_name)
+
+    @translate_third_party_exceptions
+    def produce(self) -> int:
         start = pendulum.now()
-        self._producer.produce(topic=topic_name, key=str(0), value=str(pendulum.now().timestamp()))
+        self.produce_message(topic_name=self._topic_name, message=KafkaMessage(key=str(0), value=str(pendulum.now().timestamp()), partition=0))
         while True:
             left_messages = self._producer.flush(1)
             if left_messages == 0:
@@ -50,21 +78,33 @@ class PingProducer(Producer):
             click.echo(f"{delta_t(start)} | Still {left_messages} messages left, flushing...")
         return 1
 
-
-class FileProducer(Producer):
-    def __init__(self, working_dir: pathlib.Path):
-        super().__init__()
+    @translate_third_party_exceptions
+    def _create_internal_producer(self):
         self._producer = confluent_kafka.Producer(self._config)
+
+
+class StdInAbstractProducer(AbstractProducer):
+
+    def __init__(self, topic_name: str):
+        super().__init__(topic_name=topic_name)
+
+    def produce(self) -> int:
+        pass
+
+
+class FileProducer(AbstractProducer):
+    def __init__(self, topic_name: str, working_dir: pathlib.Path, match: str = None):
+        super().__init__(topic_name=topic_name)
         self.working_dir = working_dir
 
     @translate_third_party_exceptions
-    def produce(self, topic_name: str) -> int:
+    def produce(self) -> int:
         path_list = glob(str(self.working_dir / "partition_*"))
         counter = 0
         for partition_path in path_list:
             with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
                 for message in file_reader.read_from_file():
-                    self.produce_message(topic_name, message)
+                    self.produce_message(self._topic_name, message)
                     left_messages = self._producer.flush(0)
                     if left_messages > self.internal_queue_length_limit:
                         self.flush_all()
@@ -73,38 +113,33 @@ class FileProducer(Producer):
 
         return counter
 
-    @translate_third_party_exceptions
-    def flush_all(self):
-        while True:
-            left_messages = self._producer.flush(1)
-            if left_messages == 0:
-                break
-            click.echo(f"Still {left_messages} messages left, flushing...")
-
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
 
     @translate_third_party_exceptions
-    def produce_message(self, topic_name: str, message: KafkaMessage):
-        self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+    def _create_internal_producer(self):
+        self._producer = confluent_kafka.Producer(self._config)
 
 
 class AvroFileProducer(FileProducer):
-    def __init__(self, working_dir: pathlib.Path):
-        super().__init__(working_dir)
+    def __init__(self, topic_name: str, working_dir: pathlib.Path, match: str = None):
+        super().__init__(topic_name=topic_name, working_dir=working_dir, match=match)
         self._config.update({"schema.registry.url": Config().schema_registry})
+
+    @translate_third_party_exceptions
+    def _create_internal_producer(self):
         self._producer = AvroProducer(self._config)
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return AvroFileReader(directory)
 
-    @translate_third_party_exceptions
-    def produce_message(self, topic_name: str, message: KafkaMessage):
-        self._producer.produce(
-            topic=topic_name,
-            key=json.loads(message.key),
-            value=json.loads(message.value),
-            key_schema=message.key_schema,
-            value_schema=message.value_schema,
-            partition=message.partition,
-        )
+
+class ProducerFactory:
+
+    def create_producer(self, topic_name: str, working_dir: pathlib.Path, avro: bool, match: str = None):
+        if working_dir is None:
+            return StdInAbstractProducer(topic_name=topic_name, match=match)
+        elif avro:
+            return AvroFileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
+        else:
+            return FileProducer(topic_name=topic_name, working_dir=working_dir, match=match)

@@ -1,3 +1,4 @@
+import functools
 import pathlib
 from abc import ABC, abstractmethod
 from contextlib import ExitStack
@@ -7,6 +8,7 @@ from typing import Optional, Tuple
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Message, TopicPartition
+from esque.errors import EndOfPartitionReachedException
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
@@ -17,8 +19,8 @@ from esque.errors import (
     translate_third_party_exceptions,
 )
 from esque.messages.avromessage import AvroFileWriter
-from esque.messages.message import decode_message
 from esque.messages.message import FileWriter, PlainTextFileWriter
+from esque.messages.message import serialize_message
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -32,7 +34,11 @@ class AbstractConsumer(ABC):
             self._rule_tree = RuleTree(match)
         else:
             self._rule_tree = None
+        self._topic_name = topic_name
+        self._setup_config(group_id=group_id, offset_reset=offset_reset)
 
+    @translate_third_party_exceptions
+    def _setup_config(self, group_id: str, offset_reset: str):
         self._config = Config().create_confluent_config()
         self._config.update(
             {
@@ -48,14 +54,15 @@ class AbstractConsumer(ABC):
             }
         )
         self._consumer = confluent_kafka.Consumer(self._config)
-        self._topic_name = topic_name
 
     @translate_third_party_exceptions
     def assign_specific_partitions(self, topic_name: str, partitions: list):
         self._topic_name = topic_name
         if partitions is not None:
             topic_partitions = [TopicPartition(self._topic_name, partition) for partition in partitions]
-            self._consumer.assign(topic_partitions)
+        else:
+            topic_partitions = [0]
+        self._consumer.assign(topic_partitions)
 
     @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
@@ -63,6 +70,10 @@ class AbstractConsumer(ABC):
 
     @abstractmethod
     def consume(self, **kwargs) -> int:
+        pass
+
+    @abstractmethod
+    def output_consumed(self, message: Message, file_writer: FileWriter = None):
         pass
 
     @translate_third_party_exceptions
@@ -77,8 +88,7 @@ class AbstractConsumer(ABC):
         while not message_acceptable:
             message = self._consumer.poll(timeout=timeout)
             raise_for_message(message)
-            decoded_message = decode_message(message)
-            message_acceptable = self.consumed_message_matches(decoded_message)
+            message_acceptable = self.consumed_message_matches(message)
         return message
 
     @translate_third_party_exceptions
@@ -92,7 +102,7 @@ class AbstractConsumer(ABC):
 class PingConsumer(AbstractConsumer):
     def __init__(self, group_id: str, topic_name: str, last: bool):
         super().__init__(group_id, topic_name, last)
-        self._assign_exact_partitions(topic_name)
+        self.assign_specific_partitions(topic_name, partitions=[0])
 
     @translate_third_party_exceptions
     def consume(self) -> Optional[Tuple[str, int]]:
@@ -101,21 +111,40 @@ class PingConsumer(AbstractConsumer):
         delta_sent = pendulum.now() - msg_sent_at
         return message.key(), delta_sent.microseconds / 1000
 
-    @translate_third_party_exceptions
-    def _assign_exact_partitions(self, topic: str) -> None:
-        self._consumer.assign([TopicPartition(topic=topic, partition=0, offset=0)])
+    def output_consumed(self, message: Message, file_writer: FileWriter = None):
+        pass
+
+
+class StdOutConsumer(AbstractConsumer):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
+        super().__init__(group_id, topic_name, last, match)
+        if topic_name is not None:
+            self._subscribe(topic_name)
+
+    def consume(self, amount: int) -> int:
+        counter = 0
+        while counter < amount:
+            try:
+                message = self.consume_single_message(10)
+            except MessageEmptyException:
+                return counter
+            except EndOfPartitionReachedException:
+                pass
+            else:
+                counter += 1
+                self.output_consumed(message)
+
+        return counter
+
+    def output_consumed(self, message: Message, file_writer: FileWriter = None):
+        print(serialize_message(message))
 
 
 class FileConsumer(AbstractConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, match: str = None):
         super().__init__(group_id, topic_name, last, match)
         self.working_dir = working_dir
-        offset_reset = "earliest"
-        if last:
-            offset_reset = "latest"
-
-        self._config.update({"default.topic.config": {"auto.offset.reset": offset_reset}})
-        self._consumer = confluent_kafka.Consumer(self._config)
+        self.file_writers = {}
         if topic_name is not None:
             self._subscribe(topic_name)
 
@@ -127,21 +156,25 @@ class FileConsumer(AbstractConsumer):
         with ExitStack() as stack:
             while counter < amount:
                 try:
-                    message = self.consume_single_message()
+                    message = self.consume_single_message(10)
                 except MessageEmptyException:
                     return counter
+                except EndOfPartitionReachedException:
+                    pass
+                else:
+                    counter += 1
+                    if message.partition() not in file_writers:
+                        partition = message.partition()
+                        file_writer = self.get_file_writer(partition)
+                        stack.enter_context(file_writer)
+                        file_writers[partition] = file_writer
 
-                if message.partition() not in file_writers:
-                    partition = message.partition()
-                    file_writer = self.get_file_writer(partition)
-                    stack.enter_context(file_writer)
-                    file_writers[partition] = file_writer
-
-                file_writer = file_writers[partition]
-                file_writer.write_message_to_file(message)
-                counter += 1
+                    self.output_consumed(message, file_writers[partition])
 
         return counter
+
+    def output_consumed(self, message: Message, file_writer: FileWriter = None):
+        file_writer.write_message_to_file(message)
 
     def get_file_writer(self, partition: int) -> FileWriter:
         path_suffix = "partition_any" if partition < 0 else f"partition_{partition}"
@@ -158,3 +191,14 @@ class AvroFileConsumer(FileConsumer):
     def get_file_writer(self, partition: int) -> FileWriter:
         path_suffix = "partition_any" if partition < 0 else f"partition_{partition}"
         return AvroFileWriter((self.working_dir / path_suffix), self.schema_registry_client)
+
+
+class ConsumerFactory:
+
+    def create_consumer(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, avro: bool, match: str = None):
+        if working_dir is None:
+            return StdOutConsumer(group_id=group_id, topic_name=topic_name, last=last, match=match)
+        elif avro:
+            return AvroFileConsumer(group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match)
+        else:
+            return FileConsumer(group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match)

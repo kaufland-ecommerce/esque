@@ -59,13 +59,7 @@ class FileReader(IOHandler):
 
 class PlainTextFileWriter(FileWriter):
     def write_message_to_file(self, message: Message):
-        decoded_message = decode_message(message)
-        serializable_message = {
-            "key": decoded_message.key,
-            "value": decoded_message.value,
-            "partition": decoded_message.partition
-        }
-        self.file.write(json.dumps(serializable_message) + "\n")
+        self.file.write(serialize_message(message) + "\n")
 
 
 class PlainTextFileReader(FileReader):
@@ -87,3 +81,13 @@ def decode_message(message: Message) -> DecodedMessage:
     decoded_value = message.value().decode("utf-8")
 
     return DecodedMessage(decoded_key, decoded_value, message.partition(), message.offset(), str(message.timestamp()))
+
+
+def serialize_message(message: Message):
+    decoded_message = decode_message(message)
+    serializable_message = {
+        "key": decoded_message.key,
+        "value": decoded_message.value,
+        "partition": decoded_message.partition
+    }
+    return json.dumps(serializable_message)
