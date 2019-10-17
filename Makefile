@@ -5,7 +5,6 @@
 # http://www.opensource.org/licenses/MIT-license
 # Copyright (c) 2018 Sébastien Eustace
 
-POETRY_RELEASE := $$(sed -n -E "s/__version__ = '(.+)'/\1/p" esque/__init__.py)
 
 # lists all available targets
 list:
