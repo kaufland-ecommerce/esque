@@ -9,12 +9,12 @@ exclude = ["tests/**/*"]
 
 repository = "https://github.com/real.digital/esque"
 
-keywords = ["kafka", "dependency", "poetry"]
+keywords = ["kafka", "cli", "commandline", "administration", "operation"]
 
 classifiers = [
   "Development Status :: 3 - Alpha",
-  "Intended Audience :: Developers",
-  "Topic :: Software Development :: Build Tools",
+  "Intended Audience :: System Administrators and Developers",
+  "Topic :: System Administration :: Operational Tools",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.6",
   "Programming Language :: Python :: 3.7"
