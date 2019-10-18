@@ -86,7 +86,7 @@ class AvroFileReader(FileReader):
         super().__init__(directory)
         self.open_mode = "rb"
 
-    def read_from_file(self) -> Iterable[KafkaMessage]:
+    def read_message_from_file(self) -> Iterable[KafkaMessage]:
         while True:
             try:
                 record = pickle.load(self.file)

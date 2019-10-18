@@ -55,7 +55,7 @@ class FileReader(IOHandler):
         super().__init__(directory)
         self.open_mode = "r"
 
-    def read_from_file(self) -> Iterable[KafkaMessage]:
+    def read_message_from_file(self) -> Iterable[KafkaMessage]:
         pass
 
 
@@ -67,7 +67,7 @@ class PlainTextFileWriter(FileWriter):
 
 class PlainTextFileReader(FileReader):
     @translate_third_party_exceptions
-    def read_from_file(self) -> Iterable[KafkaMessage]:
+    def read_message_from_file(self) -> Iterable[KafkaMessage]:
         for line in self.file:
             yield deserialize_message(line)
 
@@ -98,7 +98,3 @@ def deserialize_message(message_line: str) -> KafkaMessage:
     value = json_record["value"]
     partition = json_record["partition"] if json_record["partition"] else 0
     return KafkaMessage(key=key, value=value, partition=partition)
-
-
-#print(deserialize_message('{"key":"k1","value":"v1","partition":1}'))
-#print(deserialize_message('{"key":None,"value":"v1","partition":1}'))

@@ -155,6 +155,6 @@ def get_consumed_messages(directory, avro: bool) -> List[KafkaMessage]:
             else:
                 file_reader = PlainTextFileReader(pathlib.Path(partition_path))
             stack.enter_context(file_reader)
-            for message in file_reader.read_from_file():
+            for message in file_reader.read_message_from_file():
                 consumed_messages.append(message)
     return sorted(consumed_messages, key=(lambda msg: msg.key))

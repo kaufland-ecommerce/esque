@@ -1,11 +1,13 @@
 import pathlib
 import time
 from contextlib import ExitStack
+from os import isatty
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
 
 import click
+import sys
 import yaml
 from click import version_option
 
@@ -108,8 +110,8 @@ def ctx(state, context):
             else:
                 click.echo(c)
     if context:
-        click.echo(f"Switching to context: {context}")
         state.config.context_switch(context)
+        click.echo(f"Switched to context: {context}")
 
 
 @create.command("topic")
@@ -348,39 +350,40 @@ def consume(
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
     directory_name = "message_" + unique_name
-    base_dir = Path(directory_name)
-    if write_to_stdout:
+    working_dir = Path(directory_name)
+    if not write_to_stdout:
         click.echo(f"Switching to context: {from_context}")
     state.config.context_switch(from_context)
-    with HandleFileOnFinished(base_dir, True) as working_dir:
-        if not write_to_stdout:
-            click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
-        if preserve_order:
-            partitions = []
-            for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
-                partitions.append(partition.partition_id)
-            total_number_of_consumed_messages = _consume_to_file_ordered(
-                working_dir=working_dir,
-                topic=topic,
-                group_id=group_id,
-                partitions=partitions,
-                numbers=numbers,
-                avro=avro,
-                match=match,
-                last=last,
-                write_to_stdout=write_to_stdout
-            )
-        else:
-            total_number_of_consumed_messages = _consume_to_files(
-                working_dir=working_dir,
-                topic=topic,
-                group_id=group_id,
-                numbers=numbers,
-                avro=avro,
-                match=match,
-                last=last,
-                write_to_stdout=write_to_stdout
-            )
+    if not write_to_stdout:
+        working_dir.mkdir(parents=True)
+        click.echo("Creating directory " + blue_bold(working_dir.absolute().name))
+        click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+    if preserve_order:
+        partitions = []
+        for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
+            partitions.append(partition.partition_id)
+        total_number_of_consumed_messages = _consume_to_file_ordered(
+            working_dir=working_dir,
+            topic=topic,
+            group_id=group_id,
+            partitions=partitions,
+            numbers=numbers,
+            avro=avro,
+            match=match,
+            last=last,
+            write_to_stdout=write_to_stdout
+        )
+    else:
+        total_number_of_consumed_messages = _consume_to_files(
+            working_dir=working_dir,
+            topic=topic,
+            group_id=group_id,
+            numbers=numbers,
+            avro=avro,
+            match=match,
+            last=last,
+            write_to_stdout=write_to_stdout
+        )
 
     if not write_to_stdout:
         click.echo("Output generated to " + blue_bold(directory_name))
@@ -499,7 +502,12 @@ def produce(state: State, topic: str, to_context: str, directory: str, avro: boo
                 click.echo("You have to provide an existing directory")
                 exit(1)
         state.config.context_switch(to_context)
-        click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
+        if read_from_stdin and sys.stdin.isatty():
+            click.echo("Type the messages to produce, " + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D"))
+        elif read_from_stdin and not sys.stdin.isatty():
+            click.echo("Reading messages from an external source, " + blue_bold("one per line"))
+        else:
+            click.echo("Producing from directory " + directory + " to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
         producer = ProducerFactory().create_producer(topic_name=topic, working_dir=working_dir if not read_from_stdin else None, avro=avro, match=match)
         total_number_of_messages_produced = producer.produce()
         click.echo(

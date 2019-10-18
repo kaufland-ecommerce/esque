@@ -2,6 +2,7 @@ import json
 import pathlib
 from abc import ABC, abstractmethod
 from glob import glob
+from json import JSONDecodeError
 
 import click
 import confluent_kafka
@@ -56,11 +57,11 @@ class AbstractProducer(ABC):
 
     @translate_third_party_exceptions
     def _create_internal_producer(self):
-        pass
+        self._producer = confluent_kafka.Producer(self._config)
 
     @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
-        if self._rule_tree is not None and self._rule_tree.evaluate(message):
+        if self._rule_tree is None or self._rule_tree.evaluate(message):
             self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
 
 
@@ -79,30 +80,30 @@ class PingProducer(AbstractProducer):
             click.echo(f"{delta_t(start)} | Still {left_messages} messages left, flushing...")
         return 1
 
-    @translate_third_party_exceptions
-    def _create_internal_producer(self):
-        self._producer = confluent_kafka.Producer(self._config)
 
+class StdInProducer(AbstractProducer):
 
-class StdInAbstractProducer(AbstractProducer):
-
-    def __init__(self, topic_name: str):
-        super().__init__(topic_name=topic_name)
+    def __init__(self, topic_name: str, match: str = None):
+        super().__init__(topic_name=topic_name, match=match)
 
     @translate_third_party_exceptions
     def produce(self) -> int:
         total_number_of_produced_messages = 0
         # accept lines from stdin until EOF
         for single_message_line in sys.stdin:
-            record = deserialize_message(single_message_line)
-            self.produce_message(topic_name=self._topic_name, message=KafkaMessage(record["key"], record["value"], record["partition"]))
-            total_number_of_produced_messages += 1
+            try:
+                message = deserialize_message(single_message_line)
+            except JSONDecodeError:
+                pass
+            else:
+                self.produce_message(topic_name=self._topic_name, message=message)
+                total_number_of_produced_messages += 1
         return total_number_of_produced_messages
 
 
 class FileProducer(AbstractProducer):
     def __init__(self, topic_name: str, working_dir: pathlib.Path, match: str = None):
-        super().__init__(topic_name=topic_name)
+        super().__init__(topic_name=topic_name, match=match)
         self.working_dir = working_dir
 
     @translate_third_party_exceptions
@@ -111,7 +112,7 @@ class FileProducer(AbstractProducer):
         counter = 0
         for partition_path in path_list:
             with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
-                for message in file_reader.read_from_file():
+                for message in file_reader.read_message_from_file():
                     self.produce_message(self._topic_name, message)
                     left_messages = self._producer.flush(0)
                     if left_messages > self.internal_queue_length_limit:
@@ -123,10 +124,6 @@ class FileProducer(AbstractProducer):
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
-
-    @translate_third_party_exceptions
-    def _create_internal_producer(self):
-        self._producer = confluent_kafka.Producer(self._config)
 
 
 class AvroFileProducer(FileProducer):
@@ -146,7 +143,7 @@ class ProducerFactory:
 
     def create_producer(self, topic_name: str, working_dir: pathlib.Path, avro: bool, match: str = None):
         if working_dir is None:
-            return StdInAbstractProducer(topic_name=topic_name, match=match)
+            return StdInProducer(topic_name=topic_name, match=match)
         elif avro:
             return AvroFileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
         else:
