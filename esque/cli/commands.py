@@ -93,6 +93,7 @@ def fallback_to_stdin(ctx, param, value):
 
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
+@error_handler
 @pass_state
 def ctx(state: State, context: str):
     if not context:
@@ -115,6 +116,7 @@ def create_topic(state: State, topic_name: str, like: str):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
+
     topic_controller = state.cluster.topic_controller
     if like:
         template_config = topic_controller.get_cluster_topic(like)
@@ -132,10 +134,8 @@ def create_topic(state: State, topic_name: str, like: str):
 @pass_state
 @error_handler
 def edit_topic(state: State, topic_name: str):
-
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-
     new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
 
     # edit process can be aborted, ex. in vim via :q!
