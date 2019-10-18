@@ -72,6 +72,7 @@ matrix:
       - devpi use http://localhost:3141
       - devpi login root --password=
       - devpi index -c root/stable bases=root/pypi volatile=True
+      - devpi user -m root password="root"
       - mkdir -p ~/.esque
       - touch ~/.esque/esque.cfg
       - pip install poetry
@@ -81,7 +82,7 @@ matrix:
       - poetry version
       - export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
       - poetry build
-      - poetry publish --repository http://localhost:3141/root/stable/ --username root --password ''
+      - poetry publish --repository http://localhost:3141/root/stable/ --username root --password 'root'
       - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
