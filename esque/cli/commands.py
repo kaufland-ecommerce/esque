@@ -1,19 +1,17 @@
 import pathlib
+import sys
 import time
 from contextlib import ExitStack
-from os import isatty
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
 
 import click
-import sys
 import yaml
 from click import version_option
+from esque import __version__
 
-from esque.__version__ import __version__
 from esque.cli.helpers import ensure_approval
-from esque.cli.helpers import HandleFileOnFinished
 from esque.cli.options import error_handler
 from esque.cli.options import no_verify_option
 from esque.cli.options import pass_state
@@ -25,13 +23,10 @@ from esque.cli.output import pretty
 from esque.cli.output import pretty_new_topic_configs
 from esque.cli.output import pretty_topic_diffs
 from esque.cli.output import pretty_unchanged_topic_configs
-from esque.clients.consumer import AvroFileConsumer
 from esque.clients.consumer import ConsumerFactory
-from esque.clients.consumer import FileConsumer
 from esque.clients.consumer import PingConsumer
-from esque.clients.producer import AvroFileProducer, ProducerFactory
-from esque.clients.producer import FileProducer
 from esque.clients.producer import PingProducer
+from esque.clients.producer import ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config
 from esque.config import config_dir
@@ -43,8 +38,6 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import EndOfPartitionReachedException
 from esque.errors import MessageEmptyException
 from esque.messages.message import decode_message
-from esque.messages.message import FileWriter
-from esque.messages.message import serialize_message
 from esque.resources.broker import Broker
 from esque.resources.topic import copy_to_local
 from esque.resources.topic import Topic
