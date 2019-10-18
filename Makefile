@@ -23,7 +23,7 @@ test-suite:
 	@docker-compose up -d --build
 
 integration-test:
-	docker-compose -f docker-compose.yml -f docker-compose.test.yml
+	docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build
 
 test:
 	@poetry run pytest --integration --local tests/
