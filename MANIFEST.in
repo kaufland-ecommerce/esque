@@ -1,4 +1,0 @@
-include esque/config/sample_config.cfg
-include scripts/auto_completion.sh
-include README.md
-include LICENSE
