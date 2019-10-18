@@ -15,7 +15,7 @@ from esque.errors import (
     ContextNotDefinedException,
     MissingSaslParameter,
     UnsupportedSaslMechanism,
-    ConfigException
+    ConfigException,
 )
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
@@ -69,9 +69,7 @@ class Config:
             log.debug(f"Section {section} not found in config.")
             return {}
 
-        return {
-            option: self._cfg.get(section, option) for option in self._cfg.options(section)
-        }
+        return {option: self._cfg.get(section, option) for option in self._cfg.options(section)}
 
     @property
     def bootstrap_port(self) -> str:
@@ -134,14 +132,14 @@ class Config:
     @property
     def security_protocol(self) -> str:
         protocol = self.current_context_dict.get("security_protocol", "PLAINTEXT")
-        if 'SASL' in protocol and self.sasl_mechanism is None:
+        if "SASL" in protocol and self.sasl_mechanism is None:
             msg = (
                 f"Security protocol {protocol} contains 'SASL' indicating that you want to connect to "
                 "a SASL enabled endpoint but you didn't specify a sasl mechanism.\n"
                 f"Run `esque edit config` and add `sasl_mechanism` to section '[{self._current_section}.sasl]'"
             )
             raise ConfigException(msg)
-        if 'SSL' in protocol and self.ssl_params is None:
+        if "SSL" in protocol and self.ssl_params is None:
             msg = (
                 f"Security protocol {protocol} contains 'SSL' indicating that you want to connect to "
                 "an SSL enabled endpoint but you didn't specify any ssl settings.\n"
