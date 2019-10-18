@@ -15,6 +15,7 @@ from esque.cli.output import (
     blue_bold,
     bold,
     green_bold,
+    red_bold,
     pretty,
     pretty_new_topic_configs,
     pretty_topic_diffs,
@@ -224,12 +225,13 @@ def apply(state: State, file: str):
 @describe.command("topic")
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
 @click.option(
-    "--consumers/-C",
+    "--consumers",
+    "-C",
     required=False,
     is_flag=True,
     default=False,
-    help="Will output the consumergroups "
-    "reading from this topic - This is a potentially really expensive operation.",
+    help=f"Will output the consumergroups reading from this topic. "
+    f"{red_bold('Beware! This can be a really expensive operation.')}",
 )
 @error_handler
 @pass_state
