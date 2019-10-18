@@ -138,7 +138,10 @@ class TopicController:
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
-            latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+            if high > low:
+                latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+            else:
+                latest_timestamp = None
             partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 

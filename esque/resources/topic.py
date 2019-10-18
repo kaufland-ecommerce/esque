@@ -24,14 +24,17 @@ class Partition(KafkaResource):
         partition_isrs,
         partition_leader,
         partition_replicas: List[int],  # list of brokers holding a replica
-        latest_message_timestamp: float,
+        latest_message_timestamp: float = None,
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
         self.partition_isrs = partition_isrs
         self.partition_leader = partition_leader
         self.partition_replicas = partition_replicas
-        self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp)
+        if latest_message_timestamp is None:
+            self.latest_message_timestamp = None
+        else:
+            self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp)
 
     def as_dict(self):
         return {
