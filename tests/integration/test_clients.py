@@ -1,26 +1,26 @@
 import json
 import pathlib
 import random
+import time
 from contextlib import ExitStack
 from glob import glob
 from string import ascii_letters
-from typing import Iterable, List, Tuple
+from typing import Iterable
+from typing import List
+from typing import Tuple
 
 import pytest
 from click.testing import CliRunner
-from confluent_kafka.avro import AvroProducer, loads as load_schema
+from confluent_kafka.avro import AvroProducer
+from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+
 from esque.cli.commands import _consume_to_file_ordered
-
-from esque.cli.commands import consume
-
 from esque.clients.consumer import ConsumerFactory
-
-from esque.clients.consumer import AvroFileConsumer, FileConsumer
-from esque.clients.producer import AvroFileProducer, FileProducer
 from esque.clients.producer import ProducerFactory
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import KafkaMessage, PlainTextFileReader
+from esque.messages.message import KafkaMessage
+from esque.messages.message import PlainTextFileReader
 
 
 @pytest.mark.integration
@@ -138,6 +138,7 @@ def test_plain_text_message_ordering(
             topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
         )
         producer.flush()
+        time.sleep(0.5)
 
     _consume_to_file_ordered(
         working_dir,
@@ -178,6 +179,7 @@ def test_plain_text_message_ordering_with_filtering(
         producer.produce(
             topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
         )
+        time.sleep(0.5)
         producer.flush()
 
     _consume_to_file_ordered(
