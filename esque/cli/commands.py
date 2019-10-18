@@ -223,9 +223,17 @@ def apply(state: State, file: str):
 
 @describe.command("topic")
 @click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.option(
+    "--consumers/-C",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Will output the consumergroups "
+    "reading from this topic - This is a potentially really expensive operation.",
+)
 @error_handler
 @pass_state
-def describe_topic(state, topic_name):
+def describe_topic(state, topic_name, consumers):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
     config = {"Config": topic.config}
 
@@ -235,6 +243,18 @@ def describe_topic(state, topic_name):
         click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
 
     click.echo(pretty(config))
+
+    if consumers:
+        consumergroup_controller = ConsumerGroupController(state.cluster)
+        groups = consumergroup_controller.list_consumer_groups()
+
+        consumergroups = [
+            group_name
+            for group_name in groups
+            if topic_name in consumergroup_controller.get_consumergroup(group_name).topics
+        ]
+
+        click.echo(pretty({"Consumergroups": consumergroups}))
 
 
 @get.command("offsets")

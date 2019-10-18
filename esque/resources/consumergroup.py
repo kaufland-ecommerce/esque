@@ -1,3 +1,4 @@
+import struct
 from typing import Any, Dict, List, Optional, cast
 
 import pykafka
@@ -28,6 +29,30 @@ class ConsumerGroup:
 
         return self._pykafka_group_coordinator_instance
 
+    @property
+    def topics(self):
+        consumer_id = self.id.encode("UTF-8")
+
+        # Get Consumers who already have an offset
+        consumer_offsets = self._unpack_offset_response(
+            self._pykafka_group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
+        )
+        topic_with_offsets = [topic.decode("UTF-8") for topic in consumer_offsets.keys()]
+
+        topics_with_members = []
+        # Get Consumers which have a member
+        try:
+            resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
+            meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
+            topics_with_members = [
+                member["member_metadata"]["subscription"][0].decode("UTF-8") for member in meta["members"]
+            ]
+        except struct.error:
+            pass
+
+        # Deduplicate for Consumergroups which have offsets _and_ active members
+        return list(set(topic_with_offsets + topics_with_members))
+
     def describe(self, *, verbose=False):
         consumer_id = self.id.encode("UTF-8")
         if consumer_id not in self._pykafka_group_coordinator.list_groups().groups:
@@ -37,7 +62,7 @@ class ConsumerGroup:
         assert len(resp.groups) == 1
 
         meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
-        consumer_offsets = self._get_consumer_offsets(self._pykafka_group_coordinator, consumer_id, verbose=verbose)
+        consumer_offsets = self._get_consumer_offsets(consumer_id, verbose=verbose)
 
         return {
             "group_id": consumer_id,
@@ -46,9 +71,9 @@ class ConsumerGroup:
             "meta": meta,
         }
 
-    def _get_consumer_offsets(self, group_coordinator, consumer_id, verbose: bool):
+    def _get_consumer_offsets(self, consumer_id, verbose: bool):
         consumer_offsets = self._unpack_offset_response(
-            group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
+            self._pykafka_group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
         )
 
         if verbose:
