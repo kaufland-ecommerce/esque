@@ -24,8 +24,8 @@ install:
 
 # this will fail on first try, See also: https://github.com/sdispater/poetry/issues/732
 - poetry install || true
-# Now we have the virtualenvironment and can update pip
-- poetry run pip install -U pip
+# Now we have the virtual environment and can update pip
+- poetry run python -m pip install -U pip
 - poetry install
 script:
 - "$TEST_CMD"
