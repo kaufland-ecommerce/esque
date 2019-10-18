@@ -22,11 +22,7 @@ before_install:
 install:
 - pip install coverage coveralls poetry
 
-# this will fail on first try, See also: https://github.com/sdispater/poetry/issues/732
-- poetry install || true
-# Now we have the virtual environment and can update pip
-- poetry run python -m pip install -U pip
-- poetry install
+- poetry install -vvv
 script:
 - "$TEST_CMD"
 after_success:
