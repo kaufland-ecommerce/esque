@@ -21,7 +21,8 @@ before_install:
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install coverage coveralls poetry
-- poetry install --develop DEVELOP
+- pip install -U pip
+- poetry install
 script:
 - "$TEST_CMD"
 after_success:
