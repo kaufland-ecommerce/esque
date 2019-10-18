@@ -65,7 +65,7 @@ matrix:
     env:
       - secure: "znXxvfZqJEMKlu1f78uqvdnZh9y0GAzgPbJK5mBiyQxgIAooELcQnyot811fuQ35dwv5WJv19XeyosJPPVZldUmJMZmfLOa+cxBAWonVpNYNdY6iHk8Yyeoy8V43tc8fGlyG90wiw3h3Phefb9arXPCWZTNrrFSDZZGdU8/4isxLvXUENpQlBXsmi91Q755VHIyuNm9JqpAZk5eLatiE/U35SIncuPSZVtC1B1ZIJ0Bhkf9aVNNusWdeXe2B6c2tTI/rWfFDJfHUPswE+tN2Bw04uCJz7CZDjv8gZKPklNK8noeeZGNsE4X0VFnbKBVUjTWQUPpEuIzQ6Zng/ajlSP7+OhBBLMBsHutP96FwlwT7WqU4V/nK7CajU0B+ZVM8TkEvJwxJDt3+26hc/WzyxqXqNR2qcd70vG6SvGC6JosYEZxOzxmHMYWo5Aff+HMq5Is2NrI6x2kAGJEQnGfpg6S0LGBVrye8i1vzuunZGiT0oVgae5PCt+NZrJq4JFFbkV12NcPg8agNU+LOE9fd2YZCcM9ciGr09vCPgV3kID6k5pK92Lq1mVUBWqAdYsEASbUrgHOMcebtBFoMXIzo4z970DmVFeqdHX/QC1Ofp9+JROQiI/6/6UqIme5TWyTsVLrD76lP5oYD4l5xXj5VFpxCPZjaayvuNIn/eDj1/Dc="
     before_install:
-      - pip install devpi-server devpi "pluggy<1,>=0.12.0"
+      - pip install poetry devpi-server devpi "pluggy<1,>=0.12.0"
       - devpi-server --serverdir=/tmp/devpi --init
       - devpi-server --serverdir=/tmp/devpi --start
       - scripts/wait-for-it.sh localhost:3141 -t 60
@@ -73,16 +73,16 @@ matrix:
       - devpi login root --password=
       - devpi index -c root/stable bases=root/pypi volatile=True
       - devpi user -m root password="root"
-      - mkdir -p ~/.esque
-      - touch ~/.esque/esque.cfg
-      - pip install poetry
+      - mkdir -p ${HOME}/.esque
+      - touch ${HOME}/.esque/esque.cfg
+      - poetry config repositories.devpi http://localhost:3141/root/stable/
     install: []
     script:
       # We force-bump the version to avoid conflicts
       - poetry version
       - export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
       - poetry build
-      - poetry publish --repository http://localhost:3141/root/stable/ --username root --password 'root'
+      - poetry publish --repository devpi --username root --password root
       - pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
       - esque --recreate-config --no-verify
   allow_failures:
