@@ -46,7 +46,7 @@ def test_get_topics_with_prefix(
     retrieved_topics = json.loads(result.output)
     assert len(retrieved_topics) > 1
     for retrieved_topic in retrieved_topics:
-        assert retrieved_topic[: len(prefix_1)] == prefix_1
+        assert retrieved_topic.startswith(prefix_1)
 
 
 @pytest.mark.integration
