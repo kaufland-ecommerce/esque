@@ -87,14 +87,16 @@ def serialize_message(message: Message):
     serializable_message = {
         "key": decoded_message.key,
         "value": decoded_message.value,
-        "partition": decoded_message.partition
+        "partition": decoded_message.partition,
     }
     return json.dumps(serializable_message)
 
 
 def deserialize_message(message_line: str) -> KafkaMessage:
     json_record = json.loads(message_line)
-    key = None if not json_record["key"] else json_record["key"]
+    key = None if "key" not in json_record or not json_record["key"] else json_record["key"]
     value = json_record["value"]
-    partition = json_record["partition"] if json_record["partition"] else 0
-    return KafkaMessage(key=key, value=value, partition=partition)
+    partition = json_record["partition"] if "partition" in json_record else 0
+    key_schema = json_record["key_schema"] if "key_schema" in json_record else None
+    value_schema = json_record["value_schema"] if "value_schema" in json_record else None
+    return KafkaMessage(key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema)

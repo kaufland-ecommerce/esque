@@ -194,11 +194,16 @@ class AvroFileConsumer(FileConsumer):
 
 
 class ConsumerFactory:
-
-    def create_consumer(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, avro: bool, match: str = None):
+    def create_consumer(
+        self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, avro: bool, match: str = None
+    ):
         if working_dir is None:
             return StdOutConsumer(group_id=group_id, topic_name=topic_name, last=last, match=match)
         elif avro:
-            return AvroFileConsumer(group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match)
+            return AvroFileConsumer(
+                group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match
+            )
         else:
-            return FileConsumer(group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match)
+            return FileConsumer(
+                group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match
+            )

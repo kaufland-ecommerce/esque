@@ -340,11 +340,25 @@ def get_topics(state, topic):
     default=False,
     is_flag=True,
 )
-@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT or to an automatically generated file.", default=False, is_flag=True)
+@click.option(
+    "--stdout",
+    "write_to_stdout",
+    help="Write messages to STDOUT or to an automatically generated file.",
+    default=False,
+    is_flag=True,
+)
 @error_handler
 @pass_state
 def consume(
-    state: State, topic: str, from_context: str, numbers: int, match: str, last: bool, avro: bool, preserve_order: bool, write_to_stdout: bool
+    state: State,
+    topic: str,
+    from_context: str,
+    numbers: int,
+    match: str,
+    last: bool,
+    avro: bool,
+    preserve_order: bool,
+    write_to_stdout: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
@@ -371,7 +385,7 @@ def consume(
             avro=avro,
             match=match,
             last=last,
-            write_to_stdout=write_to_stdout
+            write_to_stdout=write_to_stdout,
         )
     else:
         total_number_of_consumed_messages = _consume_to_files(
@@ -382,7 +396,7 @@ def consume(
             avro=avro,
             match=match,
             last=last,
-            write_to_stdout=write_to_stdout
+            write_to_stdout=write_to_stdout,
         )
 
     if not write_to_stdout:
@@ -408,12 +422,19 @@ def _consume_to_file_ordered(
     avro: bool,
     match: str,
     last: bool,
-    write_to_stdout: bool = False
+    write_to_stdout: bool = False,
 ) -> int:
     consumers = []
     factory = ConsumerFactory()
     for partition in partitions:
-        consumer = factory.create_consumer(group_id=group_id + "_" + str(partition), topic_name=None, working_dir=working_dir, avro=avro, match=match)
+        consumer = factory.create_consumer(
+            group_id=group_id + "_" + str(partition),
+            topic_name=None,
+            working_dir=working_dir,
+            avro=avro,
+            match=match,
+            last=last,
+        )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
 
@@ -475,9 +496,16 @@ def _consume_to_files(
     avro: bool,
     match: str,
     last: bool,
-    write_to_stdout: bool = False
+    write_to_stdout: bool = False,
 ) -> int:
-    consumer = ConsumerFactory().create_consumer(group_id=group_id, topic_name=topic, working_dir=working_dir if not write_to_stdout else None, last=last, avro=avro, match=match)
+    consumer = ConsumerFactory().create_consumer(
+        group_id=group_id,
+        topic_name=topic,
+        working_dir=working_dir if not write_to_stdout else None,
+        last=last,
+        avro=avro,
+        match=match,
+    )
     number_consumed_messages = consumer.consume(int(numbers))
 
     return number_consumed_messages
@@ -485,14 +513,45 @@ def _consume_to_files(
 
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
 @click.argument("topic", required=True)
-@click.option("-d", "--directory", metavar="<directory>", help="Sets the directory that contains Kafka messages", type=click.STRING, required=False)
+@click.option(
+    "-d",
+    "--directory",
+    metavar="<directory>",
+    help="Sets the directory that contains Kafka messages",
+    type=click.STRING,
+    required=False,
+)
 @click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=True)
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
-@click.option("-i", "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True)
+@click.option(
+    "-i",
+    "--stdin",
+    "read_from_stdin",
+    help="Read messages from STDIN instead of a directory.",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "-y",
+    "--ignore-errors",
+    "ignore_stdin_errors",
+    help="When reading from STDIN, use malformed strings as message values (ignore JSON).",
+    default=False,
+    is_flag=True,
+)
 @error_handler
 @pass_state
-def produce(state: State, topic: str, to_context: str, directory: str, avro: bool, match: str = None, read_from_stdin: bool = False):
+def produce(
+    state: State,
+    topic: str,
+    to_context: str,
+    directory: str,
+    avro: bool,
+    match: str = None,
+    read_from_stdin: bool = False,
+    ignore_stdin_errors: bool = False,
+):
     if directory is None and not read_from_stdin:
         click.echo("You have to provide the directory or use a --stdin flag")
     else:
@@ -503,12 +562,27 @@ def produce(state: State, topic: str, to_context: str, directory: str, avro: boo
                 exit(1)
         state.config.context_switch(to_context)
         if read_from_stdin and sys.stdin.isatty():
-            click.echo("Type the messages to produce, " + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D"))
+            click.echo(
+                "Type the messages to produce, " + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D")
+            )
         elif read_from_stdin and not sys.stdin.isatty():
             click.echo("Reading messages from an external source, " + blue_bold("one per line"))
         else:
-            click.echo("Producing from directory " + directory + " to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
-        producer = ProducerFactory().create_producer(topic_name=topic, working_dir=working_dir if not read_from_stdin else None, avro=avro, match=match)
+            click.echo(
+                "Producing from directory "
+                + directory
+                + " to topic "
+                + blue_bold(topic)
+                + " in target context "
+                + blue_bold(to_context)
+            )
+        producer = ProducerFactory().create_producer(
+            topic_name=topic,
+            working_dir=working_dir if not read_from_stdin else None,
+            avro=avro,
+            match=match,
+            ignore_stdin_errors=ignore_stdin_errors,
+        )
         total_number_of_messages_produced = producer.produce()
         click.echo(
             green_bold(str(total_number_of_messages_produced))

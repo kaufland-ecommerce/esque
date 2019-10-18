@@ -85,6 +85,11 @@ def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]
     for topic, _ in topic_factory(1, topic_id):
         yield topic
 
+@pytest.fixture()
+def topic_multiple_partitions(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    for topic, _ in topic_factory(10, topic_id):
+        yield topic
 
 @pytest.fixture()
 def source_topic(

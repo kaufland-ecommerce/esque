@@ -92,7 +92,6 @@ class AvroFileReader(FileReader):
                 record = pickle.load(self.file)
             except EOFError:
                 return
-
             schema_directory = self.directory / record["schema_directory_name"]
 
             key_schema = load_schema((schema_directory / "key_schema.avsc").read_text(encoding="utf-8"))

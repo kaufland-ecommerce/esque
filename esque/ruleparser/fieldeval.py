@@ -3,7 +3,7 @@ import re
 from typing import Any
 
 from confluent_kafka.cimpl import Message
-from esque.message import KafkaMessage
+from esque.messages.message import KafkaMessage
 
 from esque.ruleparser.expressionelement import Operator
 

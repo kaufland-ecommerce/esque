@@ -7,11 +7,18 @@ from string import ascii_letters
 from typing import Iterable, List, Tuple
 
 import pytest
+from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+from esque.cli.commands import _consume_to_file_ordered
+
+from esque.cli.commands import consume
+
+from esque.clients.consumer import ConsumerFactory
 
 from esque.clients.consumer import AvroFileConsumer, FileConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer
+from esque.clients.producer import ProducerFactory
 from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import KafkaMessage, PlainTextFileReader
 
@@ -23,7 +30,7 @@ def test_plain_text_consume_to_file(
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=False)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(working_dir, False)
@@ -39,7 +46,7 @@ def test_avro_consume_to_file(
     source_topic_id, _ = source_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
-    file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=True)
     number_of_consumer_messages = file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(working_dir, True)
@@ -60,16 +67,16 @@ def test_plain_text_consume_and_produce(
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = FileConsumer(consumer_group, source_topic_id, working_dir, False)
+    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=False)
     file_consumer.consume(10)
 
-    producer = FileProducer(working_dir)
-    producer.produce(target_topic_id)
+    producer = ProducerFactory().create_producer(target_topic_id, working_dir, avro=False)
+    producer.produce()
 
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
-    file_consumer = FileConsumer(
-        (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False
+    file_consumer = ConsumerFactory().create_consumer(
+        (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False, avro=False
     )
     file_consumer.consume(10)
 
@@ -90,22 +97,105 @@ def test_avro_consume_and_produce(
     target_topic_id, _ = target_topic
     working_dir = tmpdir_factory.mktemp("working_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
-    file_consumer = AvroFileConsumer(consumer_group, source_topic_id, working_dir, False)
+
+    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=True)
     file_consumer.consume(10)
 
-    producer = AvroFileProducer(working_dir)
-    producer.produce(target_topic_id)
+    producer = ProducerFactory().create_producer(topic_name=target_topic_id, working_dir=working_dir, avro=True)
+    producer.produce()
 
     # Check assertions:
     assertion_check_directory = tmpdir_factory.mktemp("assertion_check_directory")
-    file_consumer = AvroFileConsumer(
-        (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False
+    file_consumer = ConsumerFactory().create_consumer(
+        consumer_group + "assertion_check", target_topic_id, assertion_check_directory, False, avro=True
     )
     file_consumer.consume(10)
 
     consumed_messages = get_consumed_messages(assertion_check_directory, True)
 
     assert produced_messages == consumed_messages
+
+
+@pytest.mark.integration
+def test_plain_text_message_ordering(
+    producer: ConfluenceProducer, topic_multiple_partitions: str, tmpdir_factory, cli_runner: CliRunner
+):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0),
+        KafkaMessage(key="i", value="v2", partition=1),
+        KafkaMessage(key="h", value="v3", partition=2),
+        KafkaMessage(key="g", value="v4", partition=3),
+        KafkaMessage(key="f", value="v5", partition=2),
+        KafkaMessage(key="e", value="v6", partition=1),
+        KafkaMessage(key="d", value="v7", partition=0),
+        KafkaMessage(key="c", value="v8", partition=2),
+        KafkaMessage(key="b", value="v9", partition=3),
+        KafkaMessage(key="a", value="v10", partition=1),
+    ]
+    for message in ordered_messages:
+        producer.produce(
+            topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
+        )
+        producer.flush()
+
+    _consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match=None,
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert consumed_messages[0].key == "j"
+    assert consumed_messages[3].key == "g"
+    assert consumed_messages[8].key == "b"
+
+
+@pytest.mark.integration
+def test_plain_text_message_ordering_with_filtering(
+    producer: ConfluenceProducer, topic_multiple_partitions: str, tmpdir_factory, cli_runner: CliRunner
+):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0),
+        KafkaMessage(key="i", value="v2", partition=1),
+        KafkaMessage(key="h", value="v3", partition=2),
+        KafkaMessage(key="g", value="v4", partition=3),
+        KafkaMessage(key="f", value="v5", partition=2),
+        KafkaMessage(key="e", value="v6", partition=1),
+        KafkaMessage(key="d", value="v7", partition=0),
+        KafkaMessage(key="c", value="v8", partition=2),
+        KafkaMessage(key="b", value="v9", partition=3),
+        KafkaMessage(key="a", value="v10", partition=1),
+    ]
+    for message in ordered_messages:
+        producer.produce(
+            topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
+        )
+        producer.flush()
+
+    _consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match="message.partition == 1",
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert consumed_messages[0].key == "i"
+    assert consumed_messages[1].key == "e"
+    assert consumed_messages[2].key == "a"
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
@@ -145,7 +235,7 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[st
     return messages
 
 
-def get_consumed_messages(directory, avro: bool) -> List[KafkaMessage]:
+def get_consumed_messages(directory, avro: bool, sort: bool = True) -> List[KafkaMessage]:
     consumed_messages = []
     path_list = glob(str(directory / "partition_*"))
     with ExitStack() as stack:
@@ -157,4 +247,4 @@ def get_consumed_messages(directory, avro: bool) -> List[KafkaMessage]:
             stack.enter_context(file_reader)
             for message in file_reader.read_message_from_file():
                 consumed_messages.append(message)
-    return sorted(consumed_messages, key=(lambda msg: msg.key))
+    return sorted(consumed_messages, key=(lambda msg: msg.key)) if sort else consumed_messages
