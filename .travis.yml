@@ -21,7 +21,9 @@ before_install:
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install coverage coveralls poetry
-- pip install -U pip
+
+# need to update pip before installing. See also: https://github.com/sdispater/poetry/issues/732
+- poetry run pip install -U pip
 - poetry install
 script:
 - "$TEST_CMD"
