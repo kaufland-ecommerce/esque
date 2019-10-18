@@ -18,7 +18,7 @@ In a wide array of administration tools, `esque` distances itself by striving to
 
 ## Principles
 
-Our driving objectives can be summed up through these four principles:
+Our driving objectives can be summed up through these principles:
 * comes with batteries included
 * feature rich
 * robust
