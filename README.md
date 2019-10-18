@@ -124,25 +124,36 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.6 & [Pipenv](https://github.com/pypa/pipenv) installed, then run 
+To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run 
 
 ```
-pipenv install --dev
-pipenv shell 
-export PYTHONPATH=$(pwd)
+poetry install --develop DEVELOP
+poetry shell
 ```
 
 ### Run tests
 
 To start up a local test setup (Kafka and Zookeeper), you can run
 
-```
-docker-compose up
-```
-While this `docker-compose` stack is up, you can run the tests from the CLI via `pytest tests/ --integration --local`
+#### Integration Tests
 
+esque comes with a kafka stack which you can start up with `make test-suite`.
 
-Alternatively, you can also run the entire test suite, without needing to setup the development environment, in docker compose via `docker-compose -f docker-compose.yml -f docker-compose.test.yml` 
+You can then run the integration tests against this stack with `pytest tests/ --integration --local`.
+
+Alternatively you can go the fast way and just run the whole stack + integration tests in docker: 
+
+```
+make integration--test
+```
+
+#### Unit Tests
+
+If you just want the unit tests simply run:
+ 
+```
+make test
+```
 
 
 ### Pre Commit Hooks

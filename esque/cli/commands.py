@@ -8,9 +8,9 @@ import click
 import yaml
 from click import version_option
 
-from esque.__version__ import __version__
+from esque import __version__
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval
-from esque.cli.options import State, no_verify_option, pass_state, error_handler
+from esque.cli.options import State, error_handler, no_verify_option, pass_state
 from esque.cli.output import (
     blue_bold,
     bold,
