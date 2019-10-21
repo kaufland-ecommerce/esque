@@ -8,7 +8,7 @@ import click
 import yaml
 from click import version_option, MissingParameter, UsageError
 
-from esque.__version__ import __version__
+from esque import __version__
 
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
 from esque.cli.options import State, no_verify_option, pass_state, error_handler, output_format_option
