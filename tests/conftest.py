@@ -1,11 +1,14 @@
+import json
 import random
 from concurrent.futures import Future
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple, Dict
+from unittest import mock
 
 import confluent_kafka
 import pytest
+import yaml
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -17,6 +20,7 @@ from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
 from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
 
@@ -41,8 +45,15 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture()
-def cli_runner():
-    yield CliRunner()
+def interactive_cli_runner(test_config: Config):
+    with mock.patch("esque.cli.helpers._isatty", return_value=True):
+        yield CliRunner()
+
+
+@pytest.fixture()
+def non_interactive_cli_runner(test_config: Config):
+    with mock.patch("esque.cli.helpers._isatty", return_value=False):
+        yield CliRunner()
 
 
 @pytest.fixture()
@@ -70,12 +81,18 @@ def topic_id(confluent_admin_client) -> str:
 
 
 @pytest.fixture()
-def topic_object(cluster, topic):
+def broker_id(state: State) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield str(brokers[0].broker_id)
+
+
+@pytest.fixture()
+def topic_object(cluster: Cluster, topic: str):
     yield cluster.topic_controller.get_cluster_topic(topic)
 
 
 @pytest.fixture()
-def changed_topic_object(cluster, topic):
+def changed_topic_object(cluster: Cluster, topic: str):
     yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
@@ -133,7 +150,7 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], I
 
 
 @pytest.fixture()
-def topic_controller(cluster):
+def topic_controller(cluster: Cluster):
     yield cluster.topic_controller
 
 
@@ -173,7 +190,7 @@ def consumer_group():
 
 
 @pytest.fixture()
-def consumer(topic_object: Topic, consumer_group):
+def consumer(topic_object: Topic, consumer_group: str):
     _config = Config().create_confluent_config()
     _config.update(
         {
@@ -211,7 +228,7 @@ def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic,
 
 
 @pytest.fixture()
-def cluster(test_config):
+def cluster(test_config: Config) -> Iterable[Cluster]:
     try:
         cluster = Cluster()
     except NoBrokersAvailableError as ex:
@@ -222,5 +239,18 @@ def cluster(test_config):
 
 
 @pytest.fixture()
-def state(test_config):
+def state(test_config: Config) -> Iterable[State]:
     yield State()
+
+
+def check_and_load_yaml(output: str) -> Dict:
+    assert output[0] != "{", "non json output starts with '{'"
+    assert output[-2] != "}" and output[-1] != "}", "non json output ends with '}'"
+    return yaml.safe_load(output)
+
+
+FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
+
+parameterized_output_formats = pytest.mark.parametrize(
+    "output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"]
+)

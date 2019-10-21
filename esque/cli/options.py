@@ -1,14 +1,13 @@
-import sys
 from functools import wraps
 from shutil import copyfile
 
 import click
-from click import make_pass_decorator, option
+from click import make_pass_decorator, option, ClickException
 
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import config_dir, config_path, sample_config_path, Config
-from esque.errors import ConfigNotExistsException, ExceptionWithMessage
+from esque.errors import ConfigNotExistsException
 
 
 class State(object):
@@ -19,12 +18,14 @@ class State(object):
             self.config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
-            config_dir().mkdir(exist_ok=True)
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
+                config_dir().mkdir(exist_ok=True)
                 copyfile(sample_config_path().as_posix(), config_path())
+            else:
+                raise
             if ensure_approval("Do you want to modify the config file now?"):
                 click.edit(filename=config_path().as_posix())
-            sys.exit(0)
+            self.config = Config()
         self._cluster = None
 
     @property
@@ -54,28 +55,25 @@ def no_verify_option(f):
     )(f)
 
 
+output_format_option = click.option(
+    "-o",
+    "--output-format",
+    type=click.Choice(["yaml", "json"], case_sensitive=False),
+    help="Format of the output",
+    required=False,
+)
+
+
 def error_handler(f):
-    @click.option("-v", "--verbose", help="More detailed information.", default=False, is_flag=True)
     @wraps(f)
     def wrapper(*args, **kwargs):
-        verbose = kwargs["verbose"]
-        del kwargs["verbose"]
         try:
             f(*args, **kwargs)
         except Exception as e:
-            if verbose:
-                raise
 
-            if isinstance(e, ExceptionWithMessage):
-                click.echo(click.style(e.describe(), fg="red"))
+            if isinstance(e, ClickException):
+                raise
             else:
-                click.echo(
-                    click.style(
-                        f"An Exception of type {type(e).__name__} occured. Use verbose mode with '--verbose' "
-                        f"to see more information.",
-                        fg="red",
-                    )
-                )
-            sys.exit(1)
+                raise ClickException(f"An Exception of type {type(e).__name__} occurred.")
 
     return wrapper

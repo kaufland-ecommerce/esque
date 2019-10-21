@@ -9,6 +9,8 @@ from time import sleep
 import click
 import yaml
 from click import version_option
+from click import version_option, MissingParameter, UsageError
+
 from esque import __version__
 
 from esque.cli.helpers import ensure_approval
@@ -48,7 +50,7 @@ from esque.resources.topic import Topic
 @no_verify_option
 @version_option(__version__)
 @pass_state
-def esque(state, recreate_config: bool):
+def esque(state: State, recreate_config: bool):
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
         if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
@@ -91,11 +93,23 @@ def list_contexts(ctx, args, incomplete):
     return [context for context in config.available_contexts if context.startswith(incomplete)]
 
 
+def fallback_to_stdin(ctx, param, value):
+    stdin = click.get_text_stream("stdin")
+    if not value and not isatty(stdin):
+        stdin_arg = stdin.readline().strip()
+    else:
+        stdin_arg = value
+    if not stdin_arg:
+        raise MissingParameter("No value specified")
+
+    return stdin_arg
+
+
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @error_handler
 @pass_state
-def ctx(state, context):
+def ctx(state: State, context: str):
     if not context:
         for c in state.config.available_contexts:
             if c == state.config.current_context:
@@ -108,12 +122,12 @@ def ctx(state, context):
 
 
 @create.command("topic")
-@click.argument("topic-name", required=True)
-@no_verify_option
+@click.argument("topic-name", callback=fallback_to_stdin, required=False)
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @error_handler
+@no_verify_option
 @pass_state
-def create_topic(state: State, topic_name: str, like=None):
+def create_topic(state: State, topic_name: str, like: str):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
@@ -132,8 +146,8 @@ def create_topic(state: State, topic_name: str, like=None):
 
 @edit.command("topic")
 @click.argument("topic-name", required=True)
-@error_handler
 @pass_state
+@error_handler
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
@@ -154,7 +168,9 @@ def edit_topic(state: State, topic_name: str):
 
 
 @delete.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @no_verify_option
 @error_handler
 @pass_state
@@ -179,7 +195,7 @@ def apply(state: State, file: str):
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
     yaml_topic_names = [t.name for t in yaml_topics]
     if not len(yaml_topic_names) == len(set(yaml_topic_names)):
-        raise ValueError("Duplicate topic names in the YAML!")
+        raise UsageError("Duplicate topic names in the YAML!")
 
     # Get topic data based on the cluster state
     topic_controller = state.cluster.topic_controller
@@ -237,45 +253,50 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", required=True, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
+@output_format_option
 @error_handler
 @pass_state
-def describe_topic(state, topic_name):
+def describe_topic(state: State, topic_name: str, output_format: str):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    config = {"Config": topic.config}
 
-    click.echo(bold(f"Topic: {green_bold(topic_name)}"))
+    output_dict = {
+        "topic": topic_name,
+        "partitions": [partition.as_dict() for partition in topic.partitions],
+        "config": topic.config,
+    }
 
-    for partition in topic.partitions:
-        click.echo(pretty({f"Partition {partition.partition_id}": partition.as_dict()}, break_lists=True))
-
-    click.echo(pretty(config))
+    click.echo(format_output(output_dict, output_format))
 
 
 @get.command("offsets")
-@click.argument("topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@output_format_option
 @error_handler
 @pass_state
-def get_offsets(state, topic_name):
+def get_offsets(state: State, topic_name: str, output_format: str):
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
     offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
 
-    click.echo(pretty(offsets))
+    click.echo(format_output(offsets, output_format))
 
 
 @describe.command("broker")
-@click.argument("broker-id", required=True)
+@click.argument("broker-id", callback=fallback_to_stdin, required=False)
 @error_handler
 @pass_state
-def describe_broker(state, broker_id):
+@output_format_option
+def describe_broker(state: State, broker_id: str, output_format: str):
     broker = Broker.from_id(state.cluster, broker_id).describe()
-    click.echo(pretty(broker, break_lists=True))
+    click.echo(format_output(broker, output_format))
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", required=False)
+@click.option("-c", "--consumer-id", required=False)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",
@@ -284,39 +305,42 @@ def describe_broker(state, broker_id):
 )
 @error_handler
 @pass_state
-def describe_consumergroup(state, consumer_id, all_partitions):
+@output_format_option
+def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
-    click.echo(pretty(consumer_group_desc, break_lists=True))
+    click.echo(format_output(consumer_group_desc, output_format))
 
 
 @get.command("brokers")
 @error_handler
 @pass_state
-def get_brokers(state):
+@output_format_option
+def get_brokers(state: State, output_format: str):
     brokers = Broker.get_all(state.cluster)
-    for broker in brokers:
-        click.echo(f"{broker.broker_id}: {broker.host}:{broker.port}")
+    broker_ids_and_hosts = [f"{broker.broker_id}: {broker.host}:{broker.port}" for broker in brokers]
+    click.echo(format_output(broker_ids_and_hosts, output_format))
 
 
 @get.command("consumergroups")
 @error_handler
 @pass_state
-def get_consumergroups(state):
+@output_format_option
+def get_consumergroups(state: State, output_format: str):
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
-    for group in groups:
-        click.echo(group)
+    click.echo(format_output(groups, output_format))
 
 
 @get.command("topics")
-@click.argument("topic", required=False, type=click.STRING, autocompletion=list_topics)
+@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics, required=False)
+@output_format_option
 @error_handler
 @pass_state
-def get_topics(state, topic):
-    topics = state.cluster.topic_controller.list_topics(search_string=topic, get_topic_objects=False)
-    for topic in topics:
-        click.echo(topic.name)
+def get_topics(state: State, prefix: str, output_format: str):
+    topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
+    topic_names = [topic.name for topic in topics]
+    click.echo(format_output(topic_names, output_format))
 
 
 @esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
@@ -592,7 +616,7 @@ def produce(
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
 @error_handler
 @pass_state
-def ping(state, times, wait):
+def ping(state: State, times: int, wait: int):
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
