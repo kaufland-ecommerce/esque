@@ -1,8 +1,6 @@
-import functools
 import pathlib
 from abc import ABC, abstractmethod
 from contextlib import ExitStack
-from os import path
 from typing import Optional, Tuple
 
 import confluent_kafka
