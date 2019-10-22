@@ -114,9 +114,13 @@ def check_described_broker(described_broker: Union[str, dict]):
 @pytest.mark.integration
 @parameterized_output_formats
 def test_describe_topic_consumergroup_in_output(
-    non_interactive_cli_runner: CliRunner, filled_topic: str, partly_read_consumer_group: str, loader: Callable
+    non_interactive_cli_runner: CliRunner,
+    filled_topic: str,
+    partly_read_consumer_group: str,
+    output_format: str,
+    loader: Callable,
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", "yaml"], filled_topic)
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], filled_topic)
     assert result.exit_code == 0
     output_dict = loader(result.output)
 
