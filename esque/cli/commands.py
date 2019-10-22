@@ -8,18 +8,21 @@ from time import sleep
 
 import click
 import yaml
+from click import MissingParameter
+from click import UsageError
 from click import version_option
-from click import version_option, MissingParameter, UsageError
 
 from esque import __version__
-
 from esque.cli.helpers import ensure_approval
+from esque.cli.helpers import isatty
 from esque.cli.options import error_handler
 from esque.cli.options import no_verify_option
+from esque.cli.options import output_format_option
 from esque.cli.options import pass_state
 from esque.cli.options import State
 from esque.cli.output import blue_bold
 from esque.cli.output import bold
+from esque.cli.output import format_output
 from esque.cli.output import green_bold
 from esque.cli.output import pretty
 from esque.cli.output import pretty_new_topic_configs
@@ -345,8 +348,8 @@ def get_topics(state: State, prefix: str, output_format: str):
 
 @esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
 @click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
+@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=False)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize, required=False)
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
@@ -382,7 +385,9 @@ def consume(
     group_id = "group_for_" + unique_name
     directory_name = "message_" + unique_name
     working_dir = Path(directory_name)
-    if not write_to_stdout:
+    if not from_context:
+        from_context = state.config.current_context
+    if not write_to_stdout and from_context != state.config.current_context:
         click.echo(f"Switching to context: {from_context}")
     state.config.context_switch(from_context)
     if not write_to_stdout:
@@ -418,7 +423,7 @@ def consume(
 
     if not write_to_stdout:
         click.echo("Output generated to " + blue_bold(directory_name))
-        if total_number_of_consumed_messages == numbers:
+        if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
@@ -538,7 +543,7 @@ def _consume_to_files(
     type=click.STRING,
     required=False,
 )
-@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=True)
+@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=False)
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
@@ -572,17 +577,20 @@ def produce(
     if directory is None and not read_from_stdin:
         click.echo("You have to provide the directory or use a --stdin flag")
     else:
+        if not to_context:
+            to_context = state.config.current_context
         if directory is not None:
             working_dir = pathlib.Path(directory)
             if not working_dir.exists():
                 click.echo("You have to provide an existing directory")
                 exit(1)
         state.config.context_switch(to_context)
-        if read_from_stdin and sys.stdin.isatty():
+        stdin = click.get_text_stream("stdin")
+        if read_from_stdin and isatty(stdin):
             click.echo(
-                "Type the messages to produce, " + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D")
+                "Type the messages to produce, " + ("in JSON format, " if not ignore_stdin_errors else "") + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D")
             )
-        elif read_from_stdin and not sys.stdin.isatty():
+        elif read_from_stdin and not isatty(stdin):
             click.echo("Reading messages from an external source, " + blue_bold("one per line"))
         else:
             click.echo(
@@ -621,14 +629,12 @@ def ping(state: State, times: int, wait: int):
     deltas = []
     try:
         topic_controller.create_topics([Topic(PING_TOPIC)])
-
-        producer = PingProducer()
-        consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
-
+        producer = PingProducer(PING_TOPIC)
+        consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
         for i in range(times):
-            producer.produce(PING_TOPIC)
+            producer.produce()
             _, delta = consumer.consume()
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")

@@ -9,6 +9,8 @@ import confluent_kafka
 import pendulum
 import sys
 from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import TopicPartition
+
 from esque.ruleparser.ruleengine import RuleTree
 
 from esque.config import Config
@@ -67,8 +69,9 @@ class AbstractProducer(ABC):
 
 
 class PingProducer(AbstractProducer):
-    def __init__(self, topic_name: str, match: str = None):
+    def __init__(self, topic_name: str):
         super().__init__(topic_name=topic_name)
+        self.create_internal_producer()
 
     @translate_third_party_exceptions
     def produce(self) -> int:

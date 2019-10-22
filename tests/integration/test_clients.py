@@ -14,6 +14,9 @@ from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+from esque.cli.commands import produce
+
+from esque.cli.commands import consume
 
 from esque.cli.commands import _consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
@@ -199,6 +202,36 @@ def test_plain_text_message_ordering_with_filtering(
     assert consumed_messages[1].key == "e"
     assert consumed_messages[2].key == "a"
 
+
+@pytest.mark.integration
+def test_plain_text_message_cli_pipe(
+    producer: ConfluenceProducer, topic: str, tmpdir_factory, non_interactive_cli_runner: CliRunner
+):
+    working_dir = tmpdir_factory.mktemp("working_directory")
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0),
+        KafkaMessage(key="i", value="v2", partition=0),
+        KafkaMessage(key="h", value="v3", partition=0),
+        KafkaMessage(key="g", value="v4", partition=0),
+        KafkaMessage(key="f", value="v5", partition=0),
+        KafkaMessage(key="e", value="v6", partition=0),
+        KafkaMessage(key="d", value="v7", partition=0),
+        KafkaMessage(key="c", value="v8", partition=0),
+        KafkaMessage(key="b", value="v9", partition=0),
+        KafkaMessage(key="a", value="v10", partition=0),
+    ]
+    for message in ordered_messages:
+        producer.produce(
+            topic=topic, key=message.key, value=message.value, partition=message.partition
+        )
+        producer.flush()
+        time.sleep(0.5)
+
+    result1=non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
+    result2=non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
+    # Check assertions:
+    assert "10" in result2.output
+    assert result2.exit_code == 0
 
 def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
     topic_name, num_partitions = topic
