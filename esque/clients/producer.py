@@ -1,23 +1,27 @@
 import json
 import pathlib
-from abc import ABC, abstractmethod
+import sys
+from abc import ABC
+from abc import abstractmethod
 from glob import glob
 from json import JSONDecodeError
 
 import click
 import confluent_kafka
 import pendulum
-import sys
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import TopicPartition
-
-from esque.ruleparser.ruleengine import RuleTree
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
-from esque.helpers import delivery_callback, delta_t
+from esque.errors import raise_for_kafka_error
+from esque.errors import translate_third_party_exceptions
+from esque.helpers import delivery_callback
+from esque.helpers import delta_t
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader, deserialize_message
+from esque.messages.message import deserialize_message
+from esque.messages.message import FileReader
+from esque.messages.message import KafkaMessage
+from esque.messages.message import PlainTextFileReader
+from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractProducer(ABC):
@@ -50,12 +54,12 @@ class AbstractProducer(ABC):
         )
 
     @translate_third_party_exceptions
-    def flush_all(self):
+    def flush_all(self, message_prefix: str = None):
         while True:
             left_messages = self._producer.flush(1)
             if left_messages == 0:
                 break
-            click.echo(f"Still {left_messages} messages left, flushing...")
+            click.echo((message_prefix or "") + f"Still {left_messages} messages left, flushing...")
 
     @translate_third_party_exceptions
     @abstractmethod
@@ -80,11 +84,7 @@ class PingProducer(AbstractProducer):
             topic_name=self._topic_name,
             message=KafkaMessage(key=str(0), value=str(pendulum.now().timestamp()), partition=0),
         )
-        while True:
-            left_messages = self._producer.flush(1)
-            if left_messages == 0:
-                break
-            click.echo(f"{delta_t(start)} | Still {left_messages} messages left, flushing...")
+        self.flush_all(message_prefix=f"{delta_t(start)} | ")
         return 1
 
     def create_internal_producer(self):
@@ -102,18 +102,15 @@ class StdInProducer(AbstractProducer):
         total_number_of_produced_messages = 0
         # accept lines from stdin until EOF
         for single_message_line in sys.stdin:
-            message_valid = False
+            message = None
             try:
                 message = deserialize_message(single_message_line)
-                message_valid = True
             except JSONDecodeError:
                 if self._ignore_errors:
                     message = KafkaMessage(key=None, value=single_message_line, partition=0)
-                    message_valid = True
-            finally:
-                if message_valid:
-                    self.produce_message(topic_name=self._topic_name, message=message)
-                    total_number_of_produced_messages += 1
+            if message:
+                self.produce_message(topic_name=self._topic_name, message=message)
+                total_number_of_produced_messages += 1
         return total_number_of_produced_messages
 
     def create_internal_producer(self):

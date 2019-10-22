@@ -1,23 +1,26 @@
 import pathlib
-from abc import ABC, abstractmethod
+from abc import ABC
+from abc import abstractmethod
 from contextlib import ExitStack
-from typing import Optional, Tuple
+from typing import Optional
+from typing import Tuple
 
+import click
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import Message, TopicPartition
-from esque.errors import EndOfPartitionReachedException
+from confluent_kafka.cimpl import Message
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import (
-    MessageEmptyException,
-    raise_for_kafka_error,
-    raise_for_message,
-    translate_third_party_exceptions,
-)
+from esque.errors import EndOfPartitionReachedException
+from esque.errors import MessageEmptyException
+from esque.errors import raise_for_kafka_error
+from esque.errors import raise_for_message
+from esque.errors import translate_third_party_exceptions
 from esque.messages.avromessage import AvroFileWriter
-from esque.messages.message import FileWriter, PlainTextFileWriter
+from esque.messages.message import FileWriter
+from esque.messages.message import PlainTextFileWriter
 from esque.messages.message import serialize_message
 from esque.ruleparser.ruleengine import RuleTree
 
@@ -56,7 +59,7 @@ class AbstractConsumer(ABC):
 
     @abstractmethod
     def create_internal_consumer(self):
-        self._consumer = confluent_kafka.Consumer(self._config)
+        pass
 
     @translate_third_party_exceptions
     def assign_specific_partitions(self, topic_name: str, partitions: list = None, offset: int = 0):
@@ -162,12 +165,12 @@ class StdOutConsumer(AbstractConsumer):
 
     def create_internal_consumer(self):
         super()._setup_config()
-        super().create_internal_consumer()
+        self._consumer = confluent_kafka.Consumer(self._config)
         if self._topic_name is not None:
             self._subscribe(self._topic_name)
 
     def output_consumed(self, message: Message, file_writer: FileWriter = None):
-        print(serialize_message(message))
+        click.echo(serialize_message(message))
 
 
 class FileConsumer(AbstractConsumer):
@@ -204,7 +207,7 @@ class FileConsumer(AbstractConsumer):
 
     def create_internal_consumer(self):
         super()._setup_config()
-        super().create_internal_consumer()
+        self._consumer = confluent_kafka.Consumer(self._config)
         if self._topic_name is not None:
             self._subscribe(self._topic_name)
 
@@ -224,8 +227,6 @@ class AvroFileConsumer(FileConsumer):
     def create_internal_consumer(self):
         super()._setup_config()
         super().create_internal_consumer()
-        if self._topic_name is not None:
-            self._subscribe(self._topic_name)
 
     def get_file_writer(self, partition: int) -> FileWriter:
         path_suffix = "partition_any" if partition < 0 else f"partition_{partition}"

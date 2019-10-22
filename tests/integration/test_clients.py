@@ -1,7 +1,6 @@
 import json
 import pathlib
 import random
-import time
 from contextlib import ExitStack
 from glob import glob
 from string import ascii_letters
@@ -14,9 +13,6 @@ from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
-from esque.cli.commands import produce
-
-from esque.cli.commands import consume
 
 from esque.cli.commands import _consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
@@ -121,27 +117,14 @@ def test_avro_consume_and_produce(
 
 @pytest.mark.integration
 def test_plain_text_message_ordering(
-    producer: ConfluenceProducer, topic_multiple_partitions: str, tmpdir_factory, cli_runner: CliRunner
+    producer: ConfluenceProducer,
+    topic_multiple_partitions: str,
+    tmpdir_factory,
+    cli_runner: CliRunner,
+    produced_messages_different_partitions,
 ):
+    produced_messages_different_partitions(topic_multiple_partitions, producer)
     working_dir = tmpdir_factory.mktemp("working_directory")
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0),
-        KafkaMessage(key="i", value="v2", partition=1),
-        KafkaMessage(key="h", value="v3", partition=2),
-        KafkaMessage(key="g", value="v4", partition=3),
-        KafkaMessage(key="f", value="v5", partition=2),
-        KafkaMessage(key="e", value="v6", partition=1),
-        KafkaMessage(key="d", value="v7", partition=0),
-        KafkaMessage(key="c", value="v8", partition=2),
-        KafkaMessage(key="b", value="v9", partition=3),
-        KafkaMessage(key="a", value="v10", partition=1),
-    ]
-    for message in ordered_messages:
-        producer.produce(
-            topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
-        )
-        producer.flush()
-        time.sleep(0.5)
 
     _consume_to_file_ordered(
         working_dir,
@@ -163,27 +146,14 @@ def test_plain_text_message_ordering(
 
 @pytest.mark.integration
 def test_plain_text_message_ordering_with_filtering(
-    producer: ConfluenceProducer, topic_multiple_partitions: str, tmpdir_factory, cli_runner: CliRunner
+    producer: ConfluenceProducer,
+    topic_multiple_partitions: str,
+    tmpdir_factory,
+    cli_runner: CliRunner,
+    produced_messages_different_partitions,
 ):
+    produced_messages_different_partitions(topic_multiple_partitions, producer)
     working_dir = tmpdir_factory.mktemp("working_directory")
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0),
-        KafkaMessage(key="i", value="v2", partition=1),
-        KafkaMessage(key="h", value="v3", partition=2),
-        KafkaMessage(key="g", value="v4", partition=3),
-        KafkaMessage(key="f", value="v5", partition=2),
-        KafkaMessage(key="e", value="v6", partition=1),
-        KafkaMessage(key="d", value="v7", partition=0),
-        KafkaMessage(key="c", value="v8", partition=2),
-        KafkaMessage(key="b", value="v9", partition=3),
-        KafkaMessage(key="a", value="v10", partition=1),
-    ]
-    for message in ordered_messages:
-        producer.produce(
-            topic=topic_multiple_partitions, key=message.key, value=message.value, partition=message.partition
-        )
-        time.sleep(0.5)
-        producer.flush()
 
     _consume_to_file_ordered(
         working_dir,
@@ -201,35 +171,6 @@ def test_plain_text_message_ordering_with_filtering(
     assert consumed_messages[0].key == "i"
     assert consumed_messages[1].key == "e"
     assert consumed_messages[2].key == "a"
-
-
-@pytest.mark.integration
-def test_plain_text_message_cli_pipe(
-    producer: ConfluenceProducer, topic: str, tmpdir_factory, non_interactive_cli_runner: CliRunner
-):
-    working_dir = tmpdir_factory.mktemp("working_directory")
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0),
-        KafkaMessage(key="i", value="v2", partition=0),
-        KafkaMessage(key="h", value="v3", partition=0),
-        KafkaMessage(key="g", value="v4", partition=0),
-        KafkaMessage(key="f", value="v5", partition=0),
-        KafkaMessage(key="e", value="v6", partition=0),
-        KafkaMessage(key="d", value="v7", partition=0),
-        KafkaMessage(key="c", value="v8", partition=0),
-        KafkaMessage(key="b", value="v9", partition=0),
-        KafkaMessage(key="a", value="v10", partition=0),
-    ]
-    for message in ordered_messages:
-        producer.produce(topic=topic, key=message.key, value=message.value, partition=message.partition)
-        producer.flush()
-        time.sleep(0.5)
-
-    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
-    result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
-    # Check assertions:
-    assert "10" in result2.output
-    assert result2.exit_code == 0
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
