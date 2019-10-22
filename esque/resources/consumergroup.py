@@ -39,7 +39,7 @@ class ConsumerGroup:
         )
         topic_with_offsets = set(topic.decode("UTF-8") for topic in consumer_offsets.keys())
 
-        topics_with_members = []
+        topics_with_members = set()
         # Get Consumers which have a member
         try:
             resp = self._pykafka_group_coordinator.describe_groups([consumer_id])

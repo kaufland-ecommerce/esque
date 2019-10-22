@@ -112,6 +112,7 @@ def check_described_broker(described_broker: Union[str, dict]):
 
 
 @pytest.mark.integration
+@parameterized_output_formats
 def test_describe_topic_consumergroup_in_output(
     non_interactive_cli_runner: CliRunner, filled_topic: str, partly_read_consumer_group: str, loader: Callable
 ):
