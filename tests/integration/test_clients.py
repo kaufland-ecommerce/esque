@@ -221,17 +221,16 @@ def test_plain_text_message_cli_pipe(
         KafkaMessage(key="a", value="v10", partition=0),
     ]
     for message in ordered_messages:
-        producer.produce(
-            topic=topic, key=message.key, value=message.value, partition=message.partition
-        )
+        producer.produce(topic=topic, key=message.key, value=message.value, partition=message.partition)
         producer.flush()
         time.sleep(0.5)
 
-    result1=non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
-    result2=non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
+    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
+    result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
     # Check assertions:
     assert "10" in result2.output
     assert result2.exit_code == 0
+
 
 def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:
     topic_name, num_partitions = topic

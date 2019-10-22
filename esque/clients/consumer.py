@@ -62,7 +62,9 @@ class AbstractConsumer(ABC):
     def assign_specific_partitions(self, topic_name: str, partitions: list = None, offset: int = 0):
         self._topic_name = topic_name
         if partitions is not None:
-            topic_partitions = [TopicPartition(self._topic_name, partition=partition, offset=offset) for partition in partitions]
+            topic_partitions = [
+                TopicPartition(self._topic_name, partition=partition, offset=offset) for partition in partitions
+            ]
         else:
             topic_partitions = [TopicPartition(self._topic_name, 0, 0)]
         self._consumer.assign(topic_partitions)
@@ -103,7 +105,6 @@ class AbstractConsumer(ABC):
 
 
 class PingConsumer(AbstractConsumer):
-
     def __init__(self, group_id: str, topic_name: str, last: bool):
         super().__init__(group_id, topic_name, last)
         self._topic_name = topic_name
@@ -140,7 +141,6 @@ class PingConsumer(AbstractConsumer):
 
 
 class StdOutConsumer(AbstractConsumer):
-
     def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
         super().__init__(group_id, topic_name, last, match)
         super()._setup_config()
@@ -253,4 +253,3 @@ class ConsumerFactory:
         consumer = PingConsumer(group_id, topic_name, last=False)
         consumer.create_internal_consumer()
         return consumer
-

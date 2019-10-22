@@ -588,7 +588,11 @@ def produce(
         stdin = click.get_text_stream("stdin")
         if read_from_stdin and isatty(stdin):
             click.echo(
-                "Type the messages to produce, " + ("in JSON format, " if not ignore_stdin_errors else "") + blue_bold("one per line") + ". End with " + blue_bold("CTRL+D")
+                "Type the messages to produce, "
+                + ("in JSON format, " if not ignore_stdin_errors else "")
+                + blue_bold("one per line")
+                + ". End with "
+                + blue_bold("CTRL+D")
             )
         elif read_from_stdin and not isatty(stdin):
             click.echo("Reading messages from an external source, " + blue_bold("one per line"))
