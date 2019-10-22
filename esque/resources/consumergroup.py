@@ -37,21 +37,20 @@ class ConsumerGroup:
         consumer_offsets = self._unpack_offset_response(
             self._pykafka_group_coordinator.fetch_consumer_group_offsets(consumer_id, preqs=[])
         )
-        topic_with_offsets = [topic.decode("UTF-8") for topic in consumer_offsets.keys()]
+        topic_with_offsets = set(topic.decode("UTF-8") for topic in consumer_offsets.keys())
 
         topics_with_members = []
         # Get Consumers which have a member
         try:
             resp = self._pykafka_group_coordinator.describe_groups([consumer_id])
             meta = self._unpack_consumer_group_response(resp.groups[consumer_id])
-            topics_with_members = [
+            topics_with_members = set(
                 member["member_metadata"]["subscription"][0].decode("UTF-8") for member in meta["members"]
-            ]
+            )
         except struct.error:
             pass
 
-        # Deduplicate for Consumergroups which have offsets _and_ active members
-        return list(set(topic_with_offsets + topics_with_members))
+        return list(topic_with_offsets | topics_with_members)
 
     def describe(self, *, verbose=False):
         consumer_id = self.id.encode("UTF-8")
