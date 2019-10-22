@@ -3,6 +3,7 @@ from enum import Enum
 from itertools import islice
 from typing import List, TYPE_CHECKING, Union
 
+from click import BadParameter
 from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
 from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
@@ -42,7 +43,7 @@ class TopicController:
             pykafka_topics = self.cluster.pykafka_client.cluster.topics
             return pykafka_topics[topic_name]
         else:
-            raise ValueError(f"TopicType needs to be part of {ClientTypes}")
+            raise BadParameter(f"TopicType needs to be part of {ClientTypes}", param=client_type)
 
     @translate_third_party_exceptions
     def list_topics(
