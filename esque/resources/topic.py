@@ -10,13 +10,14 @@ from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
 from esque.errors import YamaleValidationException
+from esque.validation import validators
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
 
-SchemaPath = Path(__file__).parent.parent / "yml_schemas" / "topic.yml"
+SchemaPath = Path(__file__).parent.parent / "validation" / "yml_schemas" / "topic.yml"
 
 
 class Partition(KafkaResource):
@@ -213,7 +214,7 @@ class Topic(KafkaResource):
     def _validate(self):
         if not self.config:
             return
-        schema = yamale.make_schema(SchemaPath)
+        schema = yamale.make_schema(SchemaPath, validators=validators.all_validators())
         with NamedTemporaryFile("w+", suffix=".yml") as current_config:
             current_config.write(self.to_yaml(only_editable=True))
             current_config.seek(0)
