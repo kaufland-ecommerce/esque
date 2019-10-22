@@ -1,10 +1,10 @@
-from typing import Union, Callable
+from typing import Callable, Union
 
 import pytest
 from click import MissingParameter
 from click.testing import CliRunner
 
-from esque.cli.commands import describe_topic, describe_broker
+from esque.cli.commands import describe_broker, describe_topic
 from tests.conftest import parameterized_output_formats
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
@@ -113,11 +113,10 @@ def check_described_broker(described_broker: Union[str, dict]):
 
 @pytest.mark.integration
 def test_describe_topic_consumergroup_in_output(
-    cli_runner: CliRunner, filled_topic: str, partly_read_consumer_group: str
+    non_interactive_cli_runner: CliRunner, filled_topic: str, partly_read_consumer_group: str, loader: Callable
 ):
-    result = cli_runner.invoke(describe_topic, [filled_topic, "-C"])
-
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", "yaml"], filled_topic)
     assert result.exit_code == 0
-    # TODO: Would like to be able to read this as yaml. We should implement json and yaml outputs
-    # output = yaml.safe_load(result.output)
-    assert result.output.contains(partly_read_consumer_group)
+    output_dict = loader(result.output)
+
+    assert partly_read_consumer_group in output_dict["consumergroup"]
