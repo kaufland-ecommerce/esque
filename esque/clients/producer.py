@@ -17,10 +17,10 @@ from esque.errors import translate_third_party_exceptions
 from esque.helpers import delivery_callback
 from esque.helpers import delta_t
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import deserialize_message
 from esque.messages.message import FileReader
 from esque.messages.message import KafkaMessage
 from esque.messages.message import PlainTextFileReader
+from esque.messages.message import deserialize_message
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -136,7 +136,6 @@ class FileProducer(AbstractProducer):
                         self.flush_all()
                     counter += 1
                 self.flush_all()
-
         return counter
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:

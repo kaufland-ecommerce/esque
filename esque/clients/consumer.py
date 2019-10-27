@@ -1,11 +1,9 @@
 import pathlib
 from abc import ABC
 from abc import abstractmethod
-from contextlib import ExitStack
-from typing import Optional
+from typing import Optional, Dict
 from typing import Tuple
 
-import click
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Message
@@ -18,10 +16,9 @@ from esque.errors import MessageEmptyException
 from esque.errors import raise_for_kafka_error
 from esque.errors import raise_for_message
 from esque.errors import translate_third_party_exceptions
-from esque.messages.avromessage import AvroFileWriter
-from esque.messages.message import FileWriter
+from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
+from esque.messages.message import FileWriter, StdOutWriter, GenericWriter
 from esque.messages.message import PlainTextFileWriter
-from esque.messages.message import serialize_message
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -37,6 +34,8 @@ class AbstractConsumer(ABC):
         else:
             self._rule_tree = None
         self._topic_name = topic_name
+        self._use_single_directory_for_messages = False
+        self.writers: Dict[int, GenericWriter] = {}
 
     @translate_third_party_exceptions
     def _setup_config(self):
@@ -80,9 +79,19 @@ class AbstractConsumer(ABC):
     def consume(self, **kwargs) -> int:
         pass
 
-    @abstractmethod
-    def output_consumed(self, message: Message, file_writer: FileWriter = None):
-        pass
+    def output_consumed(self, message: Message):
+        """
+        Outputs the message to a destination determined by the implementation of the inheriting class.
+        :param message: Message to output
+        :return: This method returns no values
+        """
+        writer = self.writers.get(message.partition(), self.writers[-1])
+        writer.write_message(message)
+
+    def close_all_writers(self):
+        for _, w in self.writers.items():
+            if isinstance(w, FileWriter) and w.file is not None:
+                w.file.close()
 
     @translate_third_party_exceptions
     def consume_single_message(self, timeout=30) -> Message:
@@ -97,7 +106,7 @@ class AbstractConsumer(ABC):
             message = self._consumer.poll(timeout=timeout)
             raise_for_message(message)
             message_acceptable = self.consumed_message_matches(message)
-        return message
+        return message if message_acceptable else None
 
     @translate_third_party_exceptions
     def consumed_message_matches(self, message: Message):
@@ -139,17 +148,17 @@ class PingConsumer(AbstractConsumer):
             }
         )
 
-    def output_consumed(self, message: Message, file_writer: FileWriter = None):
-        pass
 
-
-class StdOutConsumer(AbstractConsumer):
-    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
+class PlaintextConsumer(AbstractConsumer):
+    def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, match: str = None):
         super().__init__(group_id, topic_name, last, match)
+        self.working_dir = working_dir
         super()._setup_config()
 
+    @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
         counter = 0
+
         while counter < amount:
             try:
                 message = self.consume_single_message(10)
@@ -161,6 +170,7 @@ class StdOutConsumer(AbstractConsumer):
                 counter += 1
                 self.output_consumed(message)
 
+        self.close_all_writers()
         return counter
 
     def create_internal_consumer(self):
@@ -169,57 +179,21 @@ class StdOutConsumer(AbstractConsumer):
         if self._topic_name is not None:
             self._subscribe(self._topic_name)
 
-    def output_consumed(self, message: Message, file_writer: FileWriter = None):
-        click.echo(serialize_message(message))
+    def output_consumed(self, message: Message):
+        if (
+            self.working_dir
+            and not self._use_single_directory_for_messages
+            and message.partition() not in self.writers
+        ):
+            writer = PlainTextFileWriter(self.working_dir / f"partition_{message.partition()}")
+            writer.init_destination_directory()
+            self.writers[message.partition()] = writer
+        else:
+            writer = self.writers.get(message.partition(), self.writers[-1])
+        writer.write_message(message)
 
 
-class FileConsumer(AbstractConsumer):
-    def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, match: str = None):
-        super().__init__(group_id, topic_name, last, match)
-        self.working_dir = working_dir
-        self.file_writers = {}
-        super()._setup_config()
-
-    @translate_third_party_exceptions
-    def consume(self, amount: int) -> int:
-        counter = 0
-        file_writers = {}
-
-        with ExitStack() as stack:
-            while counter < amount:
-                try:
-                    message = self.consume_single_message(10)
-                except MessageEmptyException:
-                    return counter
-                except EndOfPartitionReachedException:
-                    pass
-                else:
-                    counter += 1
-                    if message.partition() not in file_writers:
-                        partition = message.partition()
-                        file_writer = self.get_file_writer(partition)
-                        stack.enter_context(file_writer)
-                        file_writers[partition] = file_writer
-
-                    self.output_consumed(message, file_writers[partition])
-
-        return counter
-
-    def create_internal_consumer(self):
-        super()._setup_config()
-        self._consumer = confluent_kafka.Consumer(self._config)
-        if self._topic_name is not None:
-            self._subscribe(self._topic_name)
-
-    def output_consumed(self, message: Message, file_writer: FileWriter = None):
-        file_writer.write_message_to_file(message)
-
-    def get_file_writer(self, partition: int) -> FileWriter:
-        path_suffix = "partition_any" if partition < 0 else f"partition_{partition}"
-        return PlainTextFileWriter((self.working_dir / path_suffix))
-
-
-class AvroFileConsumer(FileConsumer):
+class AvroFileConsumer(PlaintextConsumer):
     def __init__(self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, match: str = None):
         super().__init__(group_id, topic_name, working_dir, last, match)
         self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
@@ -228,29 +202,58 @@ class AvroFileConsumer(FileConsumer):
         super()._setup_config()
         super().create_internal_consumer()
 
-    def get_file_writer(self, partition: int) -> FileWriter:
-        path_suffix = "partition_any" if partition < 0 else f"partition_{partition}"
-        return AvroFileWriter((self.working_dir / path_suffix), self.schema_registry_client)
+    def output_consumed(self, message: Message):
+        if (
+            self.working_dir
+            and not self._use_single_directory_for_messages
+            and message.partition() not in self.writers
+        ):
+            writer = AvroFileWriter(self.working_dir / f"partition_{message.partition()}", self.schema_registry_client)
+            writer.init_destination_directory()
+            self.writers[message.partition()] = writer
+        else:
+            writer = self.writers.get(message.partition(), self.writers[-1])
+
+        writer.write_message(message)
 
 
 class ConsumerFactory:
     def create_consumer(
-        self, group_id: str, topic_name: str, working_dir: pathlib.Path, last: bool, avro: bool, match: str = None
+        self,
+        group_id: str,
+        topic_name: str,
+        working_dir: pathlib.Path,
+        last: bool,
+        avro: bool,
+        merge_partitions_to_single_file: bool = False,
+        match: str = None,
     ):
-        if working_dir is None:
-            consumer = StdOutConsumer(group_id=group_id, topic_name=topic_name, last=last, match=match)
-        elif avro:
+        if avro:
             consumer = AvroFileConsumer(
                 group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match
             )
+            consumer.writers[-1] = (
+                StdOutAvroWriter(schema_registry_client=consumer.schema_registry_client)
+                if working_dir is None
+                else AvroFileWriter(consumer.working_dir / "partition_any", consumer.schema_registry_client)
+            )
         else:
-            consumer = FileConsumer(
+            consumer = PlaintextConsumer(
                 group_id=group_id, topic_name=topic_name, working_dir=working_dir, last=last, match=match
             )
+            consumer.writers[-1] = (
+                StdOutWriter() if working_dir is None else PlainTextFileWriter(consumer.working_dir / "partition_any")
+            )
+        consumer._use_single_directory_for_messages = merge_partitions_to_single_file
+        if merge_partitions_to_single_file and consumer.working_dir is not None:
+            consumer.writers[-1].init_destination_directory()
+
         consumer.create_internal_consumer()
         return consumer
 
     def create_ping_consumer(self, group_id: str, topic_name: str):
         consumer = PingConsumer(group_id, topic_name, last=False)
+        consumer._uses_file_output = False
+        consumer.writers[0] = StdOutWriter()
         consumer.create_internal_consumer()
         return consumer

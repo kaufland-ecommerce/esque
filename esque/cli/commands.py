@@ -1,7 +1,6 @@
 import pathlib
 import sys
 import time
-from contextlib import ExitStack
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -15,11 +14,11 @@ from click import version_option
 from esque import __version__
 from esque.cli.helpers import ensure_approval
 from esque.cli.helpers import isatty
+from esque.cli.options import State
 from esque.cli.options import error_handler
 from esque.cli.options import no_verify_option
 from esque.cli.options import output_format_option
 from esque.cli.options import pass_state
-from esque.cli.options import State
 from esque.cli.output import blue_bold
 from esque.cli.output import bold
 from esque.cli.output import format_output
@@ -29,23 +28,22 @@ from esque.cli.output import pretty_new_topic_configs
 from esque.cli.output import pretty_topic_diffs
 from esque.cli.output import pretty_unchanged_topic_configs
 from esque.clients.consumer import ConsumerFactory
-from esque.clients.consumer import PingConsumer
 from esque.clients.producer import PingProducer
 from esque.clients.producer import ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config
-from esque.config import config_dir
-from esque.config import config_path
 from esque.config import PING_GROUP_ID
 from esque.config import PING_TOPIC
+from esque.config import config_dir
+from esque.config import config_path
 from esque.config import sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import EndOfPartitionReachedException
 from esque.errors import MessageEmptyException
 from esque.messages.message import decode_message
 from esque.resources.broker import Broker
-from esque.resources.topic import copy_to_local
 from esque.resources.topic import Topic
+from esque.resources.topic import copy_to_local
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -452,10 +450,11 @@ def _consume_to_file_ordered(
         consumer = factory.create_consumer(
             group_id=group_id + "_" + str(partition),
             topic_name=None,
-            working_dir=working_dir,
+            working_dir=None if write_to_stdout else working_dir,
             avro=avro,
             match=match,
             last=last,
+            merge_partitions_to_single_file=True,
         )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
@@ -481,32 +480,30 @@ def _consume_to_file_ordered(
 
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
-    with ExitStack() as stack:
-        file_writer = consumers[0].get_file_writer(-1)
-        stack.enter_context(file_writer)
-        while total_number_of_messages < numbers and not no_more_messages:
-            if len(partitions_by_timestamp) == 0:
-                no_more_messages = True
-            else:
-                first_key = sorted(partitions_by_timestamp.keys())[0]
-                partition = partitions_by_timestamp[first_key]
+    while total_number_of_messages < numbers and not no_more_messages:
+        if len(partitions_by_timestamp) == 0:
+            no_more_messages = True
+        else:
+            first_key = sorted(partitions_by_timestamp.keys())[0]
+            partition = partitions_by_timestamp[first_key]
 
-                message = messages_by_partition[partition].pop(0)
-                consumers[0].output_consumed(message, file_writer if not write_to_stdout else None)
-                del partitions_by_timestamp[first_key]
-                total_number_of_messages += 1
+            message = messages_by_partition[partition].pop(0)
+            consumers[0].output_consumed(message)
+            del partitions_by_timestamp[first_key]
+            total_number_of_messages += 1
 
-                try:
-                    message = consumers[partition].consume_single_acceptable_message(timeout=10)
-                    decoded_message = decode_message(message)
-                    partitions_by_timestamp[decoded_message.timestamp] = partition
-                    messages_by_partition[partition].append(message)
-                except (MessageEmptyException, EndOfPartitionReachedException):
-                    partitions.remove(partition)
-                    messages_by_partition.pop(partition, None)
-                    if len(partitions) == 0:
-                        no_more_messages = True
-
+            try:
+                message = consumers[partition].consume_single_acceptable_message(timeout=10)
+                decoded_message = decode_message(message)
+                partitions_by_timestamp[decoded_message.timestamp] = partition
+                messages_by_partition[partition].append(message)
+            except (MessageEmptyException, EndOfPartitionReachedException):
+                partitions.remove(partition)
+                messages_by_partition.pop(partition, None)
+                if len(partitions) == 0:
+                    no_more_messages = True
+    for c in consumers:
+        c.close_all_writers()
     return total_number_of_messages
 
 
@@ -529,7 +526,7 @@ def _consume_to_files(
         match=match,
     )
     number_consumed_messages = consumer.consume(int(numbers))
-
+    consumer.close_all_writers()
     return number_consumed_messages
 
 

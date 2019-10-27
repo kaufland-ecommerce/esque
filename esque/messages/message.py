@@ -1,7 +1,9 @@
 import json
 import pathlib
+from abc import abstractmethod
 from typing import Any, Iterable, NamedTuple
 
+import click
 from avro.schema import RecordSchema
 from confluent_kafka.cimpl import Message
 
@@ -24,33 +26,47 @@ class KafkaMessage(NamedTuple):
     value_schema: RecordSchema = None
 
 
-class IOHandler:
+class GenericWriter:
+    @abstractmethod
+    def write_message(self, message: Message):
+        pass
+
+
+class FileHandler:
     def __init__(self, directory: pathlib.Path):
         self.directory = directory
         self.file_name = "data"
         self.open_mode = "w+"
+        self.file = None
 
     def __enter__(self):
-        if not self.directory.exists():
-            self.directory.mkdir()
-        self.file = (self.directory / self.file_name).open(self.open_mode)
-
+        self.init_destination_directory()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.file.close()
 
+    def init_destination_directory(self):
+        if not self.directory.exists() and "w" in self.open_mode:
+            self.directory.mkdir()
+        self.file = (self.directory / self.file_name).open(self.open_mode)
 
-class FileWriter(IOHandler):
+
+class StdOutWriter(GenericWriter):
+    def write_message(self, message: Message):
+        click.echo(serialize_message(message))
+
+
+class FileWriter(GenericWriter, FileHandler):
     def __init__(self, directory: pathlib.Path):
         super().__init__(directory)
         self.open_mode = "w+"
 
-    def write_message_to_file(self, message: Message):
+    def write_message(self, message: Message):
         pass
 
 
-class FileReader(IOHandler):
+class FileReader(FileHandler):
     def __init__(self, directory: pathlib.Path):
         super().__init__(directory)
         self.open_mode = "r"
@@ -61,7 +77,7 @@ class FileReader(IOHandler):
 
 class PlainTextFileWriter(FileWriter):
     @translate_third_party_exceptions
-    def write_message_to_file(self, message: Message):
+    def write_message(self, message: Message):
         self.file.write(serialize_message(message) + "\n")
 
 
