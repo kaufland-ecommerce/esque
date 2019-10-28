@@ -40,6 +40,11 @@ matrix:
     python: 3.7
     env:
     - TEST_CMD="poetry run -- black --check --verbose ."
+  - name: isort
+    before_install: []
+    python: 3.7
+    env:
+      - TEST_CMD="poetry run -- isort --recursive ."
   - name: flake8
     python: 3.7
     before_install: []
