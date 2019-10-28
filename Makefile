@@ -21,6 +21,7 @@ format: clean
 # test your application (tests in the tests/ directory)
 test-suite:
 	@docker-compose up -d --build
+	./scripts/wait-for-it.sh localhost:9092
 
 integration-test:
 	docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build
