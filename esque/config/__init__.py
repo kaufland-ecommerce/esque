@@ -130,7 +130,7 @@ class Config:
     @property
     def security_protocol(self) -> str:
         protocol = self.current_context_dict.get("security_protocol", "PLAINTEXT")
-        if "SASL" in protocol and self.sasl_mechanism is None:
+        if "SASL" in protocol and 'sasl_mechanism' not in self.current_context_dict:
             msg = (
                 f"Security protocol {protocol} contains 'SASL' indicating that you want to connect to "
                 "a SASL enabled endpoint but you didn't specify a sasl mechanism.\n"
