@@ -121,16 +121,16 @@ class Config:
 
     @property
     def sasl_enabled(self) -> bool:
-        return 'SASL' in self.security_protocol
+        return "SASL" in self.security_protocol
 
     @property
     def ssl_enabled(self) -> bool:
-        return 'SSL' in self.security_protocol
+        return "SSL" in self.security_protocol
 
     @property
     def security_protocol(self) -> str:
         protocol = self.current_context_dict.get("security_protocol", "PLAINTEXT")
-        if "SASL" in protocol and 'sasl_mechanism' not in self.current_context_dict:
+        if "SASL" in protocol and "sasl_mechanism" not in self.current_context_dict:
             msg = (
                 f"Security protocol {protocol} contains 'SASL' indicating that you want to connect to "
                 "a SASL enabled endpoint but you didn't specify a sasl mechanism.\n"
@@ -212,9 +212,7 @@ class Config:
     def _get_pykafka_ssl_conf(self) -> Optional[SslConfig]:
         if not self.ssl_enabled:
             return None
-        ssl_params = {
-            "cafile": self.current_context_dict.get("ssl_cafile", None)
-        }
+        ssl_params = {"cafile": self.current_context_dict.get("ssl_cafile", None)}
         if self.current_context_dict.get("ssl_certfile"):
             ssl_params["certfile"] = self.current_context_dict["ssl_certfile"]
         if self.current_context_dict.get("ssl_keyfile"):
