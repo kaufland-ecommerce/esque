@@ -23,7 +23,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
         "name": topic_name + "_2",
         "replication_factor": 1,
         "num_partitions": 5,
-        "config": {"cleanup.policy": "delete", "delete.retention.ms": 50000},
+        "config": {"cleanup.policy": "delete", "delete.retention.ms": "50000"},
     }
     apply_conf = {"topics": [topic_1]}
 
