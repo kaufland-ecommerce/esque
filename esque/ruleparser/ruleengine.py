@@ -3,17 +3,8 @@ from abc import ABC
 
 import esque.ruleparser.exception as ex
 import esque.ruleparser.helpers as h
-from esque.ruleparser.exception import ExpressionSyntaxError, RuleTreeInvalidError
-from esque.ruleparser.exception import MalformedExpressionError
-from esque.ruleparser.expressionelement import ArithmeticBinaryOperator
-from esque.ruleparser.expressionelement import ComparisonBinaryOperator
-from esque.ruleparser.expressionelement import ComparisonUnaryOperator
-from esque.ruleparser.expressionelement import Field
-from esque.ruleparser.expressionelement import GenericOperator
-from esque.ruleparser.expressionelement import Literal
-from esque.ruleparser.expressionelement import Operator
-from esque.ruleparser.expressionelement import OperatorType
-from esque.ruleparser.expressionelement import ParenthesisOperator
+from esque.ruleparser.exception import ExpressionSyntaxError, MalformedExpressionError, RuleTreeInvalidError
+from esque.ruleparser.expressionelement import ArithmeticBinaryOperator, ComparisonBinaryOperator, ComparisonUnaryOperator, Field, GenericOperator, Literal, Operator, OperatorType, ParenthesisOperator
 from esque.ruleparser.fieldeval import FieldEval
 
 

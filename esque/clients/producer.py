@@ -1,8 +1,7 @@
 import json
 import pathlib
 import sys
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from glob import glob
 from json import JSONDecodeError
 
@@ -12,15 +11,10 @@ import pendulum
 from confluent_kafka.avro import AvroProducer
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error
-from esque.errors import translate_third_party_exceptions
-from esque.helpers import delivery_callback
-from esque.helpers import delta_t
+from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
+from esque.helpers import delivery_callback, delta_t
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import FileReader
-from esque.messages.message import KafkaMessage
-from esque.messages.message import PlainTextFileReader
-from esque.messages.message import deserialize_message
+from esque.messages.message import deserialize_message, FileReader, KafkaMessage, PlainTextFileReader
 from esque.ruleparser.ruleengine import RuleTree
 
 

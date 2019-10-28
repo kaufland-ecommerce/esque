@@ -1,24 +1,16 @@
 import pathlib
-from abc import ABC
-from abc import abstractmethod
-from typing import Optional, Dict
-from typing import Tuple
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, Tuple
 
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import Message
-from confluent_kafka.cimpl import TopicPartition
+from confluent_kafka.cimpl import Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import EndOfPartitionReachedException
-from esque.errors import MessageEmptyException
-from esque.errors import raise_for_kafka_error
-from esque.errors import raise_for_message
-from esque.errors import translate_third_party_exceptions
+from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error, raise_for_message, translate_third_party_exceptions
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
-from esque.messages.message import FileWriter, StdOutWriter, GenericWriter
-from esque.messages.message import PlainTextFileWriter
+from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter
 from esque.ruleparser.ruleengine import RuleTree
 
 

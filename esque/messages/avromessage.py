@@ -12,7 +12,7 @@ from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Message
 
 from esque.clients.schemaregistry import SchemaRegistryClient
-from esque.messages.message import FileWriter, FileReader, KafkaMessage, StdOutWriter
+from esque.messages.message import FileReader, FileWriter, KafkaMessage, StdOutWriter
 
 
 class DecodedAvroMessage(NamedTuple):

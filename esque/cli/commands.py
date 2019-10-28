@@ -7,43 +7,21 @@ from time import sleep
 
 import click
 import yaml
-from click import MissingParameter
-from click import UsageError
-from click import version_option
+from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
-from esque.cli.helpers import ensure_approval
-from esque.cli.helpers import isatty
-from esque.cli.options import State
-from esque.cli.options import error_handler
-from esque.cli.options import no_verify_option
-from esque.cli.options import output_format_option
-from esque.cli.options import pass_state
-from esque.cli.output import blue_bold
-from esque.cli.output import bold
-from esque.cli.output import format_output
-from esque.cli.output import green_bold
-from esque.cli.output import pretty
-from esque.cli.output import pretty_new_topic_configs
-from esque.cli.output import pretty_topic_diffs
-from esque.cli.output import pretty_unchanged_topic_configs
+from esque.cli.helpers import ensure_approval, isatty
+from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
+from esque.cli.output import blue_bold, bold, format_output, green_bold, pretty, pretty_new_topic_configs, pretty_topic_diffs, pretty_unchanged_topic_configs
 from esque.clients.consumer import ConsumerFactory
-from esque.clients.producer import PingProducer
-from esque.clients.producer import ProducerFactory
+from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
-from esque.config import Config
-from esque.config import PING_GROUP_ID
-from esque.config import PING_TOPIC
-from esque.config import config_dir
-from esque.config import config_path
-from esque.config import sample_config_path
+from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import EndOfPartitionReachedException
-from esque.errors import MessageEmptyException
+from esque.errors import EndOfPartitionReachedException, MessageEmptyException
 from esque.messages.message import decode_message
 from esque.resources.broker import Broker
-from esque.resources.topic import Topic
-from esque.resources.topic import copy_to_local
+from esque.resources.topic import copy_to_local, Topic
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)

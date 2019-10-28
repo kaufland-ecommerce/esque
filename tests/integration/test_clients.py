@@ -4,22 +4,18 @@ import random
 from contextlib import ExitStack
 from glob import glob
 from string import ascii_letters
-from typing import Iterable
-from typing import List
-from typing import Tuple
+from typing import Iterable, List, Tuple
 
 import pytest
 from click.testing import CliRunner
-from confluent_kafka.avro import AvroProducer
-from confluent_kafka.avro import loads as load_schema
+from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
 from esque.cli.commands import _consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
 from esque.clients.producer import ProducerFactory
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import KafkaMessage
-from esque.messages.message import PlainTextFileReader
+from esque.messages.message import KafkaMessage, PlainTextFileReader
 
 
 @pytest.mark.integration

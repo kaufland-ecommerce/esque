@@ -1,4 +1,3 @@
-import pprint
 from typing import Tuple
 
 import pytest
@@ -6,9 +5,7 @@ from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import consume
-from esque.cli.commands import produce
-from tests.conftest import non_interactive_cli_runner
+from esque.cli.commands import consume, produce
 from tests.integration.test_clients import produce_test_messages_with_avro
 
 

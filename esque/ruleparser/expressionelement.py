@@ -1,9 +1,10 @@
 from abc import ABC
-from enum import Enum
 from collections import namedtuple
-import pendulum
-import esque.ruleparser.helpers as h
+from enum import Enum
 
+import pendulum
+
+import esque.ruleparser.helpers as h
 
 GenericOperator = namedtuple(
     "GenericOperator", "name type regex input_priority stack_priority is_unary calculation_function operand_types"
