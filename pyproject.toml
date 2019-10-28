@@ -37,10 +37,10 @@ python = "^3.6"
 
 avro-python3 = "=1.8.2"
 click = "^7.0"
-confluent-kafka = "^1.2"
+confluent-kafka = {version = "^1.2", extras = ["avro"]}
 fastavro = "^0.22.5"
 pendulum = "^2.0"
-pykafka = "^2.8"
+pykafka = {git = "https://github.com/real-digital/pykafka.git", branch="feature/sasl-scram-support"}
 pyyaml = "^5.1"
 requests = "^2.22"
 
