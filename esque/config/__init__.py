@@ -43,6 +43,7 @@ def sample_config_path() -> Path:
 class Config:
     def __init__(self):
         self._cfg = configparser.ConfigParser()
+        self._current_dict: Optional[Dict[str, str]] = None
         if config_path().exists():
             self._cfg.read(config_path())
         else:
@@ -62,7 +63,9 @@ class Config:
 
     @property
     def current_context_dict(self) -> Dict[str, Any]:
-        return self._get_section_dict(self._current_section)
+        if self._current_dict is None:
+            self._current_dict = self._get_section_dict(self._current_section)
+        return self._current_dict
 
     def _get_section_dict(self, section) -> Dict[str, str]:
         if not self._cfg.has_section(section):
@@ -111,23 +114,18 @@ class Config:
         return int(config_dict["default_replication_factor"])
 
     @property
-    def sasl_mechanism(self) -> Optional[str]:
-        if self.sasl_params is None:
-            return None
-        if "mechanism" not in self.sasl_params:
+    def sasl_mechanism(self) -> str:
+        if "sasl_mechanism" not in self.current_context_dict:
             raise MissingSaslParameter(f"No sasl mechanism configured, valid values are {SUPPORTED_SASL_MECHANISMS}")
-        return self.sasl_params["mechanism"] if self.sasl_params else None
+        return self.current_context_dict["sasl_mechanism"]
 
     @property
-    def sasl_params(self) -> Dict[str, str]:
-        return self._get_section_dict(f"{self._current_section}.sasl")
+    def sasl_enabled(self) -> bool:
+        return 'SASL' in self.security_protocol
 
     @property
-    def ssl_params(self) -> Optional[Dict[str, str]]:
-        section = f"{self._current_section}.ssl"
-        if not self._cfg.has_section(section):
-            return None
-        return self._get_section_dict(section)
+    def ssl_enabled(self) -> bool:
+        return 'SSL' in self.security_protocol
 
     @property
     def security_protocol(self) -> str:
@@ -136,14 +134,8 @@ class Config:
             msg = (
                 f"Security protocol {protocol} contains 'SASL' indicating that you want to connect to "
                 "a SASL enabled endpoint but you didn't specify a sasl mechanism.\n"
-                f"Run `esque edit config` and add `sasl_mechanism` to section '[{self._current_section}.sasl]'"
-            )
-            raise ConfigException(msg)
-        if "SSL" in protocol and self.ssl_params is None:
-            msg = (
-                f"Security protocol {protocol} contains 'SSL' indicating that you want to connect to "
-                "an SSL enabled endpoint but you didn't specify any ssl settings.\n"
-                f"Run `esque edit config` and add at least an empty section '[{self._current_section}.ssl]'"
+                f"Run `esque edit config` and add `sasl_mechanism` to section '[{self._current_section}]'.\n"
+                f"Valid mechanisms are {SUPPORTED_SASL_MECHANISMS}."
             )
             raise ConfigException(msg)
         return protocol
@@ -153,6 +145,7 @@ class Config:
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._update_config("Context", "current", context)
+        self._current_dict = None
 
     def _update_config(self, section: str, key: str, value: str):
         self._cfg.set(section, key, value=value)
@@ -161,9 +154,9 @@ class Config:
 
     def create_pykafka_config(self) -> Dict[str, Any]:
         config = {"hosts": ",".join(self.bootstrap_servers)}
-        if self.sasl_mechanism is not None:
+        if self.sasl_enabled:
             config["sasl_authenticator"] = self._get_pykafka_authenticator()
-        if self.ssl_params is not None:
+        if self.ssl_enabled:
             config["ssl_config"] = self._get_pykafka_ssl_conf()
         log.debug(f"Created pykafka config: {config}")
         return config
@@ -177,24 +170,25 @@ class Config:
         config = base_config.copy()
         if debug:
             config.update({"debug": "all", "log_level": "2"})
-
-        config.update(self._get_confluent_sasl_config())
-        config.update(self._get_confluent_ssl_config())
+        if self.sasl_enabled:
+            config.update(self._get_confluent_sasl_config())
+        if self.ssl_enabled:
+            config.update(self._get_confluent_ssl_config())
         log.debug(f"Created confluent config: {config}")
         return config
 
     def _get_confluent_sasl_config(self) -> Dict[str, str]:
-        if self.sasl_mechanism is None:
-            return {}
         if self.sasl_mechanism in ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"):
             try:
                 return {
                     "sasl.mechanisms": self.sasl_mechanism,
-                    "sasl.username": self.sasl_params["user"],
-                    "sasl.password": self.sasl_params["password"],
+                    "sasl.username": self.current_context_dict["sasl_user"],
+                    "sasl.password": self.current_context_dict["sasl_password"],
                 }
             except KeyError as e:
-                raise MissingSaslParameter(f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}")
+                msg = f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}.\n"
+                msg += f"Please run `esque edit config` and add it to section [{self.current_context}]."
+                raise MissingSaslParameter(msg)
         else:
             raise UnsupportedSaslMechanism(
                 f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
@@ -202,39 +196,46 @@ class Config:
             )
 
     def _get_confluent_ssl_config(self) -> Dict[str, str]:
-        ssl_params = self.ssl_params
+        if not self.ssl_enabled:
+            return {}
         rdk_conf = {}
-        if ssl_params is not None:
-            if ssl_params.get("cafile"):
-                rdk_conf["ssl.ca.location"] = ssl_params["cafile"]
-            if ssl_params.get("certfile"):
-                rdk_conf["ssl.certificate.location"] = ssl_params["certfile"]
-            if ssl_params.get("keyfile"):
-                rdk_conf["ssl.key.location"] = ssl_params["keyfile"]
-            if ssl_params.get("password"):
-                rdk_conf["ssl.key.password"] = ssl_params["password"]
+        if self.current_context_dict.get("ssl_cafile"):
+            rdk_conf["ssl.ca.location"] = self.current_context_dict["ssl_cafile"]
+        if self.current_context_dict.get("ssl_certfile"):
+            rdk_conf["ssl.certificate.location"] = self.current_context_dict["ssl_certfile"]
+        if self.current_context_dict.get("ssl_keyfile"):
+            rdk_conf["ssl.key.location"] = self.current_context_dict["ssl_keyfile"]
+        if self.current_context_dict.get("ssl_password"):
+            rdk_conf["ssl.key.password"] = self.current_context_dict["ssl_password"]
         return rdk_conf
 
     def _get_pykafka_ssl_conf(self) -> Optional[SslConfig]:
-        ssl_params = self.ssl_params
-        if ssl_params is None:
+        if not self.ssl_enabled:
             return None
-        ssl_params.setdefault("cafile", None)
+        ssl_params = {
+            "cafile": self.current_context_dict.get("ssl_cafile", None)
+        }
+        if self.current_context_dict.get("ssl_certfile"):
+            ssl_params["certfile"] = self.current_context_dict["ssl_certfile"]
+        if self.current_context_dict.get("ssl_keyfile"):
+            ssl_params["keyfile"] = self.current_context_dict["ssl_keyfile"]
+        if self.current_context_dict.get("ssl_password"):
+            ssl_params["password"] = self.current_context_dict["ssl_password"]
         return SslConfig(**ssl_params)
 
     def _get_pykafka_authenticator(self) -> BaseAuthenticator:
         try:
             if self.sasl_mechanism == "PLAIN":
                 return PlainAuthenticator(
-                    user=self.sasl_params["user"],
-                    password=self.sasl_params["password"],
+                    user=self.current_context_dict["sasl_user"],
+                    password=self.current_context_dict["sasl_password"],
                     security_protocol=self.security_protocol,
                 )
             elif self.sasl_mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
                 return ScramAuthenticator(
                     self.sasl_mechanism,
-                    user=self.sasl_params["user"],
-                    password=self.sasl_params["password"],
+                    user=self.current_context_dict["sasl_user"],
+                    password=self.current_context_dict["sasl_password"],
                     security_protocol=self.security_protocol,
                 )
             else:
@@ -243,4 +244,6 @@ class Config:
                     f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
                 )
         except KeyError as e:
-            raise MissingSaslParameter(f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}")
+            msg = f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}.\n"
+            msg += f"Please run `esque edit config` and add it to section [{self.current_context}]."
+            raise MissingSaslParameter(msg)
