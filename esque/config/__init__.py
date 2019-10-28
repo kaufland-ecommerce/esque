@@ -1,22 +1,22 @@
 import configparser
+import logging
 import random
 import string
-import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import click
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, ScramAuthenticator, PlainAuthenticator
 
 from esque.cli.environment import ESQUE_CONF_PATH
 from esque.errors import (
+    ConfigException,
     ConfigNotExistsException,
     ContextNotDefinedException,
     MissingSaslParameter,
     UnsupportedSaslMechanism,
-    ConfigException,
 )
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"

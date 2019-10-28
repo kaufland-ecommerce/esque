@@ -6,7 +6,7 @@ import click
 import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
 
-from esque.errors import raise_for_kafka_error, FutureTimeoutException
+from esque.errors import FutureTimeoutException, raise_for_kafka_error
 
 
 def invalidate_cache_before(func):

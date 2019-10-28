@@ -1,12 +1,10 @@
 from typing import Any, Dict, List, Optional, cast
 
 import pykafka
-from pykafka.protocol import OffsetFetchResponseV1, PartitionOffsetFetchRequest
-from pykafka.protocol.admin import DescribeGroupResponse
-
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException
-
+from pykafka.protocol import OffsetFetchResponseV1, PartitionOffsetFetchRequest
+from pykafka.protocol.admin import DescribeGroupResponse
 
 # TODO: Refactor this shit hole
 
