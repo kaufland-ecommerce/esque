@@ -3,7 +3,7 @@ language: python
 cache: pip
 env:
 - >
-  ESQUE_ENV=dev TEST_CMD="pytest tests/ --integration --cov=esque --local"
+  TEST_CMD="pytest tests/ --integration --cov=esque --local"
   BROKER_URL="localhost:9092"
   ZOOKEEPER_URL="localhost:2181"
   SCHEMA_REGISTRY_URL="localhost:8081"
@@ -39,12 +39,12 @@ matrix:
     before_install: []
     python: 3.7
     env:
-    - TEST_CMD="poetry run black --check --verbose ."
+    - TEST_CMD="poetry run -- black --check --verbose ."
   - name: flake8
     python: 3.7
     before_install: []
     env:
-    - TEST_CMD="poetry run flake8 esque/"
+    - TEST_CMD="poetry run -- flake8 esque/"
   - name: '3.6'
     python: 3.6
   - name: '3.7'
