@@ -6,26 +6,25 @@ from time import sleep
 
 import click
 import yaml
-from click import version_option, MissingParameter, UsageError
+from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
-
 from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
-from esque.cli.options import State, no_verify_option, pass_state, error_handler, output_format_option
+from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
 from esque.cli.output import (
     blue_bold,
     bold,
+    format_output,
     green_bold,
     pretty,
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
-    format_output,
 )
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
-from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local

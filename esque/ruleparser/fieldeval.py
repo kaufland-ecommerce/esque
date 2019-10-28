@@ -1,5 +1,6 @@
 import datetime
 import re
+
 from confluent_kafka.cimpl import Message
 
 from esque.ruleparser.expressionelement import Operator
