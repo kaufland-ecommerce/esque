@@ -104,7 +104,7 @@ class StdInProducer(AbstractProducer):
         for single_message_line in sys.stdin:
             message = None
             try:
-                message = deserialize_message(single_message_line)
+                message = deserialize_message(single_message_line.replace("\n", ""))
             except JSONDecodeError:
                 if self._ignore_errors:
                     message = KafkaMessage(key=None, value=single_message_line, partition=0)
