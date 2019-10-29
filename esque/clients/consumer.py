@@ -50,7 +50,7 @@ class AbstractConsumer(ABC):
 
     @abstractmethod
     def create_internal_consumer(self):
-        pass
+        raise NotImplementedError()
 
     @translate_third_party_exceptions
     def assign_specific_partitions(self, topic_name: str, partitions: list = None, offset: int = 0):
