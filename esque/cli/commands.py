@@ -163,7 +163,7 @@ def delete_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
+        assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
     click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
 
