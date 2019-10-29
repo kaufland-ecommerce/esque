@@ -13,7 +13,7 @@ from esque import __version__
 from esque.cli.helpers import ensure_approval, isatty
 from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
 from esque.cli.output import blue_bold, bold, format_output, green_bold, pretty, pretty_new_topic_configs, pretty_topic_diffs, pretty_unchanged_topic_configs
-from esque.clients.consumer import ConsumerFactory
+from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
@@ -330,7 +330,6 @@ def get_topics(state: State, prefix: str, output_format: str):
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
-    "-o",
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition",
     default=False,
@@ -374,7 +373,7 @@ def consume(
         partitions = []
         for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
             partitions.append(partition.partition_id)
-        total_number_of_consumed_messages = _consume_to_file_ordered(
+        total_number_of_consumed_messages = consume_to_file_ordered(
             working_dir=working_dir,
             topic=topic,
             group_id=group_id,
@@ -386,7 +385,7 @@ def consume(
             write_to_stdout=write_to_stdout,
         )
     else:
-        total_number_of_consumed_messages = _consume_to_files(
+        total_number_of_consumed_messages = consume_to_files(
             working_dir=working_dir,
             topic=topic,
             group_id=group_id,
@@ -411,103 +410,6 @@ def consume(
             )
 
 
-def _consume_to_file_ordered(
-    working_dir: pathlib.Path,
-    topic: str,
-    group_id: str,
-    partitions: list,
-    numbers: int,
-    avro: bool,
-    match: str,
-    last: bool,
-    write_to_stdout: bool = False,
-) -> int:
-    consumers = []
-    factory = ConsumerFactory()
-    for partition in partitions:
-        consumer = factory.create_consumer(
-            group_id=group_id + "_" + str(partition),
-            topic_name=None,
-            working_dir=None if write_to_stdout else working_dir,
-            avro=avro,
-            match=match,
-            last=last,
-            merge_partitions_to_single_file=True,
-        )
-        consumer.assign_specific_partitions(topic, [partition])
-        consumers.append(consumer)
-
-    messages_by_partition = {}
-    partitions_by_timestamp = {}
-    total_number_of_messages = 0
-    no_more_messages = False
-    # get at least one message from each partition, or exclude those that don't have any messages
-    for partition_counter in range(0, len(consumers)):
-        try:
-            message = consumers[partition_counter].consume_single_acceptable_message(timeout=10)
-            decoded_message = decode_message(message)
-        except (MessageEmptyException, EndOfPartitionReachedException):
-            partitions.remove(partition_counter)
-            if len(partitions) == 0:
-                no_more_messages = True
-        else:
-            partitions_by_timestamp[decoded_message.timestamp] = decoded_message.partition
-            if decoded_message.partition not in messages_by_partition:
-                messages_by_partition[decoded_message.partition] = []
-            messages_by_partition[decoded_message.partition].append(message)
-
-    # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
-    # if not, remove the consumer and move to the next one
-    while total_number_of_messages < numbers and not no_more_messages:
-        if len(partitions_by_timestamp) == 0:
-            no_more_messages = True
-        else:
-            first_key = sorted(partitions_by_timestamp.keys())[0]
-            partition = partitions_by_timestamp[first_key]
-
-            message = messages_by_partition[partition].pop(0)
-            consumers[0].output_consumed(message)
-            del partitions_by_timestamp[first_key]
-            total_number_of_messages += 1
-
-            try:
-                message = consumers[partition].consume_single_acceptable_message(timeout=10)
-                decoded_message = decode_message(message)
-                partitions_by_timestamp[decoded_message.timestamp] = partition
-                messages_by_partition[partition].append(message)
-            except (MessageEmptyException, EndOfPartitionReachedException):
-                partitions.remove(partition)
-                messages_by_partition.pop(partition, None)
-                if len(partitions) == 0:
-                    no_more_messages = True
-    for c in consumers:
-        c.close_all_writers()
-    return total_number_of_messages
-
-
-def _consume_to_files(
-    working_dir: pathlib.Path,
-    topic: str,
-    group_id: str,
-    numbers: int,
-    avro: bool,
-    match: str,
-    last: bool,
-    write_to_stdout: bool = False,
-) -> int:
-    consumer = ConsumerFactory().create_consumer(
-        group_id=group_id,
-        topic_name=topic,
-        working_dir=working_dir if not write_to_stdout else None,
-        last=last,
-        avro=avro,
-        match=match,
-    )
-    number_consumed_messages = consumer.consume(int(numbers))
-    consumer.close_all_writers()
-    return number_consumed_messages
-
-
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
 @click.argument("topic", required=True)
 @click.option(
@@ -522,7 +424,6 @@ def _consume_to_files(
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
-    "-i",
     "--stdin",
     "read_from_stdin",
     help="Read messages from STDIN instead of a directory.",

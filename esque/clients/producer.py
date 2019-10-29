@@ -4,6 +4,8 @@ import sys
 from abc import ABC, abstractmethod
 from glob import glob
 from json import JSONDecodeError
+import logging
+from logging import Logger
 
 import click
 import confluent_kafka
@@ -24,6 +26,7 @@ class AbstractProducer(ABC):
         self.internal_queue_length_limit = self.queue_length / 0.5
         self._config = Config().create_confluent_config()
         self._setup_config()
+        self.logger = logging.getLogger(__name__)
         self._topic_name = topic_name
         self._match = match
         self._producer = None
@@ -31,6 +34,7 @@ class AbstractProducer(ABC):
             self._rule_tree = RuleTree(match)
         else:
             self._rule_tree = None
+        self.create_internal_producer()
 
     @translate_third_party_exceptions
     @abstractmethod
@@ -53,7 +57,7 @@ class AbstractProducer(ABC):
             left_messages = self._producer.flush(1)
             if left_messages == 0:
                 break
-            click.echo((message_prefix or "") + f"Still {left_messages} messages left, flushing...")
+            self.logger.info((message_prefix or "") + f"Still {left_messages} messages left, flushing...")
 
     @translate_third_party_exceptions
     def create_internal_producer(self):
@@ -66,9 +70,6 @@ class AbstractProducer(ABC):
 
 
 class PingProducer(AbstractProducer):
-    def __init__(self, topic_name: str):
-        super().__init__(topic_name=topic_name)
-        self.create_internal_producer()
 
     @translate_third_party_exceptions
     def produce(self) -> int:
@@ -79,10 +80,6 @@ class PingProducer(AbstractProducer):
         )
         self.flush_all(message_prefix=f"{delta_t(start)} | ")
         return 1
-
-    def create_internal_producer(self):
-        super()._setup_config()
-        super().create_internal_producer()
 
 
 class StdInProducer(AbstractProducer):
@@ -105,10 +102,6 @@ class StdInProducer(AbstractProducer):
                 self.produce_message(topic_name=self._topic_name, message=message)
                 total_number_of_produced_messages += 1
         return total_number_of_produced_messages
-
-    def create_internal_producer(self):
-        super()._setup_config()
-        super().create_internal_producer()
 
 
 class FileProducer(AbstractProducer):
@@ -134,18 +127,11 @@ class FileProducer(AbstractProducer):
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
 
-    def create_internal_producer(self):
-        super()._setup_config()
-        super().create_internal_producer()
-
 
 class AvroFileProducer(FileProducer):
-    def __init__(self, topic_name: str, working_dir: pathlib.Path, match: str = None):
-        super().__init__(topic_name=topic_name, working_dir=working_dir, match=match)
 
     @translate_third_party_exceptions
     def create_internal_producer(self):
-        self._setup_config()
         self._producer = AvroProducer(self._config)
 
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
@@ -183,5 +169,4 @@ class ProducerFactory:
             producer = AvroFileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
         else:
             producer = FileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
-        producer.create_internal_producer()
         return producer

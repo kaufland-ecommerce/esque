@@ -11,7 +11,7 @@ from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import _consume_to_file_ordered
+from esque.cli.commands import consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
 from esque.clients.producer import ProducerFactory
 from esque.messages.avromessage import AvroFileReader
@@ -122,7 +122,7 @@ def test_plain_text_message_ordering(
     produced_messages_different_partitions(topic_multiple_partitions, producer)
     working_dir = tmpdir_factory.mktemp("working_directory")
 
-    _consume_to_file_ordered(
+    consume_to_file_ordered(
         working_dir,
         topic_multiple_partitions,
         "group",
@@ -151,7 +151,7 @@ def test_plain_text_message_ordering_with_filtering(
     produced_messages_different_partitions(topic_multiple_partitions, producer)
     working_dir = tmpdir_factory.mktemp("working_directory")
 
-    _consume_to_file_ordered(
+    consume_to_file_ordered(
         working_dir,
         topic_multiple_partitions,
         "group",
