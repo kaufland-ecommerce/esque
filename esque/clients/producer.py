@@ -56,7 +56,6 @@ class AbstractProducer(ABC):
             click.echo((message_prefix or "") + f"Still {left_messages} messages left, flushing...")
 
     @translate_third_party_exceptions
-    @abstractmethod
     def create_internal_producer(self):
         self._producer = confluent_kafka.Producer(self._config)
 
