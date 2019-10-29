@@ -93,9 +93,9 @@ def test_topic_diff(topic_controller: TopicController, topic_id: str):
     assert get_diff(topic) == diff, "Should have a diff on cleanup.policy"
 
     conf = json.loads(json.dumps(topic_conf))
-    conf["config"]["delete.retention.ms"] = "1500"
+    conf["config"]["delete.retention.ms"] = 1500
     topic = Topic.from_dict(conf)
-    diff = TopicDiff().set_diff("delete.retention.ms", default_delete_retention, "1500")
+    diff = TopicDiff().set_diff("delete.retention.ms", default_delete_retention, 1500)
     assert get_diff(topic) == diff, "Should have a diff on delete.retention.ms"
 
     # the same as before, but this time with string values

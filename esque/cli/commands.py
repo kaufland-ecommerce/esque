@@ -1,5 +1,4 @@
 import pathlib
-import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -27,12 +26,6 @@ from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
 from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import (
-    ConsumerGroupDoesNotExistException,
-    ContextNotDefinedException,
-    TopicAlreadyExistsException,
-    TopicDoesNotExistException,
-)
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
