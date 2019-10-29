@@ -1,17 +1,18 @@
 import re
 from enum import Enum
 from itertools import islice
-from typing import List, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
 
 from click import BadParameter
-from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic, TopicMetadata
+from confluent_kafka.admin import ConfigResource
+from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
-from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
-from esque.errors import translate_third_party_exceptions, raise_for_kafka_error
-from esque.helpers import invalidate_cache_after, ensure_kafka_future_done
+from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
+from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+from pykafka.topic import Topic as PyKafkaTopic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -34,7 +35,7 @@ class TopicController:
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
         # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
-        topic_metadata: TopicMetadata = confluent_topics[topic_name]
+        topic_metadata: ConfluentTopic = confluent_topics[topic_name]
         raise_for_kafka_error(topic_metadata.error)
         if client_type == ClientTypes.Confluent:
             return confluent_topics[topic_name]
