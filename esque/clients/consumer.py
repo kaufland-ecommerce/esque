@@ -81,7 +81,7 @@ class AbstractConsumer(ABC):
         writer.write_message(message)
 
     def close_all_writers(self):
-        for _, w in self.writers.items():
+        for w in self.writers.values():
             if isinstance(w, FileWriter) and w.file is not None:
                 w.file.close()
 
