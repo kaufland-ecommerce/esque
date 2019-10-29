@@ -5,6 +5,7 @@ from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import describe_broker, describe_topic
+from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
@@ -115,12 +116,12 @@ def check_described_broker(described_broker: Union[str, dict]):
 @parameterized_output_formats
 def test_describe_topic_consumergroup_in_output(
     non_interactive_cli_runner: CliRunner,
-    filled_topic: str,
+    filled_topic: Topic,
     partly_read_consumer_group: str,
     output_format: str,
     loader: Callable,
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], filled_topic)
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], filled_topic.name)
     assert result.exit_code == 0
     output_dict = loader(result.output)
 
