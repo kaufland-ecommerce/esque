@@ -91,7 +91,7 @@ class AbstractConsumer(ABC):
         return message
 
     @translate_third_party_exceptions
-    def consume_single_acceptable_message(self, timeout=30) -> Message:
+    def consume_single_acceptable_message(self, timeout=30) -> Optional[Message]:
         message_acceptable = False
         while not message_acceptable:
             message = self._consumer.poll(timeout=timeout)
