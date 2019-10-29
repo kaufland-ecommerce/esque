@@ -2,18 +2,19 @@ import click
 import confluent_kafka
 import pytest
 import yaml
+from _pytest.monkeypatch import MonkeyPatch
+from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import TopicConfigNotValidException
 
-import traceback
-
 
 @pytest.mark.integration
-def test_topic_creation_with_template_works(
-    monkeypatch,
+def test_edit_topic_works(
+    interactive_cli_runner: CliRunner,
+    monkeypatch: MonkeyPatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     topic: str,
@@ -52,11 +53,11 @@ def test_topic_creation_with_template_works(
         }
     }
 
-    def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
+    def mock_edit_function(text=None, editor=None, env=None, require_save=None, extension=None, filename=None):
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
@@ -64,7 +65,14 @@ def test_topic_creation_with_template_works(
 
 
 @pytest.mark.integration
+def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(edit_topic)
+    assert result.exit_code == MissingParameter.exit_code
+
+
+@pytest.mark.integration
 def test_topic_creation_with_unknown_key_fails(
+    interactive_cli_runner: CliRunner,
     monkeypatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
@@ -80,7 +88,7 @@ def test_topic_creation_with_unknown_key_fails(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=True)
+    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
     assert isinstance(result.exception, TopicConfigNotValidException)
@@ -88,6 +96,7 @@ def test_topic_creation_with_unknown_key_fails(
 
 @pytest.mark.integration
 def test_topic_creation_with_malformed_key_fails(
+    interactive_cli_runner: CliRunner,
     monkeypatch,
     topic_controller: TopicController,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
@@ -103,7 +112,7 @@ def test_topic_creation_with_malformed_key_fails(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = CliRunner().invoke(edit_topic, ["-v", topic], input="y\n", catch_exceptions=True)
+    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
 
     assert result.exception is not None
     assert isinstance(result.exception, TopicConfigNotValidException)

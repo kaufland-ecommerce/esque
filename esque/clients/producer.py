@@ -9,7 +9,7 @@ import pendulum
 from confluent_kafka.avro import AvroProducer
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, raise_for_kafka_exception
+from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
 from esque.helpers import delivery_callback, delta_t
 from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader
@@ -28,7 +28,7 @@ class Producer(ABC):
             }
         )
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     @abstractmethod
     def produce(self, topic_name: str) -> int:
         pass
@@ -39,7 +39,7 @@ class PingProducer(Producer):
         super().__init__()
         self._producer = confluent_kafka.Producer(self._config)
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def produce(self, topic_name: str) -> int:
         start = pendulum.now()
         self._producer.produce(topic=topic_name, key=str(0), value=str(pendulum.now().timestamp()))
@@ -57,7 +57,7 @@ class FileProducer(Producer):
         self._producer = confluent_kafka.Producer(self._config)
         self.working_dir = working_dir
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def produce(self, topic_name: str) -> int:
         path_list = glob(str(self.working_dir / "partition_*"))
         counter = 0
@@ -73,7 +73,7 @@ class FileProducer(Producer):
 
         return counter
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def flush_all(self):
         while True:
             left_messages = self._producer.flush(1)
@@ -84,7 +84,7 @@ class FileProducer(Producer):
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return PlainTextFileReader(directory)
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
 
@@ -98,7 +98,7 @@ class AvroFileProducer(FileProducer):
     def get_file_reader(self, directory: pathlib.Path) -> FileReader:
         return AvroFileReader(directory)
 
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
         self._producer.produce(
             topic=topic_name,

@@ -5,12 +5,12 @@ from confluent_kafka.admin import AdminClient, ConfigResource
 
 from esque.config import Config
 from esque.controller.topic_controller import TopicController
-from esque.errors import raise_for_kafka_exception
+from esque.errors import translate_third_party_exceptions
 from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 
 
 class Cluster:
-    @raise_for_kafka_exception
+    @translate_third_party_exceptions
     def __init__(self):
         self._config = Config()
         self.confluent_client = AdminClient(self._config.create_confluent_config())
