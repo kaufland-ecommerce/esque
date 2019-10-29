@@ -68,7 +68,7 @@ class AbstractConsumer(ABC):
 
     @abstractmethod
     def consume(self, **kwargs) -> int:
-        pass
+        raise NotImplementedError()
 
     def output_consumed(self, message: Message):
         """
