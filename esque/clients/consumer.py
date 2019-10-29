@@ -60,7 +60,7 @@ class AbstractConsumer(ABC):
                 TopicPartition(self._topic_name, partition=partition, offset=offset) for partition in partitions
             ]
         else:
-            topic_partitions = [TopicPartition(self._topic_name, 0, 0)]
+            topic_partitions = [TopicPartition(self._topic_name, partition=0, offset=offset)]
         self._consumer.assign(topic_partitions)
 
     @translate_third_party_exceptions
