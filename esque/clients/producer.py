@@ -35,7 +35,7 @@ class AbstractProducer(ABC):
     @translate_third_party_exceptions
     @abstractmethod
     def produce(self) -> int:
-        pass
+        raise NotImplementedError()
 
     @translate_third_party_exceptions
     def _setup_config(self):
