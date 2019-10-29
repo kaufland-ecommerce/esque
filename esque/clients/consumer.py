@@ -29,7 +29,6 @@ class AbstractConsumer(ABC):
         self._use_single_directory_for_messages = False
         self.writers: Dict[int, GenericWriter] = {}
 
-    @translate_third_party_exceptions
     def _setup_config(self):
         offset_reset = "earliest"
         if self._last:
