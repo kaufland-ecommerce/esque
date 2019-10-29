@@ -1,5 +1,5 @@
 import operator
-from typing import List, Dict
+from typing import Dict, List
 
 from confluent_kafka.admin import ConfigResource
 
