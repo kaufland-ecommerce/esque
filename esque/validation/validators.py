@@ -1,4 +1,5 @@
 import re
+from functools import wraps
 from yamale.validators import Boolean, DefaultValidators, Integer, Number, Validator
 from yamale.util import isstr
 
@@ -16,6 +17,7 @@ def all_validators() -> dict:
 def catch_value_errors(validate):
     """method decorator to catch ValueErrors for casts and return an error"""
 
+    @wraps(validate)
     def wrapper(self, value):
         try:
             return validate(self, value)
@@ -52,15 +54,15 @@ class StringFloat(Number):
         return super().validate(float(value))
 
 
-class StringDictionary(Validator):
-    """ validates colon seperated key/value pairs chained with commas, also emptystring ('') e.g.: '0:0,1:1,2:2' """
+class KeyValuePairs(Validator):
+    """ validates colon seperated key/value pairs chained with commas, also '' and '*' e.g.: '0:0,1:1,2:2' """
 
-    tag = "s_dict"
+    tag = "key_value"
 
     def _is_valid(self, value) -> bool:
         if not isstr(value):
             return False
-        if value == "":
+        if value == "" or value == "*":
             return True
         for pair in value.split(","):
             if not re.fullmatch(r"\d+:\d+", pair):

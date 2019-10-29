@@ -132,21 +132,17 @@ class ConnectionFailedException(ExceptionWithMessage):
         super().__init__(msg)
 
 
-class TopicConfigNotValidException(ExceptionWithMessage):
-    def __init__(self, message):
-        self.message = message
-
-    def describe(self) -> str:
-        return self.message
-
-
-class YamaleValidationException(TopicConfigNotValidException):
+class YamaleValidationException(ExceptionWithMessage):
     def __init__(self, validation_error: ValueError):
         complete_message = validation_error.args[0]
         messages = complete_message.split("\n")[2:]
         stripped_messages = list(map(lambda x: x.strip("\t"), messages))
         joined_message = "\n".join(stripped_messages)
-        TopicConfigNotValidException.__init__(self, joined_message)
+        self.message = joined_message
+
+
+class TopicConfigNotValidException(YamaleValidationException):
+    pass
 
 
 ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {

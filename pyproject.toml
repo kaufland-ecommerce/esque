@@ -43,6 +43,7 @@ pendulum = "^2.0"
 pykafka = {git = "https://github.com/real-digital/pykafka.git", branch="feature/sasl-scram-support"}
 pyyaml = "^5.1"
 requests = "^2.22"
+yamale = "^2.0"
 
 # Dev Dependencies
 [tool.poetry.dev-dependencies]

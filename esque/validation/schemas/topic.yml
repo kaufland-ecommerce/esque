@@ -7,9 +7,9 @@ config:
   file.delete.delay.ms: s_int(min=0, required=False)
   flush.messages: s_int(min=0, required=False)
   flush.ms: s_int(min=0, required=False)
-  follower.replication.throttled.replicas: s_dict(required=False)
+  follower.replication.throttled.replicas: key_value(required=False)
   index.interval.bytes: s_int(min=0, required=False)
-  leader.replication.throttled.replicas: s_dict(required=False)
+  leader.replication.throttled.replicas: key_value(required=False)
   max.compaction.lag.ms: s_int(min=1, required=False)
   max.message.bytes: s_int(min=0, required=False)
   message.format.version: enum(

@@ -9,7 +9,7 @@ import yamale
 from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
-from esque.errors import YamaleValidationException
+from esque.errors import TopicConfigNotValidException
 from esque.validation import validators
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
@@ -17,7 +17,7 @@ PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
 
-SchemaPath = Path(__file__).parent.parent / "validation" / "yml_schemas" / "topic.yml"
+SchemaPath = Path(__file__).parent.parent / "validation" / "schemas" / "topic.yml"
 
 
 class Partition(KafkaResource):
@@ -222,7 +222,7 @@ class Topic(KafkaResource):
         try:
             yamale.validate(schema, data, strict=True)
         except ValueError as validation_error:
-            raise YamaleValidationException(validation_error)
+            raise TopicConfigNotValidException(validation_error)
 
     # object behaviour
     def __lt__(self, other: "Topic"):
