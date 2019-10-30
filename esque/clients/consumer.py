@@ -1,7 +1,9 @@
 import pathlib
 from abc import ABC, abstractmethod
+from heapq import heapify, heappush, heappop
 from typing import Dict, Optional, Tuple
 
+import heapq
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Message, TopicPartition
@@ -298,8 +300,7 @@ def consume_to_file_ordered(
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
 
-    messages_by_partition = {}
-    partitions_by_timestamp = {}
+    message_heap = []
     total_number_of_messages = 0
     messages_left = True
     # get at least one message from each partition, or exclude those that don't have any messages
@@ -325,33 +326,24 @@ def consume_to_file_ordered(
                     messages_left = False
             else:
                 keep_polling_current_partition = False
-                partitions_by_timestamp[decoded_message.timestamp] = decoded_message.partition
-                if decoded_message.partition not in messages_by_partition:
-                    messages_by_partition[decoded_message.partition] = []
-                messages_by_partition[decoded_message.partition].append(message)
+                heappush(message_heap, (decoded_message.timestamp, message))
 
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
     while total_number_of_messages < numbers and messages_left:
-        if len(partitions_by_timestamp) == 0:
+        if len(message_heap) == 0:
             messages_left = False
         else:
-            first_key = sorted(partitions_by_timestamp.keys())[0]
-            partition = partitions_by_timestamp[first_key]
-
-            message = messages_by_partition[partition].pop(0)
+            (timestamp, message) = heappop(message_heap)
             consumers[0].output_consumed(message)
-            del partitions_by_timestamp[first_key]
             total_number_of_messages += 1
-
+            partition = message.partition()
             try:
                 message = consumers[partition].consume_single_acceptable_message(timeout=10)
                 decoded_message = decode_message(message)
-                partitions_by_timestamp[decoded_message.timestamp] = partition
-                messages_by_partition[partition].append(message)
+                heappush(message_heap, (decoded_message.timestamp, message))
             except (MessageEmptyException, EndOfPartitionReachedException):
                 partitions.remove(partition)
-                messages_by_partition.pop(partition, None)
                 if len(partitions) == 0:
                     messages_left = False
     for c in consumers:
