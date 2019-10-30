@@ -17,14 +17,17 @@ RUN mkdir -p /esque
 
 WORKDIR /esque
 
-COPY ./ /esque
+RUN pip install -U pip
+RUN pip install --pre poetry
 
-RUN apt-get update && apt-get install
+COPY ./pyproject.toml /esque/pyproject.toml
+COPY ./poetry.lock /esque/poetry.lock
+RUN poetry config "virtualenvs.create" "false"
+RUN poetry install
 
-RUN pip3 install pipenv
-
-RUN pipenv install --system --dev --deploy
-
+COPY ./scripts /esque/scripts
+COPY ./tests /esque/tests
+COPY ./esque /esque/esque
 ENTRYPOINT ["/bin/bash"]
 
-CMD ["pytest", "tests/"]
+CMD ["", "pytest", "tests/"]

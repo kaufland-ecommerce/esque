@@ -4,7 +4,17 @@ from abc import ABC
 import esque.ruleparser.exception as ex
 import esque.ruleparser.helpers as h
 from esque.ruleparser.exception import ExpressionSyntaxError, MalformedExpressionError, RuleTreeInvalidError
-from esque.ruleparser.expressionelement import ArithmeticBinaryOperator, ComparisonBinaryOperator, ComparisonUnaryOperator, Field, GenericOperator, Literal, Operator, OperatorType, ParenthesisOperator
+from esque.ruleparser.expressionelement import (
+    ArithmeticBinaryOperator,
+    ComparisonBinaryOperator,
+    ComparisonUnaryOperator,
+    Field,
+    GenericOperator,
+    Literal,
+    Operator,
+    OperatorType,
+    ParenthesisOperator,
+)
 from esque.ruleparser.fieldeval import FieldEval
 
 

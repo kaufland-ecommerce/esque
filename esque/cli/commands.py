@@ -10,6 +10,8 @@ import yaml
 from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
+from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
+from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
 from esque.cli.helpers import ensure_approval, isatty
 from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
 from esque.cli.output import (
@@ -21,6 +23,7 @@ from esque.cli.output import (
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
+    red_bold,
 )
 from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
 from esque.clients.producer import PingProducer, ProducerFactory
@@ -63,7 +66,7 @@ def delete():
     pass
 
 
-@esque.group(help="Edit a resource")
+@esque.group(help="Edit a resource or your esque config")
 def edit():
     pass
 
@@ -165,7 +168,7 @@ def delete_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
+        assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
     click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
 
@@ -242,10 +245,19 @@ def apply(state: State, file: str):
 @click.argument(
     "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
+@click.option(
+    "--consumers",
+    "-C",
+    required=False,
+    is_flag=True,
+    default=False,
+    help=f"Will output the consumergroups reading from this topic. "
+    f"{red_bold('Beware! This can be a really expensive operation.')}",
+)
 @output_format_option
 @error_handler
 @pass_state
-def describe_topic(state: State, topic_name: str, output_format: str):
+def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
     output_dict = {
@@ -254,6 +266,17 @@ def describe_topic(state: State, topic_name: str, output_format: str):
         "config": topic.config,
     }
 
+    if consumers:
+        consumergroup_controller = ConsumerGroupController(state.cluster)
+        groups = consumergroup_controller.list_consumer_groups()
+
+        consumergroups = [
+            group_name
+            for group_name in groups
+            if topic_name in consumergroup_controller.get_consumergroup(group_name).topics
+        ]
+
+        output_dict["consumergroups"] = consumergroups
     click.echo(format_output(output_dict, output_format))
 
 
@@ -529,3 +552,9 @@ def ping(state: State, times: int, wait: int):
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+
+
+@edit.command("config", help="Edit your esque config file.")
+@error_handler
+def edit_config():
+    click.edit(filename=config_path().as_posix())
