@@ -1,10 +1,11 @@
-from typing import Union, Callable
+from typing import Callable, Union
 
 import pytest
 from click import MissingParameter
 from click.testing import CliRunner
 
-from esque.cli.commands import describe_topic, describe_broker
+from esque.cli.commands import describe_broker, describe_topic
+from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
@@ -109,3 +110,19 @@ def check_described_broker(described_broker: Union[str, dict]):
         keys = described_broker.keys()
         for option in VARIOUS_IMPORTANT_BROKER_OPTIONS:
             assert option in keys
+
+
+@pytest.mark.integration
+@parameterized_output_formats
+def test_describe_topic_consumergroup_in_output(
+    non_interactive_cli_runner: CliRunner,
+    filled_topic: Topic,
+    partly_read_consumer_group: str,
+    output_format: str,
+    loader: Callable,
+):
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format, "-C", filled_topic.name])
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+
+    assert partly_read_consumer_group in output_dict.get("consumergroups", None)

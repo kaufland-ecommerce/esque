@@ -20,6 +20,7 @@ from esque.cli.output import (
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
+    red_bold,
 )
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
@@ -240,10 +241,19 @@ def apply(state: State, file: str):
 @click.argument(
     "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
+@click.option(
+    "--consumers",
+    "-C",
+    required=False,
+    is_flag=True,
+    default=False,
+    help=f"Will output the consumergroups reading from this topic. "
+    f"{red_bold('Beware! This can be a really expensive operation.')}",
+)
 @output_format_option
 @error_handler
 @pass_state
-def describe_topic(state: State, topic_name: str, output_format: str):
+def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
     output_dict = {
@@ -252,6 +262,17 @@ def describe_topic(state: State, topic_name: str, output_format: str):
         "config": topic.config,
     }
 
+    if consumers:
+        consumergroup_controller = ConsumerGroupController(state.cluster)
+        groups = consumergroup_controller.list_consumer_groups()
+
+        consumergroups = [
+            group_name
+            for group_name in groups
+            if topic_name in consumergroup_controller.get_consumergroup(group_name).topics
+        ]
+
+        output_dict["consumergroups"] = consumergroups
     click.echo(format_output(output_dict, output_format))
 
 
