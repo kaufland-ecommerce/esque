@@ -116,7 +116,6 @@ def test_plain_text_message_ordering(
     producer: ConfluenceProducer,
     topic_multiple_partitions: str,
     tmpdir_factory,
-    cli_runner: CliRunner,
     produced_messages_different_partitions,
 ):
     produced_messages_different_partitions(topic_multiple_partitions, producer)
@@ -145,7 +144,6 @@ def test_plain_text_message_ordering_with_header_filtering(
     producer: ConfluenceProducer,
     topic_multiple_partitions: str,
     tmpdir_factory,
-    cli_runner: CliRunner,
     produced_messages_different_partitions_with_headers,
 ):
     produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
@@ -173,7 +171,6 @@ def test_plain_text_message_ordering_with_header_filtering_nonmatching(
     producer: ConfluenceProducer,
     topic_multiple_partitions: str,
     tmpdir_factory,
-    cli_runner: CliRunner,
     produced_messages_different_partitions_with_headers,
 ):
     produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
@@ -200,7 +197,6 @@ def test_plain_text_message_ordering_with_filtering(
     producer: ConfluenceProducer,
     topic_multiple_partitions: str,
     tmpdir_factory,
-    cli_runner: CliRunner,
     produced_messages_different_partitions,
 ):
     produced_messages_different_partitions(topic_multiple_partitions, producer)
