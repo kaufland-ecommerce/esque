@@ -1,8 +1,6 @@
-import typing
 from abc import ABC
-from collections import namedtuple
 from enum import Enum
-from typing import NamedTuple, List, Callable
+from typing import Callable, List, NamedTuple
 
 import pendulum
 

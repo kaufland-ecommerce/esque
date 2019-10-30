@@ -10,8 +10,6 @@ import yaml
 from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
-from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
 from esque.cli.helpers import ensure_approval, isatty
 from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
 from esque.cli.output import (
