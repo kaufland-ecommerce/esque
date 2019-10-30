@@ -12,14 +12,21 @@ from click import MissingParameter, UsageError, version_option
 from esque import __version__
 from esque.cli.helpers import ensure_approval, isatty
 from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
-from esque.cli.output import blue_bold, bold, format_output, green_bold, pretty, pretty_new_topic_configs, pretty_topic_diffs, pretty_unchanged_topic_configs
-from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
+from esque.cli.output import (
+    blue_bold,
+    bold,
+    format_output,
+    green_bold,
+    pretty,
+    pretty_new_topic_configs,
+    pretty_topic_diffs,
+    pretty_unchanged_topic_configs,
+)
+from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import EndOfPartitionReachedException, MessageEmptyException
-from esque.messages.message import decode_message
 from esque.resources.broker import Broker
 from esque.resources.topic import copy_to_local, Topic
 
@@ -424,11 +431,7 @@ def consume(
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
-    "--stdin",
-    "read_from_stdin",
-    help="Read messages from STDIN instead of a directory.",
-    default=False,
-    is_flag=True,
+    "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
 )
 @click.option(
     "-y",

@@ -1,7 +1,7 @@
 import json
 import pathlib
 from abc import abstractmethod
-from typing import Any, Iterable, NamedTuple
+from typing import Any, Iterable, List, NamedTuple, Optional
 
 import click
 from avro.schema import RecordSchema
@@ -10,12 +10,18 @@ from confluent_kafka.cimpl import Message
 from esque.errors import translate_third_party_exceptions
 
 
+class MessageHeader(NamedTuple):
+    key: str
+    value: Optional[str]
+
+
 class DecodedMessage(NamedTuple):
     key: str
     value: str
     partition: int
     offset: int
     timestamp: str
+    headers: List[MessageHeader] = []
 
 
 class KafkaMessage(NamedTuple):
@@ -24,6 +30,7 @@ class KafkaMessage(NamedTuple):
     partition: int
     key_schema: RecordSchema = None
     value_schema: RecordSchema = None
+    headers: List[MessageHeader] = []
 
 
 class GenericWriter:
@@ -94,8 +101,18 @@ def decode_message(message: Message) -> DecodedMessage:
     else:
         decoded_key = message.key().decode("utf-8")
     decoded_value = message.value().decode("utf-8")
-
-    return DecodedMessage(decoded_key, decoded_value, message.partition(), message.offset(), str(message.timestamp()))
+    headers = []
+    if message.headers():
+        for header_key, header_value in message.headers():
+            headers.append(MessageHeader(key=header_key, value=header_value.decode("utf-8") if header_value else None))
+    return DecodedMessage(
+        key=decoded_key,
+        value=decoded_value,
+        partition=message.partition(),
+        offset=message.offset(),
+        timestamp=str(message.timestamp()),
+        headers=headers,
+    )
 
 
 def serialize_message(message: Message):
@@ -104,6 +121,9 @@ def serialize_message(message: Message):
         "key": decoded_message.key,
         "value": decoded_message.value,
         "partition": decoded_message.partition,
+        "headers": [
+            {"key": header_element.key, "value": header_element.value} for header_element in decoded_message.headers
+        ],
     }
     return json.dumps(serializable_message)
 
@@ -115,4 +135,13 @@ def deserialize_message(message_line: str) -> KafkaMessage:
     partition = json_record.get("partition", 0)
     key_schema = json_record["key_schema"] if "key_schema" in json_record else None
     value_schema = json_record["value_schema"] if "value_schema" in json_record else None
-    return KafkaMessage(key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema)
+    headers = []
+    if json_record["headers"]:
+        for header_item in json_record["headers"]:
+            header_key = header_item["key"]
+            header_value = header_item["value"] if "value" in header_item else None
+            if header_key:
+                headers.append(MessageHeader(header_key, header_value if header_value else None))
+    return KafkaMessage(
+        key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema, headers=headers
+    )

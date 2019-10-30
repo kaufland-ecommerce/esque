@@ -1,9 +1,8 @@
 import pathlib
 from abc import ABC, abstractmethod
-from heapq import heapify, heappush, heappop
+from heapq import heappop, heappush
 from typing import Dict, Optional, Tuple
 
-import heapq
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Message, TopicPartition
@@ -18,7 +17,7 @@ from esque.errors import (
     translate_third_party_exceptions,
 )
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
-from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
+from esque.messages.message import decode_message, FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter
 from esque.ruleparser.ruleengine import RuleTree
 
 

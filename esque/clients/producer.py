@@ -1,13 +1,11 @@
 import json
+import logging
 import pathlib
 import sys
 from abc import ABC, abstractmethod
 from glob import glob
 from json import JSONDecodeError
-import logging
-from logging import Logger
 
-import click
 import confluent_kafka
 import pendulum
 from confluent_kafka.avro import AvroProducer
@@ -66,11 +64,16 @@ class AbstractProducer(ABC):
     @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
         if self._rule_tree is None or self._rule_tree.evaluate(message):
-            self._producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+            self._producer.produce(
+                topic=topic_name,
+                key=message.key,
+                value=message.value,
+                partition=message.partition,
+                headers=message.headers,
+            )
 
 
 class PingProducer(AbstractProducer):
-
     @translate_third_party_exceptions
     def produce(self) -> int:
         start = pendulum.now()
@@ -129,7 +132,6 @@ class FileProducer(AbstractProducer):
 
 
 class AvroFileProducer(FileProducer):
-
     @translate_third_party_exceptions
     def create_internal_producer(self):
         self._producer = AvroProducer(self._config)

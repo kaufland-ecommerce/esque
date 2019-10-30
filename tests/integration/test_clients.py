@@ -141,6 +141,61 @@ def test_plain_text_message_ordering(
 
 
 @pytest.mark.integration
+def test_plain_text_message_ordering_with_header_filtering(
+    producer: ConfluenceProducer,
+    topic_multiple_partitions: str,
+    tmpdir_factory,
+    cli_runner: CliRunner,
+    produced_messages_different_partitions_with_headers,
+):
+    produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match="message.partition == 1 and message.header.hk6 == hv6",
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert len(consumed_messages) == 1
+    assert consumed_messages[0].key == "e"
+
+
+@pytest.mark.integration
+def test_plain_text_message_ordering_with_header_filtering_nonmatching(
+    producer: ConfluenceProducer,
+    topic_multiple_partitions: str,
+    tmpdir_factory,
+    cli_runner: CliRunner,
+    produced_messages_different_partitions_with_headers,
+):
+    produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match="message.partition == 1 and message.header.hk2 == hv7",
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert len(consumed_messages) == 0
+
+
+@pytest.mark.integration
 def test_plain_text_message_ordering_with_filtering(
     producer: ConfluenceProducer,
     topic_multiple_partitions: str,
@@ -167,6 +222,64 @@ def test_plain_text_message_ordering_with_filtering(
     assert consumed_messages[0].key == "i"
     assert consumed_messages[1].key == "e"
     assert consumed_messages[2].key == "a"
+
+
+@pytest.mark.integration
+def test_plaintext_consume_produce_messages_with_header(
+    consumer_group,
+    producer: ConfluenceProducer,
+    topic_multiple_partitions: str,
+    target_topic: Tuple[str, int],
+    produced_messages_same_partition_with_headers,
+    tmpdir_factory,
+):
+    produced_messages_same_partition_with_headers(topic_multiple_partitions, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match=None,
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert consumed_messages[0].headers[0].key == "hk1"
+    assert consumed_messages[9].headers[0].value == "hv10"
+
+
+@pytest.mark.integration
+def test_avro_consume_produce_messages_with_header(
+    consumer_group,
+    producer: AvroProducer,
+    topic_multiple_partitions: str,
+    target_topic: Tuple[str, int],
+    produced_avro_messages_with_headers,
+    tmpdir_factory,
+):
+    produced_avro_messages_with_headers(topic_multiple_partitions, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    consume_to_file_ordered(
+        working_dir,
+        topic_multiple_partitions,
+        "group",
+        list(range(0, 10)),
+        10,
+        False,
+        match=None,
+        last=False,
+        write_to_stdout=False,
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert consumed_messages[0].headers[0].key == "hk1"
+    assert consumed_messages[9].headers[0].value == "hv10"
 
 
 def produce_test_messages(producer: ConfluenceProducer, topic: Tuple[str, int]) -> Iterable[KafkaMessage]:

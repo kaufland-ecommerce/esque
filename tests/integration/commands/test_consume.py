@@ -23,6 +23,22 @@ def test_plain_text_message_cli_pipe(
 
 
 @pytest.mark.integration
+def test_plain_text_message_with_headers_cli_pipe(
+    producer: ConfluenceProducer,
+    topic: str,
+    non_interactive_cli_runner: CliRunner,
+    produced_messages_same_partition_with_headers,
+):
+    produced_messages_same_partition_with_headers(topic_name=topic, producer=producer)
+
+    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
+    result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
+    # Check assertions:
+    assert "10" in result2.output
+    assert result2.exit_code == 0
+
+
+@pytest.mark.integration
 def test_avro_consume_to_stdout(
     consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):

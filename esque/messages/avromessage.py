@@ -4,7 +4,7 @@ import pathlib
 import pickle
 import struct
 from io import BytesIO
-from typing import Any, Dict, Iterable, NamedTuple, Optional, Tuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import click
 import fastavro
@@ -12,7 +12,7 @@ from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Message
 
 from esque.clients.schemaregistry import SchemaRegistryClient
-from esque.messages.message import FileReader, FileWriter, KafkaMessage, StdOutWriter
+from esque.messages.message import FileReader, FileWriter, KafkaMessage, MessageHeader, StdOutWriter
 
 
 class DecodedAvroMessage(NamedTuple):
@@ -21,6 +21,7 @@ class DecodedAvroMessage(NamedTuple):
     partition: int
     key_schema_id: int
     value_schema_id: int
+    headers: List[MessageHeader] = []
 
 
 class AvroFileWriter(FileWriter):
@@ -112,8 +113,14 @@ class AvroMessageDecoder:
     def decode_message_from_avro(self, message: Message):
         key_schema_id, decoded_key = self.decode_bytes(message.key())
         value_schema_id, decoded_value = self.decode_bytes(message.value())
+        headers = []
+        if message.headers():
+            for header_key, header_value in message.headers():
+                headers.append(
+                    MessageHeader(key=header_key, value=header_value.decode("utf-8") if header_value else None)
+                )
         decoded_message = DecodedAvroMessage(
-            decoded_key, decoded_value, message.partition(), key_schema_id, value_schema_id
+            decoded_key, decoded_value, message.partition(), key_schema_id, value_schema_id, headers=headers
         )
         schema_version = it.count(1)
         serializable_message = {

@@ -4,7 +4,7 @@ from typing import Any
 
 from confluent_kafka.cimpl import Message
 
-from esque.messages.message import KafkaMessage
+from esque.messages.message import decode_message, KafkaMessage
 from esque.ruleparser.expressionelement import Operator
 
 
@@ -58,9 +58,18 @@ class FieldEval:
                         return self.__message.key
                 elif self.__header_pattern.fullmatch(field_name) and isinstance(self.__message, Message):
                     header_name = field_name.split(".")[-1]
-                    header_value = self.__message.headers()[header_name]
-                    if header_value is None:
+                    if isinstance(self.__message, Message):
+                        if self.__message.headers() is None:
+                            return ""
+                        decoded_message = decode_message(message=self.__message)
+                        for message_header in decoded_message.headers:
+                            if message_header.key == header_name:
+                                return message_header.value if message_header.value else ""
+                    elif isinstance(self.__message, KafkaMessage):
+                        for message_header in self.__message.headers:
+                            if message_header.key == header_name and message_header.value:
+                                return message_header.value
+                            elif message_header.key == header_name:
+                                return ""
                         return ""
-                    else:
-                        return header_value
                 return -1
