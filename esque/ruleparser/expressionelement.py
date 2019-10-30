@@ -1,14 +1,12 @@
+import typing
 from abc import ABC
 from collections import namedtuple
 from enum import Enum
+from typing import NamedTuple, List, Callable
 
 import pendulum
 
 import esque.ruleparser.helpers as h
-
-GenericOperator = namedtuple(
-    "GenericOperator", "name type regex input_priority stack_priority is_unary calculation_function operand_types"
-)
 
 
 class OperatorType(Enum):
@@ -23,6 +21,17 @@ class OperandType(Enum):
     BOOLEAN = (3,)
     DATETIME = (4,)
     STRING = 5
+
+
+class GenericOperator(NamedTuple):
+    name: str
+    type: OperatorType
+    regex: str
+    input_priority: int
+    stack_priority: int
+    is_unary: bool
+    calculation_function: Callable
+    operand_types: List[OperandType]
 
 
 class Operator(ABC):

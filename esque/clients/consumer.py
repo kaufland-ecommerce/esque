@@ -101,9 +101,11 @@ class AbstractConsumer(ABC):
     @translate_third_party_exceptions
     def consume_single_acceptable_message(self, timeout=30) -> Optional[Message]:
         message_acceptable = False
-        while not message_acceptable:
-            message = self._consumer.poll(timeout=timeout)
-            raise_for_message(message)
+        total_time_remaining = timeout
+        while not message_acceptable and total_time_remaining > 0:
+            iteration_start = pendulum.now()
+            message = self.consume_single_message(timeout=timeout)
+            total_time_remaining -= (pendulum.now() - iteration_start).in_seconds()
             message_acceptable = self.consumed_message_matches(message)
         return message if message_acceptable else None
 
@@ -302,18 +304,31 @@ def consume_to_file_ordered(
     messages_left = True
     # get at least one message from each partition, or exclude those that don't have any messages
     for partition_counter in range(0, len(consumers)):
-        try:
-            message = consumers[partition_counter].consume_single_acceptable_message(timeout=10)
-            decoded_message = decode_message(message)
-        except (MessageEmptyException, EndOfPartitionReachedException):
-            partitions.remove(partition_counter)
-            if len(partitions) == 0:
-                messages_left = False
-        else:
-            partitions_by_timestamp[decoded_message.timestamp] = decoded_message.partition
-            if decoded_message.partition not in messages_by_partition:
-                messages_by_partition[decoded_message.partition] = []
-            messages_by_partition[decoded_message.partition].append(message)
+        max_retry_count = 5
+        keep_polling_current_partition = True
+        while keep_polling_current_partition:
+            try:
+                message = consumers[partition_counter].consume_single_acceptable_message(timeout=10)
+                decoded_message = decode_message(message)
+            except MessageEmptyException:
+                # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
+                max_retry_count -= 1
+                if max_retry_count <= 0:
+                    partitions.remove(partition_counter)
+                    if len(partitions) == 0:
+                        messages_left = False
+                    keep_polling_current_partition = False
+            except EndOfPartitionReachedException:
+                keep_polling_current_partition = False
+                partitions.remove(partition_counter)
+                if len(partitions) == 0:
+                    messages_left = False
+            else:
+                keep_polling_current_partition = False
+                partitions_by_timestamp[decoded_message.timestamp] = decoded_message.partition
+                if decoded_message.partition not in messages_by_partition:
+                    messages_by_partition[decoded_message.partition] = []
+                messages_by_partition[decoded_message.partition].append(message)
 
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
