@@ -1,0 +1,33 @@
+version: 1
+current_context: context_1
+contexts:
+  context_1:
+    bootstrap_servers:
+      - localhost:9091
+    security_protocol: PLAINTEXT
+  context_2:
+    bootstrap_servers:
+      - broker01.dummy_domain:9092
+      - broker02.dummy_domain:9092
+      - broker03.dummy_domain:9092
+    security_protocol: PLAINTEXT
+  context_3:
+    bootstrap_servers:
+      - node01.cool-domain.com:9093
+      - node02.cool-domain.com:9093
+      - node03.cool-domain.com:9093
+    security_protocol: PLAINTEXT
+  context_4:
+    bootstrap_servers:
+      - kafka:9094
+    security_protocol: PLAINTEXT
+  context_5:
+    bootstrap_servers:
+      - kafka:9094
+    security_protocol: SASL_SSL
+    cafile: /my/ca.crt
+    certfile: /my/certificate.crt
+    keyfile: /my/certificate.key
+    mechanism: PLAIN
+    user: alice
+    password: alice-secret

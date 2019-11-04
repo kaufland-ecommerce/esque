@@ -1,49 +1,27 @@
+from functools import wraps
 from pathlib import Path
+from typing import Callable
 
 import pytest
 from esque.config import Config
+from esque.config.migration import migrate
 from esque.errors import ContextNotDefinedException
 
-DUMMY_CONFIG = """
-[Context]
-current = context_1
 
-[Context.context_1]
-bootstrap_hosts = localhost
-bootstrap_port = 9091
-security_protocol = PLAINTEXT
-
-[Context.context_2]
-bootstrap_hosts = broker01,broker02,broker03
-bootstrap_domain = dummy_domain
-bootstrap_port = 9092
-security_protocol = PLAINTEXT
-
-[Context.context_3]
-bootstrap_hosts = node01,node02,node03
-bootstrap_port = 9093
-bootstrap_domain = cool-domain.com
-security_protocol = PLAINTEXT
-
-[Context.context_4]
-bootstrap_hosts = kafka
-bootstrap_port = 9094
-security_protocol = PLAINTEXT
-"""
+@pytest.fixture(params=[
+    pytest.param(0, id="v0"),
+    pytest.param(1, id="v1"),
+])
+def config_version(request) -> int:
+    return request.param
 
 
-@pytest.fixture()
-def dummy_config(mocker, tmpdir_factory):
-    fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(DUMMY_CONFIG, encoding="UTF-8")
-    mocker.patch("esque.config.config_path", return_value=fn)
-    yield fn
-
-
-@pytest.fixture()
-def config(dummy_config):
-    config = Config()
-    yield config
+@pytest.fixture
+def config(config_version, load_config, mock_config_path):
+    old_conf, _ = load_config(config_version)
+    new_path = migrate(Path(old_conf))
+    mock_config_path(new_path)
+    return Config()
 
 
 def test_available_contexts(config: Config):

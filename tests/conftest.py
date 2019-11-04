@@ -1,14 +1,17 @@
 import json
 import random
+import tempfile
 from concurrent.futures import Future
+from contextlib import ExitStack
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Iterable, Tuple, Dict
+from typing import Callable, Iterable, Tuple, Dict, Union
 from unittest import mock
 
 import confluent_kafka
 import pytest
 import yaml
+from _pytest.fixtures import FixtureRequest
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
@@ -18,6 +21,7 @@ from pykafka.exceptions import NoBrokersAvailableError
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import sample_config_path, Config
+from esque.config.migration import CURRENT_VERSION
 from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
@@ -56,16 +60,54 @@ def non_interactive_cli_runner(test_config: Config):
         yield CliRunner()
 
 
-@pytest.fixture()
-def test_config_path(mocker, tmpdir_factory):
-    fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
-    mocker.patch("esque.config.config_path", return_value=fn)
-    yield fn
+# use for typing only
+def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
+    ...
 
 
 @pytest.fixture()
-def test_config(test_config_path, request):
+def load_config() -> config_loader:
+    """
+    Loads config of the given version, saves it into a named temporary file and then returns both that
+    file and the config content.
+    :return: Tuple[NamedTemporaryFile, str] where str is the content of the config and the tempfile
+    """
+    stack = ExitStack()
+
+    def loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
+        original_path = get_path_for_config_version(config_version)
+        data = original_path.read_text()
+        tmp_config = tempfile.NamedTemporaryFile(mode="w", suffix=original_path.suffix)
+        stack.enter_context(tmp_config)
+        tmp_config.file.write(data)
+        tmp_config.file.flush()
+        return tmp_config.name, data
+
+    with stack:
+        yield loader
+
+
+def get_path_for_config_version(config_version: int) -> Path:
+    base_path = Path(__file__).parent / "legacy_configs"
+    if config_version == 0:
+        return base_path / "v0.cfg"
+    return base_path / f"v{config_version}.yaml"
+
+
+@pytest.fixture()
+def mock_config_path(mocker: mock) -> Callable[[Union[str, Path]], None]:
+    def mockit(path: Union[str, Path]) -> None:
+        mocker.patch("esque.config.config_path", return_value=Path(path).resolve())
+
+    return mockit
+
+
+@pytest.fixture()
+def test_config(
+    request: FixtureRequest, mock_config_path: Callable[[Union[str, Path]], None], load_config: config_loader
+):
+    conffile, _ = load_config()
+    mock_config_path(conffile.name)
     esque_config = Config()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")
