@@ -217,7 +217,7 @@ class Topic(KafkaResource):
         schema = yamale.make_schema(SchemaPath, validators=validators.all_validators())
         with NamedTemporaryFile("w+", suffix=".yml") as current_config:
             current_config.write(self.to_yaml())
-            current_config.seek(0)
+            current_config.flush()
             data = yamale.make_data(current_config.name)
         try:
             yamale.validate(schema, data, strict=True)
