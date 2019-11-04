@@ -54,10 +54,13 @@ class StringFloat(Number):
         return super().validate(float(value))
 
 
-class KeyValuePairs(Validator):
-    """ validates colon seperated key/value pairs chained with commas, also '' and '*' e.g.: '0:0,1:1,2:2' """
+class ReplicaList(Validator):
+    """
+    Validates a list of replicas in the form of '<broker_id>:<partition>' (e.g. `'0:0,1:1,2:2'`).
+    Empty string for empty list or '*' for all replicas area also valid values.
+    """
 
-    tag = "key_value"
+    tag = "replica_list"
 
     def _is_valid(self, value) -> bool:
         if not isstr(value):
