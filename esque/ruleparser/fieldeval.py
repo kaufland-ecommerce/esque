@@ -50,7 +50,10 @@ class FieldEval:
             header_name = field_name.split(".")[-1]
             if self.__message.headers() is not None:
                 message_headers = decode_message(message=self.__message).headers
-                return next((message_header.value for message_header in message_headers if message_header.key == header_name), "no_header")
+                return next(
+                    (message_header.value for message_header in message_headers if message_header.key == header_name),
+                    "no_header",
+                )
             return "no_header"
         return -1
 
@@ -67,5 +70,8 @@ class FieldEval:
         elif self.__header_pattern.fullmatch(field_name):
             header_name = field_name.split(".")[-1]
             message_headers = self.__message.headers
-            return next((message_header.value for message_header in message_headers if message_header.key == header_name), "no_header")
+            return next(
+                (message_header.value for message_header in message_headers if message_header.key == header_name),
+                "no_header",
+            )
         return -1
