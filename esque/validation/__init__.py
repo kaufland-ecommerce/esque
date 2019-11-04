@@ -5,11 +5,11 @@ import yamale
 from esque.errors import TopicConfigNotValidException
 from . import validators
 
-SCHEMA_DIR = Path(__file__).resolve().parent / 'schemas'
+SCHEMA_DIR = Path(__file__).resolve().parent / "schemas"
 
 
 def validate_topic_config(topic_config: Path) -> None:
-    validate(topic_config, SCHEMA_DIR / 'topic.yaml')
+    validate(topic_config, SCHEMA_DIR / "topic.yaml")
 
 
 def validate(file: Path, schema: Path) -> None:
