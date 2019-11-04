@@ -10,7 +10,8 @@ include = [
   "scripts/auto_completion.sh",
   "README.md",
   "LICENSE",
-  "pyproject.toml"
+  "pyproject.toml",
+  "esque/validation/schemas/*.yaml"
   ]
 
 exclude = ["tests/**/*"]
