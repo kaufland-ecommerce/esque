@@ -37,7 +37,11 @@ def config_path() -> Path:
 
 
 def sample_config_path() -> Path:
-    return Path(__file__).parent / "sample_config.cfg"
+    return Path(__file__).parent / "sample_config.yaml"
+
+
+def config_schema_path() -> Path:
+    return Path(__file__).parent / "config_schema.yaml"
 
 
 class Config:

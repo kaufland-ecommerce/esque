@@ -6,7 +6,8 @@ import pytest
 from esque.config import Config
 from esque.config.migration import migrate
 from esque.errors import ContextNotDefinedException
-
+from tests.conftest import config_loader
+import yamale
 
 @pytest.fixture(params=[
     pytest.param(0, id="v0"),
@@ -17,11 +18,16 @@ def config_version(request) -> int:
 
 
 @pytest.fixture
-def config(config_version, load_config, mock_config_path):
+def config(config_version: int, load_config: config_loader, mock_config_path: Callable[[Path], None]):
     old_conf, _ = load_config(config_version)
     new_path = migrate(Path(old_conf))
     mock_config_path(new_path)
     return Config()
+
+
+def test_schema(config_version: int, load_config: config_loader):
+    old_conf, _ = load_config(config_version)
+    new_path = migrate(Path(old_conf))
 
 
 def test_available_contexts(config: Config):
