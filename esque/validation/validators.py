@@ -9,7 +9,7 @@ def all_validators() -> dict:
     validators[StringBool.tag] = StringBool
     validators[StringInt.tag] = StringInt
     validators[StringFloat.tag] = StringFloat
-    validators[StringDictionary.tag] = StringDictionary
+    validators[ReplicaList.tag] = ReplicaList
 
     return validators
 
