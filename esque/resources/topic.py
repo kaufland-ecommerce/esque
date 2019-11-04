@@ -1,23 +1,17 @@
 from collections import namedtuple
 from functools import total_ordering
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
-import yamale
 from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
-from esque.errors import TopicConfigNotValidException
-from esque.validation import validators
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
-
-SchemaPath = Path(__file__).parent.parent / "validation" / "schemas" / "topic.yml"
 
 
 class Partition(KafkaResource):
@@ -154,7 +148,6 @@ class Topic(KafkaResource):
 
         self.partition_data: Optional[List[Partition]] = None
         self.is_only_local = True
-        self._validate()
 
     # properties
     @property
@@ -205,24 +198,10 @@ class Topic(KafkaResource):
     def to_yaml(self, only_editable=False) -> str:
         return yaml.dump(self.as_dict(only_editable=only_editable), default_flow_style=False)
 
-    def update_from_yaml(self, data) -> None:
+    def update_from_yaml(self, data: Path) -> None:
         new_values = yaml.safe_load(data)
         for attr, value in new_values.items():
             setattr(self, attr, value)
-        self._validate()
-
-    def _validate(self):
-        if not self.config:
-            return
-        schema = yamale.make_schema(SchemaPath, validators=validators.all_validators())
-        with NamedTemporaryFile("w+", suffix=".yml") as current_config:
-            current_config.write(self.to_yaml())
-            current_config.flush()
-            data = yamale.make_data(current_config.name)
-        try:
-            yamale.validate(schema, data, strict=True)
-        except ValueError as validation_error:
-            raise TopicConfigNotValidException(validation_error)
 
     # object behaviour
     def __lt__(self, other: "Topic"):

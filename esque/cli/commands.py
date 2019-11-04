@@ -24,10 +24,11 @@ from esque.cli.output import (
 from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
 from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
 from esque.cluster import Cluster
-from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, sample_config_path
+from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
+from esque.validation import validate_topic_config
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -135,13 +136,15 @@ def create_topic(state: State, topic_name: str, like: str):
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
+    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yaml")
 
     # edit process can be aborted, ex. in vim via :q!
     if new_conf is None:
         click.echo("Change aborted")
         return
+    new_conf = Path(new_conf)
 
+    validate_topic_config(new_conf)
     local_topic = copy_to_local(topic)
     local_topic.update_from_yaml(new_conf)
     diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
