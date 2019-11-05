@@ -10,7 +10,8 @@ include = [
   "scripts/auto_completion.sh",
   "README.md",
   "LICENSE",
-  "pyproject.toml"
+  "pyproject.toml",
+  "esque/validation/schemas/*.yaml"
   ]
 
 exclude = ["tests/**/*"]
@@ -43,7 +44,7 @@ pendulum = "^2.0"
 pykafka = {git = "https://github.com/real-digital/pykafka.git", branch="feature/sasl-scram-support"}
 pyyaml = "^5.1"
 requests = "^2.22"
-yamale = "^2.0.1"
+yamale = "^2.0"
 
 # Dev Dependencies
 [tool.poetry.dev-dependencies]
@@ -65,5 +66,5 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [build-system]
-requires = ["poetry>=0.12"]
+requires = ["poetry>=1.0.0b3"]
 build-backend = "poetry.masonry.api"

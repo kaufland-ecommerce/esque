@@ -194,6 +194,10 @@ def green_bold(s: str) -> str:
     return bold(click.style(s, fg="green"))
 
 
+def red_bold(s: str) -> str:
+    return bold(click.style(s, fg="red"))
+
+
 STYLE_MAPPING = {
     "topic": green_bold,
     "cleanup.policy": bold,

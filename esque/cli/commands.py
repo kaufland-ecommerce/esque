@@ -1,4 +1,5 @@
 import pathlib
+import sys
 import time
 from pathlib import Path
 from shutil import copyfile
@@ -9,7 +10,7 @@ import yaml
 from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
-from esque.cli.helpers import HandleFileOnFinished, ensure_approval, isatty
+from esque.cli.helpers import edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
 from esque.cli.output import (
     blue_bold,
@@ -20,14 +21,17 @@ from esque.cli.output import (
     pretty_new_topic_configs,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
+    red_bold,
 )
-from esque.clients.consumer import AvroFileConsumer, FileConsumer, PingConsumer
-from esque.clients.producer import AvroFileProducer, FileProducer, PingProducer
+from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
+from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
-from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, sample_config_path
+from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import EditCanceled
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
+from esque.validation import validate_editable_topic_config
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -103,6 +107,7 @@ def ctx(state: State, context: str):
                 click.echo(c)
     if context:
         state.config.context_switch(context)
+        click.echo(f"Switched to context: {context}")
 
 
 @create.command("topic")
@@ -135,20 +140,23 @@ def create_topic(state: State, topic_name: str, like: str):
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
-
-    # edit process can be aborted, ex. in vim via :q!
-    if new_conf is None:
-        click.echo("Change aborted")
+    try:
+        _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
+    except EditCanceled:
+        click.echo("Edit canceled")
+        return
+    local_topic = copy_to_local(topic)
+    local_topic.update_from_dict(new_conf)
+    diff = controller.diff_with_cluster(local_topic)
+    if not diff.has_changes:
+        click.echo("Nothing changed")
         return
 
-    local_topic = copy_to_local(topic)
-    local_topic.update_from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
-    click.echo(diff)
-
+    click.echo(pretty_topic_diffs({topic_name: diff}))
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
+    else:
+        click.echo("Edit canceled")
 
 
 @delete.command("topic")
@@ -163,7 +171,7 @@ def delete_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
-        assert topic_name not in (t.name for t in topic_controller.list_topics())
+        assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
     click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
 
@@ -240,10 +248,19 @@ def apply(state: State, file: str):
 @click.argument(
     "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
+@click.option(
+    "--consumers",
+    "-C",
+    required=False,
+    is_flag=True,
+    default=False,
+    help=f"Will output the consumergroups reading from this topic. "
+    f"{red_bold('Beware! This can be a really expensive operation.')}",
+)
 @output_format_option
 @error_handler
 @pass_state
-def describe_topic(state: State, topic_name: str, output_format: str):
+def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
     output_dict = {
@@ -252,6 +269,17 @@ def describe_topic(state: State, topic_name: str, output_format: str):
         "config": topic.config,
     }
 
+    if consumers:
+        consumergroup_controller = ConsumerGroupController(state.cluster)
+        groups = consumergroup_controller.list_consumer_groups()
+
+        consumergroups = [
+            group_name
+            for group_name in groups
+            if topic_name in consumergroup_controller.get_consumergroup(group_name).topics
+        ]
+
+        output_dict["consumergroups"] = consumergroups
     click.echo(format_output(output_dict, output_format))
 
 
@@ -327,59 +355,92 @@ def get_topics(state: State, prefix: str, output_format: str):
     click.echo(format_output(topic_names, output_format))
 
 
-@esque.command("transfer", help="Transfer messages of a topic from one environment to another.")
+@esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
 @click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=True)
-@click.option("-t", "--to", "to_context", help="Destination context", type=click.STRING, required=True)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, required=True)
-@click.option("-m", "--match", help="Match expression", type=click.STRING, required=False)
+@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=False)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize, required=False)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
-    "-k",
-    "--keep",
-    "keep_file",
-    help="Set this flag if the file with consumed messages should be kept.",
+    "--preserve-order",
+    help="Preserve the order of messages, regardless of their partition",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "--stdout",
+    "write_to_stdout",
+    help="Write messages to STDOUT or to an automatically generated file.",
     default=False,
     is_flag=True,
 )
 @error_handler
 @pass_state
-def transfer(
+def consume(
     state: State,
     topic: str,
     from_context: str,
-    to_context: str,
     numbers: int,
     match: str,
     last: bool,
     avro: bool,
-    keep_file: bool,
+    preserve_order: bool,
+    write_to_stdout: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
     directory_name = "message_" + unique_name
-    base_dir = Path(directory_name)
+    working_dir = Path(directory_name)
+    if not from_context:
+        from_context = state.config.current_context
+    if not write_to_stdout and from_context != state.config.current_context:
+        click.echo(f"Switching to context: {from_context}")
     state.config.context_switch(from_context)
-
-    with HandleFileOnFinished(base_dir, keep_file) as working_dir:
-        number_consumed_messages = _consume_to_files(
-            working_dir, topic, group_id, from_context, numbers, avro, match, last
+    if not write_to_stdout:
+        working_dir.mkdir(parents=True)
+        click.echo("Creating directory " + blue_bold(working_dir.absolute().name))
+        click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+    if preserve_order:
+        partitions = []
+        for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
+            partitions.append(partition.partition_id)
+        total_number_of_consumed_messages = consume_to_file_ordered(
+            working_dir=working_dir,
+            topic=topic,
+            group_id=group_id,
+            partitions=partitions,
+            numbers=numbers,
+            avro=avro,
+            match=match,
+            last=last,
+            write_to_stdout=write_to_stdout,
+        )
+    else:
+        total_number_of_consumed_messages = consume_to_files(
+            working_dir=working_dir,
+            topic=topic,
+            group_id=group_id,
+            numbers=numbers,
+            avro=avro,
+            match=match,
+            last=last,
+            write_to_stdout=write_to_stdout,
         )
 
-        if number_consumed_messages == 0:
-            click.echo(click.style("Execution stopped, because no messages consumed.", fg="red"))
-            click.echo(bold("Possible reasons: The topic is empty or the starting offset was set too high."))
-            return
-
-        click.echo("\nReady to produce to context " + blue_bold(to_context) + " and target topic " + blue_bold(topic))
-
-        if not ensure_approval("Do you want to proceed?\n", no_verify=state.no_verify):
-            return
-
-        state.config.context_switch(to_context)
-        _produce_from_files(topic, to_context, working_dir, avro)
+    if not write_to_stdout:
+        click.echo("Output generated to " + blue_bold(directory_name))
+        if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
+            click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
+        else:
+            click.echo(
+                "Found only "
+                + bold(str(total_number_of_consumed_messages))
+                + " messages in topic, out of "
+                + blue_bold(str(numbers))
+                + " required."
+            )
 
 
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
@@ -390,51 +451,81 @@ def transfer(
     metavar="<directory>",
     help="Sets the directory that contains Kafka messages",
     type=click.STRING,
-    required=True,
+    required=False,
 )
+@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=False)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option(
+    "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
+)
+@click.option(
+    "-y",
+    "--ignore-errors",
+    "ignore_stdin_errors",
+    help="When reading from STDIN, use malformed strings as message values (ignore JSON).",
+    default=False,
+    is_flag=True,
+)
 @error_handler
 @pass_state
-def produce(state: State, topic: str, directory: str, avro: bool):
-    _produce_from_files(topic, state.config.current_context, Path(directory), avro)
-
-
-def _produce_from_files(topic: str, to_context: str, working_dir: pathlib.Path, avro: bool):
-    if avro:
-        producer = AvroFileProducer(working_dir)
-    else:
-        producer = FileProducer(working_dir)
-    click.echo("\nStart producing to topic " + blue_bold(topic) + " in target context " + blue_bold(to_context))
-    number_produced_messages = producer.produce(topic)
-    click.echo(
-        green_bold(str(number_produced_messages))
-        + " messages successfully produced to context "
-        + green_bold(to_context)
-        + " and topic "
-        + green_bold(topic)
-        + "."
-    )
-
-
-def _consume_to_files(
-    working_dir: pathlib.Path,
+def produce(
+    state: State,
     topic: str,
-    group_id: str,
-    from_context: str,
-    numbers: int,
+    to_context: str,
+    directory: str,
     avro: bool,
-    match: str,
-    last: bool,
-) -> int:
-    if avro:
-        consumer = AvroFileConsumer(group_id, topic, working_dir, last)
+    match: str = None,
+    read_from_stdin: bool = False,
+    ignore_stdin_errors: bool = False,
+):
+    if directory is None and not read_from_stdin:
+        click.echo("You have to provide the directory or use a --stdin flag")
     else:
-        consumer = FileConsumer(group_id, topic, working_dir, last)
-    click.echo("\nStart consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
-    number_consumed_messages = consumer.consume(int(numbers))
-    click.echo(blue_bold(str(number_consumed_messages)) + " messages consumed.")
-
-    return number_consumed_messages
+        if not to_context:
+            to_context = state.config.current_context
+        if directory is not None:
+            working_dir = pathlib.Path(directory)
+            if not working_dir.exists():
+                click.echo("You have to provide an existing directory")
+                exit(1)
+        state.config.context_switch(to_context)
+        stdin = click.get_text_stream("stdin")
+        if read_from_stdin and isatty(stdin):
+            click.echo(
+                "Type the messages to produce, "
+                + ("in JSON format, " if not ignore_stdin_errors else "")
+                + blue_bold("one per line")
+                + ". End with "
+                + blue_bold("CTRL+D")
+            )
+        elif read_from_stdin and not isatty(stdin):
+            click.echo("Reading messages from an external source, " + blue_bold("one per line"))
+        else:
+            click.echo(
+                "Producing from directory "
+                + directory
+                + " to topic "
+                + blue_bold(topic)
+                + " in target context "
+                + blue_bold(to_context)
+            )
+        producer = ProducerFactory().create_producer(
+            topic_name=topic,
+            working_dir=working_dir if not read_from_stdin else None,
+            avro=avro,
+            match=match,
+            ignore_stdin_errors=ignore_stdin_errors,
+        )
+        total_number_of_messages_produced = producer.produce()
+        click.echo(
+            green_bold(str(total_number_of_messages_produced))
+            + " messages successfully produced to context "
+            + blue_bold(to_context)
+            + " and topic "
+            + blue_bold(topic)
+            + "."
+        )
 
 
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
@@ -447,14 +538,12 @@ def ping(state: State, times: int, wait: int):
     deltas = []
     try:
         topic_controller.create_topics([Topic(PING_TOPIC)])
-
-        producer = PingProducer()
-        consumer = PingConsumer(PING_GROUP_ID, PING_TOPIC, True)
-
+        producer = PingProducer(PING_TOPIC)
+        consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
 
         for i in range(times):
-            producer.produce(PING_TOPIC)
+            producer.produce()
             _, delta = consumer.consume()
             deltas.append(delta)
             click.echo(f"m_seq={i} time={delta:.2f}ms")

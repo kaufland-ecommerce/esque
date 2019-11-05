@@ -17,7 +17,6 @@ def test_correct_amount_of_messages(mocker, non_interactive_cli_runner: CliRunne
     topic_controller_delete_topic = mocker.patch.object(TopicController, "delete_topic", mocker.Mock())
 
     result = non_interactive_cli_runner.invoke(ping)
-
     assert result.exit_code == 0
     assert topic_controller_delete_topic.call_count == 1
 

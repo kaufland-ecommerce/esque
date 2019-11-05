@@ -1,11 +1,12 @@
 import json
 import random
 import tempfile
+import time
 from concurrent.futures import Future
 from contextlib import ExitStack
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Iterable, Tuple, Dict, Union
+from typing import Callable, Dict, Iterable, Tuple, Union
 from unittest import mock
 
 import confluent_kafka
@@ -15,15 +16,16 @@ from _pytest.fixtures import FixtureRequest
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import Producer, TopicPartition
+from confluent_kafka.cimpl import Producer, Producer as ConfluenceProducer, TopicPartition
 from pykafka.exceptions import NoBrokersAvailableError
 
 from esque.cli.options import State
 from esque.cluster import Cluster
-from esque.config import sample_config_path, Config
+from esque.config import Config
 from esque.config.migration import CURRENT_VERSION
-from esque.errors import raise_for_kafka_error
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import raise_for_kafka_error
+from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
@@ -146,6 +148,13 @@ def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]
 
 
 @pytest.fixture()
+def topic_multiple_partitions(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
+    topic_id = "".join(random.choices(ascii_letters, k=5))
+    for topic, _ in topic_factory(10, topic_id):
+        yield topic
+
+
+@pytest.fixture()
 def source_topic(
     num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
 ) -> Iterable[Tuple[str, int]]:
@@ -187,6 +196,151 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], I
 @pytest.fixture()
 def topic_controller(cluster: Cluster):
     yield cluster.topic_controller
+
+
+@pytest.fixture()
+def messages_ordered_same_partition() -> Iterable[KafkaMessage]:
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0),
+        KafkaMessage(key="i", value="v2", partition=0),
+        KafkaMessage(key="h", value="v3", partition=0),
+        KafkaMessage(key="g", value="v4", partition=0),
+        KafkaMessage(key="f", value="v5", partition=0),
+        KafkaMessage(key="e", value="v6", partition=0),
+        KafkaMessage(key="d", value="v7", partition=0),
+        KafkaMessage(key="c", value="v8", partition=0),
+        KafkaMessage(key="b", value="v9", partition=0),
+        KafkaMessage(key="a", value="v10", partition=0),
+    ]
+    yield ordered_messages
+
+
+@pytest.fixture()
+def messages_ordered_same_partition_with_headers() -> Iterable[KafkaMessage]:
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
+        KafkaMessage(key="i", value="v2", partition=0, headers=[MessageHeader(key="hk2", value=None)]),
+        KafkaMessage(key="h", value="v3", partition=0, headers=[MessageHeader(key="hk3", value="hv3")]),
+        KafkaMessage(key="g", value="v4", partition=0, headers=[MessageHeader(key="hk4", value=None)]),
+        KafkaMessage(key="f", value="v5", partition=0, headers=[MessageHeader(key="hk5", value="hv5")]),
+        KafkaMessage(key="e", value="v6", partition=0, headers=[MessageHeader(key="hk6", value="hv6")]),
+        KafkaMessage(key="d", value="v7", partition=0, headers=[MessageHeader(key="hk7", value="hv7")]),
+        KafkaMessage(key="c", value="v8", partition=0, headers=[MessageHeader(key="hk8", value="hv8")]),
+        KafkaMessage(key="b", value="v9", partition=0, headers=[MessageHeader(key="hk9", value="hv9")]),
+        KafkaMessage(key="a", value="v10", partition=0, headers=[MessageHeader(key="hk10", value="hv10")]),
+    ]
+    yield ordered_messages
+
+
+@pytest.fixture()
+def messages_ordered_different_partitions() -> Iterable[KafkaMessage]:
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0),
+        KafkaMessage(key="i", value="v2", partition=1),
+        KafkaMessage(key="h", value="v3", partition=2),
+        KafkaMessage(key="g", value="v4", partition=3),
+        KafkaMessage(key="f", value="v5", partition=2),
+        KafkaMessage(key="e", value="v6", partition=1),
+        KafkaMessage(key="d", value="v7", partition=0),
+        KafkaMessage(key="c", value="v8", partition=2),
+        KafkaMessage(key="b", value="v9", partition=3),
+        KafkaMessage(key="a", value="v10", partition=1),
+    ]
+    yield ordered_messages
+
+
+@pytest.fixture()
+def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage]:
+    ordered_messages = [
+        KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
+        KafkaMessage(key="i", value="v2", partition=1, headers=[MessageHeader(key="hk2", value=None)]),
+        KafkaMessage(key="h", value="v3", partition=2, headers=[MessageHeader(key="hk3", value="hv3")]),
+        KafkaMessage(key="g", value="v4", partition=3, headers=[MessageHeader(key="hk4", value=None)]),
+        KafkaMessage(key="f", value="v5", partition=2, headers=[MessageHeader(key="hk5", value="hv5")]),
+        KafkaMessage(key="e", value="v6", partition=1, headers=[MessageHeader(key="hk6", value="hv6")]),
+        KafkaMessage(key="d", value="v7", partition=0, headers=[MessageHeader(key="hk7", value="hv7")]),
+        KafkaMessage(key="c", value="v8", partition=2, headers=[MessageHeader(key="hk8", value="hv8")]),
+        KafkaMessage(key="b", value="v9", partition=3, headers=[MessageHeader(key="hk9", value="hv9")]),
+        KafkaMessage(key="a", value="v10", partition=1, headers=[MessageHeader(key="hk10", value="hv10")]),
+    ]
+    yield ordered_messages
+
+
+@pytest.fixture()
+def produced_messages_different_partitions(messages_ordered_different_partitions: Iterable[KafkaMessage]):
+    def _produce(topic_name: str, producer: ConfluenceProducer):
+        for message in messages_ordered_different_partitions:
+            producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+            time.sleep(0.5)
+            producer.flush()
+
+    return _produce
+
+
+@pytest.fixture()
+def produced_messages_different_partitions_with_headers(
+    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage]
+):
+    def _produce(topic_name: str, producer: ConfluenceProducer):
+        for message in messages_ordered_different_partition_with_headers:
+            producer.produce(
+                topic=topic_name,
+                key=message.key,
+                value=message.value,
+                partition=message.partition,
+                headers=message.headers,
+            )
+            time.sleep(0.5)
+            producer.flush()
+
+    return _produce
+
+
+@pytest.fixture()
+def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
+    def _produce(topic_name: str, producer: ConfluenceProducer):
+        for message in messages_ordered_same_partition:
+            producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+            time.sleep(0.5)
+            producer.flush()
+
+    return _produce
+
+
+@pytest.fixture()
+def produced_messages_same_partition_with_headers(
+    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]
+):
+    def _produce(topic_name: str, producer: ConfluenceProducer):
+        for message in messages_ordered_same_partition_with_headers:
+            producer.produce(
+                topic=topic_name,
+                key=message.key,
+                value=message.value,
+                partition=message.partition,
+                headers=message.headers,
+            )
+            time.sleep(0.5)
+            producer.flush()
+
+    return _produce
+
+
+@pytest.fixture()
+def produced_avro_messages_with_headers(messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]):
+    def _produce(topic_name: str, producer: AvroProducer):
+        for message in messages_ordered_same_partition_with_headers:
+            producer.produce(
+                topic=topic_name,
+                key=message.key,
+                value=message.value,
+                partition=message.partition,
+                headers=message.headers,
+            )
+            time.sleep(0.5)
+            producer.flush()
+
+    return _produce
 
 
 @pytest.fixture()

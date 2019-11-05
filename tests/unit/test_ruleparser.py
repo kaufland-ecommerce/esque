@@ -1,8 +1,6 @@
 from unittest import TestCase
 
-from esque.ruleparser.expressionelement import ArithmeticBinaryOperator
-from esque.ruleparser.expressionelement import ComparisonUnaryOperator
-from esque.ruleparser.expressionelement import Operator
+from esque.ruleparser.expressionelement import ArithmeticBinaryOperator, ComparisonUnaryOperator, Operator
 from esque.ruleparser.ruleengine import RuleTree
 
 
