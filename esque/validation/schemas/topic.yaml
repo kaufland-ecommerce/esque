@@ -1,5 +1,5 @@
-num_partitions: int(min=0)
-replication_factor: int(min=0)
+num_partitions: int(min=1)
+replication_factor: int(min=1)
 config:
   cleanup.policy: enum('', 'compact', 'delete', 'compact,delete', 'delete,compact', required=False)
   compression.type: enum('uncompressed', 'zstd', 'lz4', 'snappy', 'gzip', 'producer', required=False)
