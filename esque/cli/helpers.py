@@ -1,6 +1,6 @@
 import pathlib
 import shutil
-from typing import Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union, Tuple
 
 import click
 import yaml
@@ -42,7 +42,7 @@ class HandleFileOnFinished:
             shutil.rmtree(self._dir)
 
 
-def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None) -> Dict:
+def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None) -> Tuple[str, Dict]:
     while True:
         yaml_str: Optional[str] = click.edit(yaml_str, extension=".yaml")
 
@@ -57,7 +57,7 @@ def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None)
             _handle_edit_exception(e)
         else:
             break
-    return config_data
+    return yaml_str, config_data
 
 
 def _handle_edit_exception(e: Union[ScannerError, YamaleValidationException]) -> None:

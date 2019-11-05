@@ -121,7 +121,7 @@ class TopicDiff:
         return f"<TopicDiff[{str(self._diffs)}>"
 
 
-def copy_to_local(topic):
+def copy_to_local(topic: "Topic") -> "Topic":
     return Topic(topic.name, topic.num_partitions, topic.replication_factor, topic.config)
 
 

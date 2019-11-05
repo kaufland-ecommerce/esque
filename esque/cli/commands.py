@@ -141,7 +141,7 @@ def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
     try:
-        new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
+        _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
     except EditCanceled:
         click.echo("Edit canceled")
         return
