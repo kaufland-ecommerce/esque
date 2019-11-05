@@ -10,8 +10,8 @@ import yaml
 from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
-from esque.cli.helpers import ensure_approval, isatty
-from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
+from esque.cli.helpers import edit_yaml, ensure_approval, isatty
+from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -23,13 +23,15 @@ from esque.cli.output import (
     pretty_unchanged_topic_configs,
     red_bold,
 )
-from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
+from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
-from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
+from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import EditCanceled
 from esque.resources.broker import Broker
-from esque.resources.topic import copy_to_local, Topic
+from esque.resources.topic import Topic, copy_to_local
+from esque.validation import validate_editable_topic_config
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -138,20 +140,23 @@ def create_topic(state: State, topic_name: str, like: str):
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    new_conf = click.edit(topic.to_yaml(only_editable=True), extension=".yml")
-
-    # edit process can be aborted, ex. in vim via :q!
-    if new_conf is None:
-        click.echo("Change aborted")
+    try:
+        _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
+    except EditCanceled:
+        click.echo("Edit canceled")
+        return
+    local_topic = copy_to_local(topic)
+    local_topic.update_from_dict(new_conf)
+    diff = controller.diff_with_cluster(local_topic)
+    if not diff.has_changes:
+        click.echo("Nothing changed")
         return
 
-    local_topic = copy_to_local(topic)
-    local_topic.update_from_yaml(new_conf)
-    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
-    click.echo(diff)
-
+    click.echo(pretty_topic_diffs({topic_name: diff}))
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
+    else:
+        click.echo("Edit canceled")
 
 
 @delete.command("topic")
