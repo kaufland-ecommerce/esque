@@ -150,6 +150,10 @@ class TopicConfigNotValidException(YamaleValidationException):
     pass
 
 
+class EsqueConfigNotValidException(YamaleValidationException):
+    pass
+
+
 ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
     3: TopicDoesNotExistException,
     36: TopicAlreadyExistsException,

@@ -10,7 +10,7 @@ from click.testing import CliRunner
 
 from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
-from esque.errors import EditCanceled
+from esque.errors import EditCanceled, TopicConfigNotValidException
 from esque.validation import validate
 
 
@@ -90,6 +90,7 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
     mocker.patch.object(click, "edit", return_value=yaml.dump(config_dict, default_flow_style=False))
     interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
 
-    validated_config_dict, schema_path = validator_mock.call_args[0]
+    validated_config_dict, schema_path, exc_type = validator_mock.call_args[0]
     assert schema_path.name == "editable_topic.yaml"
     assert validated_config_dict == config_dict
+    assert exc_type == TopicConfigNotValidException
