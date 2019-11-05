@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 import click
 
 from esque.cli.environment import ESQUE_CONF_PATH
+from esque.config.migration import get_config_version, check_config_version
 from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
@@ -40,15 +41,12 @@ def sample_config_path() -> Path:
     return Path(__file__).parent / "sample_config.yaml"
 
 
-def config_schema_path() -> Path:
-    return Path(__file__).parent / "config_schema.yaml"
-
-
 class Config:
     def __init__(self):
         self._cfg = configparser.ConfigParser()
         self._current_dict: Optional[Dict[str, str]] = None
         if config_path().exists():
+            check_config_version(config_path())
             self._cfg.read(config_path())
         else:
             raise ConfigNotExistsException()

@@ -7,10 +7,20 @@ from typing import Any, Callable, ClassVar, Dict, List, Tuple, Type, TypeVar, ca
 
 import yaml
 
+from esque.errors import ConfigTooOld, ConfigTooNew
+
 logger = logging.getLogger(__name__)
 
 CURRENT_VERSION = 1
 MIGRATORS: Dict[int, Type["BaseMigrator"]] = {}
+
+
+def check_config_version(config_path: Path) -> None:
+    version = get_config_version(config_path)
+    if version < CURRENT_VERSION:
+        raise ConfigTooOld(version, CURRENT_VERSION)
+    elif version > CURRENT_VERSION:
+        raise ConfigTooNew(version, CURRENT_VERSION)
 
 
 def get_config_version(config_path: Path) -> int:
