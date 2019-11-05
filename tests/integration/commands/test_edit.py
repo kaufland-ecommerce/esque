@@ -1,3 +1,5 @@
+from unittest import mock
+
 import click
 import confluent_kafka
 import pytest
@@ -8,7 +10,8 @@ from click.testing import CliRunner
 
 from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
-from esque.errors import TopicConfigNotValidException
+from esque.errors import EditCanceled
+from esque.validation import validate
 
 
 @pytest.mark.integration
@@ -71,48 +74,22 @@ def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunn
 
 
 @pytest.mark.integration
-def test_topic_creation_with_unknown_key_fails(
-    interactive_cli_runner: CliRunner,
-    monkeypatch,
-    topic_controller: TopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic: str,
-):
+def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner, topic_controller):
+    validator_mock = mocker.patch(f"{validate.__module__}.{validate.__name__}", side_effect=EditCanceled())
+    config_dict = {
+        "config": {
+            "cleanup.policy": "delete",
+            "compression.type": "producer",
+            "delete.retention.ms": "123456789",
+            "segment.jitter.ms": "0",
+            "segment.ms": "123456789",
+            "unclean.leader.election.enable": "true",
+        }
+    }
 
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert topic in topics
+    mocker.patch.object(click, "edit", return_value=yaml.dump(config_dict, default_flow_style=False))
+    interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
 
-    config_dict = {"config": {"foo.bar.baz": "true"}}
-
-    def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
-        return yaml.dump(config_dict, default_flow_style=False)
-
-    monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
-
-    assert result.exception is not None
-    assert isinstance(result.exception, TopicConfigNotValidException)
-
-
-@pytest.mark.integration
-def test_topic_creation_with_malformed_key_fails(
-    interactive_cli_runner: CliRunner,
-    monkeypatch,
-    topic_controller: TopicController,
-    confluent_admin_client: confluent_kafka.admin.AdminClient,
-    topic: str,
-):
-
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    assert topic in topics
-
-    config_dict = {"config": {"cleanup.policy": "foo_bar_baz"}}
-
-    def mock_edit_function(text=None, editor=None, env=None, require_save=True, extension=".txt", filename=None):
-        return yaml.dump(config_dict, default_flow_style=False)
-
-    monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=True)
-
-    assert result.exception is not None
-    assert isinstance(result.exception, TopicConfigNotValidException)
+    validated_config_dict, schema_path = validator_mock.call_args[0]
+    assert schema_path.name == "editable_topic.yaml"
+    assert validated_config_dict == config_dict
