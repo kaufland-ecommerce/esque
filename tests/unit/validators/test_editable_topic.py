@@ -35,7 +35,7 @@ def valid_config() -> Dict:
             "segment.jitter.ms": "0",
             "segment.ms": "123456789",
             "unclean.leader.election.enable": "true",
-        },
+        }
     }
 
 

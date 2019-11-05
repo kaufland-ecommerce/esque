@@ -1,6 +1,5 @@
 from collections import namedtuple
 from functools import total_ordering
-from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
