@@ -17,6 +17,10 @@ def validate_editable_topic_config(editable_topic_config: Dict) -> None:
     validate(editable_topic_config, SCHEMA_DIR / "editable_topic.yaml")
 
 
+def validate_esque_config(editable_topic_config: Dict) -> None:
+    validate(editable_topic_config, SCHEMA_DIR / "esque_config.yaml")
+
+
 def validate(data: Dict, schema: Path) -> None:
     schema = yamale.make_schema(schema, validators=validators.all_validators())
     try:

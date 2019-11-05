@@ -31,7 +31,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import EditCanceled
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
-from esque.validation import validate_editable_topic_config
+from esque.validation import validate_editable_topic_config, validate_esque_config
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -140,11 +140,9 @@ def create_topic(state: State, topic_name: str, like: str):
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    try:
-        _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
-    except EditCanceled:
-        click.echo("Edit canceled")
-        return
+
+    _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
+
     local_topic = copy_to_local(topic)
     local_topic.update_from_dict(new_conf)
     diff = controller.diff_with_cluster(local_topic)
@@ -156,7 +154,7 @@ def edit_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
     else:
-        click.echo("Edit canceled")
+        click.echo("canceled")
 
 
 @delete.command("topic")
@@ -560,4 +558,6 @@ def ping(state: State, times: int, wait: int):
 @edit.command("config", help="Edit your esque config file.")
 @error_handler
 def edit_config():
-    click.edit(filename=config_path().as_posix())
+    old_yaml = config_path().read_text()
+    new_yaml, _ = edit_yaml(old_yaml, validator=validate_esque_config)
+    config_path().write_text(new_yaml)
