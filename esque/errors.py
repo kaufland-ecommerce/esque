@@ -45,6 +45,11 @@ class ExceptionWithMessage(ClickException):
         return f"{type(self).__name__}: {self.message}"
 
 
+class EditCanceled(ExceptionWithMessage):
+    def __init__(self):
+        super().__init__("Edit canceled.")
+
+
 class ConfigException(ExceptionWithMessage):
     pass
 

@@ -1,12 +1,15 @@
 import pathlib
 import shutil
+from typing import Callable, Dict, Optional, Union
 
 import click
+import yaml
+from yaml.scanner import ScannerError
 
-from esque.errors import NoConfirmationPossibleException
+from esque.errors import EditCanceled, NoConfirmationPossibleException, YamaleValidationException
 
 
-# private function which we can mock
+# private function, which we can mock
 def _isatty(stream) -> bool:
     return stream.isatty()
 
@@ -37,3 +40,31 @@ class HandleFileOnFinished:
     def __exit__(self, exc_type, exc_val, exc_tb):
         if not self.keep_file and self._dir.exists():
             shutil.rmtree(self._dir)
+
+
+def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None) -> Dict:
+    while True:
+        yaml_str: Optional[str] = click.edit(yaml_str, extension=".yaml")
+
+        # edit process can be aborted, ex. in vim via :q!
+        if yaml_str is None:
+            raise EditCanceled()
+        try:
+            config_data = yaml.safe_load(yaml_str)
+            if validator:
+                validator(config_data)
+        except (ScannerError, YamaleValidationException) as e:
+            _handle_edit_exception(e)
+        else:
+            break
+    return config_data
+
+
+def _handle_edit_exception(e: Union[ScannerError, YamaleValidationException]) -> None:
+    if isinstance(e, ScannerError):
+        click.echo("Error parsing yaml:")
+    else:
+        click.echo("Error validating yaml:")
+    click.echo(str(e))
+    if not ensure_approval("Continue Editing?"):
+        raise EditCanceled()
