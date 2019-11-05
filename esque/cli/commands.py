@@ -147,11 +147,16 @@ def edit_topic(state: State, topic_name: str):
         return
     local_topic = copy_to_local(topic)
     local_topic.update_from_dict(new_conf)
-    diff = pretty_topic_diffs({topic_name: controller.diff_with_cluster(local_topic)})
-    click.echo(diff)
+    diff = controller.diff_with_cluster(local_topic)
+    if not diff.has_changes:
+        click.echo("Nothing changed")
+        return
 
+    click.echo(pretty_topic_diffs({topic_name: diff}))
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
+    else:
+        click.echo("Edit canceled")
 
 
 @delete.command("topic")
