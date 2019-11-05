@@ -27,8 +27,8 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config.migration import migrate
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import EditCanceled
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 from esque.validation import validate_editable_topic_config, validate_esque_config
@@ -555,9 +555,21 @@ def ping(state: State, times: int, wait: int):
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
 
 
-@edit.command("config", help="Edit your esque config file.")
+@esque.group(help="Work with esque config")
+def config():
+    pass
+
+
+@config.command("edit", help="Edit your esque config file.")
 @error_handler
-def edit_config():
+def config_edit():
     old_yaml = config_path().read_text()
     new_yaml, _ = edit_yaml(old_yaml, validator=validate_esque_config)
     config_path().write_text(new_yaml)
+
+
+@config.command("migrate", help="Migrate your config to current version")
+@error_handler
+def config_migrate():
+    new_path, backup = migrate(config_path())
+    click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")

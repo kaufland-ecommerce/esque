@@ -3,7 +3,7 @@ import io
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, List, Tuple, Type, TypeVar, cast
+from typing import Any, Callable, ClassVar, Dict, List, Tuple, Type, TypeVar, cast, Optional
 
 import yaml
 
@@ -20,22 +20,30 @@ def get_config_version(config_path: Path) -> int:
         return yaml.safe_load(o)["version"]
 
 
-def migrate(config_path: Path) -> Path:
+def migrate(config_path: Path) -> Tuple[Path, Optional[Path]]:
+    """
+    Migrates the config at `config_path` to the new config version.
+    :param config_path: The config to migrate.
+    :return: (new path, backup)
+    """
     old_version = get_config_version(config_path)
     if old_version == CURRENT_VERSION:
         logger.info("Config already at latest version. Nothing to do.")
-        return config_path
+        return config_path, None
     logger.info(f"Migrating config from version {old_version} to {CURRENT_VERSION}")
 
     last_path = config_path
     last_data = None
     migrator = None
+    backup = None
     for new_version in range(old_version + 1, CURRENT_VERSION + 1):
         migrator = MIGRATORS[new_version](last_path, last_data)
+        if backup is None:
+            backup = migrator.backup()
         last_path = migrator.new_config_path
         last_data = migrator.new_data
     migrator.save()
-    return last_path
+    return last_path, backup
 
 
 class BaseMigrator:
