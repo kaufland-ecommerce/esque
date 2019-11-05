@@ -1,18 +1,17 @@
-from functools import wraps
 from pathlib import Path
 from typing import Callable
 
 import pytest
-from esque.config import Config
-from esque.config.migration import migrate
-from esque.errors import ContextNotDefinedException
-from tests.conftest import config_loader
-import yamale
+import yaml
 
-@pytest.fixture(params=[
-    pytest.param(0, id="v0"),
-    pytest.param(1, id="v1"),
-])
+from esque.config import Config
+from esque.config.migration import CURRENT_VERSION, migrate
+from esque.errors import ContextNotDefinedException
+from esque.validation import validate_esque_config
+from tests.conftest import config_loader
+
+
+@pytest.fixture(params=[pytest.param(version, id=f"v{version}") for version in range(0, CURRENT_VERSION + 1)])
 def config_version(request) -> int:
     return request.param
 
@@ -20,14 +19,26 @@ def config_version(request) -> int:
 @pytest.fixture
 def config(config_version: int, load_config: config_loader, mock_config_path: Callable[[Path], None]):
     old_conf, _ = load_config(config_version)
-    new_path = migrate(Path(old_conf))
+    new_path, _ = migrate(Path(old_conf))
     mock_config_path(new_path)
     return Config()
 
 
+def test_backup(config_version: int, load_config: config_loader):
+    old_conf, old_yaml = load_config(config_version)
+    _, backup = migrate(Path(old_conf))
+    if config_version == CURRENT_VERSION:
+        assert backup is None, "No need for backup"
+        return
+
+    assert backup.read_text() == old_yaml
+
+
 def test_schema(config_version: int, load_config: config_loader):
     old_conf, _ = load_config(config_version)
-    new_path = migrate(Path(old_conf))
+    new_path, _ = migrate(Path(old_conf))
+
+    validate_esque_config(yaml.safe_load(new_path.read_text()))
 
 
 def test_available_contexts(config: Config):
