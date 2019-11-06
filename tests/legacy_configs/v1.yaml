@@ -17,8 +17,8 @@ contexts:
       - node02.cool-domain.com:9093
       - node03.cool-domain.com:9093
     security_protocol: PLAINTEXT
-    defaults:
-      num_paritions: 1
+    default_values:
+      num_partitions: 1
       replication_factor: 2
   context_4:
     bootstrap_servers:
@@ -28,9 +28,11 @@ contexts:
     bootstrap_servers:
       - kafka:9094
     security_protocol: SASL_SSL
-    cafile: /my/ca.crt
-    certfile: /my/certificate.crt
-    keyfile: /my/certificate.key
-    mechanism: PLAIN
-    user: alice
-    password: alice-secret
+    ssl_params:
+      cafile: /my/ca.crt
+      certfile: /my/certificate.crt
+      keyfile: /my/certificate.key
+    sasl_params:
+      mechanism: PLAIN
+      user: alice
+      password: alice-secret

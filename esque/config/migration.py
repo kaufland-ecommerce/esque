@@ -106,7 +106,7 @@ class V1Migrator(BaseMigrator):
 
     def serialize(self) -> str:
         buffer = io.StringIO()
-        yaml.dump(self.new_data, buffer, indentdefault_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
+        yaml.dump(self.new_data, buffer, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
         return buffer.getvalue()
 
     def _translate_data(self):
@@ -147,7 +147,7 @@ class V1Migrator(BaseMigrator):
             data["replication_factor"] = defaults["replication_factor"]
         if "partitions" in defaults:
             data["num_partitions"] = defaults["partitions"]
-        return data
+        return {"default_values": data}
 
     @staticmethod
     def translate_bootstrap_servers(section: configparser.SectionProxy) -> List[str]:
@@ -171,7 +171,7 @@ class V1Migrator(BaseMigrator):
         data = {}
         for param in ssl_params:
             assign_if_present(param, cast(Dict[str, Any], section), data, translate)
-        return data
+        return {"ssl_params": data}
 
     @staticmethod
     def get_sasl_settings(section: configparser.SectionProxy) -> Dict:
@@ -185,7 +185,7 @@ class V1Migrator(BaseMigrator):
         sasl_params = ["sasl_mechanism", "sasl_user", "sasl_password"]
 
         data = {translate(param): section[param] for param in sasl_params}
-        return data
+        return {"sasl_params": data}
 
     @staticmethod
     def extract_name_from_section(section: configparser.SectionProxy) -> str:
