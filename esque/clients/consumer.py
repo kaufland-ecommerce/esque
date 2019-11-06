@@ -14,10 +14,9 @@ from esque.errors import (
     MessageEmptyException,
     raise_for_kafka_error,
     raise_for_message,
-    translate_third_party_exceptions,
 )
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
-from esque.messages.message import decode_message, FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter
+from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -60,7 +59,6 @@ class AbstractConsumer(ABC):
     def create_internal_consumer(self):
         raise NotImplementedError()
 
-    @translate_third_party_exceptions
     def assign_specific_partitions(self, topic_name: str, partitions: list = None, offset: int = 0):
         self._topic_name = topic_name
         if partitions is not None:
@@ -71,7 +69,6 @@ class AbstractConsumer(ABC):
             topic_partitions = [TopicPartition(self._topic_name, partition=0, offset=offset)]
         self._consumer.assign(topic_partitions)
 
-    @translate_third_party_exceptions
     def _subscribe(self, topic: str) -> None:
         self._consumer.subscribe([topic])
 
@@ -93,13 +90,11 @@ class AbstractConsumer(ABC):
             if isinstance(w, FileWriter) and w.file is not None:
                 w.file.close()
 
-    @translate_third_party_exceptions
     def consume_single_message(self, timeout=30) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
 
-    @translate_third_party_exceptions
     def consume_single_acceptable_message(self, timeout=30) -> Optional[Message]:
         message_acceptable = False
         total_time_remaining = timeout
@@ -110,7 +105,6 @@ class AbstractConsumer(ABC):
             message_acceptable = self.consumed_message_matches(message)
         return message if message_acceptable else None
 
-    @translate_third_party_exceptions
     def consumed_message_matches(self, message: Message):
         if self._rule_tree is not None:
             return self._rule_tree.evaluate(message)
@@ -119,7 +113,6 @@ class AbstractConsumer(ABC):
 
 
 class PingConsumer(AbstractConsumer):
-    @translate_third_party_exceptions
     def consume(self) -> Optional[Tuple[str, int]]:
         message = self.consume_single_message(timeout=10)
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
@@ -154,7 +147,6 @@ class PlaintextConsumer(AbstractConsumer):
         if self._initialize_default_output_directory and self.working_dir is not None:
             self.writers[-1].init_destination_directory()
 
-    @translate_third_party_exceptions
     def consume(self, amount: int) -> int:
         counter = 0
 

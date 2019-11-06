@@ -161,7 +161,6 @@ class Config:
         return config
 
     def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
-
         base_config = {
             "bootstrap.servers": ",".join(self.bootstrap_servers),
             "security.protocol": self.security_protocol,

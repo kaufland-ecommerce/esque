@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import time
 from concurrent.futures import Future
@@ -13,8 +14,8 @@ import yaml
 from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import Producer, Producer as ConfluenceProducer, TopicPartition
-from pykafka.exceptions import NoBrokersAvailableError
+from confluent_kafka.cimpl import Producer as ConfluentProducer
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.cli.options import State
 from esque.cluster import Cluster
@@ -24,6 +25,7 @@ from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
+from pykafka.exceptions import NoBrokersAvailableError
 
 
 def pytest_addoption(parser):
@@ -48,13 +50,17 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture()
 def interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=True):
+    with mock.patch("esque.cli.helpers._isatty", return_value=True), mock.patch.dict(
+        os.environ, {"ESQUE_VERBOSE": "1"}
+    ):
         yield CliRunner()
 
 
 @pytest.fixture()
 def non_interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=False):
+    with mock.patch("esque.cli.helpers._isatty", return_value=False), mock.patch.dict(
+        os.environ, {"ESQUE_VERBOSE": "1"}
+    ):
         yield CliRunner()
 
 
@@ -226,7 +232,7 @@ def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage
 
 @pytest.fixture()
 def produced_messages_different_partitions(messages_ordered_different_partitions: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partitions:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
             time.sleep(0.5)
@@ -239,7 +245,7 @@ def produced_messages_different_partitions(messages_ordered_different_partitions
 def produced_messages_different_partitions_with_headers(
     messages_ordered_different_partition_with_headers: Iterable[KafkaMessage]
 ):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partition_with_headers:
             producer.produce(
                 topic=topic_name,
@@ -256,7 +262,7 @@ def produced_messages_different_partitions_with_headers(
 
 @pytest.fixture()
 def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
             time.sleep(0.5)
@@ -269,7 +275,7 @@ def produced_messages_same_partition(messages_ordered_same_partition: Iterable[K
 def produced_messages_same_partition_with_headers(
     messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]
 ):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition_with_headers:
             producer.produce(
                 topic=topic_name,
@@ -309,13 +315,13 @@ def confluent_admin_client(test_config: Config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(test_config: Config):
+def producer(test_config: Config) -> ConfluentProducer:
     producer_config = test_config.create_confluent_config()
-    yield Producer(producer_config)
+    yield ConfluentProducer(producer_config)
 
 
 @pytest.fixture()
-def avro_producer(test_config: Config):
+def avro_producer(test_config: Config) -> AvroProducer:
     producer_config = test_config.create_confluent_config()
     producer_config.update({"schema.registry.url": Config().schema_registry})
     yield AvroProducer(producer_config)

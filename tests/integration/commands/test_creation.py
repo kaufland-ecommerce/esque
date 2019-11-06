@@ -1,6 +1,5 @@
 import confluent_kafka
 import pytest
-from click import MissingParameter
 from click.testing import CliRunner
 
 from esque.cli.commands import create_topic
@@ -21,9 +20,14 @@ def test_create_without_confirmation_does_not_create_topic(
 
 
 @pytest.mark.integration
-def test_create_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
+def test_create_topic_without_topic_name_fails(
+    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
+):
+    n_topics_before = len(confluent_admin_client.list_topics(timeout=5).topics)
     result = non_interactive_cli_runner.invoke(create_topic)
-    assert result.exit_code == MissingParameter.exit_code
+    n_topics_after = len(confluent_admin_client.list_topics(timeout=5).topics)
+    assert result.exit_code != 0
+    assert n_topics_before == n_topics_after
 
 
 @pytest.mark.integration
@@ -66,7 +70,8 @@ def test_topic_creation_stops_in_non_interactive_mode_without_no_verify(
     assert topic_id not in topics
 
     result = non_interactive_cli_runner.invoke(create_topic, input=topic_id)
-    assert result.exit_code == NoConfirmationPossibleException.exit_code
+    assert result.exit_code != 0
+    assert isinstance(result.exception, NoConfirmationPossibleException)
 
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
