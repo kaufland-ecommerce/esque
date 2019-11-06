@@ -1,18 +1,17 @@
 import re
 from enum import Enum
 from itertools import islice
-from typing import TYPE_CHECKING, List, Union
+from typing import List, TYPE_CHECKING, Union
 
 from click import BadParameter
-from confluent_kafka.admin import ConfigResource
-from confluent_kafka.admin import TopicMetadata as ConfluentTopic
+from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
+from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
 from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
-from pykafka.topic import Topic as PyKafkaTopic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -75,7 +74,9 @@ class TopicController:
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
-            partitions = topic.num_partitions if topic.num_partitions is not None else self.config.default_num_partitions
+            partitions = (
+                topic.num_partitions if topic.num_partitions is not None else self.config.default_num_partitions
+            )
             replicas = (
                 topic.replication_factor
                 if topic.replication_factor is not None

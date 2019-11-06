@@ -1,4 +1,3 @@
-import configparser
 import logging
 import random
 import string
@@ -7,9 +6,11 @@ from typing import Any, Dict, List, Optional
 
 import click
 import yaml
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 from esque.cli.environment import ESQUE_CONF_PATH
-from esque.config.migration import get_config_version, check_config_version
+from esque.config.migration import check_config_version, get_config_version
 from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
@@ -17,9 +18,6 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
-
 from esque.validation import validate_esque_config
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))

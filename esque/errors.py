@@ -58,13 +58,13 @@ class ConfigVersionException(ExceptionWithMessage):
 class ConfigTooOld(ConfigVersionException):
     def __init__(self, current, expected):
         super().__init__(current, expected)
-        self.message += '\nRun `esque config migrate` to migrate to new version.'
+        self.message += "\nRun `esque config migrate` to migrate to new version."
 
 
 class ConfigTooNew(ConfigVersionException):
     def __init__(self, current, expected):
         super().__init__(current, expected)
-        self.message += '\nYou might find a backup from last config migration next to your current config.'
+        self.message += "\nYou might find a backup from last config migration next to your current config."
 
 
 class ConfigException(ExceptionWithMessage):
