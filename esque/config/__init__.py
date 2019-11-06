@@ -72,8 +72,8 @@ class Config:
         return config_dict["schema_registry"]
 
     @property
-    def bootstrap_servers(self) -> str:
-        return ",".join(self.current_context_dict["bootstrap_servers"])
+    def bootstrap_servers(self) -> List[str]:
+        return self.current_context_dict["bootstrap_servers"]
 
     @property
     def default_partitions(self) -> int:

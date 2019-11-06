@@ -42,7 +42,7 @@ def test_schema(config_version: int, load_config: config_loader):
 
 
 def test_available_contexts(config: Config):
-    assert config.available_contexts == [f"context_{i}" for i in range(1, 5)]
+    assert config.available_contexts == [f"context_{i}" for i in range(1, 6)]
 
 
 def test_current_context(config: Config):
@@ -50,12 +50,8 @@ def test_current_context(config: Config):
 
 
 def test_current_context_dict(config: Config):
-    expected = {"bootstrap_hosts": "localhost", "bootstrap_port": "9091", "security_protocol": "PLAINTEXT"}
+    expected = {"bootstrap_servers": ["localhost:9091"], "security_protocol": "PLAINTEXT"}
     assert config.current_context_dict == expected
-
-
-def test_current_context_port(config: Config):
-    assert config.bootstrap_port == "9091"
 
 
 def test_context_switch(config: Config):
@@ -70,14 +66,6 @@ def test_context_switch_to_not_existing_context_fails(config: Config):
         config.context_switch("bla")
 
 
-def test_current_context_hosts(config: Config):
-    assert config.bootstrap_hosts == ["localhost"]
-
-    config.context_switch("context_3")
-
-    assert config.bootstrap_hosts == ["node01", "node02", "node03"]
-
-
 def test_current_context_bootstrap_servers(config: Config):
     assert config.bootstrap_servers == ["localhost:9091"]
 
@@ -90,9 +78,17 @@ def test_current_context_bootstrap_servers(config: Config):
     ]
 
 
-def test_current_context_bootstrap_domain(config: Config):
-    assert config.bootstrap_domain is None
+def test_ssl_params(config: Config):
+    assert config.ssl_params == {}
+    config.context_switch("context_5")
+    assert config.ssl_params == {
+        "cafile": "/my/ca.crt",
+        "certfile": "/my/certificate.crt",
+        "keyfile": "/my/certificate.key",
+    }
 
-    config.context_switch("context_2")
 
-    assert config.bootstrap_domain == "dummy_domain"
+def test_sasl_params(config: Config):
+    assert config.sasl_params == {}
+    config.context_switch("context_5")
+    assert config.sasl_params == {"mechanism": "PLAIN", "user": "alice", "password": "alice-secret"}

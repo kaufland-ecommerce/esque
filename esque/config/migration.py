@@ -153,7 +153,7 @@ class V1Migrator(BaseMigrator):
     def translate_bootstrap_servers(section: configparser.SectionProxy) -> List[str]:
         server_tpl = "{}"
         if section.get("bootstrap_domain"):
-            server_tpl += section["bootstrap_domain"]
+            server_tpl += "." + section["bootstrap_domain"]
         if section.get("bootstrap_port"):
             server_tpl += ":" + section["bootstrap_port"]
         return [server_tpl.format(server.strip()) for server in section["bootstrap_hosts"].split(",")]
