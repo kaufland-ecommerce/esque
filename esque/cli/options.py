@@ -13,9 +13,18 @@ from esque.errors import ConfigNotExistsException
 class State(object):
     def __init__(self):
         self.no_verify = False
+        self._cluster = None
+        self._config = None
 
+    @property
+    def config(self) -> Config:
+        if self._config is None:
+            self._create_config()
+        return self._config
+
+    def _create_config(self):
         try:
-            self.config = Config()
+            self._config = Config()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
@@ -25,8 +34,7 @@ class State(object):
                 raise
             if ensure_approval("Do you want to modify the config file now?"):
                 click.edit(filename=config_path().as_posix())
-            self.config = Config()
-        self._cluster = None
+            self._config = Config()
 
     @property
     def cluster(self):
