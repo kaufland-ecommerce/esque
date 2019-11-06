@@ -120,7 +120,7 @@ def ctx(state: State, context: str):
 def config_autocomplete():
     directory = config_dir()
     config_file_name = "autocomplete.sh"
-    config_file = Path(directory / config_file_name)
+    config_file: Path = directory / config_file_name
     current_shell = pwd.getpwnam(getpass.getuser()).pw_shell.split("/")[-1]
     source_designator = "source" if current_shell in ["bash", "sh"] else "source_zsh"
     default_environment = ".bashrc" if current_shell in ["bash", "sh"] else ".zshrc"
