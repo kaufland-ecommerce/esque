@@ -7,7 +7,6 @@ license = "MIT"
 readme = "README.md"
 include = [
   "esque/config/sample_config.yaml",
-  "scripts/auto_completion.sh",
   "README.md",
   "LICENSE",
   "pyproject.toml",
