@@ -80,7 +80,7 @@ def config():
 # TODO: Figure out how to pass the state object
 def list_topics(ctx, args, incomplete):
     cluster = Cluster()
-    return [topic["name"] for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
+    return [topic.name for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
 
 
 def list_contexts(ctx, args, incomplete):
