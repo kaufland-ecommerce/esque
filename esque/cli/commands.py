@@ -127,8 +127,17 @@ def config_autocomplete():
     with open(config_file.absolute(), "w") as config_fd:
         config_fd.write("_ESQUE_COMPLETE=" + source_designator + " esque")
     click.echo("Autocompletion script generated to " + green_bold(str(config_file.absolute())))
-    click.echo("To use the autocompletion feature, simply source the contents of the script into your environment, e.g.")
-    click.echo("\t\techo -e \"\\nsource " + str(config_file.absolute()) + "\" >> " + str(pwd.getpwnam(getpass.getuser()).pw_dir) + "/" + default_environment)
+    click.echo(
+        "To use the autocompletion feature, simply source the contents of the script into your environment, e.g."
+    )
+    click.echo(
+        '\t\techo -e "\\nsource '
+        + str(config_file.absolute())
+        + '" >> '
+        + str(pwd.getpwnam(getpass.getuser()).pw_dir)
+        + "/"
+        + default_environment
+    )
 
 
 @create.command("topic")
