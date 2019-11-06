@@ -94,7 +94,9 @@ def config_path_mocker(path: Union[str, Path]) -> None:
 @pytest.fixture()
 def mock_config_path(mocker: mock) -> config_path_mocker:
     def mockit(path: Union[str, Path]) -> None:
-        mocker.patch("esque.config._config_path", return_value=Path(path).resolve())
+        path = Path(path).resolve()
+        mocker.patch("esque.config._config_path", return_value=path)
+        mocker.patch("esque.config._config_dir", return_value=path.parent)
 
     return mockit
 

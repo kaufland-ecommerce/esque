@@ -31,18 +31,22 @@ log = logging.getLogger(__name__)
 
 
 def config_dir() -> Path:
-    return Path(click.get_app_dir("esque", force_posix=True))
+    return _config_dir()
 
 
 def config_path() -> Path:
     return _config_path()
 
 
-# create another function we can mock during tests
+# create functions we can mock during tests
 def _config_path() -> Path:
     if ESQUE_CONF_PATH:
         return Path(ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
+
+
+def _config_dir() -> Path:
+    return Path(click.get_app_dir("esque", force_posix=True))
 
 
 def sample_config_path() -> Path:
