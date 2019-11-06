@@ -126,15 +126,28 @@ class V1Migrator(BaseMigrator):
     @staticmethod
     def translate_context(section: configparser.SectionProxy) -> Tuple[str, Dict]:
         data = {"bootstrap_servers": V1Migrator.translate_bootstrap_servers(section)}
-        unchanged_fields = ["security_protocol", "schema_registry", "default_values"]
+        unchanged_fields = ["security_protocol", "schema_registry"]
         for field in unchanged_fields:
             assign_if_present(field, cast(Dict[str, Any], section), data)
 
         data.update(V1Migrator.get_ssl_settings(section))
         data.update(V1Migrator.get_sasl_settings(section))
+        data.update(V1Migrator.translate_defaults(section))
 
         name = V1Migrator.extract_name_from_section(section)
         return name, data
+
+    @staticmethod
+    def translate_defaults(section: configparser.SectionProxy) -> Dict:
+        data = {}
+        if "default_values" not in section:
+            return data
+        defaults = section["default_values"]
+        if "replication_factor" in defaults:
+            data["replication_factor"] = defaults["replication_factor"]
+        if "partitions" in defaults:
+            data["num_partitions"] = defaults["partitions"]
+        return data
 
     @staticmethod
     def translate_bootstrap_servers(section: configparser.SectionProxy) -> List[str]:

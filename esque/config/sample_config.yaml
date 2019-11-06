@@ -9,7 +9,7 @@ contexts:
     security_protocol: PLAINTEXT
     schema_registry: http://localhost:8081
     default_values:
-      partitions: 1
+      num_partitions: 1
       replication_factor: 1
 
   # This context corresponds to a local development cluster
@@ -21,7 +21,7 @@ contexts:
     security_protocol: PLAINTEXT
     schema_registry: http://schema_registry:8081
     default_values:
-      partitions: 1
+      num_partitions: 1
       replication_factor: 1
 
   # This is an example configuration for connecting to a SASL enabled

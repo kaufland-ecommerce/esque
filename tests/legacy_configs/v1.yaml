@@ -17,6 +17,9 @@ contexts:
       - node02.cool-domain.com:9093
       - node03.cool-domain.com:9093
     security_protocol: PLAINTEXT
+    defaults:
+      num_paritions: 1
+      replication_factor: 2
   context_4:
     bootstrap_servers:
       - kafka:9094
