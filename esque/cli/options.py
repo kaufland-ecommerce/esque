@@ -1,4 +1,3 @@
-import os
 import sys
 from functools import wraps
 from shutil import copyfile
@@ -6,6 +5,7 @@ from shutil import copyfile
 import click
 from click import make_pass_decorator, option
 
+from esque.cli import environment
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster
 from esque.config import Config, config_dir, config_path, sample_config_path
@@ -38,7 +38,7 @@ class State(object):
         return self._cluster
 
     def _get_verbose(self) -> bool:
-        if "ESQUE_VERBOSE" in os.environ:
+        if environment.ESQUE_VERBOSE is not None:
             return True
         return self._verbose
 

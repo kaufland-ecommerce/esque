@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import click
 
-from esque.cli.environment import ESQUE_CONF_PATH
+from esque.cli import environment
 from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
@@ -31,8 +31,8 @@ def config_dir() -> Path:
 
 
 def config_path() -> Path:
-    if ESQUE_CONF_PATH:
-        return Path(ESQUE_CONF_PATH)
+    if environment.ESQUE_CONF_PATH:
+        return Path(environment.ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
 
 

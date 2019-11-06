@@ -1,5 +1,4 @@
 import json
-import os
 import random
 import time
 from concurrent.futures import Future
@@ -50,16 +49,16 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture()
 def interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=True), mock.patch.dict(
-        os.environ, {"ESQUE_VERBOSE": "1"}
+    with mock.patch("esque.cli.helpers._isatty", return_value=True), mock.patch(
+        "esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1"
     ):
         yield CliRunner()
 
 
 @pytest.fixture()
 def non_interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=False), mock.patch.dict(
-        os.environ, {"ESQUE_VERBOSE": "1"}
+    with mock.patch("esque.cli.helpers._isatty", return_value=False), mock.patch(
+        "esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1"
     ):
         yield CliRunner()
 

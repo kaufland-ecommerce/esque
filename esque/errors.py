@@ -9,8 +9,8 @@ def raise_for_kafka_error(err: KafkaError):
     if not err:
         return None
 
-    if err.code() in ERROR_LOOKUP.keys():
-        raise ERROR_LOOKUP[err.code()](err.str(), err.code())
+    if err.code() in CONFLUENT_ERROR_LOOKUP.keys():
+        raise CONFLUENT_ERROR_LOOKUP[err.code()](err.str(), err.code())
     else:
         raise KafkaException(err.str(), err.code())
 
@@ -135,9 +135,9 @@ class TopicConfigNotValidException(YamaleValidationException):
     pass
 
 
-ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
-    3: TopicDoesNotExistException,
-    36: TopicAlreadyExistsException,
-    -191: EndOfPartitionReachedException,
-    38: InvalidReplicationFactorException,
+CONFLUENT_ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
+    KafkaError.UNKNOWN_TOPIC_OR_PART: TopicDoesNotExistException,
+    KafkaError.TOPIC_ALREADY_EXISTS: TopicAlreadyExistsException,
+    KafkaError._PARTITION_EOF: EndOfPartitionReachedException,
+    KafkaError.INVALID_REPLICATION_FACTOR: InvalidReplicationFactorException,
 }
