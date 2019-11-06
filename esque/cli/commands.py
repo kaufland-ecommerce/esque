@@ -13,7 +13,7 @@ from click import MissingParameter, version_option
 
 from esque import __version__
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
-from esque.cli.options import State, default_options, output_format_option, pass_state
+from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -82,19 +82,18 @@ def config(state: State):
     pass
 
 
-@pass_state
-def list_topics(state: State, _, incomplete):
+def list_topics(ctx, args, incomplete):
+    state = ctx.ensure_object(State)
     cluster = state.cluster
     return [topic.name for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
 
 
-@pass_state
-def list_contexts(state: State, _, incomplete):
-    config = state.config
-    return [context for context in config.available_contexts if context.startswith(incomplete)]
+def list_contexts(ctx, args, incomplete):
+    state = ctx.ensure_object(State)
+    return [context for context in state.config.available_contexts if context.startswith(incomplete)]
 
 
-def fallback_to_stdin(ctx, param, value):
+def fallback_to_stdin(ctx, args, value):
     stdin = click.get_text_stream("stdin")
     if not value and not isatty(stdin):
         stdin_arg = stdin.readline().strip()
