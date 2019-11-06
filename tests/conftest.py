@@ -90,10 +90,12 @@ def load_config() -> config_loader:
 
 
 def get_path_for_config_version(config_version: int) -> Path:
-    base_path = Path(__file__).parent / "legacy_configs"
+    base_path = Path(__file__).parent / "test_configs"
     if config_version == 0:
-        return base_path / "v0.cfg"
-    return base_path / f"v{config_version}.yaml"
+        return base_path / "v0_sample.cfg"
+    if config_version == -1:
+        return base_path / "integration_test_config.yaml"
+    return base_path / f"v{config_version}_sample.yaml"
 
 
 @pytest.fixture()
@@ -108,8 +110,8 @@ def mock_config_path(mocker: mock) -> Callable[[Union[str, Path]], None]:
 def test_config(
     request: FixtureRequest, mock_config_path: Callable[[Union[str, Path]], None], load_config: config_loader
 ):
-    conffile, _ = load_config()
-    mock_config_path(conffile.name)
+    conffile, _ = load_config(-1)
+    mock_config_path(conffile)
     esque_config = Config()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")
