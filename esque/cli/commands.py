@@ -1,3 +1,4 @@
+import getpass
 import logging
 import pathlib
 import sys
@@ -7,6 +8,7 @@ from shutil import copyfile
 from time import sleep
 
 import click
+import pwd
 import pendulum
 import yaml
 from click import MissingParameter, UsageError, version_option
@@ -70,8 +72,13 @@ def delete():
     pass
 
 
-@esque.group(help="Edit a resource or your esque config")
+@esque.group(help="Edit a resource")
 def edit():
+    pass
+
+
+@esque.group(help="Configuration-related options")
+def config():
     pass
 
 
@@ -112,6 +119,31 @@ def ctx(state: State, context: str):
     if context:
         state.config.context_switch(context)
         click.echo(f"Switched to context: {context}")
+
+
+@config.command("autocomplete", help="Generate the autocompletion script.")
+@error_handler
+def config_autocomplete():
+    directory = config_dir()
+    config_file_name = "autocomplete.sh"
+    config_file: Path = directory / config_file_name
+    current_shell = pwd.getpwnam(getpass.getuser()).pw_shell.split("/")[-1]
+    source_designator = "source" if current_shell in ["bash", "sh"] else "source_zsh"
+    default_environment = ".bashrc" if current_shell in ["bash", "sh"] else ".zshrc"
+    with open(config_file.absolute(), "w") as config_fd:
+        config_fd.write("_ESQUE_COMPLETE=" + source_designator + " esque")
+    click.echo("Autocompletion script generated to " + green_bold(str(config_file.absolute())))
+    click.echo(
+        "To use the autocompletion feature, simply source the contents of the script into your environment, e.g."
+    )
+    click.echo(
+        '\t\techo -e "\\nsource '
+        + str(config_file.absolute())
+        + '" >> '
+        + str(pwd.getpwnam(getpass.getuser()).pw_dir)
+        + "/"
+        + default_environment
+    )
 
 
 @create.command("topic")
