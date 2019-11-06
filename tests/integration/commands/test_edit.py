@@ -1,3 +1,4 @@
+from time import sleep
 from unittest import mock
 
 import click
@@ -7,8 +8,11 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click import MissingParameter
 from click.testing import CliRunner
+from confluent_kafka.cimpl import Producer as ConfluenceProducer, TopicPartition
+from esque.config import Config
 
-from esque.cli.commands import edit_topic
+from esque.cli.commands import edit_topic, edit_consumergroup
+from esque.clients.consumer import ConsumerFactory
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
 from esque.validation import validate
@@ -93,3 +97,44 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
     validated_config_dict, schema_path = validator_mock.call_args[0]
     assert schema_path.name == "editable_topic.yaml"
     assert validated_config_dict == config_dict
+
+
+@pytest.mark.integration
+def test_edit_consumergroup_offset_to_absolute_value(
+    topic: str,
+    produced_messages_same_partition,
+    interactive_cli_runner,
+    producer: ConfluenceProducer,
+    consumer_group,
+    consumergroup_controller,
+    tmpdir_factory
+):
+    produced_messages_same_partition(topic, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    config = Config().create_confluent_config()
+    config.update(
+        {
+            "group.id": consumer_group,
+            "enable.auto.commit": True,
+            "default.topic.config": {"auto.offset.reset": "earliest"}
+        }
+    )
+    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
+    vanilla_consumer.subscribe([topic])
+    vanilla_consumer.consume(10)
+    vanilla_consumer.close()
+    del vanilla_consumer
+
+    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(verbose=True)
+
+    interactive_cli_runner.invoke(
+        edit_consumergroup,
+        args=[consumer_group, topic, "--offset-to-value", "1"],
+        input="y\n",
+        catch_exceptions=True,
+    )
+    # Check assertions:
+    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(verbose=True)
+    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 1

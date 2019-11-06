@@ -207,6 +207,12 @@ def edit_topic(state: State, topic_name: str):
     required=False,
 )
 @click.option(
+    "--offset-from-group",
+    help="Copy all offsets from an existing consumer group.",
+    type=click.STRING,
+    required=False,
+)
+@click.option(
     "--force",
     help="Rewind offset even if the consumer group is not empty",
     is_flag=True,
@@ -223,6 +229,7 @@ def edit_consumergroup(
     offset_to_value: int,
     offset_by_delta: int,
     offset_to_timestamp: str,
+    offset_from_group: str,
     force: bool,
 ):
     logger = logging.getLogger(__name__)
@@ -457,7 +464,7 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 
 
 @describe.command("consumergroup")
-@click.option("-c", "--consumer-id", required=False)
+@click.argument("consumer-id", callback=fallback_to_stdin, required=True)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",

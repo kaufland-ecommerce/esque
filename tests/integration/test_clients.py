@@ -7,7 +7,6 @@ from string import ascii_letters
 from typing import Iterable, List, Tuple
 
 import pytest
-from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer, loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
