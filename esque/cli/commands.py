@@ -1,5 +1,6 @@
 import getpass
 import pathlib
+import pwd
 import sys
 import time
 from pathlib import Path
@@ -7,7 +8,6 @@ from shutil import copyfile
 from time import sleep
 
 import click
-import pwd
 import yaml
 from click import MissingParameter, UsageError, version_option
 
@@ -28,8 +28,7 @@ from esque.cli.output import (
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
-from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
-from esque.config import migration
+from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
@@ -140,6 +139,21 @@ def config_autocomplete():
         + "/"
         + default_environment
     )
+
+
+@config.command("edit", help="Edit your esque config file.")
+@error_handler
+def config_edit():
+    old_yaml = config_path().read_text()
+    new_yaml, _ = edit_yaml(old_yaml, validator=validate_esque_config)
+    config_path().write_text(new_yaml)
+
+
+@config.command("migrate", help="Migrate your config to current version")
+@error_handler
+def config_migrate():
+    new_path, backup = migration.migrate(config_path())
+    click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
 
 
 @create.command("topic")
@@ -585,23 +599,3 @@ def ping(state: State, times: int, wait: int):
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
-
-
-@esque.group(help="Work with esque config")
-def config():
-    pass
-
-
-@config.command("edit", help="Edit your esque config file.")
-@error_handler
-def config_edit():
-    old_yaml = config_path().read_text()
-    new_yaml, _ = edit_yaml(old_yaml, validator=validate_esque_config)
-    config_path().write_text(new_yaml)
-
-
-@config.command("migrate", help="Migrate your config to current version")
-@error_handler
-def config_migrate():
-    new_path, backup = migration.migrate(config_path())
-    click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
