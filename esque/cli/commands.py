@@ -27,7 +27,7 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
-from esque.config.migration import migrate
+from esque.config import migration
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
@@ -571,5 +571,5 @@ def config_edit():
 @config.command("migrate", help="Migrate your config to current version")
 @error_handler
 def config_migrate():
-    new_path, backup = migrate(config_path())
+    new_path, backup = migration.migrate(config_path())
     click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")

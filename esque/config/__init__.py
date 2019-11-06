@@ -20,6 +20,8 @@ from esque.errors import (
 from pykafka import SslConfig
 from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
+from esque.validation import validate_esque_config
+
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
 PING_GROUP_ID = f"ping-{RANDOM}"
@@ -33,6 +35,11 @@ def config_dir() -> Path:
 
 
 def config_path() -> Path:
+    return _config_path()
+
+
+# create another function we can mock during tests
+def _config_path() -> Path:
     if ESQUE_CONF_PATH:
         return Path(ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
@@ -48,6 +55,7 @@ class Config:
             raise ConfigNotExistsException()
         check_config_version(config_path())
         self._cfg = yaml.safe_load(config_path().read_text())
+        validate_esque_config(self._cfg)
         self._current_dict: Optional[Dict[str, str]] = None
 
     @property
@@ -56,7 +64,7 @@ class Config:
 
     @property
     def default_values(self) -> Dict[str, Any]:
-        return self.current_context_dict["default_values"]
+        return self.current_context_dict.get("default_values", {})
 
     @property
     def current_context(self) -> str:
@@ -77,11 +85,11 @@ class Config:
 
     @property
     def default_num_partitions(self) -> int:
-        return self.default_values["num_partitions"]
+        return self.default_values.get("num_partitions", 1)
 
     @property
     def default_replication_factor(self) -> int:
-        return self.default_values["replication_factor"]
+        return self.default_values.get("replication_factor", min(len(self.bootstrap_servers), 3))
 
     @property
     def sasl_mechanism(self) -> str:
