@@ -92,3 +92,24 @@ def test_sasl_params(config: Config):
     assert config.sasl_params == {}
     config.context_switch("context_5")
     assert config.sasl_params == {"mechanism": "PLAIN", "user": "alice", "password": "alice-secret"}
+
+
+def test_default_values(config: Config):
+    config.context_switch("context_3")
+    assert config.default_num_partitions == 2
+    assert config.default_replication_factor == 2
+
+
+def test_default_values_not_specified(config: Config):
+    assert config.default_values == {}
+    assert config.default_num_partitions == 1
+
+    # if not given, default replication factor is min(len(bootstrap_servers),3)
+    assert len(config.bootstrap_servers) == 1
+    assert config.default_replication_factor == 1
+
+    config.context_switch("context_5")
+    assert config.default_values == {}
+    assert len(config.bootstrap_servers) == 4
+    assert config.default_replication_factor == 3
+    assert config.default_num_partitions == 1

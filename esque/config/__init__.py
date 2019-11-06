@@ -76,13 +76,12 @@ class Config:
         return self.current_context_dict["bootstrap_servers"]
 
     @property
-    def default_partitions(self) -> int:
+    def default_num_partitions(self) -> int:
         return self.default_values["num_partitions"]
 
     @property
     def default_replication_factor(self) -> int:
-        config_dict = self.current_context_dict
-        return int(config_dict["default_replication_factor"])
+        return self.default_values["replication_factor"]
 
     @property
     def sasl_mechanism(self) -> str:

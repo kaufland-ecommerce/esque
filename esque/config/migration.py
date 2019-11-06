@@ -140,14 +140,12 @@ class V1Migrator(BaseMigrator):
     @staticmethod
     def translate_defaults(section: configparser.SectionProxy) -> Dict:
         data = {}
-        if "default_values" not in section:
-            return data
-        defaults = section["default_values"]
-        if "replication_factor" in defaults:
-            data["replication_factor"] = defaults["replication_factor"]
-        if "partitions" in defaults:
-            data["num_partitions"] = defaults["partitions"]
-        return {"default_values": data}
+        if "default_replication_factor" in section:
+            data["replication_factor"] = int(section["default_replication_factor"])
+        if "default_partitions" in section:
+            data["num_partitions"] = int(section["default_partitions"])
+
+        return {"default_values": data} if data != {} else data
 
     @staticmethod
     def translate_bootstrap_servers(section: configparser.SectionProxy) -> List[str]:

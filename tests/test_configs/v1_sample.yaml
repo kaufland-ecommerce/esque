@@ -9,7 +9,6 @@ contexts:
     bootstrap_servers:
       - broker01.dummy_domain:9092
       - broker02.dummy_domain:9092
-      - broker03.dummy_domain:9092
     security_protocol: PLAINTEXT
   context_3:
     bootstrap_servers:
@@ -18,7 +17,7 @@ contexts:
       - node03.cool-domain.com:9093
     security_protocol: PLAINTEXT
     default_values:
-      num_partitions: 1
+      num_partitions: 2
       replication_factor: 2
   context_4:
     bootstrap_servers:
@@ -27,6 +26,9 @@ contexts:
   context_5:
     bootstrap_servers:
       - kafka:9094
+      - kafka1:9094
+      - kafka2:9094
+      - kafka3:9094
     security_protocol: SASL_SSL
     ssl_params:
       cafile: /my/ca.crt
