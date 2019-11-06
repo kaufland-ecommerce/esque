@@ -5,7 +5,7 @@ from typing import Dict, Optional, Tuple
 
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import Message, TopicPartition
+from confluent_kafka.cimpl import Consumer, Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
@@ -271,6 +271,14 @@ class ConsumerFactory:
     def create_ping_consumer(self, group_id: str, topic_name: str):
         consumer = PingConsumer(group_id, topic_name, last=False)
         return consumer
+
+    def create_custom_consumer(self, config):
+        """
+        Convenience method for creating a consumer with all options passed through the config. Only exists so that the ConsumerFactory class could be used for all consumer instantiations.
+        :param config: configuration dictionary
+        :return: Consumer object
+        """
+        return Consumer(config)
 
 
 def consume_to_file_ordered(
