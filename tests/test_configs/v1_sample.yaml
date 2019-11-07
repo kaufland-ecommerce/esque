@@ -29,11 +29,13 @@ contexts:
       - kafka1:9094
       - kafka2:9094
       - kafka3:9094
+    schema_registry: http://schema-registry.example.com
     security_protocol: SASL_SSL
     ssl_params:
       cafile: /my/ca.crt
       certfile: /my/certificate.crt
       keyfile: /my/certificate.key
+      password: mySecretPassword
     sasl_params:
       mechanism: PLAIN
       user: alice

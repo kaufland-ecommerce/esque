@@ -1,10 +1,10 @@
 from pathlib import Path
 from unittest import mock
 
-import pytest
 import yaml
 from yaml.scanner import ScannerError
 
+import pytest
 from esque.config import Config
 from esque.config.migration import CURRENT_VERSION, migrate
 from esque.errors import ConfigTooNew, ConfigTooOld, ContextNotDefinedException
@@ -79,6 +79,13 @@ def test_current_context_bootstrap_servers(config: Config):
     ]
 
 
+def test_current_context_schema_registry(config: Config):
+    with pytest.raises(KeyError):
+        _ = config.schema_registry
+    config.context_switch("context_5")
+    assert config.schema_registry == "http://schema-registry.example.com"
+
+
 def test_ssl_params(config: Config):
     assert config.ssl_params == {}
     config.context_switch("context_5")
@@ -86,6 +93,7 @@ def test_ssl_params(config: Config):
         "cafile": "/my/ca.crt",
         "certfile": "/my/certificate.crt",
         "keyfile": "/my/certificate.key",
+        "password": "mySecretPassword",
     }
 
 
@@ -93,6 +101,53 @@ def test_sasl_params(config: Config):
     assert config.sasl_params == {}
     config.context_switch("context_5")
     assert config.sasl_params == {"mechanism": "PLAIN", "user": "alice", "password": "alice-secret"}
+    assert config.sasl_mechanism == "PLAIN"
+
+
+def test_confluent_config(config: Config):
+    config.context_switch("context_5")
+    expected_config = {
+        "bootstrap.servers": "kafka:9094,kafka1:9094,kafka2:9094,kafka3:9094",
+        "security.protocol": "SASL_SSL",
+        "schema.registry.url": "http://schema-registry.example.com",
+        "sasl.mechanisms": "PLAIN",
+        "sasl.username": "alice",
+        "sasl.password": "alice-secret",
+        "ssl.ca.location": "/my/ca.crt",
+        "ssl.certificate.location": "/my/certificate.crt",
+        "ssl.key.location": "/my/certificate.key",
+        "ssl.key.password": "mySecretPassword",
+    }
+
+    actual_config = config.create_confluent_config(include_schema_registry=True)
+    assert expected_config == actual_config
+
+
+def test_pykafka_config(mocker: mock, config: Config):
+    ssl_config_sentinel = mock.sentinel.ssl_config
+    ssl_config_mock = mocker.patch("esque.config.SslConfig", return_value=ssl_config_sentinel)
+    plain_authenticator_sentinel = mock.sentinel.plain_authenticator
+    plain_authenticator_mock = mocker.patch(
+        "esque.config.PlainAuthenticator", return_value=plain_authenticator_sentinel
+    )
+
+    config.context_switch("context_5")
+    expected_config = {
+        "hosts": "kafka:9094,kafka1:9094,kafka2:9094,kafka3:9094",
+        "sasl_authenticator": plain_authenticator_sentinel,
+        "ssl_config": ssl_config_sentinel,
+    }
+    actual_config = config.create_pykafka_config()
+    assert expected_config == actual_config
+    ssl_config_mock.assert_called_with(
+        **{
+            "cafile": "/my/ca.crt",
+            "certfile": "/my/certificate.crt",
+            "keyfile": "/my/certificate.key",
+            "password": "mySecretPassword",
+        }
+    )
+    plain_authenticator_mock.assert_called_with(user="alice", password="alice-secret", security_protocol="SASL_SSL")
 
 
 def test_default_values(config: Config):

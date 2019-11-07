@@ -147,10 +147,14 @@ class Config:
         log.debug(f"Created pykafka config: {config}")
         return config
 
-    def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
+    def create_confluent_config(self, *, debug: bool = False, include_schema_registry: bool = False) -> Dict[str, str]:
         config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": self.security_protocol}
         if debug:
             config.update({"debug": "all", "log_level": "2"})
+
+        if include_schema_registry:
+            config["schema.registry.url"] = self.schema_registry
+
         if self.sasl_enabled:
             config.update(self._get_confluent_sasl_config())
         if self.ssl_enabled:

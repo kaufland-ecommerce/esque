@@ -9,16 +9,16 @@ from string import ascii_letters
 from typing import Callable, Dict, Iterable, Tuple, Union
 from unittest import mock
 
-import confluent_kafka
-import pytest
 import yaml
+
+import confluent_kafka
+import esque.config
+import pytest
 from _pytest.fixtures import FixtureRequest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
-
-import esque.config
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import Config
@@ -364,8 +364,7 @@ def producer(unittest_config) -> ConfluentProducer:
 
 @pytest.fixture()
 def avro_producer(unittest_config) -> AvroProducer:
-    producer_config = unittest_config.create_confluent_config()
-    producer_config.update({"schema.registry.url": Config().schema_registry})
+    producer_config = unittest_config.create_confluent_config(include_schema_registry=True)
     yield AvroProducer(producer_config)
 
 
