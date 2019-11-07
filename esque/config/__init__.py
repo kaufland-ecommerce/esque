@@ -95,9 +95,9 @@ class Config:
 
     @property
     def sasl_mechanism(self) -> str:
-        if "sasl_mechanism" not in self.current_context_dict:
+        if "mechanism" not in self.sasl_params:
             raise MissingSaslParameter(f"No sasl mechanism configured, valid values are {SUPPORTED_SASL_MECHANISMS}")
-        return self.current_context_dict["sasl_mechanism"].upper()
+        return self.sasl_params["mechanism"].upper()
 
     @property
     def sasl_enabled(self) -> bool:
@@ -148,11 +148,7 @@ class Config:
         return config
 
     def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
-        base_config = {
-            "bootstrap.servers": ",".join(self.bootstrap_servers),
-            "security.protocol": self.security_protocol,
-        }
-        config = base_config.copy()
+        config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": self.security_protocol}
         if debug:
             config.update({"debug": "all", "log_level": "2"})
         if self.sasl_enabled:
@@ -184,25 +180,25 @@ class Config:
         if not self.ssl_enabled:
             return {}
         rdk_conf = {}
-        if self.current_context_dict.get("ssl_cafile"):
+        if self.ssl_params.get("cafile"):
             rdk_conf["ssl.ca.location"] = self.ssl_params["cafile"]
-        if self.current_context_dict.get("ssl_certfile"):
+        if self.ssl_params.get("certfile"):
             rdk_conf["ssl.certificate.location"] = self.ssl_params["certfile"]
-        if self.current_context_dict.get("ssl_keyfile"):
+        if self.ssl_params.get("keyfile"):
             rdk_conf["ssl.key.location"] = self.ssl_params["keyfile"]
-        if self.current_context_dict.get("ssl_password"):
+        if self.ssl_params.get("password"):
             rdk_conf["ssl.key.password"] = self.ssl_params["password"]
         return rdk_conf
 
     def _get_pykafka_ssl_conf(self) -> Optional[SslConfig]:
         if not self.ssl_enabled:
             return None
-        ssl_params = {"cafile": self.current_context_dict.get("ssl_cafile", None)}
-        if self.current_context_dict.get("ssl_certfile"):
+        ssl_params = {"cafile": self.ssl_params.get("cafile", None)}
+        if self.ssl_params.get("certfile"):
             ssl_params["certfile"] = self.ssl_params["certfile"]
-        if self.current_context_dict.get("ssl_keyfile"):
+        if self.ssl_params.get("keyfile"):
             ssl_params["keyfile"] = self.ssl_params["keyfile"]
-        if self.current_context_dict.get("ssl_password"):
+        if self.ssl_params.get("password"):
             ssl_params["password"] = self.ssl_params["password"]
         return SslConfig(**ssl_params)
 
