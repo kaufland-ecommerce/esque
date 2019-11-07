@@ -43,7 +43,7 @@ contexts:
     # esque can infer the protocol SSL if ssl_params are given
     # security_protocol: SSL
 
-    # the following parameters are optioal
+    # the following parameters are optional
     ssl_params:
       # Certificate Authority that signed the server certificate, necessary if self signed
       cafile: /path/to/ca_file.crt
