@@ -197,7 +197,9 @@ def edit_topic(state: State, topic_name: str):
 
 @edit.command("consumergroup")
 @click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
-@click.argument("topic-name", callback=fallback_to_stdin, type=click.STRING, required=True)
+@click.option(
+    "-t", "--topic-name", help="Regular expression describing the topic name", type=click.STRING, required=True
+)
 @click.option("--offset-to-value", help="Rewind offset to the specified value", type=click.INT, required=False)
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
 @click.option(
@@ -207,10 +209,7 @@ def edit_topic(state: State, topic_name: str):
     required=False,
 )
 @click.option(
-    "--offset-from-group",
-    help="Copy all offsets from an existing consumer group.",
-    type=click.STRING,
-    required=False,
+    "--offset-from-group", help="Copy all offsets from an existing consumer group.", type=click.STRING, required=False
 )
 @click.option(
     "--force",
@@ -234,84 +233,32 @@ def edit_consumergroup(
 ):
     logger = logging.getLogger(__name__)
     consumergroup_controller = ConsumerGroupController(state.cluster)
-    final_offsets_for_partitions = {}
-    current_offsets_for_partitions = {}
-    current_watermarks_for_partitions = {}
-    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    try:
-        consumer_group = consumergroup_controller.get_consumergroup(consumer_id)
-        consumer_group_desc = consumer_group.describe(verbose=True)
-        for partition_id, partition_info in consumer_group_desc["offsets"][topic_name.encode("UTF-8")].items():
-            current_offsets_for_partitions[partition_id] = partition_info["consumer_offset"]
-            final_offsets_for_partitions[partition_id] = partition_info["consumer_offset"]
-            current_watermarks_for_partitions[partition_id] = {
-                "low": partition_info["topic_low_watermark"],
-                "high": partition_info["topic_high_watermark"],
-            }
-    except AttributeError:
-        logger.error("Consumergroup {} not available.".format(consumer_id))
-        return
-    except KeyError:
-        logger.error(
-            "No offsets have ever been commited by consumergroup {} for topic {}.".format(consumer_id, topic_name)
-        )
-        return
-    if str(consumer_group_desc["meta"]["state"].decode("UTF-8")) == "Empty" or force:
-        if offset_to_value:
-            for partition in topic.partitions:
-                (accepted_offset, error, message) = _select_new_offset_for_consumer(
-                    offset_to_value,
-                    current_watermarks_for_partitions[partition.partition_id]["low"],
-                    current_watermarks_for_partitions[partition.partition_id]["high"],
-                    partition.partition_id,
-                )
-                final_offsets_for_partitions[partition.partition_id] = accepted_offset
-                if error:
-                    logger.error(message)
-        elif offset_by_delta:
-            for partition in topic.partitions:
-                requested_offset = current_offsets_for_partitions.get(partition.partition_id, 0) + offset_by_delta
-                (accepted_offset, error, message) = _select_new_offset_for_consumer(
-                    requested_offset,
-                    current_watermarks_for_partitions[partition.partition_id]["low"],
-                    current_watermarks_for_partitions[partition.partition_id]["high"],
-                    partition.partition_id,
-                )
-                final_offsets_for_partitions[partition.partition_id] = accepted_offset
-                if error:
-                    logger.error(message)
-        elif offset_to_timestamp:
-            timestamp_limit = pendulum.parse(offset_to_timestamp)
-            current_offset_dict = TopicController(state.cluster, None).get_offsets_closest_to_timestamp(
-                topic_name=topic_name, timestamp_limit=timestamp_limit
-            )
-            for partition in topic.partitions:
-                final_offsets_for_partitions[partition.partition_id] = current_offset_dict.get(
-                    partition.partition_id, 0
-                )
+    offset_plan = consumergroup_controller.create_consumer_group_offset_change_plan(
+        consumer_id=consumer_id,
+        topic_name=topic_name,
+        offset_to_value=offset_to_value,
+        offset_by_delta=offset_by_delta,
+        offset_to_timestamp=offset_to_timestamp,
+        offset_from_group=offset_from_group,
+        force=force,
+    )
+    if len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
-        for partition_id, partition_offset in final_offsets_for_partitions.items():
+        for plan_element in offset_plan.items():
             click.echo(
-                "Partition {}, current offset: {}, new offset: {}".format(
-                    partition_id,
-                    current_offsets_for_partitions.get(partition_id, "unknown"),
-                    partition_offset
-                    if current_offsets_for_partitions.get(partition_id, -1) == partition_offset
-                    else red_bold(str(partition_offset)),
+                "Topic: {}, partition {}, current offset: {}, new offset: {}".format(
+                    plan_element.topic_name,
+                    plan_element.partition_id,
+                    plan_element.current_offset,
+                    plan_element.proposed_offset
+                    if plan_element.current_offset == plan_element.partition_offset
+                    else red_bold(str(plan_element.proposed_offset)),
                 )
             )
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
-            topic_partition_list = [
-                TopicPartition(topic=topic_name, partition=partition_id, offset=partition_offset)
-                for partition_id, partition_offset in final_offsets_for_partitions.items()
-            ]
-            consumergroup_controller.edit_consumer_group_offsets(consumer_id, topic_partition_list)
+            consumergroup_controller.edit_consumer_group_offsets(consumer_id=consumer_id, offset_plan=offset_plan)
     else:
-        logger.error(
-            "Consumergroup {} is not empty. Use the {} option if you want to override this safety mechanism.".format(
-                consumer_id, red_bold("--force")
-            )
-        )
+        logger.info("No changes proposed.")
         return
 
 
@@ -717,23 +664,3 @@ def ping(state: State, times: int, wait: int):
 @error_handler
 def edit_config():
     click.edit(filename=config_path().as_posix())
-
-
-def _select_new_offset_for_consumer(requested_offset: int, low_watermark: int, high_watermark: int, partition_id: int):
-    if requested_offset < low_watermark:
-        final_value = low_watermark
-        error = True
-        message = "The requested offset ({}) is outside of the allowable range [{},{}] for partition {}. Setting to low watermark.".format(
-            requested_offset, red_bold(str(low_watermark)), high_watermark, partition_id
-        )
-    elif requested_offset > high_watermark:
-        final_value = high_watermark
-        error = True
-        message = "The requested offset ({}) is outside of the allowable range [{},{}] for partition {}. Setting to high watermark.".format(
-            requested_offset, low_watermark, red_bold(str(high_watermark)), partition_id
-        )
-    else:
-        final_value = requested_offset
-        error = False
-        message = ""
-    return final_value, error, message
