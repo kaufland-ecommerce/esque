@@ -1,12 +1,12 @@
 from unittest import mock
 
 import click
-import confluent_kafka
-import pytest
 import yaml
-from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 
+import confluent_kafka
+import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled, TopicConfigNotValidException
@@ -89,7 +89,7 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
     }
 
     mocker.patch.object(click, "edit", return_value=yaml.dump(config_dict, default_flow_style=False))
-    interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
+    interactive_cli_runner.invoke(edit_topic, topic, input="y\n")
 
     validated_config_dict, schema_path, exc_type = validator_mock.call_args[0]
     assert schema_path.name == "editable_topic.yaml"

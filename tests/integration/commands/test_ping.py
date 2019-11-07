@@ -1,6 +1,6 @@
-import pytest
 from click.testing import CliRunner
 
+import pytest
 from esque import config
 from esque.cli.commands import ping
 from esque.controller.topic_controller import TopicController
@@ -8,7 +8,7 @@ from esque.controller.topic_controller import TopicController
 
 @pytest.mark.integration
 def test_smoke_test_ping(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(ping)
+    result = non_interactive_cli_runner.invoke(ping, catch_exceptions=False)
     assert result.exit_code == 0
 
 

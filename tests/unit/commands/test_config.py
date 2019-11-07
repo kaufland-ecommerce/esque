@@ -28,7 +28,7 @@ def test_migrate_config(
 
     mocker.patch.object(migration, "migrate", wraps=migration_wrapper)
 
-    result = interactive_cli_runner.invoke(config_migrate)
+    result = interactive_cli_runner.invoke(config_migrate, catch_exceptions=False)
 
     assert result.exit_code == 0
     assert get_config_version(new_conf_path) == CURRENT_VERSION
@@ -44,7 +44,7 @@ def test_edit_config(
     data["contexts"]["dupe"] = data["contexts"]["context_1"]
     mocker.patch.object(click, "edit", return_value=yaml.dump(data))
 
-    result = interactive_cli_runner.invoke(config_edit)
+    result = interactive_cli_runner.invoke(config_edit, catch_exceptions=False)
     assert result.exit_code == 0
     config = Config()
     assert "dupe" in config.available_contexts
