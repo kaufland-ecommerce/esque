@@ -40,7 +40,7 @@ def config_path() -> Path:
 def _config_path() -> Path:
     if environment.ESQUE_CONF_PATH:
         return Path(environment.ESQUE_CONF_PATH)
-    return config_dir() / "esque.cfg"
+    return config_dir() / "esque.yaml"
 
 
 def _config_dir() -> Path:
