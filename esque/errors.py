@@ -148,14 +148,6 @@ class YamaleValidationException(ValidationException):
         super().__init__(joined_message)
 
 
-class TopicConfigNotValidException(YamaleValidationException):
-    pass
-
-
-class EsqueConfigNotValidException(YamaleValidationException):
-    pass
-
-
 CONFLUENT_ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {
     KafkaError.UNKNOWN_TOPIC_OR_PART: TopicDoesNotExistException,
     KafkaError.TOPIC_ALREADY_EXISTS: TopicAlreadyExistsException,

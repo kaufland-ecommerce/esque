@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import click
 import yaml
 
+import esque.validation
 from esque.cli import environment
 from esque.config.migration import check_config_version
 from esque.errors import (
@@ -16,7 +17,6 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
-from esque.validation import validate_esque_config
 from pykafka import SslConfig
 from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
@@ -57,7 +57,7 @@ class Config:
             raise ConfigNotExistsException()
         check_config_version(config_path())
         self._cfg = yaml.safe_load(config_path().read_text())
-        validate_esque_config(self._cfg)
+        esque.validation.validate_esque_config(self._cfg)
         self._current_dict: Optional[Dict[str, str]] = None
 
     @property
@@ -97,7 +97,7 @@ class Config:
     def sasl_mechanism(self) -> str:
         if "sasl_mechanism" not in self.current_context_dict:
             raise MissingSaslParameter(f"No sasl mechanism configured, valid values are {SUPPORTED_SASL_MECHANISMS}")
-        return self.current_context_dict["sasl_mechanism"]
+        return self.current_context_dict["sasl_mechanism"].upper()
 
     @property
     def sasl_enabled(self) -> bool:
@@ -117,7 +117,7 @@ class Config:
 
     @property
     def security_protocol(self) -> str:
-        protocol = self.current_context_dict.get("security_protocol", "PLAINTEXT")
+        protocol = self.current_context_dict.get("security_protocol", "PLAINTEXT").upper()
         if "SASL" in protocol and "sasl_params" not in self.current_context_dict:
             msg = (
                 f"Security protocol {protocol} contains 'SASL' indicating that you want to connect to "

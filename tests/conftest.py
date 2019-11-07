@@ -18,6 +18,7 @@ from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
 
+import esque.config
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import Config
@@ -28,6 +29,12 @@ from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 from pykafka.exceptions import NoBrokersAvailableError
+
+# constants that indicate which config version to load
+# see function get_path_for_config_version
+LOAD_SAMPLE_CONFIG = -1
+LOAD_INTEGRATION_TEST_CONFIG = -2
+LOAD_CURRENT_VERSION = CURRENT_VERSION
 
 
 def pytest_addoption(parser):
@@ -64,7 +71,7 @@ def load_config() -> config_loader:
     """
     stack = ExitStack()
 
-    def loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
+    def loader(config_version: int = LOAD_CURRENT_VERSION) -> Tuple[Path, str]:
         original_path = get_path_for_config_version(config_version)
         data = original_path.read_text()
         tmp_config = tempfile.NamedTemporaryFile(mode="w", suffix=original_path.suffix)
@@ -81,8 +88,10 @@ def get_path_for_config_version(config_version: int) -> Path:
     base_path = Path(__file__).parent / "test_configs"
     if config_version == 0:
         return base_path / "v0_sample.cfg"
-    if config_version == -1:
+    if config_version == LOAD_INTEGRATION_TEST_CONFIG:
         return base_path / "integration_test_config.yaml"
+    if config_version == LOAD_SAMPLE_CONFIG:
+        return esque.config.sample_config_path()
     return base_path / f"v{config_version}_sample.yaml"
 
 
@@ -105,7 +114,7 @@ def mock_config_path(mocker: mock) -> config_path_mocker:
 def unittest_config(
     request: FixtureRequest, mock_config_path: Callable[[Union[str, Path]], None], load_config: config_loader
 ) -> Config:
-    conffile, _ = load_config(-1)
+    conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
     mock_config_path(conffile)
     esque_config = Config()
     if request.config.getoption("--local"):

@@ -1,15 +1,13 @@
 from pathlib import Path
-from typing import Callable
 from unittest import mock
 
 import pytest
 import yaml
 from yaml.scanner import ScannerError
 
-from esque import validation
 from esque.config import Config
 from esque.config.migration import CURRENT_VERSION, migrate
-from esque.errors import ConfigTooNew, ConfigTooOld, ContextNotDefinedException, EsqueConfigNotValidException
+from esque.errors import ConfigTooNew, ConfigTooOld, ContextNotDefinedException
 from esque.validation import validate_esque_config
 from tests.conftest import config_loader, config_path_mocker
 
@@ -151,10 +149,8 @@ def test_invalid_config(mock_config_path: config_path_mocker, load_config: confi
 def test_validation_called(mocker: mock, mock_config_path: config_path_mocker, load_config: config_loader):
     conf_path, conf_content = load_config()
     mock_config_path(conf_path)
-    validator_mock = mocker.patch.object(validation, "validate")
+    validator_mock = mocker.patch("esque.validation.validate_esque_config")
     Config()
 
-    validated_config_dict, schema_path, exc_type = validator_mock.call_args[0]
-    assert schema_path.name == "esque_config.yaml"
+    validated_config_dict, = validator_mock.call_args[0]
     assert validated_config_dict == yaml.safe_load(conf_content)
-    assert exc_type == EsqueConfigNotValidException

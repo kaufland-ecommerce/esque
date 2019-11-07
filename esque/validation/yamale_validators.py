@@ -1,7 +1,8 @@
 import re
 from functools import wraps
-from yamale.validators import Boolean, DefaultValidators, Integer, Number, Validator
+
 from yamale.util import isstr
+from yamale.validators import Boolean, DefaultValidators, Enum, Integer, Number, Validator
 
 
 def all_validators() -> dict:
@@ -10,6 +11,7 @@ def all_validators() -> dict:
     validators[StringInt.tag] = StringInt
     validators[StringFloat.tag] = StringFloat
     validators[ReplicaList.tag] = ReplicaList
+    validators[StringEnum.tag] = StringEnum
 
     return validators
 
@@ -52,6 +54,21 @@ class StringFloat(Number):
     @catch_value_errors
     def validate(self, value):
         return super().validate(float(value))
+
+
+class StringEnum(Enum):
+    tag = "s_enum"
+
+    def __init__(self, *args, case_sensitive: bool = True, **kwargs):
+        if not case_sensitive:
+            args = [arg.lower() for arg in args]
+        super().__init__(*args, **kwargs)
+
+    @catch_value_errors
+    def validate(self, value):
+        if not isinstance(value, str):
+            raise TypeError(f"Value {value} has to be a string, but is {type(value).__name__}")
+        return super().validate(value.lower())
 
 
 class ReplicaList(Validator):

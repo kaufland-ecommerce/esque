@@ -11,7 +11,7 @@ import click
 import yaml
 from click import MissingParameter, version_option
 
-from esque import __version__
+from esque import __version__, validation
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
@@ -32,7 +32,6 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ValidationException
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
-from esque.validation import validate_editable_topic_config, validate_esque_config
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
@@ -149,7 +148,7 @@ def config_autocomplete(state: State):
 @default_options
 def config_edit(state: State):
     old_yaml = config_path().read_text()
-    new_yaml, _ = edit_yaml(old_yaml, validator=validate_esque_config)
+    new_yaml, _ = edit_yaml(old_yaml, validator=validation.validate_esque_config)
     config_path().write_text(new_yaml)
 
 
@@ -188,7 +187,7 @@ def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
-    _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
+    _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validation.validate_editable_topic_config)
 
     local_topic = copy_to_local(topic)
     local_topic.update_from_dict(new_conf)
