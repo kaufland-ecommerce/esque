@@ -1,17 +1,18 @@
 import re
 from enum import Enum
 from itertools import islice
-from typing import List, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
 
 from click import BadParameter
-from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
+from confluent_kafka.admin import ConfigResource
+from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
-from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
+from esque.errors import raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+from pykafka.topic import Topic as PyKafkaTopic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -30,7 +31,6 @@ class TopicController:
         self.cluster: "Cluster" = cluster
         self.config = config
 
-    @translate_third_party_exceptions
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
         # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
@@ -45,7 +45,6 @@ class TopicController:
         else:
             raise BadParameter(f"TopicType needs to be part of {ClientTypes}", param=client_type)
 
-    @translate_third_party_exceptions
     def list_topics(
         self,
         *,
@@ -70,7 +69,6 @@ class TopicController:
             topics = list(map(self.get_local_topic, topic_names))
         return topics
 
-    @translate_third_party_exceptions
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
@@ -88,7 +86,6 @@ class TopicController:
             future_list = self.cluster.confluent_client.create_topics([new_topic], operation_timeout=60)
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
 
-    @translate_third_party_exceptions
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
         for topic in topics:
@@ -96,7 +93,6 @@ class TopicController:
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
 
-    @translate_third_party_exceptions
     @invalidate_cache_after
     def delete_topic(self, topic: Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
@@ -109,7 +105,6 @@ class TopicController:
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    @translate_third_party_exceptions
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
@@ -125,7 +120,6 @@ class TopicController:
 
         return topic
 
-    @translate_third_party_exceptions
     def _get_partition_data(
         self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
     ) -> List[Partition]:
@@ -140,7 +134,6 @@ class TopicController:
 
         return partitions
 
-    @translate_third_party_exceptions
     def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
         assert local_topic.is_only_local, "Can only diff local topics with remote"
 

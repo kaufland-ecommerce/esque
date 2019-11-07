@@ -6,10 +6,8 @@ from typing import Any, Dict, List, Optional
 
 import click
 import yaml
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
-from esque.cli.environment import ESQUE_CONF_PATH
+from esque.cli import environment
 from esque.config.migration import check_config_version
 from esque.errors import (
     ConfigException,
@@ -19,6 +17,8 @@ from esque.errors import (
     UnsupportedSaslMechanism,
 )
 from esque.validation import validate_esque_config
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -38,8 +38,8 @@ def config_path() -> Path:
 
 # create functions we can mock during tests
 def _config_path() -> Path:
-    if ESQUE_CONF_PATH:
-        return Path(ESQUE_CONF_PATH)
+    if environment.ESQUE_CONF_PATH:
+        return Path(environment.ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
 
 
@@ -148,7 +148,6 @@ class Config:
         return config
 
     def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
-
         base_config = {
             "bootstrap.servers": ",".join(self.bootstrap_servers),
             "security.protocol": self.security_protocol,

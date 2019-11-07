@@ -3,6 +3,7 @@ from concurrent.futures import Future, wait
 from itertools import islice
 
 import click
+import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
 
@@ -41,8 +42,8 @@ def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:
 
     if exception is None:
         return result
-    elif isinstance(exception, KafkaError):
-        raise_for_kafka_error(exception)
+    elif isinstance(exception, confluent_kafka.KafkaException):
+        raise_for_kafka_error(exception.args[0])
     else:
         raise exception
 

@@ -1,13 +1,12 @@
 from unittest import mock
 
 import click
-import yaml
-from click import MissingParameter
-from click.testing import CliRunner
-
 import confluent_kafka
 import pytest
+import yaml
 from _pytest.monkeypatch import MonkeyPatch
+from click.testing import CliRunner
+
 from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled, TopicConfigNotValidException
@@ -69,7 +68,7 @@ def test_edit_topic_works(
 @pytest.mark.integration
 def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(edit_topic)
-    assert result.exit_code == MissingParameter.exit_code
+    assert result.exit_code != 0
 
 
 @pytest.mark.integration

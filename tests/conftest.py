@@ -13,11 +13,10 @@ import confluent_kafka
 import pytest
 import yaml
 from _pytest.fixtures import FixtureRequest
-from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
-from confluent_kafka.cimpl import Producer, Producer as ConfluenceProducer, TopicPartition
-from pykafka.exceptions import NoBrokersAvailableError
+from confluent_kafka.cimpl import Producer as ConfluentProducer
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.cli.options import State
 from esque.cluster import Cluster
@@ -28,6 +27,7 @@ from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
+from pykafka.exceptions import NoBrokersAvailableError
 
 
 def pytest_addoption(parser):
@@ -265,7 +265,7 @@ def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage
 
 @pytest.fixture()
 def produced_messages_different_partitions(messages_ordered_different_partitions: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partitions:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
             time.sleep(0.5)
@@ -278,7 +278,7 @@ def produced_messages_different_partitions(messages_ordered_different_partitions
 def produced_messages_different_partitions_with_headers(
     messages_ordered_different_partition_with_headers: Iterable[KafkaMessage]
 ):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partition_with_headers:
             producer.produce(
                 topic=topic_name,
@@ -295,7 +295,7 @@ def produced_messages_different_partitions_with_headers(
 
 @pytest.fixture()
 def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
             time.sleep(0.5)
@@ -308,7 +308,7 @@ def produced_messages_same_partition(messages_ordered_same_partition: Iterable[K
 def produced_messages_same_partition_with_headers(
     messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]
 ):
-    def _produce(topic_name: str, producer: ConfluenceProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition_with_headers:
             producer.produce(
                 topic=topic_name,
@@ -348,13 +348,13 @@ def confluent_admin_client(unittest_config) -> AdminClient:
 
 
 @pytest.fixture()
-def producer(unittest_config):
+def producer(unittest_config) -> ConfluentProducer:
     producer_config = unittest_config.create_confluent_config()
-    yield Producer(producer_config)
+    yield ConfluentProducer(producer_config)
 
 
 @pytest.fixture()
-def avro_producer(unittest_config):
+def avro_producer(unittest_config) -> AvroProducer:
     producer_config = unittest_config.create_confluent_config()
     producer_config.update({"schema.registry.url": Config().schema_registry})
     yield AvroProducer(producer_config)
