@@ -14,8 +14,7 @@ from click import MissingParameter, version_option
 
 from esque import __version__
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
-from esque.cli.options import State, default_options, output_format_option
-from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
+from esque.cli.options import default_options, output_format_option, State
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -29,9 +28,7 @@ from esque.cli.output import (
 )
 from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.cluster import Cluster
-from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
-from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config import config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import EditCanceled, ValidationException
 from esque.resources.broker import Broker
@@ -223,8 +220,7 @@ def edit_topic(state: State, topic_name: str):
     required=False,
     default=False,
 )
-@pass_state
-@error_handler
+@default_options
 def edit_consumergroup(
     state: State,
     consumer_id: str,

@@ -14,8 +14,7 @@ from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.clients.consumer import ConsumerFactory
 from esque.config import Config
-from esque.errors import (EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error, translate_third_party_exceptions)
-from esque.errors import raise_for_kafka_error
+from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
@@ -108,7 +107,6 @@ class TopicController:
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    @translate_third_party_exceptions
     def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum):
         topic = self.get_cluster_topic(topic_name=topic_name)
         partition_offsets = {partition.partition_id: 0 for partition in topic.partitions}
@@ -150,7 +148,6 @@ class TopicController:
                         partition_offsets[message.partition()] = message.offset() + 1
         return partition_offsets
 
-    @translate_third_party_exceptions
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
