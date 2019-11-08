@@ -38,7 +38,6 @@ class ConsumerGroupController:
         self.cluster = cluster
         self._logger = logging.getLogger(__name__)
 
-    @translate_third_party_exceptions
     def get_consumergroup(self, consumer_id) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 

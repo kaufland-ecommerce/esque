@@ -7,8 +7,6 @@ import click
 from avro.schema import RecordSchema
 from confluent_kafka.cimpl import Message
 
-from esque.errors import translate_third_party_exceptions
-
 
 class MessageHeader(NamedTuple):
     key: str
@@ -83,13 +81,11 @@ class FileReader(FileHandler):
 
 
 class PlainTextFileWriter(FileWriter):
-    @translate_third_party_exceptions
     def write_message(self, message: Message):
         self.file.write(serialize_message(message) + "\n")
 
 
 class PlainTextFileReader(FileReader):
-    @translate_third_party_exceptions
     def read_message_from_file(self) -> Iterable[KafkaMessage]:
         for line in self.file:
             yield deserialize_message(line)

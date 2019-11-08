@@ -10,10 +10,11 @@ from time import sleep
 
 import click
 import yaml
-from click import MissingParameter, UsageError, version_option
+from click import MissingParameter, version_option
 
 from esque import __version__
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
+from esque.cli.options import State, default_options, output_format_option
 from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
 from esque.cli.output import (
     blue_bold,
@@ -30,8 +31,9 @@ from esque.clients.consumer import consume_to_file_ordered, consume_to_files, Co
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
 from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
+from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import EditCanceled
+from esque.errors import EditCanceled, ValidationException
 from esque.resources.broker import Broker
 from esque.resources.topic import copy_to_local, Topic
 from esque.validation import validate_editable_topic_config
@@ -39,9 +41,8 @@ from esque.validation import validate_editable_topic_config
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
 @click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
-@no_verify_option
 @version_option(__version__)
-@pass_state
+@default_options
 def esque(state: State, recreate_config: bool):
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
@@ -50,47 +51,53 @@ def esque(state: State, recreate_config: bool):
 
 
 @esque.group(help="Get a quick overview of different resources.")
-def get():
+@default_options
+def get(state: State):
     pass
 
 
 @esque.group(help="Get detailed information about a resource.")
-def describe():
+@default_options
+def describe(state: State):
     pass
 
 
 @esque.group(help="Create a new instance of a resource.")
-def create():
+@default_options
+def create(state: State):
     pass
 
 
 @esque.group(help="Delete a resource.")
-def delete():
+@default_options
+def delete(state: State):
     pass
 
 
 @esque.group(help="Edit a resource")
-def edit():
+@default_options
+def edit(state: State):
     pass
 
 
 @esque.group(help="Configuration-related options")
-def config():
+@default_options
+def config(state: State):
     pass
 
 
-# TODO: Figure out how to pass the state object
 def list_topics(ctx, args, incomplete):
-    cluster = Cluster()
-    return [topic["name"] for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
+    state = ctx.ensure_object(State)
+    cluster = state.cluster
+    return [topic.name for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
 
 
 def list_contexts(ctx, args, incomplete):
-    config = Config()
-    return [context for context in config.available_contexts if context.startswith(incomplete)]
+    state = ctx.ensure_object(State)
+    return [context for context in state.config.available_contexts if context.startswith(incomplete)]
 
 
-def fallback_to_stdin(ctx, param, value):
+def fallback_to_stdin(ctx, args, value):
     stdin = click.get_text_stream("stdin")
     if not value and not isatty(stdin):
         stdin_arg = stdin.readline().strip()
@@ -104,8 +111,7 @@ def fallback_to_stdin(ctx, param, value):
 
 @esque.command("ctx", help="Switch clusters.")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
-@error_handler
-@pass_state
+@default_options
 def ctx(state: State, context: str):
     if not context:
         for c in state.config.available_contexts:
@@ -119,8 +125,8 @@ def ctx(state: State, context: str):
 
 
 @config.command("autocomplete", help="Generate the autocompletion script.")
-@error_handler
-def config_autocomplete():
+@default_options
+def config_autocomplete(state: State):
     directory = config_dir()
     config_file_name = "autocomplete.sh"
     config_file: Path = directory / config_file_name
@@ -146,9 +152,7 @@ def config_autocomplete():
 @create.command("topic")
 @click.argument("topic-name", callback=fallback_to_stdin, required=False)
 @click.option("-l", "--like", help="Topic to use as template", required=False)
-@error_handler
-@no_verify_option
-@pass_state
+@default_options
 def create_topic(state: State, topic_name: str, like: str):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
@@ -168,8 +172,7 @@ def create_topic(state: State, topic_name: str, like: str):
 
 @edit.command("topic")
 @click.argument("topic-name", required=True)
-@pass_state
-@error_handler
+@default_options
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
@@ -267,9 +270,7 @@ def edit_consumergroup(
 @click.argument(
     "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
 )
-@no_verify_option
-@error_handler
-@pass_state
+@default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -282,16 +283,14 @@ def delete_topic(state: State, topic_name: str):
 
 @esque.command("apply", help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
-@no_verify_option
-@error_handler
-@pass_state
+@default_options
 def apply(state: State, file: str):
     # Get topic data based on the YAML
     yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
     yaml_topic_names = [t.name for t in yaml_topics]
     if not len(yaml_topic_names) == len(set(yaml_topic_names)):
-        raise UsageError("Duplicate topic names in the YAML!")
+        raise ValidationException("Duplicate topic names in the YAML!")
 
     # Get topic data based on the cluster state
     topic_controller = state.cluster.topic_controller
@@ -362,8 +361,7 @@ def apply(state: State, file: str):
     f"{red_bold('Beware! This can be a really expensive operation.')}",
 )
 @output_format_option
-@error_handler
-@pass_state
+@default_options
 def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
@@ -390,8 +388,7 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
 @get.command("offsets")
 @click.argument("topic-name", required=True, type=click.STRING, callback=fallback_to_stdin)
 @output_format_option
-@error_handler
-@pass_state
+@default_options
 def get_offsets(state: State, topic_name: str, output_format: str):
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
@@ -402,10 +399,9 @@ def get_offsets(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, required=True)
-@error_handler
-@pass_state
+@click.argument("broker-id", callback=fallback_to_stdin, required=False)
 @output_format_option
+@default_options
 def describe_broker(state: State, broker_id: str, output_format: str):
     broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(format_output(broker, output_format))
@@ -419,9 +415,8 @@ def describe_broker(state: State, broker_id: str, output_format: str):
     default=False,
     is_flag=True,
 )
-@error_handler
-@pass_state
 @output_format_option
+@default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
@@ -430,9 +425,8 @@ def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool,
 
 
 @get.command("brokers")
-@error_handler
-@pass_state
 @output_format_option
+@default_options
 def get_brokers(state: State, output_format: str):
     brokers = Broker.get_all(state.cluster)
     broker_ids_and_hosts = [f"{broker.broker_id}: {broker.host}:{broker.port}" for broker in brokers]
@@ -440,9 +434,8 @@ def get_brokers(state: State, output_format: str):
 
 
 @get.command("consumergroups")
-@error_handler
-@pass_state
 @output_format_option
+@default_options
 def get_consumergroups(state: State, output_format: str):
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
     click.echo(format_output(groups, output_format))
@@ -451,8 +444,7 @@ def get_consumergroups(state: State, output_format: str):
 @get.command("topics")
 @click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics, required=False)
 @output_format_option
-@error_handler
-@pass_state
+@default_options
 def get_topics(state: State, prefix: str, output_format: str):
     topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
     topic_names = [topic.name for topic in topics]
@@ -479,8 +471,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     default=False,
     is_flag=True,
 )
-@error_handler
-@pass_state
+@default_options
 def consume(
     state: State,
     topic: str,
@@ -571,8 +562,7 @@ def consume(
     default=False,
     is_flag=True,
 )
-@error_handler
-@pass_state
+@default_options
 def produce(
     state: State,
     topic: str,
@@ -635,8 +625,7 @@ def produce(
 @esque.command("ping", help="Tests the connection to the kafka cluster.")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
-@error_handler
-@pass_state
+@default_options
 def ping(state: State, times: int, wait: int):
     topic_controller = state.cluster.topic_controller
     deltas = []
@@ -662,6 +651,6 @@ def ping(state: State, times: int, wait: int):
 
 
 @edit.command("config", help="Edit your esque config file.")
-@error_handler
+@default_options
 def edit_config():
     click.edit(filename=config_path().as_posix())

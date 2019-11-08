@@ -11,10 +11,10 @@ import pendulum
 from confluent_kafka.avro import AvroProducer
 
 from esque.config import Config
-from esque.errors import raise_for_kafka_error, translate_third_party_exceptions
+from esque.errors import raise_for_kafka_error
 from esque.helpers import delivery_callback, delta_t
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import deserialize_message, FileReader, KafkaMessage, PlainTextFileReader
+from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader, deserialize_message
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -34,12 +34,10 @@ class AbstractProducer(ABC):
             self._rule_tree = None
         self.create_internal_producer()
 
-    @translate_third_party_exceptions
     @abstractmethod
     def produce(self) -> int:
         raise NotImplementedError()
 
-    @translate_third_party_exceptions
     def _setup_config(self):
         self._config.update(
             {
@@ -49,7 +47,6 @@ class AbstractProducer(ABC):
             }
         )
 
-    @translate_third_party_exceptions
     def flush_all(self, message_prefix: str = None):
         while True:
             left_messages = self._producer.flush(1)
@@ -57,11 +54,9 @@ class AbstractProducer(ABC):
                 break
             self.logger.info((message_prefix or "") + f"Still {left_messages} messages left, flushing...")
 
-    @translate_third_party_exceptions
     def create_internal_producer(self):
         self._producer = confluent_kafka.Producer(self._config)
 
-    @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
         if self._rule_tree is None or self._rule_tree.evaluate(message):
             self._producer.produce(
@@ -74,7 +69,6 @@ class AbstractProducer(ABC):
 
 
 class PingProducer(AbstractProducer):
-    @translate_third_party_exceptions
     def produce(self) -> int:
         start = pendulum.now()
         self.produce_message(
@@ -90,7 +84,6 @@ class StdInProducer(AbstractProducer):
         super().__init__(topic_name=topic_name, match=match)
         self._ignore_errors = ignore_errors
 
-    @translate_third_party_exceptions
     def produce(self) -> int:
         total_number_of_produced_messages = 0
         # accept lines from stdin until EOF
@@ -112,7 +105,6 @@ class FileProducer(AbstractProducer):
         super().__init__(topic_name=topic_name, match=match)
         self.working_dir = working_dir
 
-    @translate_third_party_exceptions
     def produce(self) -> int:
         path_list = glob(str(self.working_dir / "partition_*"))
         counter = 0
@@ -132,7 +124,6 @@ class FileProducer(AbstractProducer):
 
 
 class AvroFileProducer(FileProducer):
-    @translate_third_party_exceptions
     def create_internal_producer(self):
         self._producer = AvroProducer(self._config)
 
@@ -143,7 +134,6 @@ class AvroFileProducer(FileProducer):
         super()._setup_config()
         self._config.update({"schema.registry.url": Config().schema_registry})
 
-    @translate_third_party_exceptions
     def produce_message(self, topic_name: str, message: KafkaMessage):
         if self._rule_tree is None or self._rule_tree.evaluate(message):
             self._producer.produce(
