@@ -1,6 +1,7 @@
 import getpass
 import logging
 import pathlib
+import pwd
 import sys
 import time
 from pathlib import Path
@@ -8,12 +9,8 @@ from shutil import copyfile
 from time import sleep
 
 import click
-import pwd
-import pendulum
 import yaml
 from click import MissingParameter, UsageError, version_option
-from confluent_kafka.cimpl import Consumer, TopicPartition
-from esque.controller.topic_controller import TopicController
 
 from esque import __version__
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
@@ -198,7 +195,11 @@ def edit_topic(state: State, topic_name: str):
 @edit.command("consumergroup")
 @click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
 @click.option(
-    "-t", "--topic-name", help="Regular expression describing the topic name", type=click.STRING, required=True
+    "-t",
+    "--topic-name",
+    help="Regular expression describing the topic name (default: all subscribed topics)",
+    type=click.STRING,
+    required=False,
 )
 @click.option("--offset-to-value", help="Rewind offset to the specified value", type=click.INT, required=False)
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
@@ -235,7 +236,7 @@ def edit_consumergroup(
     consumergroup_controller = ConsumerGroupController(state.cluster)
     offset_plan = consumergroup_controller.create_consumer_group_offset_change_plan(
         consumer_id=consumer_id,
-        topic_name=topic_name,
+        topic_name=topic_name if topic_name else ".*",
         offset_to_value=offset_to_value,
         offset_by_delta=offset_by_delta,
         offset_to_timestamp=offset_to_timestamp,
@@ -244,14 +245,14 @@ def edit_consumergroup(
     )
     if len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
-        for plan_element in offset_plan.items():
+        for plan_element in offset_plan:
             click.echo(
                 "Topic: {}, partition {}, current offset: {}, new offset: {}".format(
                     plan_element.topic_name,
                     plan_element.partition_id,
                     plan_element.current_offset,
                     plan_element.proposed_offset
-                    if plan_element.current_offset == plan_element.partition_offset
+                    if plan_element.current_offset == plan_element.proposed_offset
                     else red_bold(str(plan_element.proposed_offset)),
                 )
             )

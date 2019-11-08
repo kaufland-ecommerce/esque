@@ -160,7 +160,7 @@ class PlaintextConsumer(AbstractConsumer):
 
         while counter < amount:
             try:
-                message = self.consume_single_message(10)
+                message = self.consume_single_acceptable_message(7)
             except MessageEmptyException:
                 return counter
             except EndOfPartitionReachedException:

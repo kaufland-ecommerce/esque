@@ -1,22 +1,36 @@
 import logging
-from typing import Dict, List, NamedTuple, re
+import re
+from typing import Dict, List, Optional
 
-import click
 import pendulum
 import pykafka
 from confluent_kafka.cimpl import TopicPartition
-from esque.cli.helpers import ensure_approval
 
-from esque.controller.topic_controller import TopicController
-
-from esque.cli.output import red_bold, green_bold
-
+from esque.cli.output import red_bold
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
 from esque.config import Config
-from esque.controller.consumergroup_controller import ConsumerGroupOffsetPlan
+from esque.controller.topic_controller import TopicController
 from esque.errors import translate_third_party_exceptions
 from esque.resources.consumergroup import ConsumerGroup
+
+
+class ConsumerGroupOffsetPlan:
+    def __init__(
+        self,
+        topic_name: str,
+        current_offset: int,
+        proposed_offset: int,
+        high_watermark: int,
+        low_watermark: int,
+        partition_id: int,
+    ) -> None:
+        self.topic_name = topic_name
+        self.current_offset = current_offset
+        self.proposed_offset = proposed_offset
+        self.high_watermark = high_watermark
+        self.low_watermark = low_watermark
+        self.partition_id = partition_id
 
 
 class ConsumerGroupController:
@@ -58,15 +72,17 @@ class ConsumerGroupController:
         self,
         consumer_id: str,
         topic_name: str,
-        offset_to_value: int,
-        offset_by_delta: int,
-        offset_to_timestamp: str,
-        offset_from_group: str,
+        offset_to_value: Optional[int],
+        offset_by_delta: Optional[int],
+        offset_to_timestamp: Optional[str],
+        offset_from_group: Optional[str],
         force: bool,
     ) -> List[ConsumerGroupOffsetPlan]:
 
-        customer_group_state, offset_plans = self._read_current_consumergroup_offsets(consumer_id=consumer_id, topic_name_expression=topic_name)
-        if customer_group_state == "Empty" or force:
+        consumer_group_state, offset_plans = self._read_current_consumergroup_offsets(
+            consumer_id=consumer_id, topic_name_expression=topic_name
+        )
+        if consumer_group_state == "Empty" or force:
             if offset_to_value:
                 for _, plan_element in offset_plans.items():
                     (allowed_offset, error, message) = self._select_new_offset_for_consumer(
@@ -92,10 +108,17 @@ class ConsumerGroupController:
                 for _, plan_element in offset_plans.items():
                     plan_element.current_offset = current_offset_dict.get(plan_element.partition_id, 0)
             elif offset_from_group:
-                _, mirror_consumer_group = self._read_current_consumergroup_offsets(consumer_id=offset_from_group, topic_name_expression=topic_name)
-
+                _, mirror_consumer_group = self._read_current_consumergroup_offsets(
+                    consumer_id=offset_from_group, topic_name_expression=topic_name
+                )
+                for key, value in mirror_consumer_group.items():
+                    if key in offset_plans.keys():
+                        offset_plans[key].proposed_offset = value.current_offset
+                    else:
+                        value.current_offset = 0
+                        offset_plans[key] = value
             return list(offset_plans.values())
-        else:
+        elif consumer_group_state != "Dead":
             self._logger.error(
                 "Consumergroup {} is not empty. Use the {} option if you want to override this safety mechanism.".format(
                     consumer_id, red_bold("--force")
@@ -130,9 +153,6 @@ class ConsumerGroupController:
             message = ""
         return final_value, error, message
 
-    def _merge_offset_plans(self, offset_plan_source: ConsumerGroupOffsetPlan, offset_plan_target: ConsumerGroupOffsetPlan):
-        pass
-
     def _read_current_consumergroup_offsets(self, consumer_id: str, topic_name_expression: str):
         offset_plans = {}
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
@@ -153,21 +173,10 @@ class ConsumerGroupController:
                             low_watermark=partition_info["topic_low_watermark"],
                             partition_id=partition_id,
                         )
-                        offset_plans[decoded_topic_name][partition_id] = consumer_offset_plan
+                        offset_plans[f"{decoded_topic_name}::{partition_id}"] = consumer_offset_plan
         except AttributeError:
             self._logger.error("Consumergroup {} not available.".format(consumer_id))
-            return offset_plans
+            return "Dead", offset_plans
         if len(offset_plans) == 0:
-            self._logger.error(
-                "No offsets have ever been committed by consumergroup {}.".format(consumer_id)
-            )
-            return consumer_group_state, offset_plans
-
-
-class ConsumerGroupOffsetPlan(NamedTuple):
-    topic_name: str
-    current_offset: int
-    proposed_offset: int
-    high_watermark: int
-    low_watermark: int
-    partition_id: int
+            self._logger.error("No offsets have ever been committed by consumergroup {}.".format(consumer_id))
+        return consumer_group_state, offset_plans

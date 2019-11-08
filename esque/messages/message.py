@@ -121,6 +121,7 @@ def serialize_message(message: Message):
         "key": decoded_message.key,
         "value": decoded_message.value,
         "partition": decoded_message.partition,
+        "offset": decoded_message.offset,
         "headers": [
             {"key": header_element.key, "value": header_element.value} for header_element in decoded_message.headers
         ],
