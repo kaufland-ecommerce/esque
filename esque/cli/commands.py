@@ -14,7 +14,7 @@ from click import MissingParameter, UsageError, version_option
 
 from esque import __version__
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
-from esque.cli.options import State, error_handler, no_verify_option, output_format_option, pass_state
+from esque.cli.options import error_handler, no_verify_option, output_format_option, pass_state, State
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -26,14 +26,14 @@ from esque.cli.output import (
     pretty_unchanged_topic_configs,
     red_bold,
 )
-from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
+from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.cluster import Cluster
-from esque.config import Config, PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config import Config, config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import EditCanceled
 from esque.resources.broker import Broker
-from esque.resources.topic import Topic, copy_to_local
+from esque.resources.topic import copy_to_local, Topic
 from esque.validation import validate_editable_topic_config
 
 

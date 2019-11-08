@@ -337,6 +337,11 @@ def consumer_group():
 
 
 @pytest.fixture()
+def target_consumer_group():
+    yield "".join(random.choices(ascii_letters, k=5))
+
+
+@pytest.fixture()
 def consumer(topic_object: Topic, consumer_group: str):
     _config = Config().create_confluent_config()
     _config.update(

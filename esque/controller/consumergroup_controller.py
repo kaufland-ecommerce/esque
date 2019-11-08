@@ -126,7 +126,8 @@ class ConsumerGroupController:
             )
             return list(offset_plans.values())
 
-    def _select_new_offset_for_consumer(self, requested_offset: int, offset_plan: ConsumerGroupOffsetPlan):
+    @staticmethod
+    def _select_new_offset_for_consumer(requested_offset: int, offset_plan: ConsumerGroupOffsetPlan):
         if requested_offset < offset_plan.low_watermark:
             final_value = offset_plan.low_watermark
             error = True

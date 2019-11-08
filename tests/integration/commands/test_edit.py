@@ -1,4 +1,3 @@
-from time import sleep
 from unittest import mock
 
 import click
@@ -8,11 +7,11 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click import MissingParameter
 from click.testing import CliRunner
-from confluent_kafka.cimpl import Producer as ConfluenceProducer, TopicPartition
-from esque.config import Config
+from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import edit_topic, edit_consumergroup
+from esque.cli.commands import edit_consumergroup, edit_topic
 from esque.clients.consumer import ConsumerFactory
+from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
 from esque.validation import validate
@@ -107,7 +106,7 @@ def test_edit_consumergroup_offset_to_absolute_value(
     producer: ConfluenceProducer,
     consumer_group,
     consumergroup_controller,
-    tmpdir_factory
+    tmpdir_factory,
 ):
     produced_messages_same_partition(topic, producer)
     working_dir = tmpdir_factory.mktemp("working_directory")
@@ -117,7 +116,7 @@ def test_edit_consumergroup_offset_to_absolute_value(
         {
             "group.id": consumer_group,
             "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"}
+            "default.topic.config": {"auto.offset.reset": "earliest"},
         }
     )
     vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
@@ -126,15 +125,174 @@ def test_edit_consumergroup_offset_to_absolute_value(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(verbose=True)
+    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
 
     interactive_cli_runner.invoke(
         edit_consumergroup,
-        args=[consumer_group, topic, "--offset-to-value", "1"],
+        args=[consumer_group, "--topic-name", topic, "--offset-to-value", "1"],
         input="y\n",
         catch_exceptions=True,
     )
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(verbose=True)
+    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 1
+
+
+@pytest.mark.integration
+def test_edit_consumergroup_offset_to_delta(
+    topic: str,
+    produced_messages_same_partition,
+    interactive_cli_runner,
+    producer: ConfluenceProducer,
+    consumer_group,
+    consumergroup_controller,
+    tmpdir_factory,
+):
+    produced_messages_same_partition(topic, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    config = Config().create_confluent_config()
+    config.update(
+        {
+            "group.id": consumer_group,
+            "enable.auto.commit": True,
+            "default.topic.config": {"auto.offset.reset": "earliest"},
+        }
+    )
+    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
+    vanilla_consumer.subscribe([topic])
+    vanilla_consumer.consume(10)
+    vanilla_consumer.close()
+    del vanilla_consumer
+
+    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+
+    interactive_cli_runner.invoke(
+        edit_consumergroup,
+        args=[consumer_group, "--topic-name", topic, "--offset-by-delta", "-2"],
+        input="y\n",
+        catch_exceptions=True,
+    )
+    # Check assertions:
+    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+
+
+@pytest.mark.integration
+def test_edit_consumergroup_offset_to_delta_all_topics(
+    topic: str,
+    produced_messages_same_partition,
+    interactive_cli_runner,
+    producer: ConfluenceProducer,
+    consumer_group,
+    consumergroup_controller,
+    tmpdir_factory,
+):
+    produced_messages_same_partition(topic, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    config = Config().create_confluent_config()
+    config.update(
+        {
+            "group.id": consumer_group,
+            "enable.auto.commit": True,
+            "default.topic.config": {"auto.offset.reset": "earliest"},
+        }
+    )
+    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
+    vanilla_consumer.subscribe([topic])
+    vanilla_consumer.consume(10)
+    vanilla_consumer.close()
+    del vanilla_consumer
+
+    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+
+    interactive_cli_runner.invoke(
+        edit_consumergroup, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+    )
+    # Check assertions:
+    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+
+
+@pytest.mark.integration
+def test_edit_consumergroup_offset_from_group(
+    topic: str,
+    produced_messages_same_partition,
+    interactive_cli_runner,
+    producer: ConfluenceProducer,
+    consumer_group,
+    target_consumer_group,
+    consumergroup_controller,
+    tmpdir_factory,
+):
+    produced_messages_same_partition(topic, producer)
+
+    config = Config().create_confluent_config()
+    config.update(
+        {
+            "group.id": consumer_group,
+            "enable.auto.commit": True,
+            "default.topic.config": {"auto.offset.reset": "earliest"},
+        }
+    )
+    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
+    vanilla_consumer.subscribe([topic])
+    vanilla_consumer.consume(10)
+    vanilla_consumer.close()
+    del vanilla_consumer
+
+    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+
+    interactive_cli_runner.invoke(
+        edit_consumergroup, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+    )
+    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+        verbose=True
+    )
+
+    # create a new consumer in a separate group and consume just one message
+    config_target_consumer = Config().create_confluent_config()
+    config_target_consumer.update(
+        {
+            "group.id": target_consumer_group,
+            "enable.auto.commit": True,
+            "default.topic.config": {"auto.offset.reset": "earliest"},
+        }
+    )
+    vanilla_target_consumer = ConsumerFactory().create_custom_consumer(config_target_consumer)
+    vanilla_target_consumer.subscribe([topic])
+    vanilla_target_consumer.consume(1)
+    vanilla_target_consumer.close()
+    del vanilla_target_consumer
+
+    interactive_cli_runner.invoke(
+        edit_consumergroup,
+        args=[target_consumer_group, "--offset-from-group", consumer_group],
+        input="y\n",
+        catch_exceptions=True,
+    )
+    consumergroup_desc_target = consumergroup_controller.get_consumergroup(consumer_id=target_consumer_group).describe(
+        verbose=True
+    )
+
+    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+    assert consumergroup_desc_target["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8

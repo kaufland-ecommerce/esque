@@ -220,6 +220,23 @@ def test_plain_text_message_ordering_with_filtering(
 
 
 @pytest.mark.integration
+def test_plain_text_message_ordering_with_filtering_by_message_offset(
+    producer: ConfluenceProducer, topic: str, tmpdir_factory, produced_messages_same_partition
+):
+    produced_messages_same_partition(topic, producer)
+    working_dir = tmpdir_factory.mktemp("working_directory")
+
+    consume_to_file_ordered(
+        working_dir, topic, "group", [0], 10, False, match="message.offset > 7", last=False, write_to_stdout=False
+    )
+    # Check assertions:
+    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    assert len(consumed_messages) == 2
+    assert consumed_messages[0].key == "b"
+    assert consumed_messages[1].key == "a"
+
+
+@pytest.mark.integration
 def test_plaintext_consume_produce_messages_with_header(
     consumer_group,
     producer: ConfluenceProducer,
