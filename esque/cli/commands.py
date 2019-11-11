@@ -40,6 +40,9 @@ from esque.validation import validate_editable_topic_config
 @version_option(__version__)
 @default_options
 def esque(state: State, recreate_config: bool):
+    """
+    In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
+    """
     if recreate_config:
         config_dir().mkdir(exist_ok=True)
         if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
@@ -105,10 +108,17 @@ def fallback_to_stdin(ctx, args, value):
     return stdin_arg
 
 
-@esque.command("ctx", help="Switch clusters.")
+@esque.command("ctx")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @default_options
 def ctx(state: State, context: str):
+    """List available contexts or switch between them.
+
+    \b
+    USAGE:
+    esque ctx               : list available contexts
+    esque ctx <CONTEXT>     : switch to context <CONTEXT>
+    """
     if not context:
         for c in state.config.available_contexts:
             if c == state.config.current_context:
@@ -150,6 +160,11 @@ def config_autocomplete(state: State):
 @click.option("-l", "--like", help="Topic to use as template", required=False)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
+    """Create a topic.
+
+    Create a topic with the option of providing a template topic,
+    from which all the configuration options will be copied.
+    """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo("Aborted")
         return
@@ -170,6 +185,11 @@ def create_topic(state: State, topic_name: str, like: str):
 @click.argument("topic-name", required=True)
 @default_options
 def edit_topic(state: State, topic_name: str):
+    """Edit a topic.
+
+    Opens the topics configuration in the default editor. If the user saves upon exiting the editor,
+    all the given changes will be applied to the topic.
+    """
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
     try:
@@ -192,11 +212,15 @@ def edit_topic(state: State, topic_name: str):
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
+    """Delete a topic
+
+    \b
+    Deletes a kafka topic.
+    WARNING: This command cannot be undone, and all data in the topic will be lost.
+    """
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
@@ -206,10 +230,16 @@ def delete_topic(state: State, topic_name: str):
     click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
 
 
-@esque.command("apply", help="Apply a configuration")
+@esque.command("apply", short_help="Apply a configuration")
 @click.option("-f", "--file", help="Config file path", required=True)
 @default_options
 def apply(state: State, file: str):
+    """Create and/or apply changes to topic(s)
+
+    Given a config yaml file, create new topics with the given configuration
+    properties and apply all changes to existing topics.
+    """
+
     # Get topic data based on the YAML
     yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
@@ -252,9 +282,7 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo(
-            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
-        )
+        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -273,9 +301,7 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @click.option(
     "--consumers",
     "-C",
@@ -288,6 +314,11 @@ def apply(state: State, file: str):
 @output_format_option
 @default_options
 def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
+    """Describe a topic.
+
+    Returns information on a given topic and its partitions, with the option of including
+    all consumer group with read from the topic.
+    """
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
     output_dict = {
@@ -315,6 +346,7 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
 @output_format_option
 @default_options
 def get_offsets(state: State, topic_name: str, output_format: str):
+    """Returns the high and low watermarks for each topic."""
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
@@ -353,6 +385,7 @@ def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool,
 @output_format_option
 @default_options
 def get_brokers(state: State, output_format: str):
+    """Describe a broker."""
     brokers = Broker.get_all(state.cluster)
     broker_ids_and_hosts = [f"{broker.broker_id}: {broker.host}:{broker.port}" for broker in brokers]
     click.echo(format_output(broker_ids_and_hosts, output_format))
@@ -371,14 +404,22 @@ def get_consumergroups(state: State, output_format: str):
 @output_format_option
 @default_options
 def get_topics(state: State, prefix: str, output_format: str):
+    """List all topics."""
     topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
     topic_names = [topic.name for topic in topics]
     click.echo(format_output(topic_names, output_format))
 
 
-@esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
+@esque.command("consume")
 @click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=False)
+@click.option(
+    "-f",
+    "--from",
+    "from_context",
+    help="Source context. If not provided, the current context will be used",
+    type=click.STRING,
+    required=False,
+)
 @click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize, required=False)
 @click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
@@ -389,13 +430,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--stdout",
-    "write_to_stdout",
-    help="Write messages to STDOUT or to an automatically generated file.",
-    default=False,
-    is_flag=True,
-)
+@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
 @default_options
 def consume(
     state: State,
@@ -408,6 +443,19 @@ def consume(
     preserve_order: bool,
     write_to_stdout: bool,
 ):
+    """Consume messages from a topic to a file or STDOUT.
+
+    Read messages from a given topic in a given context. These messages can either be written
+    to files in an automatically generated directory (default behavior), or to STDOUT.
+
+    \b
+    EXAMPLE USAGES:
+    Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
+    esque consume --first -n 10 --preserve-order --stdout my-topic
+
+    Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
+    esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
+    """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     unique_name = topic + "_" + str(current_timestamp_milliseconds)
     group_id = "group_for_" + unique_name
@@ -463,13 +511,13 @@ def consume(
             )
 
 
-@esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
+@esque.command("produce", help="Produce messages to a topic from <directory> or STDIN.")
 @click.argument("topic", required=True)
 @click.option(
     "-d",
     "--directory",
     metavar="<directory>",
-    help="Sets the directory that contains Kafka messages",
+    help="Directory that contains the Kafka messages.",
     type=click.STRING,
     required=False,
 )
@@ -498,6 +546,18 @@ def produce(
     read_from_stdin: bool = False,
     ignore_stdin_errors: bool = False,
 ):
+    """Produce messages to a topic from a file or STDIN.
+
+       Write messages to a given topic in a given context. These messages can come from either a directory containing files corresponding to the different partitions, or from STDIN.
+
+       \b
+       EXAMPLE USAGES:
+       Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
+       esque consume --first -n 10 --preserve-order --stdout my-topic
+
+       Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
+       esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
+       """
     if directory is None and not read_from_stdin:
         click.echo("You have to provide the directory or use a --stdin flag")
     else:
@@ -547,11 +607,16 @@ def produce(
         )
 
 
-@esque.command("ping", help="Tests the connection to the kafka cluster.")
+@esque.command("ping")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
 @default_options
 def ping(state: State, times: int, wait: int):
+    """Tests the connection to the kafka cluster.
+
+    Ping the kafka cluster by writing messages to and reading messages from the kafka cluster.
+    After the specified number of "pings", return statistics on the minimum, maximum, and average time.
+    """
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
@@ -575,7 +640,8 @@ def ping(state: State, times: int, wait: int):
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
 
 
-@edit.command("config", help="Edit your esque config file.")
+@edit.command("config", short_help="Edit your esque config file.")
 @default_options
 def edit_config():
+    """Opens the user's esque config file in the default editor."""
     click.edit(filename=config_path().as_posix())

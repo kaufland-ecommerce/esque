@@ -57,7 +57,13 @@ def verbose_callback(context, _: str, verbose=False):
 
 
 verbose_option = click.option(
-    "-v", "--verbose", is_flag=True, is_eager=True, callback=verbose_callback, expose_value=False
+    "-v",
+    "--verbose",
+    is_flag=True,
+    is_eager=True,
+    callback=verbose_callback,
+    expose_value=False,
+    help="Return stack trace on error.",
 )
 
 
@@ -76,7 +82,7 @@ def no_verify_option(f):
     return option(
         "--no-verify",
         type=bool,
-        help="Skips all verification dialogs and answers them with yes.",
+        help="Skip all verification dialogs and answer them with yes.",
         required=False,
         is_flag=True,
         expose_value=False,
