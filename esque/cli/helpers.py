@@ -18,14 +18,14 @@ def isatty(stream) -> bool:
     return _isatty(stream)
 
 
-def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
+def ensure_approval(question: str, *, no_verify: bool = False, default_answer=False) -> bool:
     if no_verify:
         return True
 
     if not isatty(click.get_text_stream("stdin")):
         raise NoConfirmationPossibleException()
 
-    return click.confirm(question)
+    return click.confirm(question, default=default_answer)
 
 
 class HandleFileOnFinished:
@@ -66,5 +66,5 @@ def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
     else:
         click.echo("Error validating yaml:")
     click.echo(str(e))
-    if not ensure_approval("Continue Editing?"):
+    if not ensure_approval("Continue Editing?", default_answer=True):
         raise EditCanceled()
