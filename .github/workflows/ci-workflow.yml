@@ -79,11 +79,11 @@ jobs:
           virtualenv venv --python=python3
           source ./venv/bin/activate
       - name: Install esque requirements
-        run: poetry install
+        run: $HOME/.poetry/bin/poetry install
       - name: Run unit tests
-        run: poetry run pytest tests/unit/
+        run: $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
-        run: poetry run pytest --integration --local tests/integration/
+        run: $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
