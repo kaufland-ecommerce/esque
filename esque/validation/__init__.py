@@ -21,6 +21,12 @@ def validate_esque_config(esque_config: Dict) -> None:
     validate(esque_config, SCHEMA_DIR / "esque_config.yaml")
     ctx = esque_config["current_context"]
     all_ctx = sorted(esque_config["contexts"])
+    seen = set()
+    for ctx in all_ctx:
+        if ctx not in seen:
+            seen.add(ctx)
+        else:
+            raise ValidationException(f"Duplicated context name '{ctx}'!")
     if ctx not in all_ctx:
         raise ValidationException(f"Context {ctx} does not exist. Available contexts {all_ctx}")
 
