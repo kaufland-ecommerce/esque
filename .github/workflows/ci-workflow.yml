@@ -71,6 +71,8 @@ jobs:
         run: |
           sudo apt-get install python3-setuptools python3-virtualenv python3-pip virtualenv
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
+          export PATH=$PATH:$HOME/.poetry/bin
+          source $HOME/.poetry/env
           virtualenv venv --python=python3
           source ./venv/bin/activate
           pip3 install .
