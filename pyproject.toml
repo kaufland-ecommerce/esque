@@ -51,7 +51,7 @@ pytest = "^5.2"
 pytest-mock = "^1.11"
 pytest-cov = "^2.8"
 flake8 = "^3.7"
-black = {version = "*", allows-prereleases = true}
+black = {version = "*", allow-prereleases = true}
 isort = "^4.3"
 
 [tool.black]
