@@ -1,5 +1,5 @@
 import operator
-from typing import List
+from typing import Dict, List
 
 from confluent_kafka.admin import ConfigResource
 
@@ -30,7 +30,7 @@ class Broker(KafkaResource):
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 
-    def describe(self):
+    def describe(self) -> Dict:
         return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 
     def as_dict(self):

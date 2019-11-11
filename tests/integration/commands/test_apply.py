@@ -3,15 +3,15 @@ from typing import Any, Dict
 import pytest
 import yaml
 from click.testing import CliRunner
-from esque.resources.topic import Topic
-from esque.controller.topic_controller import TopicController
 
 from esque.cli.commands import apply
-from esque.errors import KafkaException
+from esque.controller.topic_controller import TopicController
+from esque.errors import InvalidReplicationFactorException, ValidationException
+from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
-def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
+def test_apply(interactive_cli_runner: CliRunner, topic_controller: TopicController, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name + "_1",
@@ -29,7 +29,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
 
     # 1: topic creation
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -37,7 +37,8 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
     # 2: change cleanup policy to delete
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -46,13 +47,13 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
     apply_conf["topics"].append(topic_2)
     topic_1["config"]["cleanup.policy"] = "compact"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "Successfully applied changes" in result.output
     ), f"Calling apply failed, error: {result.output}"
 
     # 4: no changes
-    result = cli_runner.invoke(apply, ["-f", path])
+    result = interactive_cli_runner.invoke(apply, ["-f", path])
     assert (
         result.exit_code == 0 and "No changes detected, aborting" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -61,7 +62,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
     topic_1["num_partitions"] = 3
     topic_1["config"]["cleanup.policy"] = "delete"
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert (
         result.exit_code == 0 and "to `replication_factor` and `num_partitions`" in result.output
     ), f"Calling apply failed, error: {result.output}"
@@ -78,7 +79,7 @@ def test_apply(cli_runner, topic_controller: TopicController, topic_id: str):
 
 
 @pytest.mark.integration
-def test_apply_duplicate_names(cli_runner: CliRunner, topic_id: str):
+def test_apply_duplicate_names(interactive_cli_runner: CliRunner, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name,
@@ -88,14 +89,17 @@ def test_apply_duplicate_names(cli_runner: CliRunner, topic_id: str):
     }
     apply_conf = {"topics": [topic_1, topic_1]}
 
-    # having the same topic name twice in apply should raise an ValueError
+    # having the same topic name twice in apply should raise an exception
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
-    assert result.exit_code != 0 and isinstance(result.exception, ValueError), f"Calling apply should have failed"
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValidationException), (
+        f"Calling apply should have failed with " f"ValidationException"
+    )
 
 
 @pytest.mark.integration
-def test_apply_invalid_replicas(cli_runner: CliRunner, topic_id: str):
+def test_apply_invalid_replicas(interactive_cli_runner: CliRunner, topic_id: str):
     topic_name = f"apply_{topic_id}"
     topic_1 = {
         "name": topic_name,
@@ -107,8 +111,11 @@ def test_apply_invalid_replicas(cli_runner: CliRunner, topic_id: str):
 
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
-    result = cli_runner.invoke(apply, ["-f", path], input="Y\n")
-    assert result.exit_code != 0 and isinstance(result.exception, KafkaException), f"Calling apply should have failed"
+    result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
+    assert result.exit_code != 0
+    assert isinstance(
+        result.exception, InvalidReplicationFactorException
+    ), f"Calling apply should have failed with INVALID_REPLICATION_FACTOR error"
 
 
 def save_yaml(fname: str, data: Dict[str, Any]) -> str:

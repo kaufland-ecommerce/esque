@@ -1,8 +1,8 @@
 import operator
 
-import pykafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 
+import pykafka
 from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.helpers import ensure_kafka_future_done, unpack_confluent_config

@@ -1,7 +1,6 @@
-from typing import List, Dict
+from typing import Dict, List
 
 import pykafka
-
 from esque.cluster import Cluster
 from esque.resources.consumergroup import ConsumerGroup
 
