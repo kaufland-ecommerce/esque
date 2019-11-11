@@ -68,7 +68,7 @@ jobs:
           CONFIG_PATH: "confluent-community/etc/kafka/server.properties"
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
       - name: Install system packages
-        run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv
+        run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
       - name: Install and configure poetry
         run: |
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
