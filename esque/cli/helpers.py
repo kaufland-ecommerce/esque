@@ -50,6 +50,7 @@ def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None)
         if yaml_str is None:
             raise EditCanceled()
         try:
+            # TODO: check for duplicate keys, might have to change yaml parser for that
             config_data = yaml.safe_load(yaml_str)
             if validator:
                 validator(config_data)
