@@ -70,78 +70,22 @@ jobs:
       - name: Run pytest
         run: |
           sudo apt-get install python3-setuptools python3-pip
+          curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
           sudo pip3 install .
-          sudo pip3 install pytest pytest-cov pytest-mock
-          #pytest tests/ --integration --cov=esque --local
-          pytest tests/ --cov=esque
-  build-deb:
-    name: Build and publish Debian package
-    needs: [test-style, test-integration]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone the current repository
-        env:
-          PROJECT_GIT_LOCATION: "https://github.com/real-digital/esque"
-          SOURCE_CODE_DIR_NAME: "esque"
-        shell: bash
-        run: |
-          rm -f $SOURCE_CODE_DIR_NAME
-          git clone $PROJECT_GIT_LOCATION --branch master $SOURCE_CODE_DIR_NAME
-      - name: Prepare the library to build the DEB package
-        shell: bash
-        run: sudo apt-get install python3-setuptools python3-pip python3-stdeb python-stdeb python3-all rpm
-      - name: Build the DEB package
-        run: |
-          cd ./$SOURCE_CODE_DIR_NAME; ./scripts/deb_package_and_build.sh
-        shell: bash
-        env:
-          SOURCE_CODE_DIR_NAME: "esque"
-          DEB_STAGING_DIR_NAME: "debian-staging"
-      - name: Verify the build (until a package repository is ready, just try and install the package)
-        run: |
-          cat
-          binary_package=`ls ./deb_binary/ | head -1`
-          sudo dpkg -i ./deb_binary/${binary_package}
-        shell: bash
-  build-rpm:
-    name: Build and publish RPM package
-    needs: [test-style, test-integration]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone the current repository
-        env:
-          PROJECT_GIT_LOCATION: "https://github.com/real-digital/esque"
-          SOURCE_CODE_DIR_NAME: "esque"
-        shell: bash
-        run: |
-          rm -f $SOURCE_CODE_DIR_NAME
-          git clone $PROJECT_GIT_LOCATION --branch master $SOURCE_CODE_DIR_NAME
-      - name: Prepare the library to build the RPM package
-        shell: bash
-        run: sudo apt-get install python3-setuptools python3-pip python3-stdeb python-stdeb python3-all rpm
-      - name: Build the RPM package
-        run: cd ./$SOURCE_CODE_DIR_NAME; python3 setup.py bdist_rpm
-        shell: bash
-        env:
-          SOURCE_CODE_DIR_NAME: "esque"
-      - name: Verify the build (until a package repository is ready)
-        run: ls ${SOURCE_CODE_DIR_NAME}/dist/*.rpm
-        shell: bash
-        env:
-          SOURCE_CODE_DIR_NAME: "esque"
-  publish-to-pypi:
-    name: Publish to pypi
-    needs: [test-style, test-integration]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@master
-      - name: Install required packages
-        run: |
-          sudo pip3 install pep517
-          python3 -m pep517.build --source --binary --out-dir dist/
-        shell: bash
-      # secrets must be set up on GitHub
-      #- name: Publish esque to PyPI
-      #  uses: pypa/gh-action-pypi-publish@master
-      #  with:
-      #    password: ${{ secrets.pypi_password }}
+          poetry run pytest --integration --local tests/
+#  publish-to-pypi:
+#    name: Publish to pypi
+#    needs: [test-style, test-integration]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@master
+#      - name: Install required packages
+#        run: |
+#          sudo pip3 install pep517
+#          python3 -m pep517.build --source --binary --out-dir dist/
+#        shell: bash
+#      # secrets must be set up on GitHub
+#      #- name: Publish esque to PyPI
+#      #  uses: pypa/gh-action-pypi-publish@master
+#      #  with:
+#      #    password: ${{ secrets.pypi_password }}
