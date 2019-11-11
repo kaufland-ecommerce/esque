@@ -70,6 +70,7 @@ jobs:
       - name: Run pytest
         run: |
           sudo apt-get install python3-setuptools python3-virtualenv python3-pip virtualenv
+          pip3 install pytest pytest-mock pytest-cov black flake8
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
           export PATH=$PATH:$HOME/.poetry/bin
           source $HOME/.poetry/env
