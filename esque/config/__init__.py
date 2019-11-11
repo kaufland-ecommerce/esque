@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import click
 import yaml
+from confluent_kafka.admin import ConfigResource
 
 import esque.validation
 from esque.cli import environment
@@ -87,11 +88,49 @@ class Config:
 
     @property
     def default_num_partitions(self) -> int:
-        return self.default_values.get("num_partitions", 1)
+        if "num_partitions" in self.default_values:
+            return self.default_values["num_partitions"]
+
+        from esque.cluster import Cluster
+        from esque.cli.output import bold, blue_bold
+
+        try:
+            log.warning("Fetching default number of partitions from broker.")
+            log.warning(f"Run `esque config edit` and add `{bold('num_partitions')}` to your defaults to avoid this.")
+            cluster = Cluster()
+            brokers = cluster.brokers
+            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
+            default = int(config["num.partitions"])
+            log.warning(f"Cluster default is {blue_bold(str(default))}.")
+        except Exception as e:
+            default = 1
+            log.warning(f"Fetching default from broker failed. Falling back to {default}")
+            log.info(type(e).__name__, exc_info=True)
+        return default
 
     @property
     def default_replication_factor(self) -> int:
-        return self.default_values.get("replication_factor", min(len(self.bootstrap_servers), 3))
+        if "replication_factor" in self.default_values:
+            return self.default_values["replication_factor"]
+
+        from esque.cluster import Cluster
+        from esque.cli.output import bold, blue_bold
+
+        try:
+            log.warning("Fetching default replication factor from broker.")
+            log.warning(
+                f"Run `esque config edit` and add `{bold('replication_factor')}` to your defaults to avoid this."
+            )
+            cluster = Cluster()
+            brokers = cluster.brokers
+            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
+            default = int(config["default.replication.factor"])
+            log.warning(f"Cluster default is {blue_bold(str(default))}.")
+        except Exception as e:
+            default = min(len(self.bootstrap_servers), 3)
+            log.warning(f"Fetching default from broker failed. Falling back to {default}")
+            log.info(type(e).__name__, exc_info=True)
+        return default
 
     @property
     def sasl_mechanism(self) -> str:
