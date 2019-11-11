@@ -87,6 +87,7 @@ jobs:
           $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
         run: |
+          sudo netstat -punta
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
 #  publish-to-pypi:
