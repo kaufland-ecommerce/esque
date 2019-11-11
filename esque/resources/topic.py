@@ -121,7 +121,7 @@ class TopicDiff:
         return f"<TopicDiff[{str(self._diffs)}>"
 
 
-def copy_to_local(topic):
+def copy_to_local(topic: "Topic") -> "Topic":
     return Topic(topic.name, topic.num_partitions, topic.replication_factor, topic.config)
 
 
@@ -197,8 +197,7 @@ class Topic(KafkaResource):
     def to_yaml(self, only_editable=False) -> str:
         return yaml.dump(self.as_dict(only_editable=only_editable), default_flow_style=False)
 
-    def update_from_yaml(self, data) -> None:
-        new_values = yaml.safe_load(data)
+    def update_from_dict(self, new_values: TopicDict) -> None:
         for attr, value in new_values.items():
             setattr(self, attr, value)
 

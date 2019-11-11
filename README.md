@@ -1,27 +1,38 @@
-# esque - an operational kafka tool.
+# esque - an operational Kafka tool
 
 [![pypi Version](https://img.shields.io/pypi/v/esque.svg)](https://pypi.org/project/esque/) [![Python Versions](https://img.shields.io/pypi/pyversions/esque.svg)](https://pypi.org/project/esque/) [![Build Status](https://travis-ci.org/real-digital/esque.svg?branch=master)](https://travis-ci.org/real-digital/esque) [![Coverage Status](https://coveralls.io/repos/github/real-digital/esque/badge.svg)](https://coveralls.io/github/real-digital/esque?branch=add-coverage) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-In the Kafka world nothing is easy, but `esque` (pronounced esk) is an attempt at it.
+In the Kafka world nothing is easy, but `esque` (pronounced *esk*) is an attempt at it.
+
+`esque` is a user-centric command line interface for Kafka administration. 
 
 ## Why should you care?
 
-Some stuff is hard, and that is okay, listing your kafka topics shouldn't be.
+Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be.
 
 While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
-We can't recount how often we wrote Slack messages asking for the script to check the status of topics or consumergroups.
-This is partly (but not only) due to a fragmented and unclear definition of tooling and APIs for kafka.
+We can't recount how often we wrote Slack messages asking for the script to check the 
+status of topics or consumer groups. This is partly (but not only) due to a 
+fragmented and unclear definition of tooling and APIs for kafka. 
+In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way. We feel that the goal of `esque` embodies one of the Perl design principles: “**keep easy things easy, and make hard things possible**”. 
 
-`esque` tries to become a human-friendly point of first contact for your kafka cluster by exposing a `kubectl`-like interface to it.
+## Principles
 
-## Main Features
+Our driving objectives can be summed up through these principles:
+* comes with batteries included
+* feature rich
+* robust
+* insightful
+* made by engineers for engineers
 
+## Basic Features
+
+* Support for any type of Kafka deployment >1.2
 * List Resources (Topics, Consumergroups, Brokers)
 * Get detailed Overviews of Resources (Topics, Consumergroups, Brokers)
 * Create/Delete Topics
 * Context Switch (Easily Switch between pre-defined Clusters)
 * Kafka Ping (Test roundtrip time to your kafka cluster)
-* and many more planned...
 
 ## Installation and Usage
 
@@ -113,25 +124,36 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.6 & [Pipenv](https://github.com/pypa/pipenv) installed, then run 
+To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run 
 
 ```
-pipenv install --dev
-pipenv shell 
-export PYTHONPATH=$(pwd)
+poetry install --develop DEVELOP
+poetry shell
 ```
 
 ### Run tests
 
 To start up a local test setup (Kafka and Zookeeper), you can run
 
-```
-docker-compose up
-```
-While this `docker-compose` stack is up, you can run the tests from the CLI via `pytest tests/ --integration --local`
+#### Integration Tests
 
+esque comes with a kafka stack which you can start up with `make test-suite`.
 
-Alternatively, you can also run the entire test suite, without needing to setup the development environment, in docker compose via `docker-compose -f docker-compose.yml -f docker-compose.test.yml` 
+You can then run the integration tests against this stack with `pytest tests/ --integration --local`.
+
+Alternatively you can go the fast way and just run the whole stack + integration tests in docker: 
+
+```
+make integration--test
+```
+
+#### Unit Tests
+
+If you just want the unit tests simply run:
+ 
+```
+make test
+```
 
 
 ### Pre Commit Hooks
@@ -143,6 +165,9 @@ pip install pre-commit
 pre-commit install
 pre-commit install-hooks
 ```
+## Additional information
+
+You can find additional information, development cycle and release information on our [wiki page](https://github.com/real-digital/esque/wiki).
 
 
 ## Alternatives

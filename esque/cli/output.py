@@ -9,7 +9,7 @@ import yaml
 from yaml import SafeDumper, ScalarNode, SequenceNode
 from yaml.representer import SafeRepresenter
 
-from esque.resources.topic import Topic, TopicDiff
+from esque.resources.topic import Topic, TopicDiff, Watermark
 
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 
@@ -33,18 +33,20 @@ def pretty(value, *, break_lists=False) -> str:
     return value_str
 
 
-def pretty_list(l: List[Any], *, break_lists=False, list_separator: str = ", ") -> str:
-    if len(l) == 0:
+def pretty_list(
+    ugly_list: List[Any], *, break_lists=False, list_separator: str = ", ", broken_list_separator: str = "- "
+) -> str:
+    if len(ugly_list) == 0:
         return "[]"
 
-    list_output = [pretty(value) for value in l]
+    list_output = [pretty(value) for value in ugly_list]
 
     if any("\n" in list_element for list_element in list_output):
         break_lists = True
 
     if break_lists:
         sub_elements = ("\n  ".join(elem.splitlines(keepends=False)) for elem in list_output)
-        return "- " + "\n- ".join(sub_elements)
+        return broken_list_separator + f"\n{broken_list_separator}".join(sub_elements)
     else:
         return list_separator.join(list_output)
 
@@ -192,8 +194,12 @@ def green_bold(s: str) -> str:
     return bold(click.style(s, fg="green"))
 
 
+def red_bold(s: str) -> str:
+    return bold(click.style(s, fg="red"))
+
+
 STYLE_MAPPING = {
-    "Topic": green_bold,
+    "topic": green_bold,
     "cleanup.policy": bold,
     "flush.ms": bold,
     "delete.retention.ms": bold,
@@ -220,7 +226,11 @@ TYPE_MAPPING = {
 }
 
 
-def tuple_representer(dumper: SafeRepresenter, data: Tuple) -> SequenceNode:
+def tuple_representer(dumper: SafeRepresenter, data: Watermark) -> SequenceNode:
+    return dumper.represent_list(list(data))
+
+
+def watermark_representer(dumper: SafeRepresenter, data: Watermark) -> SequenceNode:
     return dumper.represent_list(list(data))
 
 
@@ -230,6 +240,7 @@ def bytes_representer(dumper: SafeRepresenter, data: bytes) -> ScalarNode:
 
 SafeDumper.add_representer(Tuple, tuple_representer)
 SafeDumper.add_representer(bytes, bytes_representer)
+SafeDumper.add_representer(Watermark, watermark_representer)
 
 
 class BytesEncoder(json.JSONEncoder):
@@ -240,10 +251,12 @@ class BytesEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def format_output(output, output_format):
+def format_output(output: Any, output_format: str) -> str:
     if output_format == "yaml":
         return yaml.dump(output, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
     elif output_format == "json":
         return json.dumps(output, indent=4, cls=BytesEncoder)
+    elif isinstance(output, list):
+        return pretty_list(output, break_lists=True, broken_list_separator="")
     else:
         return pretty(output, break_lists=True)

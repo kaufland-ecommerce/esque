@@ -1,9 +1,8 @@
 import operator
-from typing import List
+from typing import Dict, List
 
 from confluent_kafka.admin import ConfigResource
 
-from esque.errors import translate_third_party_exceptions
 from esque.resources.resource import KafkaResource
 
 
@@ -38,8 +37,7 @@ class Broker(KafkaResource):
         ]
         return sorted(brokers, key=operator.attrgetter("broker_id"))
 
-    @translate_third_party_exceptions
-    def describe(self) -> dict:
+    def describe(self) -> Dict:
         return self.cluster.retrieve_config(ConfigResource.Type.BROKER, self.broker_id)
 
     def as_dict(self):
