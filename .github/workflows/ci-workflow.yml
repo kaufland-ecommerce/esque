@@ -71,7 +71,7 @@ jobs:
         run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv
       - name: Install and configure poetry
         run: |
-          pip install poetry>=1.0.0b4
+          pip install --pre poetry>=1.0.0b4
           export PATH=$PATH:$HOME/.poetry/bin
           source $HOME/.poetry/env
           virtualenv venv --python=python3
