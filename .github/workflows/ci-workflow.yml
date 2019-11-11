@@ -55,7 +55,7 @@ jobs:
           SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
     steps:
       - uses: actions/checkout@master
-      - name: Verify test environment
+      - name: Waiting for services
         run: |
           bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
           bash -c "./scripts/init.sh" ;
@@ -67,17 +67,23 @@ jobs:
           SCHEMA_REGISTRY_URL: localhost:8081
           CONFIG_PATH: "confluent-community/etc/kafka/server.properties"
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
-      - name: Run pytest
+      - name: Install system packages
+        run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-pytest python3-pytest-mock python3-pytest-cov
+      - name: Install pip packages
+        run: pip3 install pytest pytest-mock pytest-cov black flake8
+      - name: Install and configure poetry
         run: |
-          sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-pytest python3-pytest-mock python3-pytest-cov
-          pip3 install pytest pytest-mock pytest-cov black flake8
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
           export PATH=$PATH:$HOME/.poetry/bin
           source $HOME/.poetry/env
           virtualenv venv --python=python3
           source ./venv/bin/activate
-          poetry install
-          poetry run pytest --integration --local tests/
+      - name: Install esque requirements
+        run: poetry install
+      - name: Run unit tests
+        run: poetry run pytest tests/unit/
+      - name: Run integration tests
+        run: poetry run pytest --integration --local tests/integration/
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
