@@ -79,7 +79,7 @@ jobs:
       - name: Install esque requirements
         run: |
           source ./venv/bin/activate
-          $HOME/.poetry/bin/poetry install -vvv --no-root
+          $HOME/.poetry/bin/poetry install -vvv
       - name: Setup default esque configuration
         run: |
           mkdir -p ~/.esque
