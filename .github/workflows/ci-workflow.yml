@@ -77,13 +77,18 @@ jobs:
           export PATH=$PATH:$HOME/.poetry/bin
           source $HOME/.poetry/env
           virtualenv venv --python=python3
-          source ./venv/bin/activate
       - name: Install esque requirements
-        run: $HOME/.poetry/bin/poetry install
+        run: |
+          source ./venv/bin/activate
+          $HOME/.poetry/bin/poetry install
       - name: Run unit tests
-        run: $HOME/.poetry/bin/poetry run pytest tests/unit/
+        run: |
+          source ./venv/bin/activate
+          $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
-        run: $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
+        run: |
+          source ./venv/bin/activate
+          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
