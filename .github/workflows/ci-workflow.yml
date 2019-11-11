@@ -89,7 +89,9 @@ jobs:
           esque --recreate-config --no-verify
       - name: Run unit tests
         run: |
+          echo "=============================== Start echo"
           cat ~/.esque/esque.cfg
+          echo "=============================== End echo"
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
