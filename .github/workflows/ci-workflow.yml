@@ -71,7 +71,9 @@ jobs:
         run: |
           sudo apt-get install python3-setuptools python3-pip
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
-          sudo pip3 install .
+          virtualenv venv
+          source ./venv/bin/activate
+          pip3 install .
           poetry run pytest --integration --local tests/
 #  publish-to-pypi:
 #    name: Publish to pypi
