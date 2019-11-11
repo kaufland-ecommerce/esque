@@ -69,7 +69,7 @@ jobs:
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
       - name: Run pytest
         run: |
-          sudo apt-get install python3-setuptools python3-pip
+          sudo apt-get install python3-setuptools python3-virtualenv python3-pip
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
           virtualenv venv
           source ./venv/bin/activate
