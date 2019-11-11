@@ -6,7 +6,7 @@ import click
 import yaml
 from yaml.scanner import ScannerError
 
-from esque.errors import EditCanceled, NoConfirmationPossibleException, YamaleValidationException
+from esque.errors import EditCanceled, NoConfirmationPossibleException, ValidationException
 
 
 # private function, which we can mock
@@ -53,14 +53,14 @@ def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None)
             config_data = yaml.safe_load(yaml_str)
             if validator:
                 validator(config_data)
-        except (ScannerError, YamaleValidationException) as e:
+        except (ScannerError, ValidationException) as e:
             _handle_edit_exception(e)
         else:
             break
     return yaml_str, config_data
 
 
-def _handle_edit_exception(e: Union[ScannerError, YamaleValidationException]) -> None:
+def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
     if isinstance(e, ScannerError):
         click.echo("Error parsing yaml:")
     else:
