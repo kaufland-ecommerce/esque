@@ -174,8 +174,7 @@ class ConsumerGroupController:
                         )
                         offset_plans[f"{decoded_topic_name}::{partition_id}"] = consumer_offset_plan
         except AttributeError:
-            self._logger.error("Consumergroup {} not available.".format(consumer_id))
             return "Dead", offset_plans
         if len(offset_plans) == 0:
-            self._logger.error("No offsets have ever been committed by consumergroup {}.".format(consumer_id))
+            self._logger.warning("No offsets have ever been committed by consumergroup {}.".format(consumer_id))
         return consumer_group_state, offset_plans
