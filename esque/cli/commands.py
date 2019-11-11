@@ -130,7 +130,7 @@ def config_autocomplete(state: State):
     source_designator = "source" if current_shell in ["bash", "sh"] else "source_zsh"
     default_environment = ".bashrc" if current_shell in ["bash", "sh"] else ".zshrc"
     with open(config_file.absolute(), "w") as config_fd:
-        config_fd.write("_ESQUE_COMPLETE=" + source_designator + " esque")
+        config_fd.write("eval \"$(_ESQUE_COMPLETE=" + source_designator + " esque)\"")
     click.echo("Autocompletion script generated to " + green_bold(str(config_file.absolute())))
     click.echo(
         "To use the autocompletion feature, simply source the contents of the script into your environment, e.g."
