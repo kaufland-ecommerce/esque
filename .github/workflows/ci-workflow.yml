@@ -81,13 +81,18 @@ jobs:
         run: |
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry install
+      - name: Setup default esque configuration
+        run: |
+          mkdir -p ~/.esque
+          touch ~/.esque/esque.cfg
+          source ./venv/bin/activate
+          esque --recreate-config --no-verify
       - name: Run unit tests
         run: |
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
         run: |
-          sudo netstat -punta
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
 #  publish-to-pypi:
