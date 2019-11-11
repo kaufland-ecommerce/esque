@@ -242,7 +242,7 @@ def edit_consumergroup(
         offset_from_group=offset_from_group,
         force=force,
     )
-    if len(offset_plan) > 0:
+    if offset_plan and len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
         for plan_element in offset_plan:
             click.echo(

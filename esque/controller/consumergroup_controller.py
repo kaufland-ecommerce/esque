@@ -78,7 +78,10 @@ class ConsumerGroupController:
         consumer_group_state, offset_plans = self._read_current_consumergroup_offsets(
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
-        if consumer_group_state == "Empty" or force:
+        if consumer_group_state == "Dead":
+            self._logger.error("The consumer group {} does not exist.".format(consumer_id))
+            return None
+        elif consumer_group_state == "Empty" or force:
             if offset_to_value:
                 for _, plan_element in offset_plans.items():
                     (allowed_offset, error, message) = self._select_new_offset_for_consumer(
