@@ -98,7 +98,7 @@ class V1Migrator(BaseMigrator):
 
     @property
     def new_config_path(self) -> Path:
-        return self._old_config_path.parent / "config.yaml"
+        return self._old_config_path.parent / "esque_config.yaml"
 
     def deserialize(self, text: str):
         self._old_data = configparser.ConfigParser()
