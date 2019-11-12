@@ -1,24 +1,23 @@
 import json
+import os
 import random
-import tempfile
 import time
 from concurrent.futures import Future
-from contextlib import ExitStack
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Dict, Iterable, Tuple, Union
+from typing import Callable, Dict, Iterable, Tuple
 from unittest import mock
 
-import yaml
-
 import confluent_kafka
-import esque.config
 import pytest
+import yaml
 from _pytest.fixtures import FixtureRequest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
+
+import esque.config
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import Config
@@ -63,25 +62,32 @@ def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
 
 
 @pytest.fixture()
-def load_config() -> config_loader:
+def load_config(mocker: mock, tmp_path: Path) -> config_loader:
     """
-    Loads config of the given version, saves it into a named temporary file and then returns both that
-    file and the config content.
+    Loads config of the given version or key into a temporary directory and set this directory as esque config
+    directory.
+    Available keys are `LOAD_INTEGRATION_TEST_CONFIG` and `LOAD_SMAPLE_CONFIG`.
+    It will delete all other configs found in that directory.
+
+    :param config_version: version or config key to load
+    :type config_version: int
     :return: Tuple[NamedTemporaryFile, str] where str is the content of the config and the tempfile
     """
-    stack = ExitStack()
+    mocker.patch("esque.config._config_dir", return_value=tmp_path)
 
     def loader(config_version: int = LOAD_CURRENT_VERSION) -> Tuple[Path, str]:
+        for file in tmp_path.glob("*"):
+            os.remove(str(file.resolve()))
         original_path = get_path_for_config_version(config_version)
         data = original_path.read_text()
-        tmp_config = tempfile.NamedTemporaryFile(mode="w", suffix=original_path.suffix)
-        stack.enter_context(tmp_config)
-        tmp_config.file.write(data)
-        tmp_config.file.flush()
-        return Path(tmp_config.name), data
+        if config_version == 0:
+            config_file = tmp_path / "esque.cfg"
+        else:
+            config_file = tmp_path / "esque_config.yaml"
+        config_file.write_text(data)
+        return config_file, data
 
-    with stack:
-        yield loader
+    return loader
 
 
 def get_path_for_config_version(config_version: int) -> Path:
@@ -95,27 +101,9 @@ def get_path_for_config_version(config_version: int) -> Path:
     return base_path / f"v{config_version}_sample.yaml"
 
 
-# use for typing only
-def config_path_mocker(path: Union[str, Path]) -> None:
-    ...
-
-
 @pytest.fixture()
-def mock_config_path(mocker: mock) -> config_path_mocker:
-    def mockit(path: Union[str, Path]) -> None:
-        path = Path(path).resolve()
-        mocker.patch("esque.config._config_path", return_value=path)
-        mocker.patch("esque.config._config_dir", return_value=path.parent)
-
-    return mockit
-
-
-@pytest.fixture()
-def unittest_config(
-    request: FixtureRequest, mock_config_path: Callable[[Union[str, Path]], None], load_config: config_loader
-) -> Config:
+def unittest_config(request: FixtureRequest, load_config: config_loader) -> Config:
     conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
-    mock_config_path(conffile)
     esque_config = Config()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")

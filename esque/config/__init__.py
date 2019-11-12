@@ -41,7 +41,11 @@ def config_path() -> Path:
 def _config_path() -> Path:
     if environment.ESQUE_CONF_PATH:
         return Path(environment.ESQUE_CONF_PATH)
-    return config_dir() / "esque.yaml"
+    legacy_path = config_dir() / "esque.cfg"
+    current_path = config_dir() / "esque_config.yaml"
+    if legacy_path.exists() and not current_path.exists():
+        return legacy_path
+    return current_path
 
 
 def _config_dir() -> Path:
@@ -91,16 +95,12 @@ class Config:
         if "num_partitions" in self.default_values:
             return self.default_values["num_partitions"]
 
-        from esque.cluster import Cluster
         from esque.cli.output import bold, blue_bold
 
         try:
             log.warning("Fetching default number of partitions from broker.")
             log.warning(f"Run `esque config edit` and add `{bold('num_partitions')}` to your defaults to avoid this.")
-            cluster = Cluster()
-            brokers = cluster.brokers
-            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
-            default = int(config["num.partitions"])
+            default = int(self._get_broker_setting("num.partitions"))
             log.warning(f"Cluster default is {blue_bold(str(default))}.")
         except Exception as e:
             default = 1
@@ -108,12 +108,20 @@ class Config:
             log.info(type(e).__name__, exc_info=True)
         return default
 
+    @staticmethod
+    def _get_broker_setting(self, setting: str) -> str:
+        from esque.cluster import Cluster
+
+        cluster = Cluster()
+        brokers = cluster.brokers
+        config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
+        return config[setting]
+
     @property
     def default_replication_factor(self) -> int:
         if "replication_factor" in self.default_values:
             return self.default_values["replication_factor"]
 
-        from esque.cluster import Cluster
         from esque.cli.output import bold, blue_bold
 
         try:
@@ -121,10 +129,7 @@ class Config:
             log.warning(
                 f"Run `esque config edit` and add `{bold('replication_factor')}` to your defaults to avoid this."
             )
-            cluster = Cluster()
-            brokers = cluster.brokers
-            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
-            default = int(config["default.replication.factor"])
+            default = int(self._get_broker_setting("default.replication.factor"))
             log.warning(f"Cluster default is {blue_bold(str(default))}.")
         except Exception as e:
             default = min(len(self.bootstrap_servers), 3)
