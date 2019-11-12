@@ -108,7 +108,7 @@ def fallback_to_stdin(ctx, args, value):
 
 
 @esque.command("ctx")
-@click.argument("context", metavar="CONTEXT", required=False, default=None, autocompletion=list_contexts)
+@click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @default_options
 def ctx(state: State, context: str):
     """List contexts and switch between them.
@@ -253,11 +253,11 @@ def delete_topic(state: State, topic_name: str):
     click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted", fg="green"))
 
 
-@esque.command("apply", short_help="Apply a configuration.")
+@esque.command("apply")
 @click.option("-f", "--file", metavar="<file>", help="Config file path", required=True)
 @default_options
 def apply(state: State, file: str):
-    """Create and/or apply changes to topic(s)
+    """Apply a configuration.
 
     Take a config yaml file <file> and create new topics with the given configuration
     properties and apply changes to existing topics.
@@ -392,7 +392,7 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 @output_format_option
 @default_options
 def describe_broker(state: State, broker_id: str, output_format: str):
-    """Return configuration options for the given broker."""
+    """Return configuration options for broker BROKER_ID."""
     broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(format_output(broker, output_format))
 
@@ -408,7 +408,8 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 @output_format_option
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
-    """Return information on group coordinator, offsets, watermarks, lag, and various metadata."""
+    """Return information on group coordinator, offsets, watermarks, lag, and various metadata
+     for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -458,13 +459,23 @@ def get_topics(state: State, prefix: str, output_format: str):
     type=click.STRING,
     required=False,
 )
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize, required=False)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
+@click.option(
+    "-n", "--numbers", metavar="<n>", help="Number of messages", type=click.INT, default=sys.maxsize, required=False
+)
+@click.option(
+    "-m",
+    "--match",
+    metavar="<filter_expresion>",
+    help="Message filtering expression",
+    type=click.STRING,
+    required=False,
+)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
     "-c",
     "--consumergroup",
+    metavar="<consumer_group>",
     help="Consumergroup to store the offset in",
     type=click.STRING,
     default=None,
@@ -573,8 +584,23 @@ def consume(
     type=click.STRING,
     required=False,
 )
-@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=False)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
+@click.option(
+    "-t",
+    "--to",
+    "to_context",
+    metavar="<destination_ctx>",
+    help="Destination Context",
+    type=click.STRING,
+    required=False,
+)
+@click.option(
+    "-m",
+    "--match",
+    metavar="<filter_expresion>",
+    help="Message filtering expression",
+    type=click.STRING,
+    required=False,
+)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
