@@ -2,10 +2,10 @@ name: Build, test and package esque
 on:
   push:
     branches:
-      - master
+      - 61-installation-and-packaging
   pull_request:
     branches:
-      - master
+      - 61-installation-and-packaging
 
 jobs:
   test-style:
@@ -17,7 +17,7 @@ jobs:
         python: ['3.x', '3.6', '3.7', 'pypy3' ]
         os: ['ubuntu-latest']
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@61-installation-and-packaging
       - name: Setup python
         uses: actions/setup-python@v1
         with:
@@ -93,7 +93,7 @@ jobs:
         run: |
           source ./venv/bin/activate
           esque ctx local
-          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/commands/test_consume.py
+          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/commands/test_ping.py
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
