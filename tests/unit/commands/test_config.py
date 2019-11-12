@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from esque.cli.commands import config_edit, config_migrate
 from esque.config import Config, migration
 from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
-from tests.conftest import config_loader, config_path_mocker
+from tests.conftest import config_loader
 
 
 def test_migrate_config(mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader):
@@ -33,11 +33,8 @@ def test_migrate_config(mocker: mock, interactive_cli_runner: CliRunner, load_co
     assert backup.read_text() == old_conf_text
 
 
-def test_edit_config(
-    mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader, mock_config_path: config_path_mocker
-):
+def test_edit_config(mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader):
     conf_path, old_conf_text = load_config()
-    mock_config_path(conf_path)
     data = yaml.safe_load(old_conf_text)
     data["contexts"]["dupe"] = data["contexts"]["context_1"]
     mocker.patch.object(click, "edit", return_value=yaml.dump(data))

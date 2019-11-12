@@ -41,7 +41,11 @@ def config_path() -> Path:
 def _config_path() -> Path:
     if environment.ESQUE_CONF_PATH:
         return Path(environment.ESQUE_CONF_PATH)
-    return config_dir() / "esque.yaml"
+    legacy_path = config_dir() / "esque.cfg"
+    current_path = config_dir() / "esque_config.yaml"
+    if legacy_path.exists() and not current_path.exists():
+        return legacy_path
+    return current_path
 
 
 def _config_dir() -> Path:

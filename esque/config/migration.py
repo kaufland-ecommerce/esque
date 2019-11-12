@@ -3,11 +3,11 @@ import io
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Callable, ClassVar, Dict, List, Tuple, Type, TypeVar, cast, Optional
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, TypeVar, cast
 
 import yaml
 
-from esque.errors import ConfigTooOld, ConfigTooNew
+from esque.errors import ConfigTooNew, ConfigTooOld
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class V1Migrator(BaseMigrator):
 
     @property
     def new_config_path(self) -> Path:
-        return self._old_config_path.with_suffix(".yaml")
+        return self._old_config_path.parent / "config.yaml"
 
     def deserialize(self, text: str):
         self._old_data = configparser.ConfigParser()
