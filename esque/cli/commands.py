@@ -375,6 +375,7 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 @output_format_option
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
+    """Describe a consumer groups. """
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -395,6 +396,7 @@ def get_brokers(state: State, output_format: str):
 @output_format_option
 @default_options
 def get_consumergroups(state: State, output_format: str):
+    """List all consumer groups."""
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
     click.echo(format_output(groups, output_format))
 
