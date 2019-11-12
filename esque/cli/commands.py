@@ -1,5 +1,4 @@
 import getpass
-import pathlib
 import pwd
 import sys
 import time
@@ -384,6 +383,14 @@ def get_topics(state: State, prefix: str, output_format: str):
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
+    "-c",
+    "--consumergroup",
+    help="Consumergroup to store the offset in",
+    type=click.STRING,
+    default=None,
+    required=False,
+)
+@click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition",
     default=False,
@@ -405,13 +412,19 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    unique_name = topic + "_" + str(current_timestamp_milliseconds)
-    group_id = "group_for_" + unique_name
-    directory_name = "message_" + unique_name
+
+    if not consumergroup:
+        unique_name = topic + "_" + str(current_timestamp_milliseconds)
+        consumergroup = "group_for_" + unique_name
+        directory_name = "message_" + unique_name
+    else:
+        directory_name = "message_" + consumergroup
+
     working_dir = Path(directory_name)
     if not from_context:
         from_context = state.config.current_context
@@ -429,7 +442,7 @@ def consume(
         total_number_of_consumed_messages = consume_to_file_ordered(
             working_dir=working_dir,
             topic=topic,
-            group_id=group_id,
+            group_id=consumergroup,
             partitions=partitions,
             numbers=numbers,
             avro=avro,
@@ -441,7 +454,7 @@ def consume(
         total_number_of_consumed_messages = consume_to_files(
             working_dir=working_dir,
             topic=topic,
-            group_id=group_id,
+            group_id=consumergroup,
             numbers=numbers,
             avro=avro,
             match=match,
@@ -504,7 +517,7 @@ def produce(
         if not to_context:
             to_context = state.config.current_context
         if directory is not None:
-            working_dir = pathlib.Path(directory)
+            working_dir = Path(directory)
             if not working_dir.exists():
                 click.echo("You have to provide an existing directory")
                 exit(1)
