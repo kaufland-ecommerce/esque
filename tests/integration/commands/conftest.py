@@ -10,9 +10,6 @@ from esque.config import Config
 def interactive_cli_runner(mocker: mock, unittest_config: Config) -> CliRunner:
     mocker.patch("esque.cli.helpers._isatty", return_value=True)
     mocker.patch("esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1")
-    print("=============================================================== \n")
-    print(unittest_config.bootstrap_servers)
-    print("\n =========================================================")
     return CliRunner()
 
 
@@ -20,7 +17,4 @@ def interactive_cli_runner(mocker: mock, unittest_config: Config) -> CliRunner:
 def non_interactive_cli_runner(mocker: mock, unittest_config: Config) -> CliRunner:
     mocker.patch("esque.cli.helpers._isatty", return_value=False)
     mocker.patch("esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1")
-    print("=============================================================== \n")
-    print(unittest_config.bootstrap_servers)
-    print("\n =========================================================")
     return CliRunner()
