@@ -6,7 +6,7 @@ authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
 readme = "README.md"
 include = [
-  "esque/config/sample_config.cfg",
+  "esque/config/sample_config.yaml",
   "README.md",
   "LICENSE",
   "pyproject.toml",
@@ -51,7 +51,8 @@ pytest = "^5.2"
 pytest-mock = "^1.11"
 pytest-cov = "^2.8"
 flake8 = "^3.7"
-black = {version = "*", allows-prereleases = true}
+#TODO unpin once it's more stable
+black = {version = "19.3b0", allows-prereleases = true}
 isort = "^4.3"
 
 [tool.black]
@@ -65,5 +66,6 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [build-system]
-requires = ["poetry>=1.0.0b3"]
+#TODO unpin once it's more stable
+requires = ["poetry==1.0.0b3"]
 build-backend = "poetry.masonry.api"
