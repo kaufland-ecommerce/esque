@@ -21,6 +21,7 @@ before_install:
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install -U pip
+#TODO unpin once it's more stable
 - pip install coverage coveralls "poetry==1.0.0b3"
 - poetry install -vvv --no-root
 script:
