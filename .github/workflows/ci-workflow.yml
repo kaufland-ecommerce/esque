@@ -40,8 +40,8 @@ jobs:
         ports:
           - 2181:2181
         options:
-          - network: "host"
-          - name: "zookeeper"
+          network: "host"
+          name: "zookeeper"
         env:
           ZOOKEEPER_URL: "zookeeper:2181"
           HOST: "zookeeper"
@@ -49,8 +49,8 @@ jobs:
       kafka:
         image: confluentinc/cp-kafka:5.0.0
         options:
-          - network: "host"
-          - name: "kafka"
+          network: "host"
+          name: "kafka"
         ports:
           - 9092:9092
         env:
@@ -63,8 +63,8 @@ jobs:
       schema-registry:
         image: confluentinc/cp-schema-registry:5.0.0
         options:
-          - network: "host"
-          - name: "schema-registry"
+          network: "host"
+          name: "schema-registry"
         ports:
           - 8081:8081
         env:
