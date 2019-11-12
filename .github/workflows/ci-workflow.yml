@@ -39,14 +39,12 @@ jobs:
         image: confluentinc/cp-zookeeper:5.0.0
         ports:
           - 2181:2181
-        options: --net=host --name=zookeeper
         env:
           ZOOKEEPER_URL: "zookeeper:2181"
           HOST: "zookeeper"
           ZOOKEEPER_CLIENT_PORT: "2181"
       kafka:
         image: confluentinc/cp-kafka:5.0.0
-        options: --net=host --name=kafka
         ports:
           - 9092:9092
         env:
@@ -58,7 +56,6 @@ jobs:
           KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       schema-registry:
         image: confluentinc/cp-schema-registry:5.0.0
-        options: --net=host --name=schema-registry
         ports:
           - 8081:8081
         env:
