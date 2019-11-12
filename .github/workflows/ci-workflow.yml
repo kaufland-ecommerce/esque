@@ -49,6 +49,7 @@ jobs:
           - 9092:9092
         env:
           KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+          KAFKA_LISTENERS: 'PLAINTEXT://localhost:9092'
           KAFKA_BROKER_ID: '1'
           KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
@@ -69,14 +70,12 @@ jobs:
       - name: Waiting for services
         run: |
           bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
-          bash -c "./scripts/init.sh" ;
           bash -c "./scripts/wait-for-it.sh ${BROKER_URL} -t 60" ;
           bash -c "./scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60" ;
         env:
           ZOOKEEPER_URL: localhost:2181
           BROKER_URL: localhost:9092
           SCHEMA_REGISTRY_URL: localhost:8081
-          CONFIG_PATH: "confluent-community/etc/kafka/server.properties"
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
       - name: Install system packages
         run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
