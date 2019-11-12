@@ -35,19 +35,26 @@ jobs:
         python: ['3.x', '3.6', '3.7', 'pypy3' ]
       max-parallel: 1
     services:
-      zookeeper-kafka:
-        image: spotify/kafka
+      zookeeper:
+        image: confluentinc/cp-zookeeper:5.0.0
         ports:
           - 2181:2181
+        env:
+          ZOOKEEPER_URL: "localhost:2181"
+          HOST: "localhost"
+          PORT: "2181"
+      kafka:
+        image: confluentinc/cp-kafka:5.0.0
+        ports:
           - 9092:9092
         env:
-          ZOO_MY_ID: 1
-          ZOO_SERVERS: server.1=0.0.0.0:2888:3888
-          KAFKA_ADVERTISED_HOST_NAME: localhost
-          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
-          KAFKA_ADVERTISED_PORT: 9092
+          KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+          KAFKA_BROKER_ID: '1'
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+          KAFKA_ZOOKEEPER_CONNECT: 'localhost:2181'
       schemaregistry:
-        image: confluentinc/cp-schema-registry
+        image: confluentinc/cp-schema-registry:5.0.0
         ports:
           - 8081:8081
         env:
