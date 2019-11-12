@@ -1,5 +1,4 @@
 import re
-from collections import defaultdict
 from enum import Enum
 from itertools import islice
 from typing import TYPE_CHECKING, List, Union
@@ -8,15 +7,12 @@ from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
-from pykafka.common import OffsetType
-from pykafka.protocol import PartitionOffsetRequest, PartitionFetchRequest
 
 from esque.config import Config
 from esque.errors import raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 from pykafka.topic import Topic as PyKafkaTopic
-from pykafka.utils.compat import itervalues, iteritems
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -115,11 +111,7 @@ class TopicController:
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
         pykafka_topic: PyKafkaTopic = self._get_client_topic(topic.name, ClientTypes.PyKafka)
         low_watermarks = pykafka_topic.earliest_available_offsets()
-
-        self.fetch_offset_limits(pykafka_topic.name, pykafka_topic.partitions)
-        high_watermarks = (
-            pykafka_topic.latest_available_offsets()
-        )  # TODO: I don't think this is the high watermark... high watermark is the highest offset of REPLICATED messages
+        high_watermarks = pykafka_topic.latest_available_offsets()
 
         topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
@@ -127,33 +119,6 @@ class TopicController:
         topic.is_only_local = False
 
         return topic
-
-    @staticmethod
-    def fetch_offset_limits(name, partitions):
-        offsets_before = OffsetType.LATEST
-        max_offsets = 1
-        offset_requests = defaultdict(list)  # one request for each broker
-        fetch_requests = defaultdict(list)  # one request for each broker
-        for part in itervalues(partitions):
-            offset_requests[part.leader].append(PartitionOffsetRequest(
-                name, part.id, offsets_before, max_offsets
-            ))
-            fetch_requests[part.leader].append(PartitionFetchRequest(
-                name, part.id, 0
-            ))
-        output = {}
-        for broker, reqs in iteritems(offset_requests):
-            res_offset = broker.request_offset_limits(reqs)
-
-            print(res_offset.topics)
-            output.update(res_offset.topics)
-
-        for broker, reqs in iteritems(fetch_requests):
-            res_fetch = broker.fetch_messages(reqs)
-            print(res_fetch.topics)
-            output.update(res_fetch.topics)
-
-        return output
 
     def _get_partition_data(
         self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
