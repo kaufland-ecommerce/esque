@@ -178,7 +178,7 @@ def create_topic(state: State, topic_name: str, like: str):
     else:
         topic = Topic(topic_name)
     topic_controller.create_topics([topic])
-    click.echo(click.style(f"Topic with name '{topic.name}'' successfully created", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic.name}' successfully created", fg="green"))
 
 
 @edit.command("topic")
@@ -227,7 +227,7 @@ def delete_topic(state: State, topic_name: str):
 
         assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
-    click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted", fg="green"))
 
 
 @esque.command("apply", short_help="Apply a configuration")
