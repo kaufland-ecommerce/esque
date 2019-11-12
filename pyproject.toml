@@ -6,7 +6,7 @@ authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
 readme = "README.md"
 include = [
-  "esque/config/sample_config.cfg",
+  "esque/config/sample_config.yaml",
   "README.md",
   "LICENSE",
   "pyproject.toml",

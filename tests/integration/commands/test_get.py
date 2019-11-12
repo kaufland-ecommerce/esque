@@ -3,11 +3,11 @@ import random
 from string import ascii_letters
 from typing import Callable
 
-import confluent_kafka
-import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import get_topics, get_consumergroups, get_brokers
+import confluent_kafka
+import pytest
+from esque.cli.commands import get_brokers, get_consumergroups, get_topics
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
@@ -15,14 +15,14 @@ from tests.conftest import parameterized_output_formats
 
 @pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_topics)
+    result = non_interactive_cli_runner.invoke(get_topics, catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 @parameterized_output_formats
-def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
-    result = non_interactive_cli_runner.invoke(get_topics, ["-o", output_format])
+def test_get_topics_with_output_format(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
+    result = non_interactive_cli_runner.invoke(get_topics, ["-o", output_format], catch_exceptions=False)
     assert result.exit_code == 0
     loader(result.output)
 
@@ -40,7 +40,7 @@ def test_get_topics_with_prefix(
     topic_controller.create_topics([Topic(new_topic, replication_factor=1) for new_topic in new_topics])
     confluent_admin_client.poll(timeout=1)
 
-    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json"])
+    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json"], catch_exceptions=False)
 
     assert result.exit_code == 0
     retrieved_topics = json.loads(result.output)
@@ -51,31 +51,29 @@ def test_get_topics_with_prefix(
 
 @pytest.mark.integration
 def test_smoke_test_get_consumergroups(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_consumergroups)
+    result = non_interactive_cli_runner.invoke(get_consumergroups, catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 @parameterized_output_formats
-def test_smoke_test_get_consumergroups_with_output_format(
+def test_get_consumergroups_with_output_format(
     non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(get_consumergroups, ["-o", output_format])
+    result = non_interactive_cli_runner.invoke(get_consumergroups, ["-o", output_format], catch_exceptions=False)
     assert result.exit_code == 0
     loader(result.output)
 
 
 @pytest.mark.integration
 def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_brokers)
+    result = non_interactive_cli_runner.invoke(get_brokers, catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 @parameterized_output_formats
-def test_smoke_test_get_brokers_with_output_format(
-    non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable
-):
+def test_get_brokers_with_output_format(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
     result = non_interactive_cli_runner.invoke(get_brokers, ["-o", output_format])
     assert result.exit_code == 0
     loader(result.output)

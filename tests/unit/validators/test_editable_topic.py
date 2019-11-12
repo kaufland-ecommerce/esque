@@ -2,7 +2,7 @@ from typing import Dict
 
 import pytest
 
-from esque.errors import TopicConfigNotValidException
+from esque.errors import ValidationException
 from esque.validation import validate_editable_topic_config
 
 
@@ -45,11 +45,11 @@ def test_config_with_valid_keys_works(valid_config):
 
 def test_config_with_unknown_key_fails(valid_config):
     valid_config["config"]["foo.bar.baz"] = "true"
-    with pytest.raises(TopicConfigNotValidException):
+    with pytest.raises(ValidationException):
         validate_editable_topic_config(valid_config)
 
 
 def test_topic_creation_with_malformed_value_fails(valid_config):
     valid_config["config"]["segment.ms"] = "foo_bar_baz"
-    with pytest.raises(TopicConfigNotValidException):
+    with pytest.raises(ValidationException):
         validate_editable_topic_config(valid_config)

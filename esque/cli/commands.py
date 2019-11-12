@@ -1,5 +1,4 @@
 import getpass
-import pathlib
 import pwd
 import sys
 import time
@@ -11,7 +10,7 @@ import click
 import yaml
 from click import MissingParameter, version_option
 
-from esque import __version__
+from esque import __version__, validation
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
@@ -27,12 +26,11 @@ from esque.cli.output import (
 )
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, sample_config_path
+from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import EditCanceled, ValidationException
+from esque.errors import ValidationException
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
-from esque.validation import validate_editable_topic_config
 
 
 @click.group(invoke_without_command=True)
@@ -161,6 +159,22 @@ def config_autocomplete(state: State):
     )
 
 
+@config.command("edit", help="Edit esque config file.")
+@default_options
+def config_edit(state: State):
+    """Opens the user's esque config file in the default editor."""
+    old_yaml = config_path().read_text()
+    new_yaml, _ = edit_yaml(old_yaml, validator=validation.validate_esque_config)
+    config_path().write_text(new_yaml)
+
+
+@config.command("migrate", help="Migrate your config to current version")
+@default_options
+def config_migrate(state: State):
+    new_path, backup = migration.migrate(config_path())
+    click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
+
+
 @create.command("topic")
 @click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
 @click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template", required=False)
@@ -198,11 +212,9 @@ def edit_topic(state: State, topic_name: str):
     """
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
-    try:
-        _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validate_editable_topic_config)
-    except EditCanceled:
-        click.echo("Edit canceled")
-        return
+
+    _, new_conf = edit_yaml(topic.to_yaml(only_editable=True), validator=validation.validate_editable_topic_config)
+
     local_topic = copy_to_local(topic)
     local_topic.update_from_dict(new_conf)
     diff = controller.diff_with_cluster(local_topic)
@@ -214,7 +226,7 @@ def edit_topic(state: State, topic_name: str):
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
     else:
-        click.echo("Edit canceled")
+        click.echo("canceled")
 
 
 @delete.command("topic")
@@ -359,20 +371,20 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
     click.echo(format_output(output_dict, output_format))
 
 
-@get.command("offsets", short_help="Return watermarks by topic.")
+@get.command("watermarks", short_help="Return watermarks by topic.")
 @click.option(
     "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, autocompletion=list_topics
 )
 @output_format_option
 @default_options
-def get_offsets(state: State, topic_name: str, output_format: str):
+def get_watermarks(state: State, topic_name: str, output_format: str):
     """Returns the high and low watermarks for <topic_name>, or if not specified, all topics."""
-    # TODO: Gathering of all offsets takes super long
+    # TODO: Gathering of all watermarks takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
-    offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
+    watermarks = {topic.name: max(v for v in topic.watermarks.values()) for topic in topics}
 
-    click.echo(format_output(offsets, output_format))
+    click.echo(format_output(watermarks, output_format))
 
 
 @describe.command("broker", short_help="Describe a broker.")
@@ -451,6 +463,14 @@ def get_topics(state: State, prefix: str, output_format: str):
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
+    "-c",
+    "--consumergroup",
+    help="Consumergroup to store the offset in",
+    type=click.STRING,
+    default=None,
+    required=False,
+)
+@click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition",
     default=False,
@@ -466,6 +486,7 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
 ):
@@ -483,9 +504,14 @@ def consume(
     esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    unique_name = topic + "_" + str(current_timestamp_milliseconds)
-    group_id = "group_for_" + unique_name
-    directory_name = "message_" + unique_name
+
+    if not consumergroup:
+        unique_name = topic + "_" + str(current_timestamp_milliseconds)
+        consumergroup = "group_for_" + unique_name
+        directory_name = "message_" + unique_name
+    else:
+        directory_name = "message_" + consumergroup
+
     working_dir = Path(directory_name)
     if not from_context:
         from_context = state.config.current_context
@@ -503,7 +529,7 @@ def consume(
         total_number_of_consumed_messages = consume_to_file_ordered(
             working_dir=working_dir,
             topic=topic,
-            group_id=group_id,
+            group_id=consumergroup,
             partitions=partitions,
             numbers=numbers,
             avro=avro,
@@ -515,7 +541,7 @@ def consume(
         total_number_of_consumed_messages = consume_to_files(
             working_dir=working_dir,
             topic=topic,
-            group_id=group_id,
+            group_id=consumergroup,
             numbers=numbers,
             avro=avro,
             match=match,
@@ -590,7 +616,7 @@ def produce(
         if not to_context:
             to_context = state.config.current_context
         if directory is not None:
-            working_dir = pathlib.Path(directory)
+            working_dir = Path(directory)
             if not working_dir.exists():
                 click.echo("You have to provide an existing directory")
                 exit(1)
@@ -664,10 +690,3 @@ def ping(state: State, times: int, wait: int):
         click.echo("--- statistics ---")
         click.echo(f"{len(deltas)} messages sent/received")
         click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
-
-
-@edit.command("config", short_help="Edit esque config file.")
-@default_options
-def edit_config():
-    """Opens the user's esque config file in the default editor."""
-    click.edit(filename=config_path().as_posix())
