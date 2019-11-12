@@ -42,7 +42,7 @@ jobs:
         env:
           ZOOKEEPER_URL: "localhost:2181"
           HOST: "localhost"
-          PORT: "2181"
+          ZOOKEEPER_CLIENT_PORT: "2181"
       kafka:
         image: confluentinc/cp-kafka:5.0.0
         ports:
