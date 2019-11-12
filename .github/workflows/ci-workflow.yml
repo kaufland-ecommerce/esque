@@ -17,7 +17,9 @@ jobs:
         python: ['3.x', '3.6', '3.7', 'pypy3' ]
         os: ['ubuntu-latest']
     steps:
-      - uses: actions/checkout@61-installation-and-packaging
+      - uses: actions/checkout@v1
+        with:
+          ref: 61-installation-and-packaging
       - name: Setup python
         uses: actions/setup-python@v1
         with:
@@ -54,7 +56,9 @@ jobs:
           SCHEMA_REGISTRY_HOST_NAME: localhost
           SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
     steps:
-      - uses: actions/checkout@61-installation-and-packaging
+      - uses: actions/checkout@v1
+        with:
+          ref: 61-installation-and-packaging
       - name: Waiting for services
         run: |
           bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
