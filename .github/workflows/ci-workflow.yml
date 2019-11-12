@@ -93,7 +93,7 @@ jobs:
         run: |
           source ./venv/bin/activate
           esque ctx local
-          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/
+          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/commands/test_consume.py
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
