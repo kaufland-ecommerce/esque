@@ -322,17 +322,17 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
     click.echo(format_output(output_dict, output_format))
 
 
-@get.command("offsets")
+@get.command("watermarks")
 @click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
 @output_format_option
 @default_options
-def get_offsets(state: State, topic_name: str, output_format: str):
-    # TODO: Gathering of all offsets takes super long
+def get_watermarks(state: State, topic_name: str, output_format: str):
+    # TODO: Gathering of all watermarks takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
-    offsets = {topic.name: max(v for v in topic.offsets.values()) for topic in topics}
+    watermarks = {topic.name: max(v for v in topic.watermarks.values()) for topic in topics}
 
-    click.echo(format_output(offsets, output_format))
+    click.echo(format_output(watermarks, output_format))
 
 
 @describe.command("broker")
