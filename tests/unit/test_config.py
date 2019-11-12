@@ -156,19 +156,16 @@ def test_default_values(config: Config):
     assert config.default_replication_factor == 2
 
 
-def test_default_values_not_specified(config: Config):
+def test_default_values_not_specified(mocker: mock, config: Config):
     assert config.default_values == {}
     assert config.default_num_partitions == 1
 
-    # if not given, default replication factor is min(len(bootstrap_servers),3)
-    assert len(config.bootstrap_servers) == 1
-    assert config.default_replication_factor == 1
-
-    config.context_switch("context_5")
-    assert config.default_values == {}
-    assert len(config.bootstrap_servers) == 4
-    assert config.default_replication_factor == 3
-    assert config.default_num_partitions == 1
+    # if not given, broker defaults are taken
+    setting_mock = mocker.patch.object(config, "_get_broker_setting", return_value="1234")
+    assert config.default_replication_factor == 1234
+    assert setting_mock.called_with("default.replication.factor")
+    assert config.default_num_partitions == 1234
+    assert setting_mock.called_with("num.partitions")
 
 
 def test_config_too_old(mock_config_path: config_path_mocker, load_config: config_loader):
