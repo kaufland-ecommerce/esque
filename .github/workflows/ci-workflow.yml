@@ -104,7 +104,7 @@ jobs:
           sudo netstat -punta
           source ./venv/bin/activate
           esque ctx local
-          $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/commands/test_ping.py
+          $HOME/.poetry/bin/poetry run pytest -s -v --integration --local tests/integration/commands/test_ping.py
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
