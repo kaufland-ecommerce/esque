@@ -95,7 +95,7 @@ output_format_option = click.option(
     "-o",
     "--output-format",
     type=click.Choice(["yaml", "json"], case_sensitive=False),
-    help="Format of the output",
+    help="Format of the output.",
     required=False,
 )
 

@@ -110,7 +110,7 @@ def fallback_to_stdin(ctx, args, value):
 
 
 @esque.command("ctx")
-@click.argument("context", required=False, default=None, autocompletion=list_contexts)
+@click.argument("context", metavar="CONTEXT", required=False, default=None, autocompletion=list_contexts)
 @default_options
 def ctx(state: State, context: str):
     """List contexts and switch between them.
@@ -118,7 +118,7 @@ def ctx(state: State, context: str):
     \b
     USAGE:
     esque ctx               : list available contexts
-    esque ctx <CONTEXT>     : switch to context <CONTEXT>
+    esque ctx CONTEXT       : switch to context CONTEXT
     """
     if not context:
         for c in state.config.available_contexts:
@@ -134,9 +134,10 @@ def ctx(state: State, context: str):
 @config.command("autocomplete")
 @default_options
 def config_autocomplete(state: State):
-    """Install esque autocompletion functionality.
+    """Configure esque autocompletion functionality.
 
-    Generate the autocompletion script based on the current shell and give instructions to install
+    Generate the autocompletion script based on the current shell and
+    give instructions to install it into the current environment.
     """
     directory = config_dir()
     config_file_name = "autocomplete.sh"
@@ -161,13 +162,13 @@ def config_autocomplete(state: State):
 
 
 @create.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False)
-@click.option("-l", "--like", help="Topic to use as template", required=False)
+@click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
+@click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template", required=False)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
     """Create a topic.
 
-    Create a topic with the option of providing a template topic,
+    Create a topic called TOPIC_NAME with the option of providing a template topic, <template_topic>,
     from which all the configuration options will be copied.
     """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -192,7 +193,7 @@ def create_topic(state: State, topic_name: str, like: str):
 def edit_topic(state: State, topic_name: str):
     """Edit a topic.
 
-    Opens the topics configuration in the default editor. If the user saves upon exiting the editor,
+    Open the topic's configuration in the default editor. If the user saves upon exiting the editor,
     all the given changes will be applied to the topic.
     """
     controller = state.cluster.topic_controller
@@ -217,13 +218,18 @@ def edit_topic(state: State, topic_name: str):
 
 
 @delete.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name",
+    metavar="TOPIC_NAME",
+    callback=fallback_to_stdin,
+    required=False,
+    type=click.STRING,
+    autocompletion=list_topics,
+)
 @default_options
 def delete_topic(state: State, topic_name: str):
     """Delete a topic
 
-    \b
-    Deletes a kafka topic.
     WARNING: This command cannot be undone, and all data in the topic will be lost.
     """
     topic_controller = state.cluster.topic_controller
@@ -236,13 +242,13 @@ def delete_topic(state: State, topic_name: str):
 
 
 @esque.command("apply", short_help="Apply a configuration.")
-@click.option("-f", "--file", help="Config file path", required=True)
+@click.option("-f", "--file", metavar="<file>", help="Config file path", required=True)
 @default_options
 def apply(state: State, file: str):
     """Create and/or apply changes to topic(s)
 
-    Given a config yaml file, create new topics with the given configuration
-    properties and apply all changes to existing topics.
+    Take a config yaml file <file> and create new topics with the given configuration
+    properties and apply changes to existing topics.
     """
 
     # Get topic data based on the YAML
@@ -306,10 +312,17 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name",
+    metavar="TOPIC_NAME",
+    callback=fallback_to_stdin,
+    required=False,
+    type=click.STRING,
+    autocompletion=list_topics,
+)
 @click.option(
     "--consumers",
-    "-C",
+    "-c",
     required=False,
     is_flag=True,
     default=False,
@@ -347,11 +360,13 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
 
 
 @get.command("offsets", short_help="Return watermarks by topic.")
-@click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@click.option(
+    "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, autocompletion=list_topics
+)
 @output_format_option
 @default_options
 def get_offsets(state: State, topic_name: str, output_format: str):
-    """Returns the high and low watermarks for each topic."""
+    """Returns the high and low watermarks for <topic_name>, or if not specified, all topics."""
     # TODO: Gathering of all offsets takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
@@ -360,20 +375,17 @@ def get_offsets(state: State, topic_name: str, output_format: str):
     click.echo(format_output(offsets, output_format))
 
 
-@describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, required=False)
+@describe.command("broker", short_help="Describe a broker.")
+@click.argument("broker-id", metavar="BROKER_ID", callback=fallback_to_stdin, required=False)
 @output_format_option
 @default_options
 def describe_broker(state: State, broker_id: str, output_format: str):
-    """Describe a broker.
-
-    Return configuration options for the given broker.
-    """
+    """Return configuration options for the given broker."""
     broker = Broker.from_id(state.cluster, broker_id).describe()
     click.echo(format_output(broker, output_format))
 
 
-@describe.command("consumergroup")
+@describe.command("consumergroup", short_help="Describe a consumer group.")
 @click.option("-c", "--consumer-id", required=False)
 @click.option(
     "--all-partitions",
@@ -384,7 +396,7 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 @output_format_option
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
-    """Describe a consumer group."""
+    """Return information on group coordinator, offsets, watermarks, lag, and various metadata."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -397,7 +409,7 @@ def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool,
 def get_brokers(state: State, output_format: str):
     """List all brokers.
 
-    Print the broker id's and socket addresses of the brokers in the kafka cluster defined in the current context.
+    Return the broker id's and socket addresses of all the brokers in the kafka cluster defined in the current context.
     """
     brokers = Broker.get_all(state.cluster)
     broker_ids_and_hosts = [f"{broker.broker_id}: {broker.host}:{broker.port}" for broker in brokers]
@@ -566,10 +578,10 @@ def produce(
 
        \b
        EXAMPLE USAGES:
-       Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
+       #Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
        esque consume --first -n 10 --preserve-order --stdout my-topic
 
-       Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
+       #Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
        esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
        """
     if directory is None and not read_from_stdin:
