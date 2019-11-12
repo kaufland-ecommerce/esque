@@ -21,4 +21,4 @@ def test_correct_amount_of_messages(mocker, non_interactive_cli_runner: CliRunne
     assert topic_controller_delete_topic.call_count == 1
 
     ping_topic = topic_controller.get_cluster_topic(config.PING_TOPIC)
-    assert ping_topic.offsets[0].high == 10
+    assert ping_topic.watermarks[0].high == 10

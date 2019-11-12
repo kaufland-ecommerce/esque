@@ -85,7 +85,7 @@ class ConsumerGroup:
                     }
             return consumer_offsets
         for topic in consumer_offsets.keys():
-            topic_offsets = self.topic_controller.get_cluster_topic(topic).offsets
+            topic_offsets = self.topic_controller.get_cluster_topic(topic).watermarks
             new_consumer_offsets = {
                 "consumer_offset": (float("inf"), float("-inf")),
                 "topic_low_watermark": (float("inf"), float("-inf")),
