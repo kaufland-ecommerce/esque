@@ -1,8 +1,8 @@
 from typing import Callable, Union
 
-import pytest
 from click.testing import CliRunner
 
+import pytest
 from esque.cli.commands import describe_broker, describe_topic
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
@@ -22,7 +22,7 @@ VARIOUS_IMPORTANT_BROKER_OPTIONS = [
 
 @pytest.mark.integration
 def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: str):
-    result = non_interactive_cli_runner.invoke(describe_topic, topic)
+    result = non_interactive_cli_runner.invoke(describe_topic, topic, catch_exceptions=False)
     assert result.exit_code == 0
     output = result.output
     check_described_topic(output)
@@ -33,7 +33,7 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
 def test_describe_topic_formatted_output(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "-o", output_format])
+    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "-o", output_format], catch_exceptions=False)
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_topic(output_dict)
@@ -44,7 +44,7 @@ def test_describe_topic_formatted_output(
 def test_describe_topic_from_stdin(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], topic)
+    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], topic, catch_exceptions=False)
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_topic(output_dict)
@@ -58,7 +58,7 @@ def test_describe_topic_without_topic_name_fails(non_interactive_cli_runner: Cli
 
 @pytest.mark.integration
 def test_describe_broker_no_flag(non_interactive_cli_runner: CliRunner, broker_id: str):
-    result = non_interactive_cli_runner.invoke(describe_broker, broker_id)
+    result = non_interactive_cli_runner.invoke(describe_broker, broker_id, catch_exceptions=False)
     assert result.exit_code == 0
     output = result.output
     check_described_broker(output)
@@ -69,7 +69,9 @@ def test_describe_broker_no_flag(non_interactive_cli_runner: CliRunner, broker_i
 def test_describe_broker_formatted_output(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_broker, [broker_id, "-o", output_format])
+    result = non_interactive_cli_runner.invoke(
+        describe_broker, [broker_id, "-o", output_format], catch_exceptions=False
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_broker(output_dict)
@@ -86,7 +88,9 @@ def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: Cli
 def test_describe_broker_from_stdin(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_broker, ["-o", output_format], broker_id)
+    result = non_interactive_cli_runner.invoke(
+        describe_broker, ["-o", output_format], broker_id, catch_exceptions=False
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_broker(output_dict)
@@ -120,7 +124,9 @@ def test_describe_topic_consumergroup_in_output(
     output_format: str,
     loader: Callable,
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format, "-C", filled_topic.name])
+    result = non_interactive_cli_runner.invoke(
+        describe_topic, ["-o", output_format, "-C", filled_topic.name], catch_exceptions=False
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
 

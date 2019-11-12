@@ -1,7 +1,7 @@
-import confluent_kafka
-import pytest
 from click.testing import CliRunner
 
+import confluent_kafka
+import pytest
 from esque.cli.commands import create_topic
 from esque.cli.options import State
 from esque.errors import NoConfirmationPossibleException
@@ -12,7 +12,7 @@ from esque.resources.topic import Topic
 def test_create_without_confirmation_does_not_create_topic(
     interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
-    result = interactive_cli_runner.invoke(create_topic, [topic_id])
+    result = interactive_cli_runner.invoke(create_topic, [topic_id], catch_exceptions=False)
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -38,7 +38,7 @@ def test_create_topic_as_argument_with_verification_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
-    result = interactive_cli_runner.invoke(create_topic, args=topic_id, input="Y\n")
+    result = interactive_cli_runner.invoke(create_topic, args=topic_id, input="Y\n", catch_exceptions=False)
     assert result.exit_code == 0
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
@@ -54,7 +54,9 @@ def test_create_topic_with_stdin_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
-    result = non_interactive_cli_runner.invoke(create_topic, args="--no-verify", input=topic_id)
+    result = non_interactive_cli_runner.invoke(
+        create_topic, args="--no-verify", input=topic_id, catch_exceptions=False
+    )
     assert result.exit_code == 0
     # invalidate cache
     confluent_admin_client.poll(timeout=1)
@@ -102,7 +104,9 @@ def test_topic_creation_with_template_works(
     state.cluster.topic_controller.create_topics(
         [Topic(topic_1, replication_factor=replication_factor, num_partitions=num_partitions, config=config)]
     )
-    result = non_interactive_cli_runner.invoke(create_topic, ["--no-verify", "-l", topic_1, topic_2])
+    result = non_interactive_cli_runner.invoke(
+        create_topic, ["--no-verify", "-l", topic_1, topic_2], catch_exceptions=False
+    )
     assert result.exit_code == 0
     config_from_template = state.cluster.topic_controller.get_cluster_topic(topic_2)
     assert config_from_template.replication_factor == replication_factor

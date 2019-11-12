@@ -1,0 +1,20 @@
+version: 1
+current_context: docker
+contexts:
+  local:
+    bootstrap_servers:
+      - localhost:9092
+    security_protocol: PLAINTEXT
+    schema_registry: http://localhost:8081
+    default_values:
+      num_partitions: 1
+      replication_factor: 1
+
+  docker:
+    bootstrap_servers:
+      - kafka:9093
+    security_protocol: PLAINTEXT
+    schema_registry: http://schema_registry:8081
+    default_values:
+      num_partitions: 1
+      replication_factor: 1
