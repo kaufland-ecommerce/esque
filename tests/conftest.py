@@ -1,30 +1,40 @@
 import json
 import random
+import tempfile
 import time
 from concurrent.futures import Future
+from contextlib import ExitStack
 from pathlib import Path
 from string import ascii_letters
-from typing import Callable, Dict, Iterable, Tuple
+from typing import Callable, Dict, Iterable, Tuple, Union
 from unittest import mock
 
-import confluent_kafka
-import pytest
 import yaml
-from click.testing import CliRunner
+
+import confluent_kafka
+import esque.config
+import pytest
+from _pytest.fixtures import FixtureRequest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
-
 from esque.cli.options import State
 from esque.cluster import Cluster
-from esque.config import Config, sample_config_path
+from esque.config import Config
+from esque.config.migration import CURRENT_VERSION
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 from pykafka.exceptions import NoBrokersAvailableError
+
+# constants that indicate which config version to load
+# see function get_path_for_config_version
+LOAD_SAMPLE_CONFIG = -1
+LOAD_INTEGRATION_TEST_CONFIG = -2
+LOAD_CURRENT_VERSION = CURRENT_VERSION
 
 
 def pytest_addoption(parser):
@@ -47,36 +57,69 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(integration)
 
 
-@pytest.fixture()
-def interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=True), mock.patch(
-        "esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1"
-    ):
-        yield CliRunner()
+# use for typing only
+def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
+    ...
 
 
 @pytest.fixture()
-def non_interactive_cli_runner(test_config: Config):
-    with mock.patch("esque.cli.helpers._isatty", return_value=False), mock.patch(
-        "esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1"
-    ):
-        yield CliRunner()
+def load_config() -> config_loader:
+    """
+    Loads config of the given version, saves it into a named temporary file and then returns both that
+    file and the config content.
+    :return: Tuple[NamedTemporaryFile, str] where str is the content of the config and the tempfile
+    """
+    stack = ExitStack()
+
+    def loader(config_version: int = LOAD_CURRENT_VERSION) -> Tuple[Path, str]:
+        original_path = get_path_for_config_version(config_version)
+        data = original_path.read_text()
+        tmp_config = tempfile.NamedTemporaryFile(mode="w", suffix=original_path.suffix)
+        stack.enter_context(tmp_config)
+        tmp_config.file.write(data)
+        tmp_config.file.flush()
+        return Path(tmp_config.name), data
+
+    with stack:
+        yield loader
+
+
+def get_path_for_config_version(config_version: int) -> Path:
+    base_path = Path(__file__).parent / "test_configs"
+    if config_version == 0:
+        return base_path / "v0_sample.cfg"
+    if config_version == LOAD_INTEGRATION_TEST_CONFIG:
+        return base_path / "integration_test_config.yaml"
+    if config_version == LOAD_SAMPLE_CONFIG:
+        return esque.config.sample_config_path()
+    return base_path / f"v{config_version}_sample.yaml"
+
+
+# use for typing only
+def config_path_mocker(path: Union[str, Path]) -> None:
+    ...
 
 
 @pytest.fixture()
-def test_config_path(mocker, tmpdir_factory):
-    fn: Path = tmpdir_factory.mktemp("config").join("dummy.cfg")
-    fn.write_text(sample_config_path().read_text(), encoding="UTF-8")
-    mocker.patch("esque.config.config_path", return_value=fn)
-    yield fn
+def mock_config_path(mocker: mock) -> config_path_mocker:
+    def mockit(path: Union[str, Path]) -> None:
+        path = Path(path).resolve()
+        mocker.patch("esque.config._config_path", return_value=path)
+        mocker.patch("esque.config._config_dir", return_value=path.parent)
+
+    return mockit
 
 
 @pytest.fixture()
-def test_config(test_config_path, request):
+def unittest_config(
+    request: FixtureRequest, mock_config_path: Callable[[Union[str, Path]], None], load_config: config_loader
+) -> Config:
+    conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
+    mock_config_path(conffile)
     esque_config = Config()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")
-    yield esque_config
+    return esque_config
 
 
 @pytest.fixture()
@@ -307,22 +350,21 @@ def produced_avro_messages_with_headers(messages_ordered_same_partition_with_hea
 
 
 @pytest.fixture()
-def confluent_admin_client(test_config: Config) -> AdminClient:
-    admin = AdminClient(test_config.create_confluent_config())
+def confluent_admin_client(unittest_config) -> AdminClient:
+    admin = AdminClient(unittest_config.create_confluent_config())
     admin.poll(timeout=5)
     yield admin
 
 
 @pytest.fixture()
-def producer(test_config: Config) -> ConfluentProducer:
-    producer_config = test_config.create_confluent_config()
+def producer(unittest_config) -> ConfluentProducer:
+    producer_config = unittest_config.create_confluent_config()
     yield ConfluentProducer(producer_config)
 
 
 @pytest.fixture()
-def avro_producer(test_config: Config) -> AvroProducer:
-    producer_config = test_config.create_confluent_config()
-    producer_config.update({"schema.registry.url": Config().schema_registry})
+def avro_producer(unittest_config) -> AvroProducer:
+    producer_config = unittest_config.create_confluent_config(include_schema_registry=True)
     yield AvroProducer(producer_config)
 
 
@@ -380,19 +422,19 @@ def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic,
 
 
 @pytest.fixture()
-def cluster(test_config: Config) -> Iterable[Cluster]:
+def cluster(unittest_config) -> Iterable[Cluster]:
     try:
         cluster = Cluster()
     except NoBrokersAvailableError as ex:
-        print(test_config.bootstrap_servers)
+        print(unittest_config.bootstrap_servers)
         raise ex
 
     yield cluster
 
 
 @pytest.fixture()
-def state(test_config: Config) -> Iterable[State]:
-    yield State()
+def state(unittest_config) -> State:
+    return State()
 
 
 def check_and_load_yaml(output: str) -> Dict:

@@ -72,7 +72,9 @@ class TopicController:
     @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
-            partitions = topic.num_partitions if topic.num_partitions is not None else self.config.default_partitions
+            partitions = (
+                topic.num_partitions if topic.num_partitions is not None else self.config.default_num_partitions
+            )
             replicas = (
                 topic.replication_factor
                 if topic.replication_factor is not None

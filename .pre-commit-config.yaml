@@ -19,5 +19,11 @@ repos:
   - id: check-json
   - id: check-merge-conflict
   - id: check-yaml
+    exclude: esque/validation/schemas.*yaml
+  - id: check-yaml
+    alias: check-yaml-multi
+    name: "Check Yaml Schemas"
+    files: esque/validation/schemas.*yaml
+    args: ["-m"]
   - id: trailing-whitespace
     exclude: .*\.md$
