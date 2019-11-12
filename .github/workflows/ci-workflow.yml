@@ -101,6 +101,7 @@ jobs:
           $HOME/.poetry/bin/poetry run pytest tests/unit/
       - name: Run integration tests
         run: |
+          sudo netstat -punta
           source ./venv/bin/activate
           esque ctx local
           $HOME/.poetry/bin/poetry run pytest --integration --local tests/integration/commands/test_ping.py
