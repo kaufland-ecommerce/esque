@@ -1,9 +1,11 @@
 from unittest import mock
 
 import click
+import yaml
+from click.testing import CliRunner
+
 import confluent_kafka
 import pytest
-import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
@@ -11,9 +13,9 @@ from confluent_kafka.cimpl import Producer as ConfluenceProducer
 from esque.cli.commands import edit_consumergroup, edit_topic
 from esque.clients.consumer import ConsumerFactory
 from esque.config import Config
+from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
-from esque.validation import validate
 
 
 @pytest.mark.integration
@@ -72,12 +74,12 @@ def test_edit_topic_works(
 @pytest.mark.integration
 def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(edit_topic)
-    assert result.exit_code != 1
+    assert result.exit_code != 0
 
 
 @pytest.mark.integration
 def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner, topic_controller):
-    validator_mock = mocker.patch(f"{validate.__module__}.{validate.__name__}", side_effect=EditCanceled())
+    validator_mock = mocker.patch(f"esque.validation.validate_editable_topic_config", side_effect=EditCanceled())
     config_dict = {
         "config": {
             "cleanup.policy": "delete",
@@ -90,10 +92,9 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
     }
 
     mocker.patch.object(click, "edit", return_value=yaml.dump(config_dict, default_flow_style=False))
-    interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
+    interactive_cli_runner.invoke(edit_topic, topic, input="y\n")
 
-    validated_config_dict, schema_path = validator_mock.call_args[0]
-    assert schema_path.name == "editable_topic.yaml"
+    validated_config_dict, = validator_mock.call_args[0]
     assert validated_config_dict == config_dict
 
 

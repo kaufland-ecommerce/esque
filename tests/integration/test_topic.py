@@ -5,9 +5,9 @@ from esque.resources.topic import Topic, Watermark
 
 
 @pytest.mark.integration
-def test_offsets(filled_topic: Topic, topic_controller: TopicController):
+def test_watermarks(filled_topic: Topic, topic_controller: TopicController):
     topic_controller.update_from_cluster(filled_topic)
-    assert filled_topic.offsets == {0: Watermark(10, 0)}
+    assert filled_topic.watermarks == {0: Watermark(10, 0)}
 
 
 @pytest.mark.integration

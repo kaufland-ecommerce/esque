@@ -1,0 +1,55 @@
+version: 1
+current_context: docker
+contexts:
+  # This context corresponds to a local development cluster
+  # created by docker-compose when running esque from the host machine.
+  local:
+    bootstrap_servers:
+      - localhost:9092
+    security_protocol: PLAINTEXT
+    schema_registry: http://localhost:8081
+    default_values:
+      num_partitions: 1
+      replication_factor: 1
+
+  # This context corresponds to a local development cluster
+  # created by docker-compose when running esque from within
+  # one of the containers started by docker-compose
+  docker:
+    bootstrap_servers:
+      - kafka:9093
+    security_protocol: PLAINTEXT
+    schema_registry: http://schema_registry:8081
+    default_values:
+      num_partitions: 1
+      replication_factor: 1
+
+  # This is an example configuration for connecting to a SASL enabled
+  # endpoint
+  sasl_enabled:
+    bootstrap_servers:
+      - localhost:9092
+    security_protocol: SASL_PLAINTEXT
+    sasl_params:
+      mechanism: PLAIN
+      user: alice
+      password: alice-secret
+
+  # This is an example configuration for connecting to an SSL enabled
+  # endpoint
+  ssl_enabled:
+    bootstrap_servers:
+      - localhost:9092
+    # esque can infer the protocol SSL if ssl_params are given
+    # security_protocol: SSL
+
+    # the following parameters are optional
+    ssl_params:
+      # Certificate Authority that signed the server certificate, necessary if self signed
+      cafile: /path/to/ca_file.crt
+      # Certificate the client shall use to authenticate with the server
+      certfile: /path/to/client.crt
+      # Key that corresponds to the client certificate
+      keyfile: /path/to/client.key
+      # Password used to decrypt the keyfile
+      password: <password for client.key>
