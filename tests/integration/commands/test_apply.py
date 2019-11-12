@@ -2,13 +2,12 @@ from typing import Any, Dict
 
 import pytest
 import yaml
-from click import UsageError
 from click.testing import CliRunner
-from esque.resources.topic import Topic
-from esque.controller.topic_controller import TopicController
 
 from esque.cli.commands import apply
-from esque.errors import ErrorCode
+from esque.controller.topic_controller import TopicController
+from esque.errors import InvalidReplicationFactorException, ValidationException
+from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
@@ -93,7 +92,10 @@ def test_apply_duplicate_names(interactive_cli_runner: CliRunner, topic_id: str)
     # having the same topic name twice in apply should raise an exception
     path = save_yaml(topic_id, apply_conf)
     result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
-    assert result.exit_code == UsageError.exit_code, f"Calling apply should have failed with USageError"
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValidationException), (
+        f"Calling apply should have failed with " f"ValidationException"
+    )
 
 
 @pytest.mark.integration
@@ -110,8 +112,9 @@ def test_apply_invalid_replicas(interactive_cli_runner: CliRunner, topic_id: str
     # having the same topic name twice in apply should raise an ValueError
     path = save_yaml(topic_id, apply_conf)
     result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
-    assert (
-        result.exit_code == ErrorCode.INVALID_REPLICATION_FACTOR.value
+    assert result.exit_code != 0
+    assert isinstance(
+        result.exception, InvalidReplicationFactorException
     ), f"Calling apply should have failed with INVALID_REPLICATION_FACTOR error"
 
 

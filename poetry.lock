@@ -264,6 +264,7 @@ tabulate = "*"
 reference = "19d87f8286eb24fba98df2453f2b65db1ae996c8"
 type = "git"
 url = "https://github.com/real-digital/pykafka.git"
+
 [[package]]
 category = "dev"
 description = "Python parsing module"
@@ -399,6 +400,17 @@ python-versions = "*"
 version = "0.1.7"
 
 [[package]]
+category = "main"
+description = "A schema and validator for YAML."
+name = "yamale"
+optional = false
+python-versions = "*"
+version = "2.0.1"
+
+[package.dependencies]
+pyyaml = "*"
+
+[[package]]
 category = "dev"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
@@ -411,7 +423,7 @@ version = "0.6.0"
 more-itertools = "*"
 
 [metadata]
-content-hash = "66280ff89a870cf1ad9314a7b216f28b15a4ac8632080204f8092bcde06556cb"
+content-hash = "9ec89b4c7f68d7d58b9c5e19b6f39bea137e345296e66e9598319959147882f1"
 python-versions = "^3.6"
 
 [metadata.hashes]
@@ -455,4 +467,5 @@ tabulate = ["d0097023658d4dea848d6ae73af84532d1e86617ac0925d1adf1dd903985dac3"]
 toml = ["229f81c57791a41d65e399fc06bf0848bab550a9dfd5ed66df18ce5f05e73d5c", "235682dd292d5899d361a811df37e04a8828a5b1da3115886b73cf81ebc9100e", "f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"]
 urllib3 = ["3de946ffbed6e6746608990594d08faac602528ac7015ac28d33cee6a45b7398", "9a107b99a5393caf59c7aa3c1249c16e6879447533d0887f4336dde834c7be86"]
 wcwidth = ["3df37372226d6e63e1b1e1eda15c594bca98a22d33a23832a90998faa96bc65e", "f4ebe71925af7b40a864553f761ed559b43544f8f71746c2d756c7fe788ade7c"]
+yamale = ["ac7dbb7b01c9fc61a5954d61fc6deb66b177c1f84146925add92dc0fa2b7e4c3"]
 zipp = ["3718b1cbcd963c7d4c5511a8240812904164b7f381b647143a89d3b98f9bcd8e", "f06903e9f1f43b12d371004b4ac7b06ab39a44adc747266928ae6debfa7b3335"]

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import click
 
-from esque.cli.environment import ESQUE_CONF_PATH
+from esque.cli import environment
 from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
@@ -31,8 +31,8 @@ def config_dir() -> Path:
 
 
 def config_path() -> Path:
-    if ESQUE_CONF_PATH:
-        return Path(ESQUE_CONF_PATH)
+    if environment.ESQUE_CONF_PATH:
+        return Path(environment.ESQUE_CONF_PATH)
     return config_dir() / "esque.cfg"
 
 
@@ -141,7 +141,6 @@ class Config:
         return protocol
 
     def context_switch(self, context: str):
-        click.echo(f"Switched to context: {context}")
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._update_config("Context", "current", context)
@@ -162,7 +161,6 @@ class Config:
         return config
 
     def create_confluent_config(self, *, debug: bool = False) -> Dict[str, str]:
-
         base_config = {
             "bootstrap.servers": ",".join(self.bootstrap_servers),
             "security.protocol": self.security_protocol,
