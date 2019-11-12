@@ -54,7 +54,7 @@ jobs:
           SCHEMA_REGISTRY_HOST_NAME: localhost
           SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@61-installation-and-packaging
       - name: Waiting for services
         run: |
           bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
