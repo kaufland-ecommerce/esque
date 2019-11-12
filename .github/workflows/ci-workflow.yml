@@ -83,9 +83,8 @@ jobs:
       - name: Setup default esque configuration
         run: |
           mkdir -p ~/.esque
-          touch ~/.esque/esque.cfg
           source ./venv/bin/activate
-          esque --recreate-config --no-verify
+          cp ./esque/config/sample_config.cfg ~/.esque/esque.cfg
       - name: Run unit tests
         run: |
           source ./venv/bin/activate
