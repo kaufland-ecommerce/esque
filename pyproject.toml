@@ -51,7 +51,7 @@ pytest = "^5.2"
 pytest-mock = "^1.11"
 pytest-cov = "^2.8"
 flake8 = "^3.7"
-black = {version = "*", allow-prereleases = true}
+black = {version = "*", allows-prereleases = true}
 isort = "^4.3"
 
 [tool.black]
@@ -65,5 +65,5 @@ multi_line_output = 3
 include_trailing_comma = true
 
 [build-system]
-requires = ["poetry>=1.0.0b4"]
+requires = ["poetry==1.0.0b3"]
 build-backend = "poetry.masonry.api"

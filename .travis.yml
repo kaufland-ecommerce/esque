@@ -21,8 +21,7 @@ before_install:
 - bash -c "scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60"
 install:
 - pip install -U pip
-- pip install coverage coveralls
-- pip install poetry>=1.0.0b4
+- pip install coverage coveralls "poetry==1.0.0b3"
 - poetry install -vvv --no-root
 script:
 - "$TEST_CMD"
