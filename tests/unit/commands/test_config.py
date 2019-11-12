@@ -11,12 +11,10 @@ from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
 from tests.conftest import config_loader, config_path_mocker
 
 
-def test_migrate_config(
-    mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader, mock_config_path: config_path_mocker
-):
+def test_migrate_config(mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader):
     conf_path, old_conf_text = load_config(0)
     assert get_config_version(conf_path) == CURRENT_VERSION - 1
-    mock_config_path(conf_path)
+    mocker.patch("esque.config._config_dir", return_value=conf_path.parent)
 
     new_conf_path = conf_path
     backup = None
