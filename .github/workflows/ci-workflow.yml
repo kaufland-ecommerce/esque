@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p ~/.esque
           source ./venv/bin/activate
-          cp ./esque/config/sample_config.cfg ~/.esque/esque.cfg
+          cp ./esque/config/sample_config.yaml ~/.esque/esque.yaml
       - name: Run unit tests
         run: |
           source ./venv/bin/activate
