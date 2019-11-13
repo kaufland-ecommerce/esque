@@ -9,7 +9,6 @@ from confluent_kafka.cimpl import TopicPartition
 from esque.cli.output import red_bold
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
-from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.resources.consumergroup import ConsumerGroup
 
@@ -30,6 +29,10 @@ class ConsumerGroupOffsetPlan:
         self.high_watermark = high_watermark
         self.low_watermark = low_watermark
         self.partition_id = partition_id
+
+    @property
+    def offset_equal(self):
+        return self.current_offset == self.proposed_offset
 
 
 class ConsumerGroupController:
@@ -53,16 +56,25 @@ class ConsumerGroupController:
         :param offset_plan: List of ConsumerGroupOffsetPlan objects denoting the offsets for each partition in different topics
         :return:
         """
-        _config = Config().create_confluent_config()
-        _config.update({"group.id": consumer_id, "enable.auto.commit": False})
-        consumer = ConsumerFactory().create_custom_consumer(_config)
-        partitions = [
+        consumer = ConsumerFactory().create_consumer(
+            group_id=consumer_id,
+            topic_name=None,
+            working_dir=None,
+            last=False,
+            avro=False,
+            initialize_default_output_directory=False,
+            match=None,
+            enable_auto_commit=False,
+        )
+
+        offsets = [
             TopicPartition(
                 topic=plan_element.topic_name, partition=plan_element.partition_id, offset=plan_element.proposed_offset
             )
-            for plan_element in filter(lambda el: el.current_offset != el.proposed_offset, offset_plan)
+            for plan_element in offset_plan
+            if not plan_element.offset_equal
         ]
-        consumer.commit(offsets=partitions)
+        consumer.commit(offsets=offsets)
 
     def create_consumer_group_offset_change_plan(
         self,
@@ -72,7 +84,6 @@ class ConsumerGroupController:
         offset_by_delta: Optional[int],
         offset_to_timestamp: Optional[str],
         offset_from_group: Optional[str],
-        force: bool,
     ) -> List[ConsumerGroupOffsetPlan]:
 
         consumer_group_state, offset_plans = self._read_current_consumergroup_offsets(
@@ -81,9 +92,9 @@ class ConsumerGroupController:
         if consumer_group_state == "Dead":
             self._logger.error("The consumer group {} does not exist.".format(consumer_id))
             return None
-        elif consumer_group_state == "Empty" or force:
+        elif consumer_group_state == "Empty":
             if offset_to_value:
-                for _, plan_element in offset_plans.items():
+                for plan_element in offset_plans.values():
                     (allowed_offset, error, message) = self._select_new_offset_for_consumer(
                         offset_to_value, plan_element
                     )
@@ -91,7 +102,7 @@ class ConsumerGroupController:
                     if error:
                         self._logger.error(message)
             elif offset_by_delta:
-                for _, plan_element in offset_plans.items():
+                for plan_element in offset_plans.values():
                     requested_offset = plan_element.current_offset + offset_by_delta
                     (allowed_offset, error, message) = self._select_new_offset_for_consumer(
                         requested_offset, plan_element
@@ -104,7 +115,7 @@ class ConsumerGroupController:
                 current_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
                     topic_name=topic_name, timestamp_limit=timestamp_limit
                 )
-                for _, plan_element in offset_plans.items():
+                for plan_element in offset_plans.values():
                     plan_element.current_offset = current_offset_dict.get(plan_element.partition_id, 0)
             elif offset_from_group:
                 _, mirror_consumer_group = self._read_current_consumergroup_offsets(

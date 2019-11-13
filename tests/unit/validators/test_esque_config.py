@@ -49,3 +49,10 @@ def test_non_existing_context(sample_config_data: typing.Dict):
     sample_config_data["current_context"] = "foo_bar_baz"
     with pytest.raises(esque.errors.ValidationException):
         validate_esque_config(sample_config_data)
+
+
+def test_invalid_url(sample_config_data: typing.Dict):
+    get_context(sample_config_data)["schema_registry"] = "http://10..15.10.10:8081"
+
+    with pytest.raises(esque.errors.ValidationException):
+        validate_esque_config(sample_config_data)

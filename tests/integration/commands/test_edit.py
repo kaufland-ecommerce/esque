@@ -10,7 +10,6 @@ from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
 from esque.cli.commands import edit_consumergroup, edit_topic
 from esque.clients.consumer import ConsumerFactory
-from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
 
@@ -65,7 +64,8 @@ def test_edit_topic_works(
     assert result.exit_code == 0
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
-    assert topic_config_dict == config_dict
+    for key, value in config_dict["config"].items():
+        assert (key, topic_config_dict["config"][key]) == (key, value)
 
 
 @pytest.mark.integration
@@ -107,15 +107,17 @@ def test_edit_consumergroup_offset_to_absolute_value(
 ):
     produced_messages_same_partition(topic, producer)
 
-    config = Config().create_confluent_config()
-    config.update(
-        {
-            "group.id": consumer_group,
-            "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-        }
+    vanilla_consumer = ConsumerFactory().create_consumer(
+        group_id=consumer_group,
+        topic_name=None,
+        working_dir=None,
+        last=False,
+        avro=False,
+        initialize_default_output_directory=False,
+        match=None,
+        enable_auto_commit=True,
     )
-    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
+
     vanilla_consumer.subscribe([topic])
     vanilla_consumer.consume(10)
     vanilla_consumer.close()
@@ -151,15 +153,16 @@ def test_edit_consumergroup_offset_to_delta(
 ):
     produced_messages_same_partition(topic, producer)
 
-    config = Config().create_confluent_config()
-    config.update(
-        {
-            "group.id": consumer_group,
-            "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-        }
+    vanilla_consumer = ConsumerFactory().create_consumer(
+        group_id=consumer_group,
+        topic_name=None,
+        working_dir=None,
+        last=False,
+        avro=False,
+        initialize_default_output_directory=False,
+        match=None,
+        enable_auto_commit=True,
     )
-    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
     vanilla_consumer.subscribe([topic])
     vanilla_consumer.consume(10)
     vanilla_consumer.close()
@@ -195,15 +198,16 @@ def test_edit_consumergroup_offset_to_delta_all_topics(
 ):
     produced_messages_same_partition(topic, producer)
 
-    config = Config().create_confluent_config()
-    config.update(
-        {
-            "group.id": consumer_group,
-            "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-        }
+    vanilla_consumer = ConsumerFactory().create_consumer(
+        group_id=consumer_group,
+        topic_name=None,
+        working_dir=None,
+        last=False,
+        avro=False,
+        initialize_default_output_directory=False,
+        match=None,
+        enable_auto_commit=True,
     )
-    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
     vanilla_consumer.subscribe([topic])
     vanilla_consumer.consume(10)
     vanilla_consumer.close()
@@ -237,15 +241,16 @@ def test_edit_consumergroup_offset_from_group(
 ):
     produced_messages_same_partition(topic, producer)
 
-    config = Config().create_confluent_config()
-    config.update(
-        {
-            "group.id": consumer_group,
-            "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-        }
+    vanilla_consumer = ConsumerFactory().create_consumer(
+        group_id=consumer_group,
+        topic_name=None,
+        working_dir=None,
+        last=False,
+        avro=False,
+        initialize_default_output_directory=False,
+        match=None,
+        enable_auto_commit=True,
     )
-    vanilla_consumer = ConsumerFactory().create_custom_consumer(config)
     vanilla_consumer.subscribe([topic])
     vanilla_consumer.consume(10)
     vanilla_consumer.close()
@@ -263,15 +268,17 @@ def test_edit_consumergroup_offset_from_group(
     )
 
     # create a new consumer in a separate group and consume just one message
-    config_target_consumer = Config().create_confluent_config()
-    config_target_consumer.update(
-        {
-            "group.id": target_consumer_group,
-            "enable.auto.commit": True,
-            "default.topic.config": {"auto.offset.reset": "earliest"},
-        }
+    vanilla_target_consumer = ConsumerFactory().create_consumer(
+        group_id=target_consumer_group,
+        topic_name=None,
+        working_dir=None,
+        last=False,
+        avro=False,
+        initialize_default_output_directory=False,
+        match=None,
+        enable_auto_commit=True,
     )
-    vanilla_target_consumer = ConsumerFactory().create_custom_consumer(config_target_consumer)
+
     vanilla_target_consumer.subscribe([topic])
     vanilla_target_consumer.consume(1)
     vanilla_target_consumer.close()

@@ -232,7 +232,6 @@ def edit_consumergroup(
     offset_by_delta: int,
     offset_to_timestamp: str,
     offset_from_group: str,
-    force: bool,
 ):
     logger = logging.getLogger(__name__)
     consumergroup_controller = ConsumerGroupController(state.cluster)
@@ -243,7 +242,6 @@ def edit_consumergroup(
         offset_by_delta=offset_by_delta,
         offset_to_timestamp=offset_to_timestamp,
         offset_from_group=offset_from_group,
-        force=force,
     )
     if offset_plan and len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
@@ -254,7 +252,7 @@ def edit_consumergroup(
                     plan_element.partition_id,
                     plan_element.current_offset,
                     plan_element.proposed_offset
-                    if plan_element.current_offset == plan_element.proposed_offset
+                    if plan_element.offset_equal
                     else red_bold(str(plan_element.proposed_offset)),
                 )
             )
