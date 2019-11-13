@@ -128,7 +128,7 @@ class ConsumerGroupController:
                         value.current_offset = 0
                         offset_plans[key] = value
             return list(offset_plans.values())
-        elif consumer_group_state != "Dead":
+        else:
             self._logger.error(
                 "Consumergroup {} is not empty. Use the {} option if you want to override this safety mechanism.".format(
                     consumer_id, red_bold("--force")
