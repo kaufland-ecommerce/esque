@@ -53,7 +53,7 @@ pytest-cov = "^2.8"
 flake8 = "^3.7"
 #TODO unpin once it's more stable
 black = {version = "19.3b0", allows-prereleases = true}
-isort = "^4.3"
+isort ={version="^4.3", extras = ["pyproject"]}
 
 [tool.black]
 line-length = 119
@@ -64,6 +64,8 @@ include = '\.pyi?$'
 line_Length = 119
 multi_line_output = 3
 include_trailing_comma = true
+default_section="THIRDPARTY"
+known_first_party = ["esque", "tests"]
 
 [build-system]
 #TODO unpin once it's more stable
