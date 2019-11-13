@@ -46,43 +46,51 @@ def esque(state: State, recreate_config: bool):
         config_dir().mkdir(exist_ok=True)
         if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
             copyfile(sample_config_path().as_posix(), config_path())
+    else:
+        current_ctx = click.get_current_context()
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Get a quick overview of different resources.")
 @default_options
 def get(state: State):
-    pass
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Get detailed information about a resource.")
 @default_options
 def describe(state: State):
-    pass
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Create a new instance of a resource.")
 @default_options
 def create(state: State):
-    pass
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Delete a resource.")
 @default_options
 def delete(state: State):
-    ctx = click.get_current_context()
-    click.echo(ctx.get_help())
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Edit a resource.")
 @default_options
 def edit(state: State):
-    pass
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Configuration-related options.")
 @default_options
 def config(state: State):
-    pass
+    current_ctx = click.get_current_context()
+    click.echo(current_ctx.get_help())
 
 
 def list_topics(ctx, args, incomplete):
@@ -521,8 +529,8 @@ def consume(
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
-    #Copy source_topic in source_ctx context to destination_topic in destination_ctx.
-    esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
+    # Copy source_topic to destination_topic.
+    esque consume --stdout source_topic | esque produce --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
 
@@ -650,8 +658,8 @@ def produce(
        esque produce --stdin -f <destination_ctx> -y TOPIC
 
        \b
-       #Copy source_topic in source_ctx context to destination_topic in destination_ctx.
-       esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
+       # Copy source_topic to destination_topic.
+       esque consume --stdout source_topic | esque produce --stdin destination_topic
        """
     if directory is None and not read_from_stdin:
         click.echo("You have to provide a directory or use the --stdin flag")
