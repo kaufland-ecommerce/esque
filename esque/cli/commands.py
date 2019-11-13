@@ -69,7 +69,8 @@ def create(state: State):
 @esque.group(help="Delete a resource.")
 @default_options
 def delete(state: State):
-    pass
+    ctx = click.get_current_context()
+    click.echo(ctx.get_help())
 
 
 @esque.group(help="Edit a resource.")
@@ -174,7 +175,7 @@ def config_migrate(state: State):
     """Migrate esque config to current version.
 
     If the user's esque config file is from a previous version, migrate it to the current version.
-    A backup of the original config file is created in the with the suffix .bak"""
+    A backup of the original config file is created with the same name and the extension .bak"""
     new_path, backup = migration.migrate(config_path())
     click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
 
@@ -261,7 +262,7 @@ def delete_topic(state: State, topic_name: str):
 @click.option("-f", "--file", metavar="<file>", help="Config file path.", required=True)
 @default_options
 def apply(state: State, file: str):
-    """Apply a configuration.
+    """Apply a set of topic configurations.
 
     Create new topics and apply changes to existing topics, as specified in the config yaml file <file>.
     """
@@ -469,7 +470,7 @@ def get_topics(state: State, prefix: str, output_format: str):
 @click.option(
     "-m",
     "--match",
-    metavar="<filter_expresion>",
+    metavar="<filter_expression>",
     help="Message filtering expression.",
     type=click.STRING,
     required=False,
@@ -512,11 +513,11 @@ def consume(
 
     \b
     EXAMPLES:
-    #Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
+    # Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
     esque consume --first -n 10 --preserve-order --stdout TOPIC
 
     \b
-    #Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
+    # Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
@@ -641,7 +642,7 @@ def produce(
 
        \b
        EXAMPLES:
-       #Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+       # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
        esque produce -d <directory> -t <destination_ctx> TOPIC
 
        \b
@@ -708,8 +709,8 @@ def produce(
 def ping(state: State, times: int, wait: int):
     """Test the connection to the kafka cluster.
 
-    Ping the kafka cluster by writing messages to and reading messages from the kafka cluster.
-    After the specified number of "pings", return the minimum, maximum, and average time.
+    Ping the kafka cluster by writing messages to and reading messages from it.
+    After the specified number of "pings", return the minimum, maximum, and average time for the round trip.
     """
     topic_controller = state.cluster.topic_controller
     deltas = []
