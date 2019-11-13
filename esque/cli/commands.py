@@ -515,11 +515,13 @@ def consume(
     #Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
     esque consume --first -n 10 --preserve-order --stdout TOPIC
 
+    \b
     #Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
+    \b
     #Copy source_topic in source_ctx context to destination_topic in destination_ctx
-    esque consume -f source_ctx source_topic | esque produce -t destination_ctx destination_topic  #  TODO: check
+    esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
 
@@ -616,7 +618,8 @@ def consume(
     "-y",
     "--ignore-errors",
     "ignore_stdin_errors",
-    help="When reading from STDIN, use malformed strings as message values (ignore JSON).",
+    help="Only when reading from STDIN. If JSON validation fails, write the malformed JSON as a string in message value"
+         " (without key and specified partition assignment).",
     default=False,
     is_flag=True,
 )
@@ -634,19 +637,20 @@ def produce(
     """Produce messages to a topic.
 
        Write messages to a given topic in a given context. These messages can come from either a directory <directory>
-       containing files corresponding to the different partitions or from STDIN. Note: When using the --stdin flag,
-       the given text will be the message value, key and partition cannot be specified.
+       containing files corresponding to the different partitions or from STDIN.
 
        \b
        EXAMPLES:
        #Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
        esque produce -d <directory> -t <destination_ctx> TOPIC
 
+       \b
        #Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
-       esque produce --stdin -f <destination_ctx> TOPIC
+       esque produce --stdin -f <destination_ctx> -y TOPIC
 
+       \b
        #Copy source_topic in source_ctx context to destination_topic in destination_ctx
-       esque consume -f source_ctx source_topic | esque produce -t destination_ctx destination_topic  # TODO: check
+       esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
        """
     if directory is None and not read_from_stdin:
         click.echo("You have to provide a directory or use the --stdin flag")
