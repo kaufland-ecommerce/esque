@@ -110,7 +110,7 @@ class TopicController:
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum):
+    def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum) -> Dict[int, int]:
         topic = self.get_cluster_topic(topic_name=topic_name)
         partition_offsets = {partition.partition_id: 0 for partition in topic.partitions}
         consumers = []
