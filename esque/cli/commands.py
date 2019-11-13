@@ -1,6 +1,5 @@
 import getpass
 import logging
-import pathlib
 import pwd
 import sys
 import time
@@ -11,10 +10,9 @@ from time import sleep
 import click
 import yaml
 from click import MissingParameter, version_option
-
 from esque import __version__, validation
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
-from esque.cli.options import default_options, output_format_option, State
+from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
     blue_bold,
     bold,
@@ -26,15 +24,12 @@ from esque.cli.output import (
     pretty_unchanged_topic_configs,
     red_bold,
 )
-from esque.clients.consumer import consume_to_file_ordered, consume_to_files, ConsumerFactory
+from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import config_dir, config_path, PING_GROUP_ID, PING_TOPIC, sample_config_path
 from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ValidationException
 from esque.resources.broker import Broker
-from esque.resources.topic import copy_to_local, Topic
-from esque.validation import validate_editable_topic_config
 from esque.resources.topic import Topic, copy_to_local
 
 

@@ -1,9 +1,8 @@
 import typing
 
-import yaml
-
 import esque.errors
 import pytest
+import yaml
 from esque.validation import validate_esque_config
 from tests.conftest import LOAD_SAMPLE_CONFIG, get_path_for_config_version
 

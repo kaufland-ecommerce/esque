@@ -10,7 +10,6 @@ import click
 import fastavro
 from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Message
-
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.messages.message import FileReader, FileWriter, KafkaMessage, MessageHeader, StdOutWriter
 

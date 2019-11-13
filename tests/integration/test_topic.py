@@ -1,5 +1,4 @@
 import pytest
-
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic, Watermark
 

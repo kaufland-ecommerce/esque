@@ -6,7 +6,6 @@ import click
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
-
 from esque.errors import FutureTimeoutException, raise_for_kafka_error
 
 

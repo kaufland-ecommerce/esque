@@ -9,6 +9,7 @@ from typing import Callable, Dict, Iterable, Tuple
 from unittest import mock
 
 import confluent_kafka
+import esque.config
 import pytest
 import yaml
 from _pytest.fixtures import FixtureRequest
@@ -16,8 +17,6 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
-
-import esque.config
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import Config

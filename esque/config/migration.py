@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, Type, TypeVar, cast
 
 import yaml
-
 from esque.errors import ConfigTooNew, ConfigTooOld
 
 logger = logging.getLogger(__name__)

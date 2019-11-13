@@ -6,10 +6,9 @@ from typing import Any, Dict, List, MutableMapping, Tuple
 import click
 import pendulum
 import yaml
+from esque.resources.topic import Topic, TopicDiff, Watermark
 from yaml import SafeDumper, ScalarNode, SequenceNode
 from yaml.representer import SafeRepresenter
-
-from esque.resources.topic import Topic, TopicDiff, Watermark
 
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 

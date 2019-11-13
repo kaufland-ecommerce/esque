@@ -1,6 +1,5 @@
-from click.testing import CliRunner
-
 import pytest
+from click.testing import CliRunner
 from esque import config
 from esque.cli.commands import ping
 from esque.controller.topic_controller import TopicController

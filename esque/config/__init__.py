@@ -5,10 +5,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import click
+import esque.validation
 import yaml
 from confluent_kafka.admin import ConfigResource
-
-import esque.validation
 from esque.cli import environment
 from esque.config.migration import check_config_version
 from esque.errors import (

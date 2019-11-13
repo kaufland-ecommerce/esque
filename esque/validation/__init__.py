@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Dict
 
 import yamale
-
 from esque.errors import ValidationException, YamaleValidationException
 from esque.validation import yamale_validators
 

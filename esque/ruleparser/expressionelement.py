@@ -2,9 +2,8 @@ from abc import ABC
 from enum import Enum
 from typing import Callable, List, NamedTuple
 
-import pendulum
-
 import esque.ruleparser.helpers as h
+import pendulum
 
 
 class OperatorType(Enum):

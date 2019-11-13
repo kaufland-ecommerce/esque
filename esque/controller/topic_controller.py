@@ -4,19 +4,19 @@ import time
 from datetime import timezone
 from enum import Enum
 from itertools import islice
-from typing import List, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Union
 
 import pendulum
 from click import BadParameter
-from confluent_kafka.admin import ConfigResource, TopicMetadata as ConfluentTopic
+from confluent_kafka.admin import ConfigResource
+from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
-from pykafka.topic import Topic as PyKafkaTopic
-
 from esque.clients.consumer import ConsumerFactory
 from esque.config import Config
 from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+from pykafka.topic import Topic as PyKafkaTopic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster

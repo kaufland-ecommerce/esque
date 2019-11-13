@@ -4,7 +4,6 @@ from shutil import copyfile
 
 import click
 from click import make_pass_decorator, option
-
 from esque.cli import environment
 from esque.cli.helpers import ensure_approval
 from esque.cluster import Cluster

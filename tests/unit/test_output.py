@@ -1,7 +1,4 @@
-import json
 from typing import Callable
-
-import pytest
 
 from esque.cli.output import format_output
 from tests.conftest import parameterized_output_formats

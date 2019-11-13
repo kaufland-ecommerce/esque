@@ -2,7 +2,6 @@ import operator
 from typing import Dict, List
 
 from confluent_kafka.admin import ConfigResource
-
 from esque.resources.resource import KafkaResource
 
 

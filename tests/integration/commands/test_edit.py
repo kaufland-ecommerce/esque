@@ -1,19 +1,15 @@
 from unittest import mock
 
 import click
-import yaml
-from click.testing import CliRunner
-
 import confluent_kafka
 import pytest
+import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
-
 from esque.cli.commands import edit_consumergroup, edit_topic
 from esque.clients.consumer import ConsumerFactory
 from esque.config import Config
-from esque.cli.commands import edit_topic
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
 
@@ -109,7 +105,6 @@ def test_edit_consumergroup_offset_to_absolute_value(
     tmpdir_factory,
 ):
     produced_messages_same_partition(topic, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
 
     config = Config().create_confluent_config()
     config.update(
@@ -154,7 +149,6 @@ def test_edit_consumergroup_offset_to_delta(
     tmpdir_factory,
 ):
     produced_messages_same_partition(topic, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
 
     config = Config().create_confluent_config()
     config.update(
@@ -199,7 +193,6 @@ def test_edit_consumergroup_offset_to_delta_all_topics(
     tmpdir_factory,
 ):
     produced_messages_same_partition(topic, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
 
     config = Config().create_confluent_config()
     config.update(

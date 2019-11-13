@@ -1,5 +1,4 @@
 import pytest
-
 from esque.resources.consumergroup import ConsumerGroup
 
 

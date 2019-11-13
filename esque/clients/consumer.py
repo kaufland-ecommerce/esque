@@ -6,7 +6,6 @@ from typing import Dict, Optional, Tuple
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Consumer, Message, TopicPartition
-
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
 from esque.errors import (
@@ -16,7 +15,7 @@ from esque.errors import (
     raise_for_message,
 )
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
-from esque.messages.message import decode_message, FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter
+from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
 from esque.ruleparser.ruleengine import RuleTree
 
 

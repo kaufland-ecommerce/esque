@@ -4,9 +4,8 @@ from typing import Callable, Dict, Optional, Tuple, Union
 
 import click
 import yaml
-from yaml.scanner import ScannerError
-
 from esque.errors import EditCanceled, NoConfirmationPossibleException, ValidationException
+from yaml.scanner import ScannerError
 
 
 # private function, which we can mock

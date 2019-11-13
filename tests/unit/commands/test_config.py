@@ -4,7 +4,6 @@ from unittest import mock
 import click
 import yaml
 from click.testing import CliRunner
-
 from esque.cli.commands import config_edit, config_migrate
 from esque.config import Config, migration
 from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
