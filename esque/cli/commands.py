@@ -212,24 +212,16 @@ def edit_topic(state: State, topic_name: str):
     type=click.STRING,
     required=False,
 )
-@click.option("--offset-to-value", help="Rewind offset to the specified value", type=click.INT, required=False)
+@click.option("--offset-to-value", help="Set offset to the specified value", type=click.INT, required=False)
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
 @click.option(
     "--offset-to-timestamp",
-    help="Rewind offset to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss (NOTE: this can be a very expensive operation).",
+    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss (NOTE: this can be a very expensive operation).",
     type=click.STRING,
     required=False,
 )
 @click.option(
     "--offset-from-group", help="Copy all offsets from an existing consumer group.", type=click.STRING, required=False
-)
-@click.option(
-    "--force",
-    help="Rewind offset even if the consumer group is not empty",
-    is_flag=True,
-    type=click.BOOL,
-    required=False,
-    default=False,
 )
 @default_options
 def edit_consumergroup(
@@ -394,7 +386,6 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
 
 @get.command("watermarks")
 @click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
-@get.command("offsets")
 @click.argument("topic-name", required=True, type=click.STRING, callback=fallback_to_stdin)
 @output_format_option
 @default_options
