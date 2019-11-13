@@ -1,18 +1,23 @@
+import datetime
 import re
+import time
+from datetime import timezone
 from enum import Enum
 from itertools import islice
 from typing import TYPE_CHECKING, List, Union
 
+import pendulum
 from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
+from pykafka.topic import Topic as PyKafkaTopic
 
+from esque.clients.consumer import ConsumerFactory
 from esque.config import Config
-from esque.errors import raise_for_kafka_error
+from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
-from pykafka.topic import Topic as PyKafkaTopic
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -104,6 +109,47 @@ class TopicController:
 
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
+
+    def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum) -> Dict[int, int]:
+        topic = self.get_cluster_topic(topic_name=topic_name)
+        partition_offsets = {partition.partition_id: 0 for partition in topic.partitions}
+        consumers = []
+        factory = ConsumerFactory()
+        partitions = partition_offsets.keys()
+        group_id = "group_for_" + topic_name + "_" + str(int(round(time.time() * 1000)))
+        for partition in partitions:
+            consumer = factory.create_consumer(
+                group_id=group_id,
+                topic_name=None,
+                working_dir=None,
+                avro=False,
+                match=None,
+                last=False,
+                initialize_default_output_directory=False,
+            )
+            consumer.assign_specific_partitions(topic_name, [partition])
+            consumers.append(consumer)
+
+        for partition_counter in range(0, len(consumers)):
+            max_retry_count = 5
+            keep_polling_current_partition = True
+            while keep_polling_current_partition:
+                try:
+                    message = consumers[partition_counter].consume_single_message(timeout=10)
+                except MessageEmptyException:
+                    # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
+                    max_retry_count -= 1
+                    if max_retry_count <= 0:
+                        keep_polling_current_partition = False
+                except EndOfPartitionReachedException:
+                    keep_polling_current_partition = False
+                else:
+                    if (
+                        datetime.datetime.fromtimestamp(int(message.timestamp()[1] / 1000.0), timezone.utc)
+                        < timestamp_limit
+                    ):
+                        partition_offsets[message.partition()] = message.offset() + 1
+        return partition_offsets
 
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""

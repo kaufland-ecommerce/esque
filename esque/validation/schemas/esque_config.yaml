@@ -10,7 +10,7 @@ context:
   ssl_params: include('ssl_params', required=False)
   sasl_params: include('sasl_params', required=False)
 
-url: regex('^(?:[a-zA-Z]+://)?(?:[a-zA-Z][a-zA-Z0-9._-]+|\d{,3}(?:\.\d{,3}){3})(?::\d+)?$')
+url: regex('^(?:[a-zA-Z]+://)?(?:[a-zA-Z][a-zA-Z0-9._-]+|[0-9]{,3}(?:\\.[0-9]{,3}){3})(?::[0-9]+)?$')
 
 defaults:
   num_partitions: int(required=False)

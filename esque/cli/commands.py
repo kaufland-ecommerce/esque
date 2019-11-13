@@ -1,7 +1,9 @@
 import getpass
+import logging
 import pwd
 import sys
 import time
+from itertools import groupby
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -11,7 +13,7 @@ import yaml
 from click import MissingParameter, version_option
 
 from esque import __version__, validation
-from esque.cli.helpers import edit_yaml, ensure_approval, isatty
+from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
     blue_bold,
@@ -202,6 +204,75 @@ def edit_topic(state: State, topic_name: str):
         click.echo("canceled")
 
 
+@edit.command("consumergroup")
+@click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
+@click.option(
+    "-t",
+    "--topic-name",
+    help="Regular expression describing the topic name (default: all subscribed topics)",
+    type=click.STRING,
+    required=False,
+)
+@click.option("--offset-to-value", help="Set offset to the specified value", type=click.INT, required=False)
+@click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
+@click.option(
+    "--offset-to-timestamp",
+    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss (NOTE: this can be a very expensive operation).",
+    type=click.STRING,
+    required=False,
+)
+@click.option(
+    "--offset-from-group", help="Copy all offsets from an existing consumer group.", type=click.STRING, required=False
+)
+@default_options
+def edit_consumergroup(
+    state: State,
+    consumer_id: str,
+    topic_name: str,
+    offset_to_value: int,
+    offset_by_delta: int,
+    offset_to_timestamp: str,
+    offset_from_group: str,
+):
+    logger = logging.getLogger(__name__)
+    consumergroup_controller = ConsumerGroupController(state.cluster)
+    offset_plan = consumergroup_controller.create_consumer_group_offset_change_plan(
+        consumer_id=consumer_id,
+        topic_name=topic_name if topic_name else ".*",
+        offset_to_value=offset_to_value,
+        offset_by_delta=offset_by_delta,
+        offset_to_timestamp=offset_to_timestamp,
+        offset_from_group=offset_from_group,
+    )
+
+    if offset_plan and len(offset_plan) > 0:
+        click.echo(green_bold("Proposed offset changes: "))
+        offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
+        for topic_name, group in groupby(offset_plan, attrgetter("topic_name")):
+            group = list(group)
+            max_proposed = max(len(str(elem.proposed_offset)) for elem in group)
+            max_current = max(len(str(elem.current_offset)) for elem in group)
+            for plan_element in group:
+                new_offset = str(plan_element.proposed_offset).rjust(max_proposed)
+                format_args = dict(
+                    topic_name=plan_element.topic_name,
+                    partition_id=plan_element.partition_id,
+                    current_offset=plan_element.current_offset,
+                    new_offset=new_offset if plan_element.offset_equal else red_bold(new_offset),
+                    max_current=max_current,
+                )
+                click.echo(
+                    "Topic: {topic_name}, partition {partition_id:2}, current offset: {current_offset:{max_current}}, new offset: {new_offset}".format(
+                        **format_args
+                    )
+                )
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            consumergroup_controller.edit_consumer_group_offsets(consumer_id=consumer_id, offset_plan=offset_plan)
+    else:
+        logger.info("No changes proposed.")
+        return
+
+
 @delete.command("topic")
 @click.argument(
     "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
@@ -323,6 +394,7 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
 
 @get.command("watermarks")
 @click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument("topic-name", required=True, type=click.STRING, callback=fallback_to_stdin)
 @output_format_option
 @default_options
 def get_watermarks(state: State, topic_name: str, output_format: str):
@@ -344,7 +416,7 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 
 
 @describe.command("consumergroup")
-@click.option("-c", "--consumer-id", required=False)
+@click.argument("consumer-id", callback=fallback_to_stdin, required=True)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",
