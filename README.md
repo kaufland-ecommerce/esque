@@ -167,7 +167,7 @@ You can then run the integration tests against this stack with `pytest tests/ --
 Alternatively you can go the fast way and just run the whole stack + integration tests in docker: 
 
 ```bash
-make integration--test
+make integration-test
 ```
 
 #### Unit Tests
