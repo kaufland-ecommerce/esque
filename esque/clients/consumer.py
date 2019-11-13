@@ -239,7 +239,7 @@ class ConsumerFactory:
         avro: bool,
         initialize_default_output_directory: bool = False,
         match: str = None,
-        enable_auto_commit: bool = False,
+        enable_auto_commit: bool = True,
     ):
         """
         Creates a Kafka consumer

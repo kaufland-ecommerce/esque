@@ -3,6 +3,7 @@ import logging
 import pwd
 import sys
 import time
+from itertools import groupby
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -12,7 +13,7 @@ import yaml
 from click import MissingParameter, version_option
 
 from esque import __version__, validation
-from esque.cli.helpers import edit_yaml, ensure_approval, isatty
+from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
     blue_bold,
@@ -243,19 +244,28 @@ def edit_consumergroup(
         offset_to_timestamp=offset_to_timestamp,
         offset_from_group=offset_from_group,
     )
+
     if offset_plan and len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
-        for plan_element in offset_plan:
-            click.echo(
-                "Topic: {}, partition {}, current offset: {}, new offset: {}".format(
-                    plan_element.topic_name,
-                    plan_element.partition_id,
-                    plan_element.current_offset,
-                    plan_element.proposed_offset
-                    if plan_element.offset_equal
-                    else red_bold(str(plan_element.proposed_offset)),
+        offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
+        for topic_name, group in groupby(offset_plan, attrgetter("topic_name")):
+            group = list(group)
+            max_proposed = max(len(str(elem.proposed_offset)) for elem in group)
+            max_current = max(len(str(elem.current_offset)) for elem in group)
+            for plan_element in group:
+                new_offset = str(plan_element.proposed_offset).rjust(max_proposed)
+                format_args = dict(
+                    topic_name=plan_element.topic_name,
+                    partition_id=plan_element.partition_id,
+                    current_offset=plan_element.current_offset,
+                    new_offset=new_offset if plan_element.offset_equal else red_bold(new_offset),
+                    max_current=max_current,
                 )
-            )
+                click.echo(
+                    "Topic: {topic_name}, partition {partition_id:2}, current offset: {current_offset:{max_current}}, new offset: {new_offset}".format(
+                        **format_args
+                    )
+                )
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
             consumergroup_controller.edit_consumer_group_offsets(consumer_id=consumer_id, offset_plan=offset_plan)
     else:
