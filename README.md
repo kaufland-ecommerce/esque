@@ -72,7 +72,7 @@ Commands:
 
 ### Installation
 
-`esque` is available at pypi.org and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
+`esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
 
 ### Autocompletion
 
