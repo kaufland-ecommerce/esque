@@ -6,6 +6,7 @@ from typing import Dict, Optional, Tuple
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import Consumer, Message, TopicPartition
+
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
 from esque.errors import (

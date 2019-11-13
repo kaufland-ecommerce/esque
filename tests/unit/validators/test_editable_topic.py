@@ -1,6 +1,7 @@
 from typing import Dict
 
 import pytest
+
 from esque.errors import ValidationException
 from esque.validation import validate_editable_topic_config
 

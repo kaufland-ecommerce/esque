@@ -10,6 +10,7 @@ from time import sleep
 import click
 import yaml
 from click import MissingParameter, version_option
+
 from esque import __version__, validation
 from esque.cli.helpers import edit_yaml, ensure_approval, isatty
 from esque.cli.options import State, default_options, output_format_option

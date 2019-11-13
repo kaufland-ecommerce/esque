@@ -3,6 +3,7 @@ from typing import Any, Dict
 import pytest
 import yaml
 from click.testing import CliRunner
+
 from esque.cli.commands import apply
 from esque.controller.topic_controller import TopicController
 from esque.errors import InvalidReplicationFactorException, ValidationException

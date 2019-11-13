@@ -1,6 +1,7 @@
 import confluent_kafka
 import pytest
 from click.testing import CliRunner
+
 from esque.cli.commands import create_topic
 from esque.cli.options import State
 from esque.errors import NoConfirmationPossibleException

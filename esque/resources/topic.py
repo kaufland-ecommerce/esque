@@ -3,8 +3,9 @@ from functools import total_ordering
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import yaml
-from esque.resources.resource import KafkaResource
 from pykafka.protocol.offset import OffsetPartitionResponse
+
+from esque.resources.resource import KafkaResource
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]

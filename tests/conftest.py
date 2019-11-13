@@ -9,7 +9,6 @@ from typing import Callable, Dict, Iterable, Tuple
 from unittest import mock
 
 import confluent_kafka
-import esque.config
 import pytest
 import yaml
 from _pytest.fixtures import FixtureRequest
@@ -17,6 +16,9 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
+from pykafka.exceptions import NoBrokersAvailableError
+
+import esque.config
 from esque.cli.options import State
 from esque.cluster import Cluster
 from esque.config import Config
@@ -26,7 +28,6 @@ from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
-from pykafka.exceptions import NoBrokersAvailableError
 
 # constants that indicate which config version to load
 # see function get_path_for_config_version

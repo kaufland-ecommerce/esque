@@ -3,12 +3,13 @@ from unittest import mock
 
 import pytest
 import yaml
+from yaml.scanner import ScannerError
+
 from esque.config import Config
 from esque.config.migration import CURRENT_VERSION, migrate
 from esque.errors import ConfigTooNew, ConfigTooOld, ContextNotDefinedException
 from esque.validation import validate_esque_config
 from tests.conftest import config_loader
-from yaml.scanner import ScannerError
 
 
 @pytest.fixture(params=[pytest.param(version, id=f"v{version}") for version in range(0, CURRENT_VERSION + 1)])

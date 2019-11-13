@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import pendulum
 import pykafka
 from confluent_kafka.cimpl import TopicPartition
+
 from esque.cli.output import red_bold
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster

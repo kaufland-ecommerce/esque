@@ -1,4 +1,5 @@
 import pytest
+
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.consumergroup import ConsumerGroup
 

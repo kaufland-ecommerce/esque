@@ -4,6 +4,7 @@ import pytest
 from click.testing import CliRunner
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+
 from esque.cli.commands import consume, produce
 from tests.integration.test_clients import produce_test_messages_with_avro
 

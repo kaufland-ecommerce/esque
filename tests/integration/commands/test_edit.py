@@ -7,6 +7,7 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+
 from esque.cli.commands import edit_consumergroup, edit_topic
 from esque.clients.consumer import ConsumerFactory
 from esque.config import Config

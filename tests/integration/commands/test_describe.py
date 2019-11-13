@@ -2,6 +2,7 @@ from typing import Callable, Union
 
 import pytest
 from click.testing import CliRunner
+
 from esque.cli.commands import describe_broker, describe_topic
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats

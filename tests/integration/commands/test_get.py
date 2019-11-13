@@ -6,6 +6,7 @@ from typing import Callable
 import confluent_kafka
 import pytest
 from click.testing import CliRunner
+
 from esque.cli.commands import get_brokers, get_consumergroups, get_topics
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic

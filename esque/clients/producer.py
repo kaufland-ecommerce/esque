@@ -9,6 +9,7 @@ from json import JSONDecodeError
 import confluent_kafka
 import pendulum
 from confluent_kafka.avro import AvroProducer
+
 from esque.config import Config
 from esque.errors import raise_for_kafka_error
 from esque.helpers import delivery_callback, delta_t

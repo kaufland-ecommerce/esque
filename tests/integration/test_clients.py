@@ -10,6 +10,7 @@ import pytest
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+
 from esque.cli.commands import consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
 from esque.clients.producer import ProducerFactory
