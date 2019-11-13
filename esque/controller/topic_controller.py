@@ -4,7 +4,7 @@ import time
 from datetime import timezone
 from enum import Enum
 from itertools import islice
-from typing import TYPE_CHECKING, List, Union
+from typing import TYPE_CHECKING, Dict, List, Union
 
 import pendulum
 from click import BadParameter
