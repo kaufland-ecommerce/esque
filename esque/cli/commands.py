@@ -168,9 +168,13 @@ def config_edit(state: State):
     config_path().write_text(new_yaml)
 
 
-@config.command("migrate", help="Migrate your config to current version")
+@config.command("migrate")
 @default_options
 def config_migrate(state: State):
+    """Migrate esque config to current version.
+
+    If the user's esque config file is from a previous version, migrate it to the current version.
+    A backup of the original config file is created in the with the suffix .bak"""
     new_path, backup = migration.migrate(config_path())
     click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
 
@@ -259,8 +263,7 @@ def delete_topic(state: State, topic_name: str):
 def apply(state: State, file: str):
     """Apply a configuration.
 
-    Take a config yaml file <file> and create new topics with the given configuration
-    properties and apply changes to existing topics.
+    Create new topics and apply changes to existing topics, as specified in the config yaml file <file>.
     """
 
     # Get topic data based on the YAML
@@ -455,6 +458,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     "-f",
     "--from",
     "from_context",
+    metavar="<source_ctx>",
     help="Source context. If not provided, the current context will be used",
     type=click.STRING,
     required=False,
@@ -507,12 +511,15 @@ def consume(
     to files in an automatically generated directory (default behavior), or to STDOUT.
 
     \b
-    EXAMPLE USAGES:
-    #Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
-    esque consume --first -n 10 --preserve-order --stdout my-topic
+    EXAMPLES:
+    #Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
+    esque consume --first -n 10 --preserve-order --stdout TOPIC
 
-    #Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
-    esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
+    #Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
+    esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
+
+    #Copy source_topic in source_ctx context to destination_topic in destination_ctx
+    esque consume -f source_ctx source_topic | esque produce -t destination_ctx destination_topic  #  TODO: check
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
 
@@ -566,7 +573,7 @@ def consume(
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
-                "Found only "
+                "Only found "
                 + bold(str(total_number_of_consumed_messages))
                 + " messages in topic, out of "
                 + blue_bold(str(numbers))
@@ -626,27 +633,32 @@ def produce(
 ):
     """Produce messages to a topic.
 
-       Write messages to a given topic in a given context. These messages can come from either a directory containing files corresponding to the different partitions, or from STDIN.
+       Write messages to a given topic in a given context. These messages can come from either a directory <directory>
+       containing files corresponding to the different partitions or from STDIN. Note: When using the --stdin flag,
+       the given text will be the message value, key and partition cannot be specified.
 
        \b
-       EXAMPLE USAGES:
-       #Consume the first 10 messages from mytopic in the current context and print them to STDOUT in order.
-       esque consume --first -n 10 --preserve-order --stdout my-topic
+       EXAMPLES:
+       #Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+       esque produce -d <directory> -t <destination_ctx> TOPIC
 
-       #Consume 5 messages, starting from the 10th, from my-second-topic in the dev context and write them to files.
-       esque consume --match "message.offset > 9" -n 5 my-second-topic -f dev
+       #Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+       esque produce --stdin -f <destination_ctx> TOPIC
+
+       #Copy source_topic in source_ctx context to destination_topic in destination_ctx
+       esque consume -f source_ctx source_topic | esque produce -t destination_ctx destination_topic  # TODO: check
        """
     if directory is None and not read_from_stdin:
-        click.echo("You have to provide the directory or use a --stdin flag")
+        click.echo("You have to provide a directory or use the --stdin flag")
     else:
         if not to_context:
             to_context = state.config.current_context
+        state.config.context_switch(to_context)
         if directory is not None:
             working_dir = Path(directory)
             if not working_dir.exists():
-                click.echo("You have to provide an existing directory")
+                click.echo(f"Directory {directory} does not exist!")
                 exit(1)
-        state.config.context_switch(to_context)
         stdin = click.get_text_stream("stdin")
         if read_from_stdin and isatty(stdin):
             click.echo(
@@ -677,10 +689,10 @@ def produce(
         total_number_of_messages_produced = producer.produce()
         click.echo(
             green_bold(str(total_number_of_messages_produced))
-            + " messages successfully produced to context "
-            + blue_bold(to_context)
-            + " and topic "
+            + " messages successfully produced to topic "
             + blue_bold(topic)
+            + " in context "
+            + blue_bold(to_context)
             + "."
         )
 
@@ -693,7 +705,7 @@ def ping(state: State, times: int, wait: int):
     """Test the connection to the kafka cluster.
 
     Ping the kafka cluster by writing messages to and reading messages from the kafka cluster.
-    After the specified number of "pings", return statistics on the minimum, maximum, and average time.
+    After the specified number of "pings", return the minimum, maximum, and average time.
     """
     topic_controller = state.cluster.topic_controller
     deltas = []
