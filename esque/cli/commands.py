@@ -645,7 +645,7 @@ def produce(
        esque produce -d <directory> -t <destination_ctx> TOPIC
 
        \b
-       #Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+       # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
        esque produce --stdin -f <destination_ctx> -y TOPIC
 
        \b
