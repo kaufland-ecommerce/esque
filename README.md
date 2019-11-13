@@ -13,8 +13,8 @@ Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be
 While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
 We can't recount how often we wrote Slack messages asking for the script to check the 
 status of topics or consumer groups. This is partly (but not only) due to a 
-fragmented and unclear definition of tooling and APIs for kafka. 
-In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way. 
+fragmented and unclear definition of tooling and APIs for kafka.
+In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way.    
 We feel that the goal of `esque` embodies the principle: “**keep easy things easy, and make hard things possible**”. 
 
 ## Principles
