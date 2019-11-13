@@ -78,7 +78,7 @@ def edit(state: State):
     pass
 
 
-@esque.group(help="Configuration-related options")
+@esque.group(help="Configuration-related options.")
 @default_options
 def config(state: State):
     pass
@@ -126,7 +126,7 @@ def ctx(state: State, context: str):
                 click.echo(c)
     if context:
         state.config.context_switch(context)
-        click.echo(f"Switched to context: {context}")
+        click.echo(f"Switched to context: {context}.")
 
 
 @config.command("autocomplete")
@@ -159,7 +159,7 @@ def config_autocomplete(state: State):
     )
 
 
-@config.command("edit", help="Edit esque config file.")
+@config.command("edit", short_help="Edit esque config file.")
 @default_options
 def config_edit(state: State):
     """Opens the user's esque config file in the default editor."""
@@ -181,7 +181,7 @@ def config_migrate(state: State):
 
 @create.command("topic")
 @click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
-@click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template", required=False)
+@click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template.", required=False)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
     """Create a topic.
@@ -202,7 +202,7 @@ def create_topic(state: State, topic_name: str, like: str):
     else:
         topic = Topic(topic_name)
     topic_controller.create_topics([topic])
-    click.echo(click.style(f"Topic with name '{topic.name}' successfully created", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic.name}' successfully created.", fg="green"))
 
 
 @edit.command("topic")
@@ -223,7 +223,7 @@ def edit_topic(state: State, topic_name: str):
     local_topic.update_from_dict(new_conf)
     diff = controller.diff_with_cluster(local_topic)
     if not diff.has_changes:
-        click.echo("Nothing changed")
+        click.echo("Nothing changed.")
         return
 
     click.echo(pretty_topic_diffs({topic_name: diff}))
@@ -254,11 +254,11 @@ def delete_topic(state: State, topic_name: str):
 
         assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
-    click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted.", fg="green"))
 
 
 @esque.command("apply")
-@click.option("-f", "--file", metavar="<file>", help="Config file path", required=True)
+@click.option("-f", "--file", metavar="<file>", help="Config file path.", required=True)
 @default_options
 def apply(state: State, file: str):
     """Apply a configuration.
@@ -303,12 +303,12 @@ def apply(state: State, file: str):
 
     # Check for actionable changes
     if len(to_edit) + len(to_create) == 0:
-        click.echo("No changes detected, aborting")
+        click.echo("No changes detected, aborting!")
         return
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
+        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics.")
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -341,7 +341,7 @@ def apply(state: State, file: str):
     required=False,
     is_flag=True,
     default=False,
-    help=f"Will output the consumergroups reading from this topic. "
+    help=f"Will output the consumergroups reading from this topic."
     f"{red_bold('Beware! This can be a really expensive operation.')}",
 )
 @output_format_option
@@ -459,35 +459,35 @@ def get_topics(state: State, prefix: str, output_format: str):
     "--from",
     "from_context",
     metavar="<source_ctx>",
-    help="Source context. If not provided, the current context will be used",
+    help="Source context. If not provided, the current context will be used.",
     type=click.STRING,
     required=False,
 )
 @click.option(
-    "-n", "--numbers", metavar="<n>", help="Number of messages", type=click.INT, default=sys.maxsize, required=False
+    "-n", "--numbers", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
 )
 @click.option(
     "-m",
     "--match",
     metavar="<filter_expresion>",
-    help="Message filtering expression",
+    help="Message filtering expression.",
     type=click.STRING,
     required=False,
 )
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
 @click.option(
     "-c",
     "--consumergroup",
     metavar="<consumer_group>",
-    help="Consumergroup to store the offset in",
+    help="Consumergroup to store the offset in.",
     type=click.STRING,
     default=None,
     required=False,
 )
 @click.option(
     "--preserve-order",
-    help="Preserve the order of messages, regardless of their partition",
+    help="Preserve the order of messages, regardless of their partition.",
     default=False,
     is_flag=True,
 )
@@ -520,7 +520,7 @@ def consume(
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
-    #Copy source_topic in source_ctx context to destination_topic in destination_ctx
+    #Copy source_topic in source_ctx context to destination_topic in destination_ctx.
     esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
@@ -598,7 +598,7 @@ def consume(
     "--to",
     "to_context",
     metavar="<destination_ctx>",
-    help="Destination Context",
+    help="Destination context.",
     type=click.STRING,
     required=False,
 )
@@ -606,11 +606,11 @@ def consume(
     "-m",
     "--match",
     metavar="<filter_expresion>",
-    help="Message filtering expression",
+    help="Message filtering expression.",
     type=click.STRING,
     required=False,
 )
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
 )
@@ -649,7 +649,7 @@ def produce(
        esque produce --stdin -f <destination_ctx> -y TOPIC
 
        \b
-       #Copy source_topic in source_ctx context to destination_topic in destination_ctx
+       #Copy source_topic in source_ctx context to destination_topic in destination_ctx.
        esque consume -f source_ctx --stdout source_topic | esque produce -t destination_ctx --stdin destination_topic
        """
     if directory is None and not read_from_stdin:
