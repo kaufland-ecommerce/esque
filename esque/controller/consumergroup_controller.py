@@ -31,7 +31,7 @@ class ConsumerGroupOffsetPlan:
         self.partition_id = partition_id
 
     @property
-    def offset_equal(self):
+    def offset_equal(self) -> bool:
         return self.current_offset == self.proposed_offset
 
 
