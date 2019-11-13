@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pendulum
 import pykafka
@@ -137,7 +137,9 @@ class ConsumerGroupController:
             return list(offset_plans.values())
 
     @staticmethod
-    def _select_new_offset_for_consumer(requested_offset: int, offset_plan: ConsumerGroupOffsetPlan) -> Tuple[int, bool, str]:
+    def _select_new_offset_for_consumer(
+        requested_offset: int, offset_plan: ConsumerGroupOffsetPlan
+    ) -> Tuple[int, bool, str]:
         if requested_offset < offset_plan.low_watermark:
             final_value = offset_plan.low_watermark
             error = True
@@ -164,7 +166,9 @@ class ConsumerGroupController:
             message = ""
         return final_value, error, message
 
-    def _read_current_consumergroup_offsets(self, consumer_id: str, topic_name_expression: str) -> Tuple[str, List[ConsumerGroupOffsetPlan]]:
+    def _read_current_consumergroup_offsets(
+        self, consumer_id: str, topic_name_expression: str
+    ) -> Tuple[str, List[ConsumerGroupOffsetPlan]]:
         offset_plans = {}
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:
