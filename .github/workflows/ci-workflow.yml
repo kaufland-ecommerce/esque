@@ -34,50 +34,10 @@ jobs:
       matrix:
         python: ['3.x', '3.6', '3.7', 'pypy3' ]
       max-parallel: 1
-    services:
-      zookeeper:
-        image: confluentinc/cp-zookeeper:5.0.0
-        ports:
-          - 2181:2181
-        env:
-          ZOOKEEPER_URL: "zookeeper:2181"
-          HOST: "zookeeper"
-          ZOOKEEPER_CLIENT_PORT: "2181"
-      kafka:
-        image: confluentinc/cp-kafka:5.0.0
-        ports:
-          - 9092:9092
-        env:
-          KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
-          KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092'
-          KAFKA_BROKER_ID: '1'
-          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
-          KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
-      schema-registry:
-        image: confluentinc/cp-schema-registry:5.0.0
-        ports:
-          - 8081:8081
-        env:
-          SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: none
-          SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
-          SCHEMA_REGISTRY_HOST_NAME: localhost
-          SCHEMA_REGISTRY_LISTENERS: "http://localhost:8081"
     steps:
       - uses: actions/checkout@v1
         with:
           ref: 61-installation-and-packaging
-      - name: Waiting for services
-        run: |
-          bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
-          bash -c "./scripts/wait-for-it.sh ${BROKER_URL} -t 60" ;
-          bash -c "./scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60" ;
-        env:
-          ZOOKEEPER_URL: localhost:2181
-          BROKER_URL: localhost:9092
-          SCHEMA_REGISTRY_URL: localhost:8081
-          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
       - name: Install system packages
         run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
       - name: Install and configure poetry
@@ -100,6 +60,9 @@ jobs:
         run: |
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry run pytest tests/unit/
+      - name: Run kafka stack
+        run: |
+          docker-compose up -d
       - name: Run integration tests
         run: |
           sudo netstat -punta
