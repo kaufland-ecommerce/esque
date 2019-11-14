@@ -47,7 +47,13 @@ jobs:
         if: matrix.python == '3.8'
         run: |
           sudo apt-get install libsasl2-dev libsasl2-modules libssl-dev
-          git clone --branch "v1.1.0" --depth 1 https://github.com/edenhill/librdkafka.git && cd librdkafka && ./configure --prefix /usr && make && make install && cd .. && rm -rf librdkafka
+          git clone --branch "v1.1.0" --depth 1 https://github.com/edenhill/librdkafka.git
+          cd librdkafka
+          sudo ./configure --prefix /usr
+          sudo make
+          sudo make install
+          cd ..
+          rm -rf librdkafka
       - name: Install and configure poetry
         run: |
           pip3 install "poetry==1.0.0b3"
