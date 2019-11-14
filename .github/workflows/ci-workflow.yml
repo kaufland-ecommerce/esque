@@ -14,32 +14,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.x', '3.6', '3.7', 'pypy3' ]
+        python: ['3.x', '3.6', '3.7', '3.8', 'pypy3' ]
         os: ['ubuntu-latest']
     steps:
       - uses: actions/checkout@v1
-        with:
-          ref: 61-installation-and-packaging
       - name: Setup python
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
-      - uses: bulv1ne/python-style-check@master
+        run: |
+          pre-commit install --install-hooks
+      - name: Run pre-commit hooks
+        run: pre-commit run
   test-integration:
     name: Integration test with Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.x', '3.6', '3.7', 'pypy3' ]
+        python: ['3.x', '3.6', '3.7', '3.8', 'pypy3' ]
       max-parallel: 1
     steps:
       - uses: actions/checkout@v1
+      - name: Setup python and install packages
+        uses: actions/setup-python@v1
         with:
-          ref: 61-installation-and-packaging
-      - name: Install system packages
-        run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
+          python-version: ${{ matrix.python }}
+          architecture: x64
+        run: |
+          sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
+          pip3 install pre-commit
       - name: Install and configure poetry
         run: |
           curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
