@@ -94,7 +94,7 @@ No config provided in ~/.esque
 Should a sample file be created in ~/.esque [y/N]:
 ```
 
-When answering with `y` `esque` will copy over the [sample config](https://github.com/real-digital/esque/blob/master/esque/config/sample_config.yaml) to `~/.esque/esque.yaml`.
+When answering with `y` `esque` will copy over the [sample config](https://github.com/real-digital/esque/blob/master/esque/config/sample_config.yaml) to `~/.esque/esque_config.yaml`.
 Afterwards you can modify that file to fit your cluster definitions.
 
 Alternatively might just provide a config file following the sample config's file in that path.
