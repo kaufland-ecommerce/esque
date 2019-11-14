@@ -2,10 +2,10 @@ name: Build, test and package esque
 on:
   push:
     branches:
-      - master
+      - 61-installation-and-packaging
   pull_request:
     branches:
-      - master
+      - 61-installation-and-packaging
 
 jobs:
   test-style:
@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v1
         with:
-          ref: master
+          ref: 61-installation-and-packaging
       - name: Setup python
         uses: actions/setup-python@v1
         with:
@@ -27,63 +27,56 @@ jobs:
           architecture: x64
       - uses: bulv1ne/python-style-check@master
   test-integration:
-    env:
-      ZOOKEEPER_URL: localhost:2181
-      KAFKA_URL: localhost:9092
-      SCHEMA_REGISTRY_URL: localhost:8081
-      SERVICES_ROOT: /services
-    name: Integration test with Python ${{ matrix.python }} on Kafka ${{ matrix.kafka }}
+    name: Integration test with Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python: ['3.x', '3.6', '3.7', 'pypy3' ]
-        kafka: ['2_3_1', '2_1_1']
       max-parallel: 1
+    services:
+      zookeeper:
+        image: confluentinc/cp-zookeeper:5.0.0
+        ports:
+          - 2181:2181
+        env:
+          ZOOKEEPER_URL: "zookeeper:2181"
+          HOST: "zookeeper"
+          ZOOKEEPER_CLIENT_PORT: "2181"
+      kafka:
+        image: confluentinc/cp-kafka:5.0.0
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+          KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092'
+          KAFKA_BROKER_ID: '1'
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+          KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      schema-registry:
+        image: confluentinc/cp-schema-registry:5.0.0
+        ports:
+          - 8081:8081
+        env:
+          SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: none
+          SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+          SCHEMA_REGISTRY_HOST_NAME: localhost
+          SCHEMA_REGISTRY_LISTENERS: "http://localhost:8081"
     steps:
-      - uses: actions/cache@v1
-        id: confluent
-        with:
-          path: confluent
-          key: confluent
-      - uses: actions/cache@v1
-        id: kafka-2_3_1
-        with:
-          path: ${SERVICES_ROOT}/kafka-2_3_1
-          key: kafka-2_3_1
-      - uses: actions/cache@v1
-        id: kafka-1_1_1
-        with:
-          path: ${SERVICES_ROOT}/kafka-1_1_1
-          key: kafka-1_1_1
-      - name: Install Java
-        run: sudo apt-get install openjdk-8-jdk
       - uses: actions/checkout@v1
         with:
-          ref: master
-      - name: Download Confluent packages
-        if: steps.confluent.outputs.cache-hit != 'true'
+          ref: 61-installation-and-packaging
+      - name: Waiting for services
         run: |
-          sudo mkdir -p ${SERVICES_ROOT}
-          sudo chown -R $USER ${SERVICES_ROOT}
-          wget http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O ${SERVICES_ROOT}/confluent.tgz
-          mkdir -p ${SERVICES_ROOT}/confluent
-          tar xzf ${SERVICES_ROOT}/confluent.tgz -C ${SERVICES_ROOT}/confluent --strip-components 1
-      - name: Download Kafka ${{ matrix.kafka }}
-        if: steps.kafka-2_3_1.outputs.cache-hit != 'true'
-        run: |
-          dotted_version=`echo ${{ matrix.kafka }} | sed 's/_/./g'`
-          wget http://mirror.netcologne.de/apache.org/kafka/${dotted_version}/kafka_2.12-${dotted_version}.tgz -O ${SERVICES_ROOT}/kafka-${dotted_version}.tgz
-          mkdir -p ${SERVICES_ROOT}/kafka-${{ matrix.kafka }}
-          tar xzf ${SERVICES_ROOT}/kafka-${dotted_version}.tgz -C ${SERVICES_ROOT}/kafka-${{ matrix.kafka }} --strip-components 1
-      - name: Start services
-        run: |
-          ${SERVICES_ROOT}/confluent/bin/zookeeper-server-start -daemon ${SERVICES_ROOT}/confluent/etc/kafka/zookeeper.properties
-          bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60"
-          ${SERVICES_ROOT}/kafka-${{ matrix.kafka }}/bin/kafka-server-start -daemon ${SERVICES_ROOT}/kafka-${{ matrix.kafka }}/config/server.properties
-          bash -c "./scripts/wait-for-it.sh ${KAFKA_URL} -t 60"
-          sudo ${SERVICES_ROOT}/confluent/bin/schema-registry-start -daemon ${SERVICES_ROOT}/confluent/etc/schema-registry/schema-registry.properties
+          bash -c "./scripts/wait-for-it.sh ${ZOOKEEPER_URL} -t 60" ;
+          bash -c "./scripts/wait-for-it.sh ${BROKER_URL} -t 60" ;
           bash -c "./scripts/wait-for-it.sh ${SCHEMA_REGISTRY_URL} -t 60" ;
+        env:
+          ZOOKEEPER_URL: localhost:2181
+          BROKER_URL: localhost:9092
+          SCHEMA_REGISTRY_URL: localhost:8081
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "False"
       - name: Install system packages
         run: sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
       - name: Install and configure poetry
@@ -112,11 +105,6 @@ jobs:
           source ./venv/bin/activate
           esque ctx local
           $HOME/.poetry/bin/poetry run pytest -s -v --integration --local tests/integration/commands/test_ping.py
-      - name: Stop all services
-        run: |
-          confluent/bin/schema-registry-stop
-          kafka-${{ matrix.kafka }}/bin/kafka-server-stop.sh
-          confluent/bin/zookeeper-server-stop
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
