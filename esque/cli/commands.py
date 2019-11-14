@@ -84,13 +84,16 @@ def config(state: State):
 
 def list_brokers(ctx, args, incomplete):
     state = ctx.ensure_object(State)
-    return [broker.broker_id for broker in Broker.get_all(state.cluster)]
+    all_broker_hosts_names = [f"{broker.host}:{broker.port}" for broker in Broker.get_all(state.cluster)]
+    return [broker for broker in all_broker_hosts_names if broker.startswith(incomplete)]
 
 
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
@@ -289,7 +292,9 @@ def edit_consumergroup(
 
 
 @delete.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -347,7 +352,9 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
+        click.echo(
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+        )
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -366,7 +373,9 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @click.option(
     "--consumers",
     "-C",
@@ -415,11 +424,23 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
+@click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
 @output_format_option
 @default_options
-def describe_broker(state: State, broker_id: str, output_format: str):
-    broker = Broker.from_id(state.cluster, broker_id).describe()
+def describe_broker(state, broker, output_format):
+    if broker.isdigit():
+        broker = Broker.from_id(state.cluster, broker).describe()
+    elif ":" not in broker:
+        broker = Broker.from_host(state.cluster, broker).describe()
+    else:
+        try:
+            host, port = broker.split(":")
+            broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
+        except ValueError:
+            raise ValidationException(
+                "BROKER must either be the broker id (int), the hostname (str), or in the form 'host:port' (str)"
+            )
+
     click.echo(format_output(broker, output_format))
 
 
