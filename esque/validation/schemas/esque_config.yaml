@@ -1,0 +1,28 @@
+version: enum(1)
+current_context: str()
+contexts: map(include('context'))
+---
+context:
+  bootstrap_servers: list(include('url'))
+  security_protocol: s_enum('PLAINTEXT','SASL_PLAINTEXT','SSL','SASL_SSL', required=False, case_sensitive=False)
+  schema_registry: include('url', required=False)
+  default_values: include('defaults', required=False)
+  ssl_params: include('ssl_params', required=False)
+  sasl_params: include('sasl_params', required=False)
+
+url: regex('^(?:[a-zA-Z]+://)?(?:[a-zA-Z][a-zA-Z0-9._-]+|[0-9]{,3}(?:\\.[0-9]{,3}){3})(?::[0-9]+)?$')
+
+defaults:
+  num_partitions: int(required=False)
+  replication_factor: int(required=False)
+
+sasl_params:
+  mechanism: s_enum('PLAIN','SCRAM-SHA-256','SCRAM-SHA-512', case_sensitive=False)
+  user: str()
+  password: str()
+
+ssl_params:
+  cafile: str(required=False)
+  certfile: str(required=False)
+  keyfile: str(required=False)
+  password: str(required=False)

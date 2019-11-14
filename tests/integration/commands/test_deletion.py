@@ -23,7 +23,7 @@ def test_topic_deletion_without_verification_does_not_work(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topic, [topic])
+    result = interactive_cli_runner.invoke(delete_topic, [topic], catch_exceptions=False)
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -50,7 +50,7 @@ def test_topic_deletion_as_argument_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topic, [topic], input="y\n")
+    result = interactive_cli_runner.invoke(delete_topic, [topic], input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -66,7 +66,7 @@ def test_topic_deletion_as_stdin_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = non_interactive_cli_runner.invoke(delete_topic, "--no-verify", input=topic)
+    result = non_interactive_cli_runner.invoke(delete_topic, "--no-verify", input=topic, catch_exceptions=False)
     assert result.exit_code == 0
 
     # Invalidate cache
@@ -103,7 +103,7 @@ def test_keep_minus_delete_period(
     assert basic_topic[0] in topics
     assert duplicate_topic[0] in topics
 
-    result = interactive_cli_runner.invoke(delete_topic, [duplicate_topic[0]], input="y\n")
+    result = interactive_cli_runner.invoke(delete_topic, [duplicate_topic[0]], input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     # Invalidate cache

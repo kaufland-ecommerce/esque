@@ -6,7 +6,7 @@ import click
 import yaml
 from yaml.scanner import ScannerError
 
-from esque.errors import EditCanceled, NoConfirmationPossibleException, YamaleValidationException
+from esque.errors import EditCanceled, NoConfirmationPossibleException, ValidationException
 
 
 # private function, which we can mock
@@ -18,14 +18,28 @@ def isatty(stream) -> bool:
     return _isatty(stream)
 
 
-def ensure_approval(question: str, *, no_verify: bool = False) -> bool:
+def ensure_approval(question: str, *, no_verify: bool = False, default_answer=False) -> bool:
     if no_verify:
         return True
 
     if not isatty(click.get_text_stream("stdin")):
         raise NoConfirmationPossibleException()
 
-    return click.confirm(question)
+    return click.confirm(question, default=default_answer)
+
+
+def attrgetter(*attrs):
+    if len(attrs) == 1:
+
+        def getter(obj):
+            return getattr(obj, attrs[0])
+
+    else:
+
+        def getter(obj):
+            return tuple(getattr(obj, attr) for attr in attrs)
+
+    return getter
 
 
 class HandleFileOnFinished:
@@ -50,21 +64,22 @@ def edit_yaml(yaml_str: str, validator: Optional[Callable[[Dict], None]] = None)
         if yaml_str is None:
             raise EditCanceled()
         try:
+            # TODO: check for duplicate keys, might have to change yaml parser for that
             config_data = yaml.safe_load(yaml_str)
             if validator:
                 validator(config_data)
-        except (ScannerError, YamaleValidationException) as e:
+        except (ScannerError, ValidationException) as e:
             _handle_edit_exception(e)
         else:
             break
     return yaml_str, config_data
 
 
-def _handle_edit_exception(e: Union[ScannerError, YamaleValidationException]) -> None:
+def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
     if isinstance(e, ScannerError):
         click.echo("Error parsing yaml:")
     else:
         click.echo("Error validating yaml:")
     click.echo(str(e))
-    if not ensure_approval("Continue Editing?"):
+    if not ensure_approval("Continue Editing?", default_answer=True):
         raise EditCanceled()

@@ -1,8 +1,7 @@
 from typing import Dict, Type
 
-from confluent_kafka import KafkaError, Message
-
 import pykafka.exceptions
+from confluent_kafka import KafkaError, Message
 
 
 def raise_for_kafka_error(err: KafkaError):
@@ -37,6 +36,23 @@ class ExceptionWithMessage(EsqueException):
 class EditCanceled(ExceptionWithMessage):
     def __init__(self):
         super().__init__("Edit canceled.")
+
+
+class ConfigVersionException(ExceptionWithMessage):
+    def __init__(self, current, expected):
+        super().__init__(f"Expected config version {expected}, got {current}.")
+
+
+class ConfigTooOld(ConfigVersionException):
+    def __init__(self, current, expected):
+        super().__init__(current, expected)
+        self.message += "\nRun `esque config migrate` to migrate to new version."
+
+
+class ConfigTooNew(ConfigVersionException):
+    def __init__(self, current, expected):
+        super().__init__(current, expected)
+        self.message += "\nYou might find a backup from last config migration next to your current config."
 
 
 class ConfigException(ExceptionWithMessage):
@@ -129,10 +145,6 @@ class YamaleValidationException(ValidationException):
         stripped_messages = list(map(lambda x: x.strip("\t"), messages))
         joined_message = "\n".join(stripped_messages)
         super().__init__(joined_message)
-
-
-class TopicConfigNotValidException(YamaleValidationException):
-    pass
 
 
 CONFLUENT_ERROR_LOOKUP: Dict[int, Type[KafkaException]] = {

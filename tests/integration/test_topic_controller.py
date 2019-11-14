@@ -65,7 +65,7 @@ def test_topic_listing_works(topic_controller: TopicController, topic: str):
 def test_topic_object_works(topic_controller: TopicController, topic: str):
     topic = topic_controller.get_cluster_topic(topic)
     assert isinstance(topic, Topic)
-    assert len(topic.offsets) != 0
+    assert len(topic.watermarks) != 0
 
 
 @pytest.mark.integration
