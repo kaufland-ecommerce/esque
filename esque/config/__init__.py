@@ -20,6 +20,7 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
+from esque.helpers import SingletonMeta
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -56,7 +57,7 @@ def sample_config_path() -> Path:
     return Path(__file__).parent / "sample_config.yaml"
 
 
-class Config:
+class Config(metaclass=SingletonMeta):
     def __init__(self):
         if not config_path().exists():
             raise ConfigNotExistsException()

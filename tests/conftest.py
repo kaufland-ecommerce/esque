@@ -104,7 +104,7 @@ def get_path_for_config_version(config_version: int) -> Path:
 @pytest.fixture()
 def unittest_config(request: FixtureRequest, load_config: config_loader) -> Config:
     conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
-    esque_config = Config()
+    esque_config = Config.get_instance()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")
     return esque_config
@@ -378,7 +378,7 @@ def target_consumer_group():
 
 @pytest.fixture()
 def consumer(topic_object: Topic, consumer_group: str):
-    _config = Config().create_confluent_config()
+    _config = Config.get_instance().create_confluent_config()
     _config.update(
         {
             "group.id": consumer_group,
