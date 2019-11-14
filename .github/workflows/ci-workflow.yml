@@ -52,20 +52,14 @@ jobs:
           pip3 install pre-commit
       - name: Install and configure poetry
         run: |
-          curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python3
+          pip3 install "poetry==1.0.0b3"
           export PATH=$PATH:$HOME/.poetry/bin
           source $HOME/.poetry/env
           virtualenv venv --python=python3
-          $HOME/.poetry/bin/poetry self:update --preview
       - name: Install esque requirements
         run: |
           source ./venv/bin/activate
           $HOME/.poetry/bin/poetry install -vvv
-      - name: Setup default esque configuration
-        run: |
-          mkdir -p ~/.esque
-          source ./venv/bin/activate
-          cp ./esque/config/sample_config.yaml ~/.esque/esque.yaml
       - name: Run unit tests
         run: |
           source ./venv/bin/activate
@@ -73,12 +67,13 @@ jobs:
       - name: Run kafka stack
         run: |
           docker-compose up -d
+          ./scripts/wait-for-it.sh localhost:9092 -t 60
+          ./scripts/wait-for-it.sh localhost:2181 -t 60
+          ./scripts/wait-for-it.sh localhost:8081 -t 60
       - name: Run integration tests
         run: |
-          sudo netstat -punta
           source ./venv/bin/activate
-          esque ctx local
-          $HOME/.poetry/bin/poetry run pytest -s -v --integration --local tests/integration/commands/
+          $HOME/.poetry/bin/poetry run -- pytest --integration --local tests/integration/commands/
       - name: Output logs
         if: failure()
         run: |
