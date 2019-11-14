@@ -45,7 +45,7 @@ jobs:
           sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
           pip3 install pre-commit
       - name: Install system requirements for python3.8
-        if: ${{ matrix.python }} == '3.8'
+        if: matrix.python == '3.8'
         run: |
           sudo apt-get install -y openssl python3.8-dev librdkafka-dev libssl-dev
       - name: Install and configure poetry
