@@ -53,13 +53,12 @@ jobs:
       - name: Install and configure poetry
         run: |
           pip3 install "poetry==1.0.0b3"
-          export PATH=$PATH:$HOME/.poetry/bin
       - name: Install esque requirements
         run: |
-          $HOME/.poetry/bin/poetry install -vvv
+          poetry install -vvv
       - name: Run unit tests
         run: |
-          $HOME/.poetry/bin/poetry run pytest tests/unit/
+          poetry run -- pytest tests/unit/
       - name: Run kafka stack
         run: |
           docker-compose up -d
@@ -68,7 +67,8 @@ jobs:
           ./scripts/wait-for-it.sh localhost:8081 -t 60
       - name: Run integration tests
         run: |
-          $HOME/.poetry/bin/poetry run -- pytest --integration --local tests/integration/commands/
+          poetry run -- pytest --integration --local tests/integration/commands/
+          # TODO: run all tests, not just command
       - name: Output logs
         if: failure()
         run: |
