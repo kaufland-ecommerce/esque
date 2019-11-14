@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 import click
 import yaml
 from confluent_kafka.admin import ConfigResource
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 import esque.validation
 from esque.cli import environment
@@ -18,8 +20,6 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"

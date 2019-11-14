@@ -16,6 +16,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
+from pykafka.exceptions import NoBrokersAvailableError
 
 import esque.config
 from esque.cli.options import State
@@ -27,7 +28,6 @@ from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
-from pykafka.exceptions import NoBrokersAvailableError
 
 # constants that indicate which config version to load
 # see function get_path_for_config_version
@@ -368,6 +368,11 @@ def consumergroup_instance(partly_read_consumer_group: str, consumergroup_contro
 
 @pytest.fixture()
 def consumer_group():
+    yield "".join(random.choices(ascii_letters, k=5))
+
+
+@pytest.fixture()
+def target_consumer_group():
     yield "".join(random.choices(ascii_letters, k=5))
 
 

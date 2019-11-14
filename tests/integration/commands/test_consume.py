@@ -43,7 +43,7 @@ def test_avro_consume_to_stdout(
     consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
-    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
+    produce_test_messages_with_avro(avro_producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
         consume, args=["--stdout", "--numbers", "10", "--avro", source_topic_id]
