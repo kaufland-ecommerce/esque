@@ -55,7 +55,7 @@ Options:
   --help             Show this message and exit.
 
 Commands:
-  apply     Apply a configuration
+  apply     Apply a set of topic configurations.
   config    Configuration-related options
   consume   Consume messages of a topic from one environment to a file or...
   create    Create a new instance of a resource.
