@@ -165,7 +165,7 @@ pre-commit install-hooks
 
 #### Integration Tests
 
-esque comes with a kafka stack which you can start up with `make test-suite`.
+esque comes with a docker-compose based kafka stack which you can start up with `make test-suite`.
 
 You can then run the integration tests against this stack with `pytest tests/ --integration --local`.
 
