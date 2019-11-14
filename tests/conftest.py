@@ -94,6 +94,12 @@ def broker_id(state: State) -> str:
 
 
 @pytest.fixture()
+def broker_host_and_port(state: State) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield "{}:{}".format(brokers[0].host, brokers[0].port)
+
+
+@pytest.fixture()
 def topic_object(cluster: Cluster, topic: str):
     yield cluster.topic_controller.get_cluster_topic(topic)
 
