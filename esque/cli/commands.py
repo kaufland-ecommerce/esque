@@ -117,6 +117,7 @@ def ctx(state: State, context: str):
                 click.echo(c)
     if context:
         state.config.context_switch(context)
+        state.config.save()
         click.echo(f"Switched to context: {context}")
 
 

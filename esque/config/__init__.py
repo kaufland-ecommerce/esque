@@ -177,9 +177,8 @@ class Config(metaclass=SingletonMeta):
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._cfg["current_context"] = context
-        self._dump_config()
 
-    def _dump_config(self):
+    def save(self):
         with config_path().open("w") as f:
             yaml.dump(self._cfg, f, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
 
