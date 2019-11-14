@@ -27,7 +27,7 @@ class State(object):
 
     def _create_config(self):
         try:
-            self._config = Config()
+            self._config = Config.get_instance()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
@@ -37,7 +37,7 @@ class State(object):
                 raise
             if ensure_approval("Do you want to modify the config file now?"):
                 click.edit(filename=config_path().as_posix())
-            self._config = Config()
+            self._config = Config.get_instance()
 
     @property
     def cluster(self):
