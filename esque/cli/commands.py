@@ -84,6 +84,8 @@ def config(state: State):
 
 def list_brokers(ctx, args, incomplete):
     state = ctx.ensure_object(State)
+    brokers = Broker.get_all(state.cluster)
+    broker_ids_and_hosts = [f"{broker.broker_id}: f{broker.host}:{broker.port}" for broker in brokers]
     return [broker.broker_id for broker in Broker.get_all(state.cluster)]
 
 
