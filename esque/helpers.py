@@ -1,6 +1,7 @@
 import functools
 from concurrent.futures import Future, wait
 from itertools import islice
+from typing import ClassVar, Generic, TypeVar
 
 import click
 import confluent_kafka
@@ -8,6 +9,18 @@ import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
 
 from esque.errors import FutureTimeoutException, raise_for_kafka_error
+
+T = TypeVar("T")
+
+
+class SingletonMixin(Generic[T]):
+    __instance: ClassVar[T]
+
+    @classmethod
+    def get_instance(cls) -> T:
+        if cls.__instance is None:
+            cls.__instance = cls()
+        return cls.__instance
 
 
 def invalidate_cache_before(func):
