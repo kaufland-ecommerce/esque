@@ -33,7 +33,7 @@ from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
 
-@click.group(invoke_without_command=True)
+@click.group(invoke_without_command=True, no_args_is_help=True)
 @click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
 @version_option(__version__)
 @default_options
@@ -46,57 +46,43 @@ def esque(state: State, recreate_config: bool):
         config_dir().mkdir(exist_ok=True)
         if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
             copyfile(sample_config_path().as_posix(), config_path())
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
 
 
-@esque.group(help="Get a quick overview of different resources.")
+@esque.group(help="Get a quick overview of different resources.", no_args_is_help=True)
 @default_options
 def get(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
 
 
-@esque.group(help="Get detailed information about a resource.")
+@esque.group(help="Get detailed information about a resource.", no_args_is_help=True)
 @default_options
 def describe(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
 
 
-@esque.group(help="Create a new instance of a resource.")
+@esque.group(help="Create a new instance of a resource.", no_args_is_help=True)
 @default_options
 def create(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
 
 
-@esque.group(help="Delete a resource.")
+@esque.group(help="Delete a resource.", no_args_is_help=True)
 @default_options
 def delete(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
 
 
-@esque.group(help="Edit a resource.")
+@esque.group(help="Edit a resource.", no_args_is_help=True)
 @default_options
 def edit(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
 
 
-@esque.group(help="Configuration-related options.")
+@esque.group(help="Configuration-related options.", no_args_is_help=True)
 @default_options
 def config(state: State):
-    current_ctx = click.get_current_context()
-    if current_ctx.invoked_subcommand is None:
-        click.echo(current_ctx.get_help())
+    pass
+
 
 
 def list_topics(ctx, args, incomplete):
