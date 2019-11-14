@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 import click
 import yaml
 from confluent_kafka.admin import ConfigResource
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 import esque.validation
 from esque.cli import environment
@@ -18,8 +20,7 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
+from esque.helpers import SingletonMeta
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -56,7 +57,7 @@ def sample_config_path() -> Path:
     return Path(__file__).parent / "sample_config.yaml"
 
 
-class Config:
+class Config(metaclass=SingletonMeta):
     def __init__(self):
         if not config_path().exists():
             raise ConfigNotExistsException()
@@ -176,9 +177,8 @@ class Config:
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._cfg["current_context"] = context
-        self._dump_config()
 
-    def _dump_config(self):
+    def save(self):
         with config_path().open("w") as f:
             yaml.dump(self._cfg, f, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
 

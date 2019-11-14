@@ -21,7 +21,8 @@ def config_version(request) -> int:
 def config(config_version: int, load_config: config_loader):
     old_conf, _ = load_config(config_version)
     new_path, _ = migrate(Path(old_conf))
-    return Config()
+    Config.set_instance(Config())
+    return Config.get_instance()
 
 
 def test_backup(config_version: int, load_config: config_loader):

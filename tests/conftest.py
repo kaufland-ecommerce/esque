@@ -16,6 +16,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
+from pykafka.exceptions import NoBrokersAvailableError
 
 import esque.config
 from esque.cli.options import State
@@ -27,7 +28,6 @@ from esque.errors import raise_for_kafka_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
-from pykafka.exceptions import NoBrokersAvailableError
 
 # constants that indicate which config version to load
 # see function get_path_for_config_version
@@ -104,7 +104,7 @@ def get_path_for_config_version(config_version: int) -> Path:
 @pytest.fixture()
 def unittest_config(request: FixtureRequest, load_config: config_loader) -> Config:
     conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
-    esque_config = Config()
+    esque_config = Config.get_instance()
     if request.config.getoption("--local"):
         esque_config.context_switch("local")
     return esque_config
@@ -372,8 +372,13 @@ def consumer_group():
 
 
 @pytest.fixture()
+def target_consumer_group():
+    yield "".join(random.choices(ascii_letters, k=5))
+
+
+@pytest.fixture()
 def consumer(topic_object: Topic, consumer_group: str):
-    _config = Config().create_confluent_config()
+    _config = Config.get_instance().create_confluent_config()
     _config.update(
         {
             "group.id": consumer_group,

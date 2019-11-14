@@ -4,7 +4,7 @@ from typing import Any
 
 from confluent_kafka.cimpl import Message
 
-from esque.messages.message import decode_message, KafkaMessage
+from esque.messages.message import KafkaMessage, decode_message
 from esque.ruleparser.expressionelement import Operator
 
 
