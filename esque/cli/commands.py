@@ -515,7 +515,7 @@ def consume(
     if not consumergroup:
         consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
     if not directory:
-        directory = "messages_" + consumergroup.replace(consumergroup_prefix, "")
+        directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
     working_dir = Path(directory)
 
     if not from_context:
@@ -526,7 +526,7 @@ def consume(
 
     if not write_to_stdout:
         click.echo("Creating directory " + blue_bold(working_dir.absolute().name) + " if it does not exist.")
-        working_dir.mkdir(exist_ok=True)
+        working_dir.mkdir(parents=True, exist_ok=True)
         click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     if preserve_order:
         partitions = []
