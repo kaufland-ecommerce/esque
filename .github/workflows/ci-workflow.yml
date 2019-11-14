@@ -1,11 +1,5 @@
 name: Build, test and package esque
-on:
-  push:
-    branches:
-      - 61-installation-and-packaging
-  pull_request:
-    branches:
-      - 61-installation-and-packaging
+on: [push, pull_request]
 
 jobs:
   test-style:
@@ -37,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.6', '3.7', '3.8', 'pypy3' ]
+        python: ['3.6', '3.7', '3.8' ]
       max-parallel: 1
     steps:
       - uses: actions/checkout@v1
@@ -50,6 +44,10 @@ jobs:
         run: |
           sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
           pip3 install pre-commit
+      - name: Install system requirements for python3.8
+        if: ${{ matrix.python }} == '3.8'
+        run: |
+          sudo apt-get install -y openssl python3.8-dev librdkafka-dev libssl-dev
       - name: Install and configure poetry
         run: |
           pip3 install "poetry==1.0.0b3"
@@ -68,26 +66,26 @@ jobs:
           sleep 5
       - name: Run integration tests
         run: |
-          poetry run -- pytest --integration --local tests/integration/commands/
-          # TODO: run all tests, not just command
+          poetry run -- pytest --integration --local tests/integration/
       - name: Output logs
         if: failure()
         run: |
           docker-compose logs kafka
           docker-compose logs zookeeper
-#  publish-to-pypi:
-#    name: Publish to pypi
-#    needs: [test-style, test-integration]
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@master
-#      - name: Install required packages
-#        run: |
-#          sudo pip3 install pep517
-#          python3 -m pep517.build --source --binary --out-dir dist/
-#        shell: bash
-#      # secrets must be set up on GitHub
-#      #- name: Publish esque to PyPI
-#      #  uses: pypa/gh-action-pypi-publish@master
-#      #  with:
-#      #    password: ${{ secrets.pypi_password }}
+  publish-to-pypi:
+    name: Publish to pypi
+    if: github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags')
+    needs: [test-style, test-integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Install required packages
+        run: |
+          sudo pip3 install pep517
+          python3 -m pep517.build --source --binary --out-dir dist/
+        shell: bash
+      - name: Publish esque to PyPI
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: ${{ secrets.PYPI_USER }}
+          password: ${{ secrets.PYPI_PASSWORD }}
