@@ -65,6 +65,7 @@ jobs:
           ./scripts/wait-for-it.sh localhost:9092 -t 60
           ./scripts/wait-for-it.sh localhost:2181 -t 60
           ./scripts/wait-for-it.sh localhost:8081 -t 60
+          sleep 5
       - name: Run integration tests
         run: |
           poetry run -- pytest --integration --local tests/integration/commands/
