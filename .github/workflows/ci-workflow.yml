@@ -1,5 +1,5 @@
 name: Build, test and package esque
-on: [push, pull_request]
+on: push
 
 jobs:
   test-style:
