@@ -54,6 +54,7 @@ jobs:
           KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
           KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'False'
       schema-registry:
         image: confluentinc/cp-schema-registry:5.0.0
         ports:
@@ -104,7 +105,7 @@ jobs:
           sudo netstat -punta
           source ./venv/bin/activate
           esque ctx local
-          $HOME/.poetry/bin/poetry run pytest -s -v --integration --local tests/integration/commands/test_ping.py
+          $HOME/.poetry/bin/poetry run pytest -s -v --integration --local tests/integration/commands/
 #  publish-to-pypi:
 #    name: Publish to pypi
 #    needs: [test-style, test-integration]
