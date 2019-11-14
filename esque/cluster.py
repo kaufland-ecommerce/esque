@@ -10,7 +10,7 @@ from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 
 class Cluster:
     def __init__(self):
-        self._config = Config()
+        self._config = Config.get_instance()
         self.confluent_client = AdminClient(self._config.create_confluent_config())
         self.pykafka_client = pykafka.client.KafkaClient(
             **self._config.create_pykafka_config(), broker_version="1.0.0"

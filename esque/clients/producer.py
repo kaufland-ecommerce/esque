@@ -22,7 +22,7 @@ class AbstractProducer(ABC):
     def __init__(self, topic_name: str, match: str = None):
         self.queue_length = 100000
         self.internal_queue_length_limit = self.queue_length / 0.5
-        self._config = Config().create_confluent_config()
+        self._config = Config.get_instance().create_confluent_config()
         self._setup_config()
         self.logger = logging.getLogger(__name__)
         self._topic_name = topic_name
@@ -132,7 +132,7 @@ class AvroFileProducer(FileProducer):
 
     def _setup_config(self):
         super()._setup_config()
-        self._config.update({"schema.registry.url": Config().schema_registry})
+        self._config.update({"schema.registry.url": Config.get_instance().schema_registry})
 
     def produce_message(self, topic_name: str, message: KafkaMessage):
         if self._rule_tree is None or self._rule_tree.evaluate(message):
