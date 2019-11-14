@@ -274,7 +274,9 @@ def edit_consumergroup(
 
 
 @delete.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -332,7 +334,9 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
+        click.echo(
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+        )
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -351,7 +355,9 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @click.option(
     "--consumers",
     "-C",
