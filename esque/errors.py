@@ -70,13 +70,13 @@ class UnsupportedSaslMechanism(ConfigException):
 
 class KafkaException(ExceptionWithMessage):
     def __init__(self, message: str, code: int):
-        super().__init__(f"{message} with code {code}")
+        super().__init__(f"{message} with code {code}.")
         self.code = code
 
 
 class ConsumerGroupDoesNotExistException(ExceptionWithMessage):
     def __init__(self, consumer_id: str):
-        super().__init__(f"Consumer Group does not exist for consumer id '{self.consumer_id}'")
+        super().__init__(f"Consumer Group does not exist for consumer id '{self.consumer_id}'.")
         self.consumer_id = consumer_id
 
 

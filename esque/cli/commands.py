@@ -46,8 +46,8 @@ def esque(state: State, recreate_config: bool):
         config_dir().mkdir(exist_ok=True)
         if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
             copyfile(sample_config_path().as_posix(), config_path())
-    else:
-        current_ctx = click.get_current_context()
+    current_ctx = click.get_current_context()
+    if current_ctx.invoked_subcommand is None:
         click.echo(current_ctx.get_help())
 
 
@@ -55,42 +55,48 @@ def esque(state: State, recreate_config: bool):
 @default_options
 def get(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Get detailed information about a resource.")
 @default_options
 def describe(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Create a new instance of a resource.")
 @default_options
 def create(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Delete a resource.")
 @default_options
 def delete(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Edit a resource.")
 @default_options
 def edit(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 @esque.group(help="Configuration-related options.")
 @default_options
 def config(state: State):
     current_ctx = click.get_current_context()
-    click.echo(current_ctx.get_help())
+    if current_ctx.invoked_subcommand is None:
+        click.echo(current_ctx.get_help())
 
 
 def list_topics(ctx, args, incomplete):
