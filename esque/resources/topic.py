@@ -155,7 +155,7 @@ class Topic(KafkaResource):
         return self.partition_data
 
     @property
-    def offsets(self) -> Dict[int, Watermark]:
+    def watermarks(self) -> Dict[int, Watermark]:
         """
         Returns the low and high watermark for each partition in a topic
         """
