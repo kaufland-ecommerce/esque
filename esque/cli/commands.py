@@ -30,7 +30,7 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import ValidationException
+from esque.errors import ValidationException, TopicDoesNotExistException
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
@@ -274,9 +274,7 @@ def edit_consumergroup(
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -334,9 +332,7 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo(
-            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
-        )
+        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -355,9 +351,7 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @click.option(
     "--consumers",
     "-C",
@@ -467,6 +461,9 @@ def get_topics(state: State, prefix: str, output_format: str):
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
+    "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
+)
+@click.option(
     "-c",
     "--consumergroup",
     help="Consumergroup to store the offset in",
@@ -496,28 +493,35 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    directory: str,
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
+    consumergroup_prefix = "group_for_"
+
+    if directory and write_to_stdout:
+        click.echo("Cannot write to a directory and STDOUT, please pick one!")
+        exit(1)
+    if topic not in state.cluster.topic_controller.list_topics():
+        raise TopicDoesNotExistException(f"Topic {topic} does not exist!")
 
     if not consumergroup:
-        unique_name = topic + "_" + str(current_timestamp_milliseconds)
-        consumergroup = "group_for_" + unique_name
-        directory_name = "message_" + unique_name
-    else:
-        directory_name = "message_" + consumergroup
+        consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
+    if not directory:
+        directory = "messages_" + consumergroup.replace(consumergroup_prefix, "")
+    working_dir = Path(directory)
 
-    working_dir = Path(directory_name)
     if not from_context:
         from_context = state.config.current_context
     if not write_to_stdout and from_context != state.config.current_context:
-        click.echo(f"Switching to context: {from_context}")
+        click.echo(f"Switching to context: {from_context}.")
     state.config.context_switch(from_context)
+
     if not write_to_stdout:
-        working_dir.mkdir(parents=True)
-        click.echo("Creating directory " + blue_bold(working_dir.absolute().name))
+        click.echo("Creating directory " + blue_bold(working_dir.absolute().name) + " if it does not exist.")
+        working_dir.mkdir(exist_ok=True)
         click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     if preserve_order:
         partitions = []
@@ -547,7 +551,7 @@ def consume(
         )
 
     if not write_to_stdout:
-        click.echo("Output generated to " + blue_bold(directory_name))
+        click.echo("Output generated to " + blue_bold(directory))
         if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
