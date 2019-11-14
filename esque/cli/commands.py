@@ -94,7 +94,9 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
@@ -198,7 +200,14 @@ def config_migrate(state: State):
 
 @create.command("topic")
 @click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
-@click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template.", help="Topic to use as template", autocompletion=list_topics, required=False)
+@click.option(
+    "-l",
+    "--like",
+    metavar="<template_topic>",
+    help="Topic to use as template.",
+    autocompletion=list_topics,
+    required=False,
+)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
     """Create a topic.
@@ -394,7 +403,9 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics.")
+        click.echo(
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics."
+        )
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -477,7 +488,9 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker", short_help="Describe a broker.")
-@click.argument("broker-id", metavar="BROKER_ID", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
+@click.argument(
+    "broker-id", metavar="BROKER_ID", callback=fallback_to_stdin, autocompletion=list_brokers, required=False
+)
 @output_format_option
 @default_options
 def describe_broker(state: State, broker_id: str, output_format: str):
@@ -707,7 +720,7 @@ def consume(
     "--ignore-errors",
     "ignore_stdin_errors",
     help="Only when reading from STDIN. If JSON validation fails, write the malformed JSON as a string in message value"
-         " (without key and specified partition assignment).",
+    " (without key and specified partition assignment).",
     default=False,
     is_flag=True,
 )
