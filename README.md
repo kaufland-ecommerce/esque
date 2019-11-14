@@ -52,24 +52,24 @@ In the Kafka world nothing is easy, but esque (pronounced esk) is an
 attempt at it.
 
 Options:
---recreate-config Overwrites the config with the sample config.
---version Show the version and exit.
--v, --verbose Return stack trace on error.
---no-verify Skip all verification dialogs and answer them with yes.
---help Show this message and exit.
+--recreate-config   Overwrites the config with the sample config.
+--version           Show the version and exit.
+-v, --verbose       Return stack trace on error.
+--no-verify         Skip all verification dialogs and answer them with yes.
+--help              Show this message and exit.
 
 Commands:
-apply Apply a set of topic configurations.
-config Configuration-related options.
-consume Consume messages from a topic.
-create Create a new instance of a resource.
-ctx List contexts and switch between them.
-delete Delete a resource.
-describe Get detailed information about a resource.
-edit Edit a resource.
-get Get a quick overview of different resources.
-ping Test the connection to the kafka cluster.
-produce Produce messages to a topic.
+apply     Apply a set of topic configurations.
+config    Configuration-related options.
+consume   Consume messages from a topic.
+create    Create a new instance of a resource.
+ctx       List contexts and switch between them.
+delete    Delete a resource.
+describe  Get detailed information about a resource.
+edit      Edit a resource.
+get       Get a quick overview of different resources.
+ping      Test the connection to the kafka cluster.
+produce   Produce messages to a topic.
 
 ```
 
@@ -182,11 +182,6 @@ If you only want the unit tests, just run:
 ```bash
 make test
 ```
-
-## Additional information
-
-You can find additional information, development cycle and release information on our [wiki page](https://github.com/real-digital/esque/wiki).
-
 
 ## Alternatives
 
