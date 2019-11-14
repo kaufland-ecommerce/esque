@@ -29,7 +29,7 @@ We feel that the goal of `esque` embodies the principle: “**keep easy things e
 ## Feature Overview
 
 * Support for any type of Kafka deployment >1.2
-* Display Resources (Topics, Consumergroups, Brokers)
+* Display Resources (Topics, Consumer Groups, Brokers)
 * Get detailed Overviews of Resources (Topics, Consumer Groups, Brokers)
 * Create/Delete Topics
 * Edit Topic Configurations
