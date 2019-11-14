@@ -82,15 +82,29 @@ def config(state: State):
     pass
 
 
-def list_topics(ctx, args, incomplete):
+def list_brokers(ctx, args, incomplete):
     state = ctx.ensure_object(State)
-    cluster = state.cluster
-    return [topic.name for topic in cluster.topic_controller.list_topics(search_string=incomplete)]
+    return [broker.broker_id for broker in Broker.get_all(state.cluster)]
+
+
+def list_consumergroups(ctx, args, incomplete):
+    state = ctx.ensure_object(State)
+    return [
+        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+    ]
 
 
 def list_contexts(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [context for context in state.config.available_contexts if context.startswith(incomplete)]
+
+
+def list_topics(ctx, args, incomplete):
+    state = ctx.ensure_object(State)
+    cluster = state.cluster
+    return [
+        topic.name for topic in cluster.topic_controller.list_topics(search_string=incomplete, get_topic_objects=False)
+    ]
 
 
 def fallback_to_stdin(ctx, args, value):
@@ -162,7 +176,7 @@ def config_migrate(state: State):
 
 @create.command("topic")
 @click.argument("topic-name", callback=fallback_to_stdin, required=False)
-@click.option("-l", "--like", help="Topic to use as template", required=False)
+@click.option("-l", "--like", help="Topic to use as template", autocompletion=list_topics, required=False)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
@@ -182,7 +196,7 @@ def create_topic(state: State, topic_name: str, like: str):
 
 
 @edit.command("topic")
-@click.argument("topic-name", required=True)
+@click.argument("topic-name", required=True, autocompletion=list_topics)
 @default_options
 def edit_topic(state: State, topic_name: str):
     controller = state.cluster.topic_controller
@@ -274,9 +288,7 @@ def edit_consumergroup(
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -334,9 +346,7 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo(
-            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
-        )
+        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -355,16 +365,13 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
-)
+@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
 @click.option(
     "--consumers",
     "-C",
-    required=False,
     is_flag=True,
     default=False,
-    help=f"Will output the consumergroups reading from this topic. "
+    help=f"Will output the consumer groups reading from this topic. "
     f"{red_bold('Beware! This can be a really expensive operation.')}",
 )
 @output_format_option
@@ -407,7 +414,7 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, required=False)
+@click.argument("broker-id", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
 @output_format_option
 @default_options
 def describe_broker(state: State, broker_id: str, output_format: str):
@@ -416,7 +423,7 @@ def describe_broker(state: State, broker_id: str, output_format: str):
 
 
 @describe.command("consumergroup")
-@click.argument("consumer-id", callback=fallback_to_stdin, required=True)
+@click.argument("consumer-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",
@@ -450,7 +457,7 @@ def get_consumergroups(state: State, output_format: str):
 
 
 @get.command("topics")
-@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics, required=False)
+@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics)
 @output_format_option
 @default_options
 def get_topics(state: State, prefix: str, output_format: str):
@@ -460,20 +467,13 @@ def get_topics(state: State, prefix: str, output_format: str):
 
 
 @esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
-@click.argument("topic", required=True)
-@click.option("-f", "--from", "from_context", help="Source Context", type=click.STRING, required=False)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize, required=False)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
-@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
-@click.option(
-    "-c",
-    "--consumergroup",
-    help="Consumergroup to store the offset in",
-    type=click.STRING,
-    default=None,
-    required=False,
-)
+@click.argument("topic", autocompletion=list_topics)
+@click.option("-f", "--from", "from_context", help="Source Context", autocompletion=list_contexts, type=click.STRING)
+@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING)
+@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.")
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", is_flag=True)
+@click.option("-c", "--consumergroup", help="Consumer group to store the offset in", type=click.STRING, default=None)
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition",
@@ -561,17 +561,16 @@ def consume(
 
 
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
-@click.argument("topic", required=True)
+@click.argument("topic", autocompletion=list_contexts)
 @click.option(
     "-d",
     "--directory",
     metavar="<directory>",
     help="Sets the directory that contains Kafka messages",
     type=click.STRING,
-    required=False,
 )
-@click.option("-t", "--to", "to_context", help="Destination Context", type=click.STRING, required=False)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING, required=False)
+@click.option("-t", "--to", "to_context", help="Destination Context", autocompletion=list_contexts, type=click.STRING)
+@click.option("-m", "--match", help="Message filtering expression", type=click.STRING)
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
