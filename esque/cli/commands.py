@@ -502,10 +502,9 @@ def consume(
     consumergroup_prefix = "group_for_"
 
     if directory and write_to_stdout:
-        click.echo("Cannot write to a directory and STDOUT, please pick one!")
-        exit(1)
-    if topic not in state.cluster.topic_controller.list_topics():
-        raise TopicDoesNotExistException(f"Topic {topic} does not exist!")
+        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+    if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
+        raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     if not consumergroup:
         consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
