@@ -19,7 +19,7 @@ class Broker(KafkaResource):
 
     @classmethod
     def from_host(cls, cluster, host: str) -> "Broker":
-        brokers = [broker for broker in cluster.get_metadata().brokers.values() if broker.host == host]
+        brokers = [broker for broker in cluster.brokers if broker["host"] == host]
         if len(brokers) > 1:
             raise ValueError(
                 f"Broker host name {host} is not unique! Please provide with port number i.e. {host}:port."
@@ -28,14 +28,14 @@ class Broker(KafkaResource):
             raise ValueError(f"There is no broker with {host} as host name!")
         else:
             broker = brokers[0]
-            return cls(cluster, broker_id=broker.id, host=host, port=broker.port)
+            return cls(cluster, broker_id=broker["id"], host=host, port=broker["port"])
 
     @classmethod
     def from_host_and_port(cls, cluster, host: str, port: int) -> "Broker":
-        brokers = cluster.get_metadata().brokers.values()
+        brokers = cluster.brokers
         for broker in brokers:
-            if broker.host == host and broker.port == port:
-                return cls(cluster, broker_id=broker.id, host=host, port=port)
+            if broker["host"] == host and broker["port"] == port:
+                return cls(cluster, broker_id=broker["id"], host=host, port=port)
 
     @classmethod
     def from_attributes(cls, cluster, broker_id: int, host: str, port: int) -> "Broker":
