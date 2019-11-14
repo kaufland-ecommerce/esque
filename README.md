@@ -30,11 +30,11 @@ We feel that the goal of `esque` embodies the principle: “**keep easy things e
 
 * Support for any type of Kafka deployment >1.2
 * Display Resources (Topics, Consumergroups, Brokers)
-* Get detailed Overviews of Resources (Topics, Consumergroups, Brokers)
+* Get detailed Overviews of Resources (Topics, Consumer Groups, Brokers)
 * Create/Delete Topics
 * Edit Topic Configurations
 * Edit Consumer Offset for Topics
-* SASL/SSL Support support out of the box
+* SASL/SSL Support out of the box
 * Consume and Produce to and from Avro and Plaintext Topics (including Avro Schema Resolution from Schema Registry)
 * Context Switch (Easily Switch between pre-defined Clusters)
 * Kafka Ping (Test roundtrip time to your kafka cluster)
@@ -56,8 +56,8 @@ Options:
 
 Commands:
   apply     Apply a set of topic configurations.
-  config    Configuration-related options
-  consume   Consume messages of a topic from one environment to a file or...
+  config    Configuration-related options.
+  consume   Consume messages from a topic.
   create    Create a new instance of a resource.
   ctx       Switch clusters.
   delete    Delete a resource.
@@ -120,7 +120,7 @@ is given with the option -f or --file.
 In the current version only topic configurations can be
 changed and specified.
 
-It has to use the schema, which is used 
+It has to use the same schema, which is used 
 for the following example:
 
 ```yaml
@@ -172,7 +172,7 @@ make integration-test
 
 #### Unit Tests
 
-If you just want the unit tests simply run:
+If you only want the unit tests, just run:
  
 ```bash
 make test
