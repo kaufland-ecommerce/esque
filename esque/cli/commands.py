@@ -423,19 +423,23 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
+@click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
 @output_format_option
 @default_options
-def describe_broker(state, broker_id, output_format):
-    if broker_id.isdigit():
-        broker = Broker.from_id(state.cluster, broker_id).describe()
+def describe_broker(state, broker, output_format):
+    if broker.isdigit():
+        broker = Broker.from_id(state.cluster, broker).describe()
+    elif ":" not in broker:
+        broker = Broker.from_host(state.cluster, broker).describe()
     else:
         try:
-            host, port = broker_id.split(":")
+            host, port = broker.split(":")
             broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
         except ValueError:
-            click.echo("broker-id must either be an integer or in the form 'host:port'")
-            sys.exit(1)
+            raise ValidationException(
+                "BROKER must either be the broker id (int), the hostname (str), or in the form 'host:port' (str)"
+            )
+
     click.echo(format_output(broker, output_format))
 
 
