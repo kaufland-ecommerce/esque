@@ -503,7 +503,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     "--consumergroup",
     help="Consumergroup to store the offset in",
     type=click.STRING,
-    autocomplete=list_consumergroups,
+    autocompletion=list_consumergroups,
     default=None,
 )
 @click.option(
