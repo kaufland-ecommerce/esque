@@ -29,7 +29,7 @@ jobs:
           poetry config repositories.devpi http://localhost:3141/root/stable/
       - name: Test publish
         run: |
-          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          export123 VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           poetry build
           poetry publish --repository devpi --username root --password root
           pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
@@ -42,6 +42,7 @@ jobs:
 #          password: ${{ secrets.PYPI_PASSWORD }}
   draft-release:
     name: Draft release
+    if: success()
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
