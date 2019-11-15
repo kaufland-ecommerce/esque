@@ -4,7 +4,6 @@ on:
     branches:
       - 61-installation-and-packaging
 
-
 jobs:
   publish-to-pypi:
     name: Publish to pypi
@@ -30,7 +29,6 @@ jobs:
           poetry config repositories.devpi http://localhost:3141/root/stable/
       - name: Test publish
         run: |
-          poetry version
           export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           poetry build
           poetry publish --repository devpi --username root --password root

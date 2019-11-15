@@ -316,6 +316,7 @@ test = ["lz4 (2.1.10)", "lz4tools (1.3.1.2)", "mock", "parameterized (0.7.0)", "
 reference = "19d87f8286eb24fba98df2453f2b65db1ae996c8"
 type = "git"
 url = "https://github.com/real-digital/pykafka.git"
+
 [[package]]
 category = "dev"
 description = "Python parsing module"
@@ -443,7 +444,7 @@ version = "0.8.5"
 widechars = ["wcwidth"]
 
 [[package]]
-category = "dev"
+category = "main"
 description = "Python Library for Tom's Obvious, Minimal Language"
 name = "toml"
 optional = false
@@ -499,7 +500,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [metadata]
-content-hash = "611fe0d3b961e7fb7518ca6bfde2d860287e4a1d486edb1ede5811db3812b782"
+content-hash = "408690e8b3efc04d2b991a30e1715c2ee8e1a34fb7fe18bf22c6c41b29599d70"
 python-versions = "^3.6"
 
 [metadata.files]
