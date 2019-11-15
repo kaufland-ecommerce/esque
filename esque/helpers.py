@@ -1,13 +1,15 @@
 import functools
+import logging
 from concurrent.futures import Future, wait
 from itertools import islice
 
-import click
 import confluent_kafka
 import pendulum
 from confluent_kafka.cimpl import KafkaError, Message
 
 from esque.errors import FutureTimeoutException, raise_for_kafka_error
+
+log = logging.getLogger(__name__)
 
 
 def invalidate_cache_before(func):
@@ -52,9 +54,9 @@ def unpack_confluent_config(config):
     return {v.name: v.value for k, v in sorted(config.items())}
 
 
-def delivery_callback(err: KafkaError, msg: Message):
+def log_error(err: KafkaError, msg: Message):
     if err is not None:
-        click.echo(f"EXCEPTION: When sending {msg.key()}: {err.str()}")
+        log.error(f"EXCEPTION: When sending {msg.key()}: {err.str()}")
 
 
 def delta_t(start: pendulum.DateTime) -> str:

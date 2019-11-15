@@ -11,7 +11,8 @@ import pendulum
 from confluent_kafka.avro import AvroProducer
 
 from esque.config import Config
-from esque.helpers import delivery_callback, delta_t
+from esque.errors import raise_for_kafka_error
+from esque.helpers import delta_t, log_error
 from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader, deserialize_message
 from esque.ruleparser.ruleengine import RuleTree
@@ -40,8 +41,8 @@ class AbstractProducer(ABC):
     def _setup_config(self):
         self._config.update(
             {
-                "on_delivery": delivery_callback,
-                # "error_cb": raise_for_kafka_error, # TODO, disabled for testing
+                "on_delivery": raise_for_kafka_error,
+                "error_cb": log_error,
                 "queue.buffering.max.messages": str(self.queue_length),
             }
         )
