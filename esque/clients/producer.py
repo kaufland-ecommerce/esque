@@ -101,12 +101,12 @@ class StdInProducer(AbstractProducer):
 
 
 class FileProducer(AbstractProducer):
-    def __init__(self, topic_name: str, working_dir: pathlib.Path, match: str = None):
+    def __init__(self, topic_name: str, input_directory: pathlib.Path, match: str = None):
         super().__init__(topic_name=topic_name, match=match)
-        self.working_dir = working_dir
+        self.input_directory = input_directory
 
     def produce(self) -> int:
-        path_list = glob(str(self.working_dir / "partition_*"))
+        path_list = glob(str(self.input_directory / "partition_*"))
         counter = 0
         for partition_path in path_list:
             with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
@@ -150,15 +150,15 @@ class ProducerFactory:
     def create_producer(
         self,
         topic_name: str,
-        working_dir: pathlib.Path,
+        input_directory: pathlib.Path,
         avro: bool,
         match: str = None,
         ignore_stdin_errors: bool = False,
     ):
-        if working_dir is None:
+        if input_directory is None:
             producer = StdInProducer(topic_name=topic_name, match=match, ignore_errors=ignore_stdin_errors)
         elif avro:
-            producer = AvroFileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
+            producer = AvroFileProducer(topic_name=topic_name, input_directory=input_directory, match=match)
         else:
-            producer = FileProducer(topic_name=topic_name, working_dir=working_dir, match=match)
+            producer = FileProducer(topic_name=topic_name, input_directory=input_directory, match=match)
         return producer

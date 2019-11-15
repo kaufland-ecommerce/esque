@@ -273,7 +273,8 @@ def edit_topic(state: State, topic_name: str):
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
 @click.option(
     "--offset-to-timestamp",
-    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss (NOTE: this can be a very expensive operation).",
+    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss "
+    "(NOTE: this can be a very expensive operation).",
     type=click.STRING,
     required=False,
 )
@@ -493,7 +494,8 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 @output_format_option
 @default_options
 def describe_broker(state: State, broker: str, output_format: str):
-    """Return configuration options for broker BROKER_ID."""
+    """Return configuration options for broker BROKER. BROKER can be given with broker id (integer),
+    the host name (if hostname is unique), or socket address ('hostname:port')"""
     if broker.isdigit():
         broker = Broker.from_id(state.cluster, broker).describe()
     elif ":" not in broker:
@@ -503,9 +505,7 @@ def describe_broker(state: State, broker: str, output_format: str):
             host, port = broker.split(":")
             broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
         except ValueError:
-            raise ValidationException(
-                "BROKER must either be the broker id (int), the hostname (str), or in the form 'host:port' (str)"
-            )
+            raise ValidationException("BROKER must either be the broker id, the hostname, or in the form 'host:port'")
 
     click.echo(format_output(broker, output_format))
 
@@ -636,39 +636,37 @@ def consume(
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
-    # Copy source_topic to destination_topic.
-    esque consume --stdout source_topic | esque produce --stdin destination_topic
+    # Copy source_topic in first context to destination_topic in second-context.
+    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     consumergroup_prefix = "group_for_"
 
-    if directory and write_to_stdout:
-        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+    if not from_context:
+        from_context = state.config.current_context
+    state.config.context_switch(from_context)
+
     if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
+    if directory and write_to_stdout:
+        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
 
     if not consumergroup:
         consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
     if not directory:
         directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
-    working_dir = Path(directory)
-
-    if not from_context:
-        from_context = state.config.current_context
-    if not write_to_stdout and from_context != state.config.current_context:
-        click.echo(f"Switching to context: {from_context}.")
-    state.config.context_switch(from_context)
+    output_directory = Path(directory)
 
     if not write_to_stdout:
-        click.echo("Creating directory " + blue_bold(working_dir.absolute().name) + " if it does not exist.")
-        working_dir.mkdir(parents=True, exist_ok=True)
-        click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+        click.echo(f"Creating directory {blue_bold(str(output_directory))} if it does not exist.")
+        output_directory.mkdir(parents=True, exist_ok=True)
+        click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}")
     if preserve_order:
         partitions = []
         for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
             partitions.append(partition.partition_id)
         total_number_of_consumed_messages = consume_to_file_ordered(
-            working_dir=working_dir,
+            output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             partitions=partitions,
@@ -680,7 +678,7 @@ def consume(
         )
     else:
         total_number_of_consumed_messages = consume_to_files(
-            working_dir=working_dir,
+            output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             numbers=numbers,
@@ -691,7 +689,7 @@ def consume(
         )
 
     if not write_to_stdout:
-        click.echo("Output generated to " + blue_bold(directory))
+        click.echo(f"Output generated to {blue_bold(str(output_directory))}")
         if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
@@ -710,7 +708,7 @@ def consume(
     "-d",
     "--directory",
     metavar="<directory>",
-    help="Directory that contains the Kafka messages.",
+    help="Directory containing Kafka messages.",
     type=click.STRING,
     required=False,
 )
@@ -772,54 +770,58 @@ def produce(
 
        \b
        # Copy source_topic to destination_topic.
-       esque consume --stdout source_topic | esque produce --stdin destination_topic
+       esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
        """
     if directory is None and not read_from_stdin:
-        click.echo("You have to provide a directory or use the --stdin flag")
-    else:
-        if not to_context:
-            to_context = state.config.current_context
-        state.config.context_switch(to_context)
-        if directory is not None:
-            working_dir = Path(directory)
-            if not working_dir.exists():
-                raise ValueError(f"Directory {directory} does not exist!")
-        stdin = click.get_text_stream("stdin")
-        if read_from_stdin and isatty(stdin):
-            click.echo(
-                "Type the messages to produce, "
-                + ("in JSON format, " if not ignore_stdin_errors else "")
-                + blue_bold("one per line")
-                + ". End with "
-                + blue_bold("CTRL+D")
-            )
-        elif read_from_stdin and not isatty(stdin):
-            click.echo("Reading messages from an external source, " + blue_bold("one per line"))
-        else:
-            click.echo(
-                "Producing from directory "
-                + directory
-                + " to topic "
-                + blue_bold(topic)
-                + " in target context "
-                + blue_bold(to_context)
-            )
-        producer = ProducerFactory().create_producer(
-            topic_name=topic,
-            working_dir=working_dir if not read_from_stdin else None,
-            avro=avro,
-            match=match,
-            ignore_stdin_errors=ignore_stdin_errors,
-        )
-        total_number_of_messages_produced = producer.produce()
+        raise ValueError("You have to provide a directory or use the --stdin flag")
+
+    if directory is not None:
+        input_directory = Path(directory)
+        if not input_directory.exists():
+            raise ValueError(f"Directory {directory} does not exist!")
+
+    if not to_context:
+        to_context = state.config.current_context
+    state.config.context_switch(to_context)
+
+    topic_controller = state.cluster.topic_controller
+    if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
+        click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
+        ensure_approval(f"Would you like to create it now?")
+        topic_controller.create_topics([Topic(topic)])
+
+    stdin = click.get_text_stream("stdin")
+    if read_from_stdin and isatty(stdin):
         click.echo(
-            green_bold(str(total_number_of_messages_produced))
-            + " messages successfully produced to topic "
-            + blue_bold(topic)
-            + " in context "
-            + blue_bold(to_context)
-            + "."
+            "Type the messages to produce, "
+            + ("in JSON format, " if not ignore_stdin_errors else "")
+            + blue_bold("one per line")
+            + ". End with "
+            + blue_bold("CTRL+D")
         )
+    elif read_from_stdin and not isatty(stdin):
+        click.echo(f"Reading messages from an external source, {blue_bold('one per line')})")
+    else:
+        click.echo(
+            f"Producing from directory {blue_bold(directory)} to topic {blue_bold(topic)}"
+            f" in target context {blue_bold(to_context)}"
+        )
+    producer = ProducerFactory().create_producer(
+        topic_name=topic,
+        input_directory=input_directory if not read_from_stdin else None,
+        avro=avro,
+        match=match,
+        ignore_stdin_errors=ignore_stdin_errors,
+    )
+    total_number_of_messages_produced = producer.produce()
+    click.echo(
+        green_bold(str(total_number_of_messages_produced))
+        + " messages successfully produced to topic "
+        + blue_bold(topic)
+        + " in context "
+        + blue_bold(to_context)
+        + "."
+    )
 
 
 @esque.command("ping")
