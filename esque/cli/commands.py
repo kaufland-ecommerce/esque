@@ -599,8 +599,7 @@ def consume(
 
 
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
-@click.argument("topic", autocompletion=
-                ontexts)
+@click.argument("topic", autocompletion=list_topics)
 @click.option(
     "-d",
     "--directory",
