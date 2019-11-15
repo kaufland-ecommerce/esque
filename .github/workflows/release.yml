@@ -42,12 +42,12 @@ jobs:
           poetry publish --repository devpi --username root --password root
           pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
           esque --recreate-config --no-verify
-      - name: Publish esque to PyPI
-        if: success()
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          user: ${{ secrets.PYPI_USER }}
-          password: ${{ secrets.PYPI_PASSWORD }}
+#      - name: Publish esque to PyPI
+#        if: success()
+#        uses: pypa/gh-action-pypi-publish@master
+#        with:
+#          user: ${{ secrets.PYPI_USER }}
+#          password: ${{ secrets.PYPI_PASSWORD }}
   draft-release:
     name: Draft release
     runs-on: ubuntu-latest
