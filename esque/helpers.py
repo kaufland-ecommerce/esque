@@ -5,7 +5,7 @@ from itertools import islice
 
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import KafkaError, Message
+from confluent_kafka.cimpl import KafkaError
 
 from esque.errors import FutureTimeoutException, raise_for_kafka_error
 
@@ -54,9 +54,9 @@ def unpack_confluent_config(config):
     return {v.name: v.value for k, v in sorted(config.items())}
 
 
-def log_error(err: KafkaError, msg: Message):
+def log_error(err: KafkaError):
     if err is not None:
-        log.error(f"EXCEPTION: When sending {msg.key()}: {err.str()}")
+        log.error(f"KafkaError occured: {err.str()}")
 
 
 def delta_t(start: pendulum.DateTime) -> str:

@@ -86,7 +86,7 @@ jobs:
           sleep 5
       - name: Run integration tests
         run: |
-          poetry run -- pytest --integration --local tests/integration/
+          poetry run -- pytest -v --integration --local tests/integration/
       - name: Output logs
         if: failure()
         run: |
