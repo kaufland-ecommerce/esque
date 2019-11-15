@@ -27,7 +27,7 @@ class State(object):
 
     def _create_config(self):
         try:
-            self._config = Config()
+            self._config = Config.get_instance()
         except ConfigNotExistsException:
             click.echo(f"No config provided in {config_dir()}")
             if ensure_approval(f"Should a sample file be created in {config_dir()}"):
@@ -37,7 +37,7 @@ class State(object):
                 raise
             if ensure_approval("Do you want to modify the config file now?"):
                 click.edit(filename=config_path().as_posix())
-            self._config = Config()
+            self._config = Config.get_instance()
 
     @property
     def cluster(self):
@@ -123,7 +123,9 @@ def error_handler(f):
 def _silence_exception(e: Exception):
     if hasattr(e, "format_message"):
         click.echo(e.format_message())
+    elif isinstance(e, (KeyError, ValueError)):
+        click.echo(f"{type(e).__name__}: {str(e)}")
     else:
-        click.echo(f"Exception of type {type(e).__name__} occured.")
+        click.echo(f"Exception of type {type(e).__name__} occurred.")
     click.echo("Run with `--verbose` for complete error.")
     sys.exit(1)

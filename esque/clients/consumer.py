@@ -37,7 +37,7 @@ class AbstractConsumer(ABC):
         offset_reset = "earliest"
         if self._last:
             offset_reset = "latest"
-        self._config = Config().create_confluent_config()
+        self._config = Config.get_instance().create_confluent_config()
         self._config.update(
             {
                 "group.id": self._group_id,
@@ -201,7 +201,7 @@ class AvroFileConsumer(PlaintextConsumer):
         super().__init__(
             group_id, topic_name, working_dir, last, match, initialize_default_output_directory, enable_auto_commit
         )
-        self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
+        self.schema_registry_client = SchemaRegistryClient(Config.get_instance().schema_registry)
         self.writers[-1] = (
             StdOutAvroWriter(schema_registry_client=self.schema_registry_client)
             if working_dir is None
