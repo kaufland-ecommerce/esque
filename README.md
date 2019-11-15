@@ -52,7 +52,6 @@ In the Kafka world nothing is easy, but esque (pronounced esk) is an
 attempt at it.
 
 Options:
---recreate-config   Overwrites the config with the sample config.
 --version           Show the version and exit.
 -v, --verbose       Return stack trace on error.
 --no-verify         Skip all verification dialogs and answer them with yes.
