@@ -30,7 +30,7 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import ValidationException, TopicDoesNotExistException
+from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
@@ -689,7 +689,10 @@ def ping(state: State, times: int, wait: int):
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
-        topic_controller.create_topics([Topic(PING_TOPIC)])
+        try:
+            topic_controller.create_topics([Topic(PING_TOPIC)])
+        except TopicAlreadyExistsException:
+            pass
         producer = PingProducer(PING_TOPIC)
         consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
@@ -701,9 +704,8 @@ def ping(state: State, times: int, wait: int):
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)
     except KeyboardInterrupt:
-        pass
-    finally:
-        topic_controller.delete_topic(Topic(PING_TOPIC))
-        click.echo("--- statistics ---")
-        click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+        return
+    topic_controller.delete_topic(Topic(PING_TOPIC))
+    click.echo("--- statistics ---")
+    click.echo(f"{len(deltas)} messages sent/received")
+    click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")

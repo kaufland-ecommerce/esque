@@ -1,0 +1,94 @@
+name: Build, test and package esque
+on: push
+
+jobs:
+  test-style:
+    name: Code style check on ${{ matrix.os }} with Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.6']
+        os: ['ubuntu-latest']
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Install required packages
+        run: pip3 install pre-commit
+      - name: Install pre-commit hooks
+        run: pre-commit install --install-hooks
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+  test-integration:
+    name: Integration test with Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.6', '3.7', '3.8' ]
+        librdkafka: ['1.1.0']
+      max-parallel: 1
+    steps:
+      - uses: actions/checkout@v1
+      - name: Fetch virtualenv cache
+        uses: actions/cache@v1
+        id: venv-cache
+        with:
+          path: .venv
+          key: venv-${{ matrix.python }}-${{ hashFiles('poetry.lock') }}
+      - name: Fetch cache for librdkafka
+        if: matrix.python == '3.8'
+        uses: actions/cache@v1
+        id: rdkafka-cache
+        with:
+          path: librdkafka
+          key: librdkafka-${{ matrix.librdkafka }}
+      - name: Setup python and install packages
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python }}
+          architecture: x64
+      - name: Download and compile librdkafka
+        if: matrix.python == '3.8' && steps.rdkafka-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install libsasl2-dev libsasl2-modules libssl-dev
+          git clone --branch "v${{ matrix.librdkafka }}" --depth 1 https://github.com/edenhill/librdkafka.git
+          pushd librdkafka
+          sudo ./configure --prefix /usr
+          sudo make
+          popd
+      - name: Install librdkafka
+        if: matrix.python == '3.8'
+        run: |
+          pushd librdkafka
+          sudo make install
+          popd
+      - name: Install and configure poetry
+        run: |
+          pip3 install "poetry==1.0.0b3"
+          poetry config virtualenvs.in-project true
+      - name: Install esque requirements
+        run: |
+          poetry install -vvv
+      - name: Run unit tests
+        run: |
+          poetry run -- pytest tests/unit/
+      - name: Run kafka stack
+        run: |
+          docker-compose up -d
+          ./scripts/wait-for-it.sh localhost:9092 -t 60
+          ./scripts/wait-for-it.sh localhost:2181 -t 60
+          ./scripts/wait-for-it.sh localhost:8081 -t 60
+          sleep 5
+      - name: Run integration tests
+        run: |
+          poetry run -- pytest -v --integration --local tests/integration/
+      - name: Output logs
+        if: failure()
+        run: |
+          docker-compose logs kafka
+          docker-compose logs zookeeper

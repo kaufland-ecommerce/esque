@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.1.4a"
+version = "0.2.0-alpha.0"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -44,6 +44,7 @@ pykafka = {git = "https://github.com/real-digital/pykafka.git", branch="feature/
 pyyaml = "^5.1"
 requests = "^2.22"
 yamale = "^2.0"
+toml = "^0.10.0"
 
 # Dev Dependencies
 [tool.poetry.dev-dependencies]
