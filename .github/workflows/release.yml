@@ -16,14 +16,9 @@ jobs:
         with:
           python-version: '3.6'
           architecture: x64
-      - name: Install required packages
-        run: |
-          sudo pip3 install pep517
-          python3 -m pep517.build --source --binary --out-dir dist/
-        shell: bash
       - name: Prepare environment for test publish
         run: |
-          pip install poetry devpi-server devpi "pluggy<1,>=0.12.0"
+          pip install "poetry==1.0.0b3" devpi-server devpi "pluggy<1,>=0.12.0"
           devpi-server --serverdir=/tmp/devpi --init
           devpi-server --serverdir=/tmp/devpi --start
           scripts/wait-for-it.sh localhost:3141 -t 60
@@ -32,7 +27,6 @@ jobs:
           devpi index -c root/stable bases=root/pypi volatile=True
           devpi user -m root password="root"
           mkdir -p ${HOME}/.esque
-          touch ${HOME}/.esque/esque.cfg
           poetry config repositories.devpi http://localhost:3141/root/stable/
       - name: Test publish
         run: |
