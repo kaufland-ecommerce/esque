@@ -123,7 +123,9 @@ def error_handler(f):
 def _silence_exception(e: Exception):
     if hasattr(e, "format_message"):
         click.echo(e.format_message())
+    elif isinstance(e, (KeyError, ValueError)):
+        click.echo(f"{type(e).__name__}: {str(e)}")
     else:
-        click.echo(f"Exception of type {type(e).__name__} occured.")
+        click.echo(f"Exception of type {type(e).__name__} occurred.")
     click.echo("Run with `--verbose` for complete error.")
     sys.exit(1)
