@@ -19,7 +19,6 @@ jobs:
           python-version: '3.6'
           architecture: x64
       - name: Check version change
-        if: github.event_name == 'pull_request'
         run: |
           VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
           LATEST_TAGS="$(git tag -l --points-at HEAD)"
@@ -32,7 +31,7 @@ jobs:
           echo "The version (${VERSION}) does not match any of the tags (${LATEST_TAGS})"
           exit 1)
       - name: Prepare environment for test publish
-        if: success() && github.event_name == 'push'
+        if: success()
         run: |
           pip install "poetry==1.0.0b3" devpi-server devpi "pluggy<1,>=0.12.0"
           devpi-server --serverdir=/tmp/devpi --init
@@ -46,7 +45,7 @@ jobs:
           poetry config repositories.devpi http://localhost:3141/root/stable/
           poetry config repositories.testpypi http://test.pypi.org/legacy
       - name: Publish to devpi
-        if: success() && github.event_name == 'push'
+        if: success()
         run: |
           export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           poetry build
