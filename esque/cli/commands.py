@@ -803,7 +803,7 @@ def produce(
         click.echo(f"Reading messages from an external source, {blue_bold('one per line')})")
     else:
         click.echo(
-            f"Producing from directory {blue_bold(directory)} to topic {blue_bold(topic)}"
+            f"Producing from directory {blue_bold(str(directory))} to topic {blue_bold(topic)}"
             f" in target context {blue_bold(to_context)}"
         )
     producer = ProducerFactory().create_producer(
