@@ -21,8 +21,16 @@ jobs:
       - name: Check version change
         if: github.event_name == 'pull_request'
         run: |
-          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
+          LATEST_TAGS="$(git tag -l --points-at HEAD)"
           ! pip3 install esque==blork 2>&1 | grep -oE "${VERSION}($|,)"
+          (for tag in ${LATEST_TAGS}; do
+            if test "${tag}" == "v${VERSION}"; then
+              exit 0
+            fi
+          done
+          echo "The version (${VERSION}) does not match any of the tags (${LATEST_TAGS})"
+          exit 1)
       - name: Prepare environment for test publish
         if: success()
         run: |
