@@ -1,0 +1,66 @@
+name: Publish esque
+on:
+  push:
+    branches:
+      - release
+
+
+jobs:
+  publish-to-pypi:
+    name: Publish to pypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Setup python and install packages
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.6'
+          architecture: x64
+      - name: Install required packages
+        run: |
+          sudo pip3 install pep517
+          python3 -m pep517.build --source --binary --out-dir dist/
+        shell: bash
+      - name: Prepare environment for test publish
+        run: |
+          pip install poetry devpi-server devpi "pluggy<1,>=0.12.0"
+          devpi-server --serverdir=/tmp/devpi --init
+          devpi-server --serverdir=/tmp/devpi --start
+          scripts/wait-for-it.sh localhost:3141 -t 60
+          devpi use http://localhost:3141
+          devpi login root --password=
+          devpi index -c root/stable bases=root/pypi volatile=True
+          devpi user -m root password="root"
+          mkdir -p ${HOME}/.esque
+          touch ${HOME}/.esque/esque.cfg
+          poetry config repositories.devpi http://localhost:3141/root/stable/
+      - name: Test publish
+        run: |
+          poetry version
+          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          poetry build
+          poetry publish --repository devpi --username root --password root
+          pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
+          esque --recreate-config --no-verify
+      - name: Publish esque to PyPI
+        if: success()
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: ${{ secrets.PYPI_USER }}
+          password: ${{ secrets.PYPI_PASSWORD }}
+  draft-release:
+    name: Draft release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: 'false'
+          prerelease: 'false'
