@@ -18,9 +18,7 @@ jobs:
           python-version: ${{ matrix.python }}
           architecture: x64
       - name: Install required packages
-        run: |
-          sudo apt-get install -y python3-setuptools python3-virtualenv python3-pip virtualenv python3-venv
-          pip3 install pre-commit
+        run: pip3 install pre-commit
       - name: Install pre-commit hooks
         run: pre-commit install --install-hooks
       - name: Run pre-commit hooks
@@ -54,9 +52,6 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
-      - name: Install required packages
-        run: |
-          pip3 install pre-commit
       - name: Download and compile librdkafka
         if: matrix.python == '3.8' && steps.rdkafka-cache.outputs.cache-hit != 'true'
         run: |
@@ -75,7 +70,7 @@ jobs:
       - name: Install and configure poetry
         run: |
           pip3 install "poetry==1.0.0b3"
-          poetry config settings.virtualenvs.in-project true
+          poetry config virtualenvs.in-project true
       - name: Install esque requirements
         run: |
           poetry install -vvv
