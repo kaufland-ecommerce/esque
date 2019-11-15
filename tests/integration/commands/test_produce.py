@@ -1,5 +1,4 @@
-from typing import Tuple
-
+import confluent_kafka
 import pytest
 from _pytest.tmpdir import TempdirFactory
 from click.testing import CliRunner
@@ -7,6 +6,7 @@ from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
 from esque.cli.commands import produce
 from esque.clients.consumer import ConsumerFactory
+from esque.errors import TopicDoesNotExistException
 from tests.integration.test_clients import produce_test_messages, get_consumed_messages
 
 
@@ -43,3 +43,15 @@ def test_plain_text_consume_and_produce_newly_created_topic(
     consumed_messages = get_consumed_messages(assertion_check_directory, False)
 
     assert produced_messages == consumed_messages
+
+
+@pytest.mark.integration
+def test_produce_to_non_existant_topic_fails(
+    confluent_admin_client: confluent_kafka.admin.AdminClient, interactive_cli_runner: CliRunner, topic_id: str
+):
+    target_topic_id = topic_id
+
+    result = interactive_cli_runner.invoke(produce, args=["--stdin", target_topic_id], input="n\n")
+    assert isinstance(result.exception, TopicDoesNotExistException)
+    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert target_topic_id not in topics

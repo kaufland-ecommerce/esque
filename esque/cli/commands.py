@@ -121,7 +121,7 @@ def fallback_to_stdin(ctx, args, value):
     else:
         stdin_arg = value
     if not stdin_arg:
-        raise MissingParameter("No value specified")
+        raise MissingParameter("No value specified!")
 
     return stdin_arg
 
@@ -217,7 +217,7 @@ def create_topic(state: State, topic_name: str, like: str):
     from which all the configuration options will be copied.
     """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo("Aborted")
+        click.echo("Aborted!")
         return
 
     topic_controller = state.cluster.topic_controller
@@ -642,14 +642,15 @@ def consume(
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     consumergroup_prefix = "group_for_"
 
+    if directory and write_to_stdout:
+        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+
     if not from_context:
         from_context = state.config.current_context
     state.config.context_switch(from_context)
 
     if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
-    if directory and write_to_stdout:
-        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
 
     if not consumergroup:
         consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
@@ -660,7 +661,7 @@ def consume(
     if not write_to_stdout:
         click.echo(f"Creating directory {blue_bold(str(output_directory))} if it does not exist.")
         output_directory.mkdir(parents=True, exist_ok=True)
-        click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}")
+        click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
     if preserve_order:
         partitions = []
         for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
@@ -773,7 +774,7 @@ def produce(
        esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
        """
     if directory is None and not read_from_stdin:
-        raise ValueError("You have to provide a directory or use the --stdin flag")
+        raise ValueError("You have to provide a directory or use the --stdin flag.")
 
     if directory is not None:
         input_directory = Path(directory)
@@ -787,8 +788,10 @@ def produce(
     topic_controller = state.cluster.topic_controller
     if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
         click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
-        ensure_approval(f"Would you like to create it now?")
-        topic_controller.create_topics([Topic(topic)])
+        if ensure_approval(f"Would you like to create it now?"):
+            topic_controller.create_topics([Topic(topic)])
+        else:
+            raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     stdin = click.get_text_stream("stdin")
     if read_from_stdin and isatty(stdin):
@@ -798,9 +801,10 @@ def produce(
             + blue_bold("one per line")
             + ". End with "
             + blue_bold("CTRL+D")
+            + "."
         )
     elif read_from_stdin and not isatty(stdin):
-        click.echo(f"Reading messages from an external source, {blue_bold('one per line')})")
+        click.echo(f"Reading messages from an external source, {blue_bold('one per line')}).")
     else:
         click.echo(
             f"Producing from directory {blue_bold(str(directory))} to topic {blue_bold(topic)}"
@@ -840,7 +844,7 @@ def ping(state: State, times: int, wait: int):
         topic_controller.create_topics([Topic(PING_TOPIC)])
         producer = PingProducer(PING_TOPIC)
         consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
-        click.echo(f"Ping with {state.cluster.bootstrap_servers}")
+        click.echo(f"Pinging with {state.cluster.bootstrap_servers}.")
 
         for i in range(times):
             producer.produce()
@@ -853,5 +857,5 @@ def ping(state: State, times: int, wait: int):
     finally:
         topic_controller.delete_topic(Topic(PING_TOPIC))
         click.echo("--- statistics ---")
-        click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+        click.echo(f"{len(deltas)} messages sent/received.")
+        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms.")
