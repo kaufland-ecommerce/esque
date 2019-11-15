@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - 61-installation-and-packaging
+  pull_request:
+    branches:
+      - 61-installation-and-packaging
 
 jobs:
   publish-to-pypi:
@@ -15,7 +18,13 @@ jobs:
         with:
           python-version: '3.6'
           architecture: x64
+      - name: Check version change
+        if: github.event_name == 'pull_request'
+        run: |
+          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          ! pip3 install esque==blork 2>&1 | grep -oE "${VERSION}($|,)"
       - name: Prepare environment for test publish
+        if: success()
         run: |
           pip install "poetry==1.0.0b3" devpi-server devpi "pluggy<1,>=0.12.0"
           devpi-server --serverdir=/tmp/devpi --init
@@ -27,22 +36,30 @@ jobs:
           devpi user -m root password="root"
           mkdir -p ${HOME}/.esque
           poetry config repositories.devpi http://localhost:3141/root/stable/
-      - name: Test publish
+          poetry config repositories.testpypi http://test.pypi.org/legacy
+      - name: Publish to devpi
+        if: success()
         run: |
-          export123 VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           poetry build
           poetry publish --repository devpi --username root --password root
           pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
-          esque --recreate-config --no-verify
-#      - name: Publish esque to PyPI
+          esque --help
+      - name: Publish to test pypi
+        if: success()
+        run: |
+          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          poetry build
+          poetry publish --repository devpi --username "${{ secrets.TEST_PYPI_USER }}" --password "${{ secrets.TEST_PYPI_PASSWORD }}"
+#      - name: Publish to pypi
 #        if: success()
-#        uses: pypa/gh-action-pypi-publish@master
-#        with:
-#          user: ${{ secrets.PYPI_USER }}
-#          password: ${{ secrets.PYPI_PASSWORD }}
+#        run: |
+#          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+#          poetry build
+#          poetry publish --username "${{ secrets.PYPI_USER }}" --password "${{ secrets.PYPI_PASSWORD }}"
   draft-release:
     name: Draft release
-    if: success()
+    needs: [ publish-to-pypi ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
