@@ -15,14 +15,14 @@ def test_plain_text_consume_and_produce_newly_created_topic(
     consumer_group: str,
     interactive_cli_runner: CliRunner,
     producer: ConfluenceProducer,
-    source_topic: Tuple[str, int],
+    topic: str,
     topic_id: str,
     tmpdir_factory: TempdirFactory,
 ):
-    source_topic_id, _ = source_topic
+    source_topic_id = topic
     target_topic_id = topic_id
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = produce_test_messages(producer, source_topic)
+    produced_messages = produce_test_messages(producer, (source_topic_id, 1))
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, last=False, avro=False
     )
