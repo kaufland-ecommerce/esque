@@ -381,7 +381,7 @@ def consumer(topic_object: Topic, consumer_group: str, unittest_config: Config):
     _config.update(
         {
             "group.id": consumer_group,
-            # "error_cb": raise_for_kafka_error,
+            # "error_cb": raise_for_kafka_error, # TODO, disabled for testing
             # We need to commit offsets manually once we"re sure it got saved
             # to the sink
             "enable.auto.commit": False,
