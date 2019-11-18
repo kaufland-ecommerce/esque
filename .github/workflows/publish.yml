@@ -28,7 +28,7 @@ jobs:
         if: success() && ${PREVIOUS_TAG} == ${VERSION}
         run: |
           pip install "poetry==1.0.0b3"
-          poetry config repositories.testpypi http://test.pypi.org/legacy
+          poetry config repositories.testpypi http://test.pypi.org/simple
       - name: Publish to test pypi
         if: success() && ${PREVIOUS_TAG} == ${VERSION}
         run: |
@@ -38,7 +38,7 @@ jobs:
         if: success() && ${PREVIOUS_TAG} == ${VERSION}
         run: |
           pushd /tmp
-          pip install -i http://test.pypi.org/legacy --timeout 60 esque==${VERSION}
+          pip install -i http://test.pypi.org/simple --timeout 60 esque==${VERSION}
           esque --help
           popd
       - name: Publish to pypi
