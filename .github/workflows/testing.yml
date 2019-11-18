@@ -1,4 +1,4 @@
-name: Build, test and package esque
+name: Style, Unit And Integration Tests
 on: push
 
 jobs:
@@ -23,8 +23,8 @@ jobs:
         run: pre-commit install --install-hooks
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
-  test-integration:
-    name: Integration test with Python ${{ matrix.python }}
+  test-unit-and-integration:
+    name: Unit and Integration tests with Python ${{ matrix.python }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
