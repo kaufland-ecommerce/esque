@@ -114,16 +114,13 @@ class AbstractConsumer(ABC):
         else:
             return True
 
-    def _assign_exact_partitions(self, topic: str, *, offset: int = 0, partition: int = 0) -> None:
-        self._consumer.assign([TopicPartition(topic=topic, partition=partition, offset=offset)])
-
 
 class MessageConsumer(AbstractConsumer):
-    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
-        super().__init__(group_id, topic_name, last, match)
+    def create_internal_consumer(self):
+        self._consumer = confluent_kafka.Consumer(self._config)
 
     def consume(self, offset: int = 0, partition: int = 0) -> Message:
-        self._assign_exact_partitions(self._topic_name, offset=offset, partition=partition)
+        self.assign_specific_partitions(self._topic_name, partitions=[partition], offset=offset)
         return self._consume_single_message(timeout=1)
 
 
