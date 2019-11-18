@@ -1,10 +1,10 @@
-from typing import Dict, Type
+from typing import Dict, Optional, Type
 
 import pykafka.exceptions
 from confluent_kafka import KafkaError, Message
 
 
-def raise_for_kafka_error(err: KafkaError):
+def raise_for_kafka_error(err: KafkaError, msg: Optional[Message] = None):
     if not err:
         return None
 
@@ -18,7 +18,7 @@ def raise_for_message(message: Message):
     if message is None:
         raise MessageEmptyException
     elif message.error() is not None:
-        raise_for_kafka_error(message.error())
+        raise_for_kafka_error(message.error(), message)
 
 
 class EsqueException(Exception):
