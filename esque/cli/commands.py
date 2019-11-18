@@ -36,14 +36,10 @@ from esque.resources.topic import Topic, copy_to_local
 
 
 @click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
-@click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
 @version_option(__version__)
 @default_options
-def esque(state: State, recreate_config: bool):
-    if recreate_config:
-        config_dir().mkdir(exist_ok=True)
-        if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
-            copyfile(sample_config_path().as_posix(), config_path())
+def esque(state: State):
+    pass
 
 
 @esque.group(help="Get a quick overview of different resources.")
@@ -70,15 +66,21 @@ def delete(state: State):
     pass
 
 
-@esque.group(help="Edit a resource")
+@esque.group(help="Edit a resource.")
 @default_options
 def edit(state: State):
     pass
 
 
-@esque.group(help="Configuration-related options")
+@esque.group(help="Configuration-related options.")
 @default_options
 def config(state: State):
+    pass
+
+
+@esque.group(name="set", help="Set resource attributes.")
+@default_options
+def set_(state: State):
     pass
 
 
@@ -136,6 +138,14 @@ def ctx(state: State, context: str):
         state.config.context_switch(context)
         state.config.save()
         click.echo(f"Switched to context: {context}")
+
+
+@config.command("recreate")
+@default_options
+def config_recreate(state: State):
+    config_dir().mkdir(exist_ok=True)
+    if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
+        copyfile(sample_config_path().as_posix(), config_path())
 
 
 @config.command("autocomplete", help="Generate the autocompletion script.")
@@ -222,7 +232,7 @@ def edit_topic(state: State, topic_name: str):
         click.echo("canceled")
 
 
-@edit.command("consumergroup")
+@set_.command("offsets")
 @click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
 @click.option(
     "-t",
@@ -243,7 +253,7 @@ def edit_topic(state: State, topic_name: str):
     "--offset-from-group", help="Copy all offsets from an existing consumer group.", type=click.STRING, required=False
 )
 @default_options
-def edit_consumergroup(
+def set_offsets(
     state: State,
     consumer_id: str,
     topic_name: str,
