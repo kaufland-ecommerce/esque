@@ -78,9 +78,9 @@ def config(state: State):
     pass
 
 
-@esque.group(help="Set resource attributes.")
+@esque.group(name="set", help="Set resource attributes.")
 @default_options
-def set(state: State):
+def set_(state: State):
     pass
 
 
@@ -232,7 +232,7 @@ def edit_topic(state: State, topic_name: str):
         click.echo("canceled")
 
 
-@set.command("offsets")
+@set_.command("offsets")
 @click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
 @click.option(
     "-t",
