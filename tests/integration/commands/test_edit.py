@@ -8,7 +8,7 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import edit_consumergroup, edit_topic
+from esque.cli.commands import edit_topic, set_offsets
 from esque.clients.consumer import ConsumerFactory
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
@@ -96,7 +96,7 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
 
 
 @pytest.mark.integration
-def test_edit_consumergroup_offset_to_absolute_value(
+def test_set_offsets_offset_to_absolute_value(
     topic: str,
     produced_messages_same_partition,
     interactive_cli_runner,
@@ -128,7 +128,7 @@ def test_edit_consumergroup_offset_to_absolute_value(
     )
 
     interactive_cli_runner.invoke(
-        edit_consumergroup,
+        set_offsets,
         args=[consumer_group, "--topic-name", topic, "--offset-to-value", "1"],
         input="y\n",
         catch_exceptions=True,
@@ -142,7 +142,7 @@ def test_edit_consumergroup_offset_to_absolute_value(
 
 
 @pytest.mark.integration
-def test_edit_consumergroup_offset_to_delta(
+def test_set_offsets_offset_to_delta(
     topic: str,
     produced_messages_same_partition,
     interactive_cli_runner,
@@ -173,7 +173,7 @@ def test_edit_consumergroup_offset_to_delta(
     )
 
     interactive_cli_runner.invoke(
-        edit_consumergroup,
+        set_offsets,
         args=[consumer_group, "--topic-name", topic, "--offset-by-delta", "-2"],
         input="y\n",
         catch_exceptions=True,
@@ -187,7 +187,7 @@ def test_edit_consumergroup_offset_to_delta(
 
 
 @pytest.mark.integration
-def test_edit_consumergroup_offset_to_delta_all_topics(
+def test_set_offsets_offset_to_delta_all_topics(
     topic: str,
     produced_messages_same_partition,
     interactive_cli_runner,
@@ -218,7 +218,7 @@ def test_edit_consumergroup_offset_to_delta_all_topics(
     )
 
     interactive_cli_runner.invoke(
-        edit_consumergroup, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
@@ -229,7 +229,7 @@ def test_edit_consumergroup_offset_to_delta_all_topics(
 
 
 @pytest.mark.integration
-def test_edit_consumergroup_offset_from_group(
+def test_set_offsets_offset_from_group(
     topic: str,
     produced_messages_same_partition,
     interactive_cli_runner,
@@ -261,7 +261,7 @@ def test_edit_consumergroup_offset_from_group(
     )
 
     interactive_cli_runner.invoke(
-        edit_consumergroup, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
     )
     consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
         verbose=True
@@ -285,7 +285,7 @@ def test_edit_consumergroup_offset_from_group(
     del vanilla_target_consumer
 
     interactive_cli_runner.invoke(
-        edit_consumergroup,
+        set_offsets,
         args=[target_consumer_group, "--offset-from-group", consumer_group],
         input="y\n",
         catch_exceptions=True,

@@ -31,7 +31,6 @@ jobs:
       matrix:
         python: ['3.6', '3.7', '3.8' ]
         librdkafka: ['1.1.0']
-      max-parallel: 1
     steps:
       - uses: actions/checkout@v1
       - name: Fetch virtualenv cache
