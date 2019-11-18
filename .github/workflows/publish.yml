@@ -1,10 +1,10 @@
 name: Publish esque
 on:
   push:
-    tags:
-      - v*
-    branches-ignore:
-      - "!master"
+    branches:
+      - master
+env:
+  PREVIOUS_TAG: "none"
 
 jobs:
   publish-to-pypi:
