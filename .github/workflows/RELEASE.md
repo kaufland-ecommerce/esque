@@ -20,14 +20,18 @@ git merge master
 poetry version minor
 ```
 ##### 4. Update the `CHANGELOG.md` file
-##### 5. Add a tag containing the version number **prefixed with v**
+##### 5. Commit the changes 
 ```shell script
 VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
+git add .
+git commit -m "Version changed to v${VERSION}"
+```
+##### 6. Add a tag containing the version number **prefixed with v**
+```shell script
 git tag "v${VERSION}"
 ```
-##### 6. Push the changes
+##### 7. Push the changes
 ```shell script
-git commit -m "Version change to v${VERSION}"
 git push
 ```
-##### 7. Open pull request to `master`
+##### 7. Open pull request to `master` on `https://github.com/real-digital/esque`
