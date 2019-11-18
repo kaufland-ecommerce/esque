@@ -121,7 +121,7 @@ class MessageConsumer(AbstractConsumer):
 
     def consume(self, offset: int = 0, partition: int = 0) -> Message:
         self.assign_specific_partitions(self._topic_name, partitions=[partition], offset=offset)
-        return self._consume_single_message(timeout=1)
+        return self.consume_single_message(timeout=1)
 
 
 class PingConsumer(AbstractConsumer):
