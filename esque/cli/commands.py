@@ -30,7 +30,7 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import ValidationException
+from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
@@ -84,13 +84,16 @@ def config(state: State):
 
 def list_brokers(ctx, args, incomplete):
     state = ctx.ensure_object(State)
-    return [broker.broker_id for broker in Broker.get_all(state.cluster)]
+    all_broker_hosts_names = [f"{broker.host}:{broker.port}" for broker in Broker.get_all(state.cluster)]
+    return [broker for broker in all_broker_hosts_names if broker.startswith(incomplete)]
 
 
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
@@ -289,7 +292,9 @@ def edit_consumergroup(
 
 
 @delete.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @default_options
 def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
@@ -347,7 +352,9 @@ def apply(state: State, file: str):
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
-        click.echo("Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics")
+        click.echo(
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+        )
         click.echo("Cancelling due to invalid changes")
         return
 
@@ -366,7 +373,9 @@ def apply(state: State, file: str):
 
 
 @describe.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument(
+    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+)
 @click.option(
     "--consumers",
     "-C",
@@ -415,11 +424,23 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
 
 
 @describe.command("broker")
-@click.argument("broker-id", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
+@click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
 @output_format_option
 @default_options
-def describe_broker(state: State, broker_id: str, output_format: str):
-    broker = Broker.from_id(state.cluster, broker_id).describe()
+def describe_broker(state, broker, output_format):
+    if broker.isdigit():
+        broker = Broker.from_id(state.cluster, broker).describe()
+    elif ":" not in broker:
+        broker = Broker.from_host(state.cluster, broker).describe()
+    else:
+        try:
+            host, port = broker.split(":")
+            broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
+        except ValueError:
+            raise ValidationException(
+                "BROKER must either be the broker id (int), the hostname (str), or in the form 'host:port' (str)"
+            )
+
     click.echo(format_output(broker, output_format))
 
 
@@ -469,12 +490,22 @@ def get_topics(state: State, prefix: str, output_format: str):
 
 @esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
 @click.argument("topic", autocompletion=list_topics)
-@click.option("-f", "--from", "from_context", help="Source Context", autocompletion=list_contexts, type=click.STRING)
-@click.option("-n", "--numbers", help="Number of messages", type=click.INT, default=sys.maxsize)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING)
+@click.option("-f", "--from", "from_context", help="Source Context.", autocompletion=list_contexts, type=click.STRING)
+@click.option("-m", "--match", help="Message filtering expression.", type=click.STRING)
+@click.option("-n", "--numbers", help="Number of messages.", type=click.INT, default=sys.maxsize)
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.")
 @click.option("-a", "--avro", help="Set this flag if the topic contains avro data", is_flag=True)
-@click.option("-c", "--consumergroup", help="Consumer group to store the offset in", type=click.STRING, default=None)
+@click.option(
+    "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
+)
+@click.option(
+    "-c",
+    "--consumergroup",
+    help="Consumergroup to store the offset in",
+    type=click.STRING,
+    autocompletion=list_consumergroups,
+    default=None,
+)
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition",
@@ -497,28 +528,34 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    directory: str,
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
 ):
     current_timestamp_milliseconds = int(round(time.time() * 1000))
+    consumergroup_prefix = "group_for_"
+
+    if directory and write_to_stdout:
+        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+    if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
+        raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     if not consumergroup:
-        unique_name = topic + "_" + str(current_timestamp_milliseconds)
-        consumergroup = "group_for_" + unique_name
-        directory_name = "message_" + unique_name
-    else:
-        directory_name = "message_" + consumergroup
+        consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
+    if not directory:
+        directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
+    working_dir = Path(directory)
 
-    working_dir = Path(directory_name)
     if not from_context:
         from_context = state.config.current_context
     if not write_to_stdout and from_context != state.config.current_context:
-        click.echo(f"Switching to context: {from_context}")
+        click.echo(f"Switching to context: {from_context}.")
     state.config.context_switch(from_context)
+
     if not write_to_stdout:
-        working_dir.mkdir(parents=True)
-        click.echo("Creating directory " + blue_bold(working_dir.absolute().name))
+        click.echo("Creating directory " + blue_bold(working_dir.absolute().name) + " if it does not exist.")
+        working_dir.mkdir(parents=True, exist_ok=True)
         click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
     if preserve_order:
         partitions = []
@@ -548,7 +585,7 @@ def consume(
         )
 
     if not write_to_stdout:
-        click.echo("Output generated to " + blue_bold(directory_name))
+        click.echo("Output generated to " + blue_bold(directory))
         if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
@@ -562,7 +599,7 @@ def consume(
 
 
 @esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
-@click.argument("topic", autocompletion=list_contexts)
+@click.argument("topic", autocompletion=list_topics)
 @click.option(
     "-d",
     "--directory",
@@ -652,7 +689,10 @@ def ping(state: State, times: int, wait: int):
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
-        topic_controller.create_topics([Topic(PING_TOPIC)])
+        try:
+            topic_controller.create_topics([Topic(PING_TOPIC)])
+        except TopicAlreadyExistsException:
+            pass
         producer = PingProducer(PING_TOPIC)
         consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Ping with {state.cluster.bootstrap_servers}")
@@ -664,9 +704,8 @@ def ping(state: State, times: int, wait: int):
             click.echo(f"m_seq={i} time={delta:.2f}ms")
             sleep(wait)
     except KeyboardInterrupt:
-        pass
-    finally:
-        topic_controller.delete_topic(Topic(PING_TOPIC))
-        click.echo("--- statistics ---")
-        click.echo(f"{len(deltas)} messages sent/received")
-        click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+        return
+    topic_controller.delete_topic(Topic(PING_TOPIC))
+    click.echo("--- statistics ---")
+    click.echo(f"{len(deltas)} messages sent/received")
+    click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")

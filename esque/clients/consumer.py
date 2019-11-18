@@ -9,12 +9,8 @@ from confluent_kafka.cimpl import Message, TopicPartition
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.config import Config
-from esque.errors import (
-    EndOfPartitionReachedException,
-    MessageEmptyException,
-    raise_for_kafka_error,
-    raise_for_message,
-)
+from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_message
+from esque.helpers import log_error
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
 from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
 from esque.ruleparser.ruleengine import RuleTree
@@ -45,7 +41,7 @@ class AbstractConsumer(ABC):
         self._config.update(
             {
                 "group.id": self._group_id,
-                "error_cb": raise_for_kafka_error,
+                "error_cb": log_error,
                 # We need to commit offsets manually once we"re sure it got saved
                 # to the sink
                 "enable.auto.commit": self._enable_auto_commit,

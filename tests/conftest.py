@@ -24,7 +24,7 @@ from esque.cluster import Cluster
 from esque.config import Config
 from esque.config.migration import CURRENT_VERSION
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.errors import raise_for_kafka_error
+from esque.helpers import log_error
 from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
@@ -122,6 +122,18 @@ def topic_id(confluent_admin_client) -> str:
 def broker_id(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
     yield str(brokers[0].broker_id)
+
+
+@pytest.fixture()
+def broker_host(state: State) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield brokers[0].host
+
+
+@pytest.fixture()
+def broker_host_and_port(state: State) -> str:
+    brokers = Broker.get_all(state.cluster)
+    yield "{}:{}".format(brokers[0].host, brokers[0].port)
 
 
 @pytest.fixture()
@@ -377,12 +389,12 @@ def target_consumer_group():
 
 
 @pytest.fixture()
-def consumer(topic_object: Topic, consumer_group: str):
-    _config = Config.get_instance().create_confluent_config()
+def consumer(topic_object: Topic, consumer_group: str, unittest_config: Config):
+    _config = unittest_config.create_confluent_config()
     _config.update(
         {
             "group.id": consumer_group,
-            "error_cb": raise_for_kafka_error,
+            "error_cb": log_error,
             # We need to commit offsets manually once we"re sure it got saved
             # to the sink
             "enable.auto.commit": False,

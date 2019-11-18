@@ -1,14 +1,16 @@
 import functools
+import logging
 from concurrent.futures import Future, wait
 from itertools import islice
 from typing import Type, TypeVar
 
-import click
 import confluent_kafka
 import pendulum
-from confluent_kafka.cimpl import KafkaError, Message
+from confluent_kafka.cimpl import KafkaError
 
 from esque.errors import FutureTimeoutException, raise_for_kafka_error
+
+log = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -71,9 +73,9 @@ def unpack_confluent_config(config):
     return {v.name: v.value for k, v in sorted(config.items())}
 
 
-def delivery_callback(err: KafkaError, msg: Message):
+def log_error(err: KafkaError):
     if err is not None:
-        click.echo(f"EXCEPTION: When sending {msg.key()}: {err.str()}")
+        log.error(f"KafkaError occured: {err.str()}")
 
 
 def delta_t(start: pendulum.DateTime) -> str:

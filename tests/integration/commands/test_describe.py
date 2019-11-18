@@ -78,6 +78,28 @@ def test_describe_broker_formatted_output(
 
 
 @pytest.mark.integration
+@parameterized_output_formats
+def test_describe_broker_formatted_output_host(
+    non_interactive_cli_runner: CliRunner, broker_host: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_broker, [broker_host, "-o", output_format])
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+    check_described_broker(output_dict)
+
+
+@pytest.mark.integration
+@parameterized_output_formats
+def test_describe_broker_formatted_output_host_and_port(
+    non_interactive_cli_runner: CliRunner, broker_host_and_port: str, output_format: str, loader: Callable
+):
+    result = non_interactive_cli_runner.invoke(describe_broker, [broker_host_and_port, "-o", output_format])
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+    check_described_broker(output_dict)
+
+
+@pytest.mark.integration
 def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: CliRunner):
     result = non_interactive_cli_runner.invoke(describe_broker)
     assert result.exit_code != 0
