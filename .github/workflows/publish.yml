@@ -1,9 +1,11 @@
 name: Publish esque
 on:
   push:
-    branches:
-      - master
-      - "refs/tags/v*"
+    tags:
+      - v*
+    branches-ignore:
+      - "!master"
+
 jobs:
   publish-to-pypi:
     name: Publish to pypi
