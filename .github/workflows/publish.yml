@@ -37,12 +37,12 @@ jobs:
           pip install -i http://test.pypi.org/legacy --timeout 60 esque==${VERSION}
           esque --help
           popd
-#      - name: Publish to pypi
-#        if: success() && github.event_name == 'push'
-#        run: |
-#          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
-#          poetry build
-#          poetry publish --username "${{ secrets.PYPI_USER }}" --password "${{ secrets.PYPI_PASSWORD }}"
+      - name: Publish to pypi
+        if: success() && github.event_name == 'push'
+        run: |
+          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          poetry build
+          poetry publish --username "${{ secrets.PYPI_USER }}" --password "${{ secrets.PYPI_PASSWORD }}"
   draft-release:
     name: Draft release
     needs: [ publish-to-pypi ]
