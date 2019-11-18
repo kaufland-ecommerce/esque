@@ -97,7 +97,9 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
