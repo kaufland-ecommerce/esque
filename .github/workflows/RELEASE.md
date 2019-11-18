@@ -15,9 +15,9 @@ git pull
 git checkout release-prep
 git merge master
 ```
-##### 3. Run `poetry version` with the appropriate argument (`major`, `minor`, `patch`) to bump the current version
+##### 3. Run `make bump-` with the appropriate argument (`major`, `minor`, `patch`) to bump the current version
 ```shell script
-poetry version minor
+make bump-minor
 ```
 ##### 4. Update the `CHANGELOG.md` file
 ##### 5. Commit the changes 

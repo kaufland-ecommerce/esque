@@ -34,16 +34,10 @@ release: build linux_release
 build:
 	@poetry build
 
-publish:
-	@poetry publish
-
 wheel:
 	@poetry build -v
 
-linux_release:
-	docker pull quay.io/pypa/manylinux2010_x86_64
-	docker run --rm -t -i -v `pwd`:/io quay.io/pypa/manylinux2010_x86_64 /io/make-linux-release.sh
-
-# run tests against all supported python versions
-tox:
-	@tox
+#version = "0.2.0-alpha.0"
+bump-%:
+	poetry version $*
+	sed 's/(version = "\d+\.\d+\.\d+")[^\w]*(\w)\w*(\d+)/$1$2$3/'
