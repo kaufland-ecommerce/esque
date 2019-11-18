@@ -33,7 +33,7 @@ class Partition(KafkaResource):
         if latest_message_timestamp is None:
             self.latest_message_timestamp = None
         else:
-            self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp)
+            self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp).to_datetime_string()
 
     def as_dict(self):
         return {
