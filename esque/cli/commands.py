@@ -95,9 +95,7 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group
-        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
-        if group.startswith(incomplete)
+        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
     ]
 
 
@@ -273,8 +271,8 @@ def edit_topic(state: State, topic_name: str):
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
 @click.option(
     "--offset-to-timestamp",
-    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss "
-    "(NOTE: this can be a very expensive operation).",
+    help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp. NOTE: this can be a very expensive operation.",
     type=click.STRING,
     required=False,
 )
