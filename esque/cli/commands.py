@@ -95,7 +95,9 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
@@ -272,7 +274,8 @@ def edit_topic(state: State, topic_name: str):
 @click.option(
     "--offset-to-timestamp",
     help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
-    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp. NOTE: this can be a very expensive operation.",
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp."
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
     type=click.STRING,
     required=False,
 )
@@ -438,8 +441,8 @@ def apply(state: State, file: str):
     required=False,
     is_flag=True,
     default=False,
-    help=f"Will output the consumer groups reading from this topic."
-    f"{red_bold('Beware! This can be a really expensive operation.')}",
+    help="Will output the consumer groups reading from this topic."
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
 )
 @output_format_option
 @default_options
