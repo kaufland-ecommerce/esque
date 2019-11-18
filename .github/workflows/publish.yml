@@ -4,6 +4,7 @@ on:
     tags:
       - v*
     branches-ignore:
+      - "*"
       - "!master"
 
 jobs:
