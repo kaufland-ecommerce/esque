@@ -7,7 +7,7 @@ from confluent_kafka.cimpl import Producer as ConfluenceProducer
 from esque.cli.commands import produce
 from esque.clients.consumer import ConsumerFactory
 from esque.errors import TopicDoesNotExistException
-from tests.integration.test_clients import produce_test_messages, get_consumed_messages
+from tests.integration.test_clients import get_consumed_messages, produce_test_messages
 
 
 @pytest.mark.integration
