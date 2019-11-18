@@ -3,9 +3,7 @@ on:
   push:
     branches:
       - master
-    tags:
-      - v*
-
+      - "refs/tags/v*"
 jobs:
   publish-to-pypi:
     name: Publish to pypi
