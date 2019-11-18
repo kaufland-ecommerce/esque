@@ -36,7 +36,6 @@ from esque.resources.topic import Topic, copy_to_local
 
 
 @click.group(invoke_without_command=True, no_args_is_help=True)
-@click.option("--recreate-config", is_flag=True, default=False, help="Overwrites the config with the sample config.")
 @version_option(__version__)
 @default_options
 def esque(state: State):
@@ -98,9 +97,7 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group
-        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
-        if group.startswith(incomplete)
+        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
     ]
 
 
@@ -155,6 +152,10 @@ def ctx(state: State, context: str):
 @config.command("recreate")
 @default_options
 def config_recreate(state: State):
+    """(Re)create esque config.
+
+    Overwrites the existing esque config file with the sample config. If no esque config file already exists,
+    create one with the sample config."""
     config_dir().mkdir(exist_ok=True)
     if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
         copyfile(sample_config_path().as_posix(), config_path())
@@ -303,6 +304,14 @@ def set_offsets(
     offset_to_timestamp: str,
     offset_from_group: str,
 ):
+    """Set consumer group offsets.
+
+    Change or set the offset of a consumer group for a topic, i.e. the message number the consumer group will read next.
+    This can be done by specifying an explicit offset (--offset-to-value), a delta to shift the current offset forwards
+    or backwards (--offset-by-delta), a timestamp in which the offset of the first message on or after the timestamp is
+    taken (--offset-by-timestamp), or a group from which to copy the offsets from. In the case that the consumer group
+    reads from more than one topic, a regular expression can be given to specify the offset of which topic to change.
+    NOTE: the default is to change the offset for all topics."""
     logger = logging.getLogger(__name__)
     consumergroup_controller = ConsumerGroupController(state.cluster)
     offset_plan = consumergroup_controller.create_consumer_group_offset_change_plan(
