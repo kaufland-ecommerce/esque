@@ -7,6 +7,8 @@ from typing import Any, Dict, List, Optional
 import click
 import yaml
 from confluent_kafka.admin import ConfigResource
+from pykafka import SslConfig
+from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 import esque.validation
 from esque.cli import environment
@@ -18,8 +20,7 @@ from esque.errors import (
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
-from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
+from esque.helpers import SingletonMeta
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -41,7 +42,11 @@ def config_path() -> Path:
 def _config_path() -> Path:
     if environment.ESQUE_CONF_PATH:
         return Path(environment.ESQUE_CONF_PATH)
-    return config_dir() / "esque.yaml"
+    legacy_path = config_dir() / "esque.cfg"
+    current_path = config_dir() / "esque_config.yaml"
+    if legacy_path.exists() and not current_path.exists():
+        return legacy_path
+    return current_path
 
 
 def _config_dir() -> Path:
@@ -52,7 +57,7 @@ def sample_config_path() -> Path:
     return Path(__file__).parent / "sample_config.yaml"
 
 
-class Config:
+class Config(metaclass=SingletonMeta):
     def __init__(self):
         if not config_path().exists():
             raise ConfigNotExistsException()
@@ -91,16 +96,12 @@ class Config:
         if "num_partitions" in self.default_values:
             return self.default_values["num_partitions"]
 
-        from esque.cluster import Cluster
         from esque.cli.output import bold, blue_bold
 
         try:
             log.warning("Fetching default number of partitions from broker.")
             log.warning(f"Run `esque config edit` and add `{bold('num_partitions')}` to your defaults to avoid this.")
-            cluster = Cluster()
-            brokers = cluster.brokers
-            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
-            default = int(config["num.partitions"])
+            default = int(self._get_broker_setting("num.partitions"))
             log.warning(f"Cluster default is {blue_bold(str(default))}.")
         except Exception as e:
             default = 1
@@ -108,12 +109,20 @@ class Config:
             log.info(type(e).__name__, exc_info=True)
         return default
 
+    @staticmethod
+    def _get_broker_setting(self, setting: str) -> str:
+        from esque.cluster import Cluster
+
+        cluster = Cluster()
+        brokers = cluster.brokers
+        config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
+        return config[setting]
+
     @property
     def default_replication_factor(self) -> int:
         if "replication_factor" in self.default_values:
             return self.default_values["replication_factor"]
 
-        from esque.cluster import Cluster
         from esque.cli.output import bold, blue_bold
 
         try:
@@ -121,10 +130,7 @@ class Config:
             log.warning(
                 f"Run `esque config edit` and add `{bold('replication_factor')}` to your defaults to avoid this."
             )
-            cluster = Cluster()
-            brokers = cluster.brokers
-            config = cluster.retrieve_config(ConfigResource.Type.BROKER, brokers[0]["id"])
-            default = int(config["default.replication.factor"])
+            default = int(self._get_broker_setting("default.replication.factor"))
             log.warning(f"Cluster default is {blue_bold(str(default))}.")
         except Exception as e:
             default = min(len(self.bootstrap_servers), 3)
@@ -171,9 +177,8 @@ class Config:
         if context not in self.available_contexts:
             raise ContextNotDefinedException(f"{context} not defined in {config_path()}")
         self._cfg["current_context"] = context
-        self._dump_config()
 
-    def _dump_config(self):
+    def save(self):
         with config_path().open("w") as f:
             yaml.dump(self._cfg, f, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
 

@@ -1,8 +1,7 @@
 from typing import Dict, Type
 
-from confluent_kafka import KafkaError, Message
-
 import pykafka.exceptions
+from confluent_kafka import KafkaError, Message
 
 
 def raise_for_kafka_error(err: KafkaError):

@@ -4,9 +4,9 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import pendulum
 import yaml
+from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
-from pykafka.protocol.offset import OffsetPartitionResponse
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
 PartitionInfo = Dict[int, OffsetPartitionResponse]
@@ -162,7 +162,7 @@ class Topic(KafkaResource):
         return self.partition_data
 
     @property
-    def offsets(self) -> Dict[int, Watermark]:
+    def watermarks(self) -> Dict[int, Watermark]:
         """
         Returns the low and high watermark for each partition in a topic
         """

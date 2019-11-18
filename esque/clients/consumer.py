@@ -1,7 +1,7 @@
 import pathlib
 from abc import ABC, abstractmethod
 from heapq import heappop, heappush
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import confluent_kafka
 import pendulum
@@ -21,11 +21,12 @@ from esque.ruleparser.ruleengine import RuleTree
 
 
 class AbstractConsumer(ABC):
-    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None):
+    def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None, enable_auto_commit: bool = True):
         self._match = match
         self._last = last
         self._group_id = group_id
         self._consumer = None
+        self._enable_auto_commit = enable_auto_commit
         self._config = {}
         if self._match is not None:
             self._rule_tree = RuleTree(match)
@@ -40,14 +41,14 @@ class AbstractConsumer(ABC):
         offset_reset = "earliest"
         if self._last:
             offset_reset = "latest"
-        self._config = Config().create_confluent_config()
+        self._config = Config.get_instance().create_confluent_config()
         self._config.update(
             {
                 "group.id": self._group_id,
                 "error_cb": raise_for_kafka_error,
                 # We need to commit offsets manually once we"re sure it got saved
                 # to the sink
-                "enable.auto.commit": True,
+                "enable.auto.commit": self._enable_auto_commit,
                 "enable.partition.eof": True,
                 # We need this to start at the last committed offset instead of the
                 # latest when subscribing for the first time
@@ -69,8 +70,14 @@ class AbstractConsumer(ABC):
             topic_partitions = [TopicPartition(self._topic_name, partition=0, offset=offset)]
         self._consumer.assign(topic_partitions)
 
-    def _subscribe(self, topic: str) -> None:
-        self._consumer.subscribe([topic])
+    def subscribe(self, topics: List[str]) -> None:
+        self._consumer.subscribe(topics)
+
+    def close(self) -> None:
+        self._consumer.close()
+
+    def commit(self, offsets: List[TopicPartition]):
+        self._consumer.commit(offsets=offsets)
 
     @abstractmethod
     def consume(self, **kwargs) -> int:
@@ -149,8 +156,9 @@ class PlaintextConsumer(AbstractConsumer):
         last: bool,
         match: str = None,
         initialize_default_output_directory: bool = False,
+        enable_auto_commit: bool = True,
     ):
-        super().__init__(group_id, topic_name, last, match)
+        super().__init__(group_id, topic_name, last, match, enable_auto_commit)
         self.working_dir = working_dir
         self.writers[-1] = (
             StdOutWriter() if working_dir is None else PlainTextFileWriter(self.working_dir / "partition_any")
@@ -164,7 +172,7 @@ class PlaintextConsumer(AbstractConsumer):
 
         while counter < amount:
             try:
-                message = self.consume_single_message(10)
+                message = self.consume_single_acceptable_message(7)
             except MessageEmptyException:
                 return counter
             except EndOfPartitionReachedException:
@@ -179,7 +187,7 @@ class PlaintextConsumer(AbstractConsumer):
     def create_internal_consumer(self):
         self._consumer = confluent_kafka.Consumer(self._config)
         if self._topic_name is not None:
-            self._subscribe(self._topic_name)
+            self.subscribe([self._topic_name])
 
     def output_consumed(self, message: Message):
         if (
@@ -204,9 +212,12 @@ class AvroFileConsumer(PlaintextConsumer):
         last: bool,
         match: str = None,
         initialize_default_output_directory: bool = False,
+        enable_auto_commit: bool = True,
     ):
-        super().__init__(group_id, topic_name, working_dir, last, match, initialize_default_output_directory)
-        self.schema_registry_client = SchemaRegistryClient(Config().schema_registry)
+        super().__init__(
+            group_id, topic_name, working_dir, last, match, initialize_default_output_directory, enable_auto_commit
+        )
+        self.schema_registry_client = SchemaRegistryClient(Config.get_instance().schema_registry)
         self.writers[-1] = (
             StdOutAvroWriter(schema_registry_client=self.schema_registry_client)
             if working_dir is None
@@ -240,6 +251,7 @@ class ConsumerFactory:
         avro: bool,
         initialize_default_output_directory: bool = False,
         match: str = None,
+        enable_auto_commit: bool = True,
     ):
         """
         Creates a Kafka consumer
@@ -250,6 +262,7 @@ class ConsumerFactory:
         :param avro: Are messages in Avro format?
         :param initialize_default_output_directory: If set to true, all messages will be stored in a directory named partition_any, instead having a separate directory for each partition. This argument is only used if working_dir is not None.
         :param match: Match expression for message filtering
+        :param enable_auto_commit: Allow the consumer to automatically commit offset
         :return: Consumer object
         """
         if avro:
@@ -260,6 +273,7 @@ class ConsumerFactory:
                 last=last,
                 match=match,
                 initialize_default_output_directory=initialize_default_output_directory,
+                enable_auto_commit=enable_auto_commit,
             )
         else:
             consumer = PlaintextConsumer(
@@ -269,6 +283,7 @@ class ConsumerFactory:
                 last=last,
                 match=match,
                 initialize_default_output_directory=initialize_default_output_directory,
+                enable_auto_commit=enable_auto_commit,
             )
         return consumer
 

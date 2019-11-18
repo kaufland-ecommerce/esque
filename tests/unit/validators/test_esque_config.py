@@ -1,9 +1,9 @@
 import typing
 
+import pytest
 import yaml
 
 import esque.errors
-import pytest
 from esque.validation import validate_esque_config
 from tests.conftest import LOAD_SAMPLE_CONFIG, get_path_for_config_version
 
@@ -47,5 +47,12 @@ def test_invalid_sasl_mechanism(sample_config_data: typing.Dict):
 
 def test_non_existing_context(sample_config_data: typing.Dict):
     sample_config_data["current_context"] = "foo_bar_baz"
+    with pytest.raises(esque.errors.ValidationException):
+        validate_esque_config(sample_config_data)
+
+
+def test_invalid_url(sample_config_data: typing.Dict):
+    get_context(sample_config_data)["schema_registry"] = "http://10..15.10.10:8081"
+
     with pytest.raises(esque.errors.ValidationException):
         validate_esque_config(sample_config_data)
