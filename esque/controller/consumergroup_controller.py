@@ -59,7 +59,7 @@ class ConsumerGroupController:
         consumer = ConsumerFactory().create_consumer(
             group_id=consumer_id,
             topic_name=None,
-            working_dir=None,
+            output_directory=None,
             last=False,
             avro=False,
             initialize_default_output_directory=False,

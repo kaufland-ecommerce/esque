@@ -121,7 +121,7 @@ class TopicController:
             consumer = factory.create_consumer(
                 group_id=group_id,
                 topic_name=None,
-                working_dir=None,
+                output_directory=None,
                 avro=False,
                 match=None,
                 last=False,

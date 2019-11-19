@@ -147,7 +147,7 @@ def test_describe_topic_consumergroup_in_output(
     loader: Callable,
 ):
     result = non_interactive_cli_runner.invoke(
-        describe_topic, ["-o", output_format, "-C", filled_topic.name], catch_exceptions=False
+        describe_topic, ["-o", output_format, "-c", filled_topic.name], catch_exceptions=False
     )
     assert result.exit_code == 0
     output_dict = loader(result.output)
