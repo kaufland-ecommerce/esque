@@ -26,12 +26,9 @@ VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
 git add .
 git commit -m "Version changed to v${VERSION}"
 ```
-##### 6. Add a tag containing the version number **prefixed with v**
-```shell script
-git tag "v${VERSION}"
-```
-##### 7. Push the changes
+##### 6. Push the changes
 ```shell script
 git push
 ```
 ##### 7. Open pull request to `master` on `https://github.com/real-digital/esque`
+##### 8. Once the pull request is merged, create and publish a release. This should trigger a `publish` event that will, in turn, trigger publishing the package to `pypi`
