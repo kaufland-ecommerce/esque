@@ -53,9 +53,10 @@ jobs:
       - name: Test devpi release
         if: success()
         run: |
+          ! which esque
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           cd /tmp
           pip install -i http://localhost:3141/root/stable/ --timeout 60 esque
           esque --help
           CURRENT_VERSION=$(esque --version | awk '{print $3}')
-          [[ ${CURRENT_VERSION} == \"${VERSION}\" ]]
+          [[ ${CURRENT_VERSION} == ${VERSION} ]]
