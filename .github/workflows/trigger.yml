@@ -1,6 +1,6 @@
 name: Publish esque
 on:
-  pull_request:
+  push:
     branches:
       - filter-tags-on-release-by-script
 
