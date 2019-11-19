@@ -8,19 +8,19 @@
 
 In the Kafka world nothing is easy, but `esque` (pronounced *esk*) is an attempt at it.
 
-`esque` is a user-centric command line interface for Kafka administration. 
+`esque` is a user-centric command line interface for Kafka administration.
 
 ## Why should you care?
 
 Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be.
 
-While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers. 
-We can't recount how often we wrote Slack messages asking for the script to check the 
-status of topics or consumer groups. This is partly (but not only) due to a 
+While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers.
+We can't recount how often we wrote Slack messages asking for the script to check the
+status of topics or consumer groups. This is partly (but not only) due to a
 fragmented and unclear definition of tooling and APIs for kafka.
-In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way.    
-  
-We feel that the goal of `esque` embodies the principle: “**keep easy things easy, and make hard things possible**”. 
+In a wide array of administration tools, `esque` distances itself by striving to provide Kafka Ops for Humans, in a usable and natural way.
+
+We feel that the goal of `esque` embodies the principle: “**keep easy things easy, and make hard things possible**”.
 
 ## Principles
 
@@ -142,7 +142,7 @@ is given with the option -f or --file.
 In the current version only topic configurations can be
 changed and specified.
 
-It has to use the same schema, which is used 
+It has to use the same schema, which is used
 for the following example:
 
 ```yaml
@@ -161,7 +161,7 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run 
+To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run
 
 ```bash
 poetry install
@@ -187,7 +187,7 @@ esque comes with a docker-compose based kafka stack which you can start up with 
 
 You can then run the integration tests against this stack with `pytest tests/ --integration --local`.
 
-Alternatively you can go the fast way and just run the whole stack + integration tests in docker: 
+Alternatively you can go the fast way and just run the whole stack + integration tests in docker:
 
 ```bash
 make integration-test
@@ -196,7 +196,7 @@ make integration-test
 #### Unit Tests
 
 If you only want the unit tests, just run:
- 
+
 ```bash
 make test
 ```
@@ -207,3 +207,4 @@ make test
 - [PyKafka Tools](https://github.com/Parsely/pykafka/blob/master/pykafka/cli/kafka_tools.py)
 - [Official Kafka Scripts](https://github.com/apache/kafka/tree/trunk/bin)
 - [kafkacat](https://github.com/edenhill/kafkacat)
+- [kaf](https://github.com/birdayz/kaf)
