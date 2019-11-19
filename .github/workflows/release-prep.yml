@@ -18,9 +18,15 @@ jobs:
           architecture: x64
       - name: Check version change
         run: |
+          set -pipefail
           MASTER_VERSION="$(git show origin/master:pyproject.toml | sed -n -E "s/^version = \"(.+)\"/\1/p")"
           NEW_VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
-          ! cmp -s ${MASTER_VERSION} ${NEW_VERSION}
+          echo "Version on master: ${MASTER_VERSION}"
+          echo "Version on release-prep: ${NEW_VERSION}"
+          (if [[ "${MASTER_VERSION}" == "${NEW_VERSION}" ]]; then
+            echo 'Need to bump version, please run `poetry version <major|minor|patch|whatever..>`'
+            exit 1
+          fi)
   publish-to-devpi:
     name: Publish to devpi
     runs-on: ubuntu-latest
