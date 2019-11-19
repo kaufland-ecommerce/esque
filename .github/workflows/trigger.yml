@@ -1,0 +1,14 @@
+name: Publish esque
+on:
+  pull_request:
+    branches:
+      - filter-tags-on-release-by-script
+
+jobs:
+  run-sample:
+    name: Run sample
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World
+        if: github.event.pull_request.merged && github.event.pull_request.head.ref == 'filter-tags-on-release-by-script'
+        run: echo "I'm running!"
