@@ -16,14 +16,9 @@ jobs:
         with:
           python-version: '3.6'
           architecture: x64
-      - name: Prepare environment for publish
-        if: success()
-        run: |
-          pip install "poetry==1.0.0b3"
-          poetry config repositories.testpypi http://test.pypi.org/legacy
       - name: Publish to pypi
         if: success()
         run: |
-          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
+          pip install "poetry==1.0.0b3"
           poetry build
           poetry publish --username "${{ secrets.PYPI_USER }}" --password "${{ secrets.PYPI_PASSWORD }}"

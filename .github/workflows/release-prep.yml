@@ -48,12 +48,13 @@ jobs:
       - name: Publish to devpi
         if: success()
         run: |
-          export VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           poetry build
           poetry publish --repository devpi --username root --password root
       - name: Test devpi release
         if: success()
         run: |
+          VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           cd /tmp
-          pip install -i http://localhost:3141/root/stable/ --timeout 60 esque==${VERSION}
+          pip install -i http://localhost:3141/root/stable/ --timeout 60 esque
           esque --help
+          [[ $(esque --version) == ${VERSION} ]]
