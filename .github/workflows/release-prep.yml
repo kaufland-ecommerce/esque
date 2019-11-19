@@ -18,7 +18,6 @@ jobs:
           architecture: x64
       - name: Check version change
         run: |
-          set -pipefail
           MASTER_VERSION="$(git show origin/master:pyproject.toml | sed -n -E "s/^version = \"(.+)\"/\1/p")"
           NEW_VERSION="$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)"
           echo "Version on master: ${MASTER_VERSION}"
@@ -51,7 +50,7 @@ jobs:
           devpi user -m root password="root"
           mkdir -p ${HOME}/.esque
           poetry config repositories.devpi http://localhost:3141/root/stable/
-          poetry config repositories.testpypi https://test.pypi.org/simple/
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
       - name: Publish to devpi
         if: success()
         run: |
