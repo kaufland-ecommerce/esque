@@ -65,4 +65,5 @@ jobs:
         if: success()
         run: |
           sed -i -E "s/^version = \"(.+)\".*/version = \"\1-$(git rev-parse --short HEAD)\"/" pyproject.toml
+          poetry build
           poetry publish --repository testpypi --username ${{ secrets.TEST_PYPI_USER }} --password root ${{ secrets.TEST_PYPI_PASSWORD }}
