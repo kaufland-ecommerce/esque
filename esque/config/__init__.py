@@ -259,9 +259,9 @@ class Config(metaclass=SingletonMeta):
             ssl_params["password"] = self.ssl_params["password"]
         return SslConfig(**ssl_params)
 
-    def _get_pykafka_authenticator(self) -> BaseAuthenticator:
+    def _get_pykafka_authenticator(self) -> "BaseAuthenticator":
         try:
-            from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
+            from pykafka.sasl_authenticators import PlainAuthenticator, ScramAuthenticator
         except ImportError:
             raise ExceptionWithMessage(
                 "In order to support SASL you'll need to install our fork of pykafka.\n"
