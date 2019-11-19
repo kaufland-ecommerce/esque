@@ -55,6 +55,7 @@ flake8 = "^3.7"
 #TODO unpin once it's more stable
 black = {version = "19.3b0", allows-prereleases = true}
 isort = {version="^4.3", extras = ["pyproject"]}
+bandit = "^1.6.2"
 
 [tool.black]
 line-length = 119
