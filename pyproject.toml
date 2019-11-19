@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.2.0b0"
+version = "0.2.0-beta.1"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -56,7 +56,7 @@ pytest-cov = "^2.8"
 flake8 = "^3.7"
 #TODO unpin once it's more stable
 black = {version = "19.3b0", allows-prereleases = true}
-isort = {version="^4.3", extras = ["pyproject"]}
+isort = {version = "^4.3", extras = ["pyproject"]}
 bandit = "^1.6.2"
 
 [tool.black]
