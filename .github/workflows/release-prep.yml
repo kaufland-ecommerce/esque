@@ -57,4 +57,5 @@ jobs:
           cd /tmp
           pip install -i http://localhost:3141/root/stable/ --timeout 60 esque
           esque --help
-          [[ $(esque --version) == ${VERSION} ]]
+          CURRENT_VERSION=$(esque --version | awk '{print $3}')
+          [[ ${CURRENT_VERSION} == \"${VERSION}\" ]]
