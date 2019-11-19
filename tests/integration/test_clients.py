@@ -23,12 +23,14 @@ def test_plain_text_consume_to_file(
     consumer_group, producer: ConfluenceProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=False)
+    file_consumer = ConsumerFactory().create_consumer(
+        consumer_group, source_topic_id, output_directory, False, avro=False
+    )
     number_of_consumer_messages = file_consumer.consume(10)
 
-    consumed_messages = get_consumed_messages(working_dir, False)
+    consumed_messages = get_consumed_messages(output_directory, False)
 
     assert number_of_consumer_messages == 10
     assert produced_messages == consumed_messages
@@ -39,12 +41,14 @@ def test_avro_consume_to_file(
     consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], tmpdir_factory
 ):
     source_topic_id, _ = source_topic
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
-    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=True)
+    file_consumer = ConsumerFactory().create_consumer(
+        consumer_group, source_topic_id, output_directory, False, avro=True
+    )
     number_of_consumer_messages = file_consumer.consume(10)
 
-    consumed_messages = get_consumed_messages(working_dir, True)
+    consumed_messages = get_consumed_messages(output_directory, True)
 
     assert number_of_consumer_messages == 10
     assert produced_messages == consumed_messages
@@ -60,12 +64,14 @@ def test_plain_text_consume_and_produce(
 ):
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
     produced_messages = produce_test_messages(producer, source_topic)
-    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=False)
+    file_consumer = ConsumerFactory().create_consumer(
+        consumer_group, source_topic_id, output_directory, False, avro=False
+    )
     file_consumer.consume(10)
 
-    producer = ProducerFactory().create_producer(target_topic_id, working_dir, avro=False)
+    producer = ProducerFactory().create_producer(target_topic_id, output_directory, avro=False)
     producer.produce()
 
     # Check assertions:
@@ -90,13 +96,17 @@ def test_avro_consume_and_produce(
 ):
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
     produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
 
-    file_consumer = ConsumerFactory().create_consumer(consumer_group, source_topic_id, working_dir, False, avro=True)
+    file_consumer = ConsumerFactory().create_consumer(
+        consumer_group, source_topic_id, output_directory, False, avro=True
+    )
     file_consumer.consume(10)
 
-    producer = ProducerFactory().create_producer(topic_name=target_topic_id, working_dir=working_dir, avro=True)
+    producer = ProducerFactory().create_producer(
+        topic_name=target_topic_id, input_directory=output_directory, avro=True
+    )
     producer.produce()
 
     # Check assertions:
@@ -119,10 +129,10 @@ def test_plain_text_message_ordering(
     produced_messages_different_partitions,
 ):
     produced_messages_different_partitions(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -133,7 +143,7 @@ def test_plain_text_message_ordering(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert consumed_messages[0].key == "j"
     assert consumed_messages[3].key == "g"
     assert consumed_messages[8].key == "b"
@@ -147,10 +157,10 @@ def test_plain_text_message_ordering_with_header_filtering(
     produced_messages_different_partitions_with_headers,
 ):
     produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -161,7 +171,7 @@ def test_plain_text_message_ordering_with_header_filtering(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert len(consumed_messages) == 1
     assert consumed_messages[0].key == "e"
 
@@ -174,10 +184,10 @@ def test_plain_text_message_ordering_with_header_filtering_nonmatching(
     produced_messages_different_partitions_with_headers,
 ):
     produced_messages_different_partitions_with_headers(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -188,7 +198,7 @@ def test_plain_text_message_ordering_with_header_filtering_nonmatching(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert len(consumed_messages) == 0
 
 
@@ -200,10 +210,10 @@ def test_plain_text_message_ordering_with_filtering(
     produced_messages_different_partitions,
 ):
     produced_messages_different_partitions(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -214,7 +224,7 @@ def test_plain_text_message_ordering_with_filtering(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert consumed_messages[0].key == "i"
     assert consumed_messages[1].key == "e"
     assert consumed_messages[2].key == "a"
@@ -225,13 +235,13 @@ def test_plain_text_message_ordering_with_filtering_by_message_offset(
     producer: ConfluenceProducer, topic: str, tmpdir_factory, produced_messages_same_partition
 ):
     produced_messages_same_partition(topic, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir, topic, "group", [0], 10, False, match="message.offset > 7", last=False, write_to_stdout=False
+        output_directory, topic, "group", [0], 10, False, match="message.offset > 7", last=False, write_to_stdout=False
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert len(consumed_messages) == 2
     assert consumed_messages[0].key == "b"
     assert consumed_messages[1].key == "a"
@@ -247,10 +257,10 @@ def test_plaintext_consume_produce_messages_with_header(
     tmpdir_factory,
 ):
     produced_messages_same_partition_with_headers(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -261,7 +271,7 @@ def test_plaintext_consume_produce_messages_with_header(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert consumed_messages[0].headers[0].key == "hk1"
     assert consumed_messages[9].headers[0].value == "hv10"
 
@@ -276,10 +286,10 @@ def test_avro_consume_produce_messages_with_header(
     tmpdir_factory,
 ):
     produced_avro_messages_with_headers(topic_multiple_partitions, producer)
-    working_dir = tmpdir_factory.mktemp("working_directory")
+    output_directory = tmpdir_factory.mktemp("output_directory")
 
     consume_to_file_ordered(
-        working_dir,
+        output_directory,
         topic_multiple_partitions,
         "group",
         list(range(0, 10)),
@@ -290,7 +300,7 @@ def test_avro_consume_produce_messages_with_header(
         write_to_stdout=False,
     )
     # Check assertions:
-    consumed_messages = get_consumed_messages(working_dir, False, sort=False)
+    consumed_messages = get_consumed_messages(output_directory, False, sort=False)
     assert consumed_messages[0].headers[0].key == "hk1"
     assert consumed_messages[9].headers[0].value == "hv10"
 

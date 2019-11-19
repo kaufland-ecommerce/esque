@@ -35,44 +35,48 @@ from esque.resources.broker import Broker
 from esque.resources.topic import Topic, copy_to_local
 
 
-@click.group(help="esque - an operational kafka tool.", invoke_without_command=True)
+@click.group(invoke_without_command=True, no_args_is_help=True)
 @version_option(__version__)
 @default_options
 def esque(state: State):
+    """esque - an operational kafka tool.
+
+    In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
+    """
     pass
 
 
-@esque.group(help="Get a quick overview of different resources.")
+@esque.group(help="Get a quick overview of different resources.", no_args_is_help=True)
 @default_options
 def get(state: State):
     pass
 
 
-@esque.group(help="Get detailed information about a resource.")
+@esque.group(help="Get detailed information about a resource.", no_args_is_help=True)
 @default_options
 def describe(state: State):
     pass
 
 
-@esque.group(help="Create a new instance of a resource.")
+@esque.group(help="Create a new instance of a resource.", no_args_is_help=True)
 @default_options
 def create(state: State):
     pass
 
 
-@esque.group(help="Delete a resource.")
+@esque.group(help="Delete a resource.", no_args_is_help=True)
 @default_options
 def delete(state: State):
     pass
 
 
-@esque.group(help="Edit a resource.")
+@esque.group(help="Edit a resource.", no_args_is_help=True)
 @default_options
 def edit(state: State):
     pass
 
 
-@esque.group(help="Configuration-related options.")
+@esque.group(help="Configuration-related options.", no_args_is_help=True)
 @default_options
 def config(state: State):
     pass
@@ -119,15 +123,22 @@ def fallback_to_stdin(ctx, args, value):
     else:
         stdin_arg = value
     if not stdin_arg:
-        raise MissingParameter("No value specified")
+        raise MissingParameter("No value specified!")
 
     return stdin_arg
 
 
-@esque.command("ctx", help="Switch clusters.")
+@esque.command("ctx")
 @click.argument("context", required=False, default=None, autocompletion=list_contexts)
 @default_options
 def ctx(state: State, context: str):
+    """List contexts and switch between them.
+
+    \b
+    USAGE:
+    esque ctx               : list available contexts
+    esque ctx CONTEXT       : switch to context CONTEXT
+    """
     if not context:
         for c in state.config.available_contexts:
             if c == state.config.current_context:
@@ -137,20 +148,29 @@ def ctx(state: State, context: str):
     if context:
         state.config.context_switch(context)
         state.config.save()
-        click.echo(f"Switched to context: {context}")
+        click.echo(f"Switched to context: {context}.")
 
 
 @config.command("recreate")
 @default_options
 def config_recreate(state: State):
+    """(Re)create esque config.
+
+    Overwrites the existing esque config file with the sample config. If no esque config file already exists,
+    create one with the sample config."""
     config_dir().mkdir(exist_ok=True)
     if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
         copyfile(sample_config_path().as_posix(), config_path())
 
 
-@config.command("autocomplete", help="Generate the autocompletion script.")
+@config.command("autocomplete")
 @default_options
 def config_autocomplete(state: State):
+    """Configure esque autocompletion functionality.
+
+    Generate the autocompletion script based on the current shell and
+    give instructions to install it into the current environment.
+    """
     directory = config_dir()
     config_file_name = "autocomplete.sh"
     config_file: Path = directory / config_file_name
@@ -173,28 +193,45 @@ def config_autocomplete(state: State):
     )
 
 
-@config.command("edit", help="Edit your esque config file.")
+@config.command("edit", short_help="Edit esque config file.")
 @default_options
 def config_edit(state: State):
+    """Opens the user's esque config file in the default editor."""
     old_yaml = config_path().read_text()
     new_yaml, _ = edit_yaml(old_yaml, validator=validation.validate_esque_config)
     config_path().write_text(new_yaml)
 
 
-@config.command("migrate", help="Migrate your config to current version")
+@config.command("migrate")
 @default_options
 def config_migrate(state: State):
+    """Migrate esque config to current version.
+
+    If the user's esque config file is from a previous version, migrate it to the current version.
+    A backup of the original config file is created with the same name and the extension .bak"""
     new_path, backup = migration.migrate(config_path())
     click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
 
 
 @create.command("topic")
-@click.argument("topic-name", callback=fallback_to_stdin, required=False)
-@click.option("-l", "--like", help="Topic to use as template", autocompletion=list_topics, required=False)
+@click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
+@click.option(
+    "-l",
+    "--like",
+    metavar="<template_topic>",
+    help="Topic to use as template.",
+    autocompletion=list_topics,
+    required=False,
+)
 @default_options
 def create_topic(state: State, topic_name: str, like: str):
+    """Create a topic.
+
+    Create a topic called TOPIC_NAME with the option of providing a template topic, <template_topic>,
+    from which all the configuration options will be copied.
+    """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo("Aborted")
+        click.echo("Aborted!")
         return
 
     topic_controller = state.cluster.topic_controller
@@ -206,13 +243,18 @@ def create_topic(state: State, topic_name: str, like: str):
     else:
         topic = Topic(topic_name)
     topic_controller.create_topics([topic])
-    click.echo(click.style(f"Topic with name '{topic.name}'' successfully created", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic.name}' successfully created.", fg="green"))
 
 
 @edit.command("topic")
 @click.argument("topic-name", required=True, autocompletion=list_topics)
 @default_options
 def edit_topic(state: State, topic_name: str):
+    """Edit a topic.
+
+    Open the topic's configuration in the default editor. If the user saves upon exiting the editor,
+    all the given changes will be applied to the topic.
+    """
     controller = state.cluster.topic_controller
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
@@ -222,14 +264,14 @@ def edit_topic(state: State, topic_name: str):
     local_topic.update_from_dict(new_conf)
     diff = controller.diff_with_cluster(local_topic)
     if not diff.has_changes:
-        click.echo("Nothing changed")
+        click.echo("Nothing changed.")
         return
 
     click.echo(pretty_topic_diffs({topic_name: diff}))
     if ensure_approval("Are you sure?"):
         controller.alter_configs([local_topic])
     else:
-        click.echo("canceled")
+        click.echo("Canceled!")
 
 
 @set_.command("offsets")
@@ -245,7 +287,9 @@ def edit_topic(state: State, topic_name: str):
 @click.option("--offset-by-delta", help="Shift offset by specified value", type=click.INT, required=False)
 @click.option(
     "--offset-to-timestamp",
-    help="Set offset to the value closest to the specified message timestamp in the format YYYY-MM-DDTHH:mm:ss (NOTE: this can be a very expensive operation).",
+    help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp."
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
     type=click.STRING,
     required=False,
 )
@@ -262,6 +306,14 @@ def set_offsets(
     offset_to_timestamp: str,
     offset_from_group: str,
 ):
+    """Set consumer group offsets.
+
+    Change or set the offset of a consumer group for a topic, i.e. the message number the consumer group will read next.
+    This can be done by specifying an explicit offset (--offset-to-value), a delta to shift the current offset forwards
+    or backwards (--offset-by-delta), a timestamp in which the offset of the first message on or after the timestamp is
+    taken (--offset-by-timestamp), or a group from which to copy the offsets from. In the case that the consumer group
+    reads from more than one topic, a regular expression can be given to specify the offset of which topic to change.
+    NOTE: the default is to change the offset for all topics."""
     logger = logging.getLogger(__name__)
     consumergroup_controller = ConsumerGroupController(state.cluster)
     offset_plan = consumergroup_controller.create_consumer_group_offset_change_plan(
@@ -303,23 +355,37 @@ def set_offsets(
 
 @delete.command("topic")
 @click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+    "topic-name",
+    metavar="TOPIC_NAME",
+    callback=fallback_to_stdin,
+    required=False,
+    type=click.STRING,
+    autocompletion=list_topics,
 )
 @default_options
 def delete_topic(state: State, topic_name: str):
+    """Delete a topic
+
+    WARNING: This command cannot be undone, and all data in the topic will be lost.
+    """
     topic_controller = state.cluster.topic_controller
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
         topic_controller.delete_topic(Topic(topic_name))
 
         assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
-    click.echo(click.style(f"Topic with name '{topic_name}'' successfully deleted", fg="green"))
+    click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted.", fg="green"))
 
 
-@esque.command("apply", help="Apply a configuration")
-@click.option("-f", "--file", help="Config file path", required=True)
+@esque.command("apply")
+@click.option("-f", "--file", metavar="<file>", help="Config file path.", required=True)
 @default_options
 def apply(state: State, file: str):
+    """Apply a set of topic configurations.
+
+    Create new topics and apply changes to existing topics, as specified in the config yaml file <file>.
+    """
+
     # Get topic data based on the YAML
     yaml_topic_configs = yaml.safe_load(open(file)).get("topics")
     yaml_topics = [Topic.from_dict(conf) for conf in yaml_topic_configs]
@@ -357,13 +423,13 @@ def apply(state: State, file: str):
 
     # Check for actionable changes
     if len(to_edit) + len(to_create) == 0:
-        click.echo("No changes detected, aborting")
+        click.echo("No changes detected, aborting!")
         return
 
     # Warn users & abort when replication & num_partition changes are attempted
     if any(not diff.is_valid for _, diff in to_edit_diffs.items()):
         click.echo(
-            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics"
+            "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics."
         )
         click.echo("Cancelling due to invalid changes")
         return
@@ -384,19 +450,30 @@ def apply(state: State, file: str):
 
 @describe.command("topic")
 @click.argument(
-    "topic-name", callback=fallback_to_stdin, required=False, type=click.STRING, autocompletion=list_topics
+    "topic-name",
+    metavar="TOPIC_NAME",
+    callback=fallback_to_stdin,
+    required=False,
+    type=click.STRING,
+    autocompletion=list_topics,
 )
 @click.option(
     "--consumers",
-    "-C",
+    "-c",
+    required=False,
     is_flag=True,
     default=False,
-    help=f"Will output the consumer groups reading from this topic. "
-    f"{red_bold('Beware! This can be a really expensive operation.')}",
+    help="Will output the consumer groups reading from this topic."
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
 )
 @output_format_option
 @default_options
 def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
+    """Describe a topic.
+
+    Returns information on a given topic and its partitions, with the option of including
+    all consumer groups that read from the topic.
+    """
     topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
 
     output_dict = {
@@ -419,12 +496,14 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
     click.echo(format_output(output_dict, output_format))
 
 
-@get.command("watermarks")
-@click.option("-t", "--topic-name", required=False, type=click.STRING, autocompletion=list_topics)
-@click.argument("topic-name", required=True, type=click.STRING, callback=fallback_to_stdin)
+@get.command("watermarks", short_help="Return watermarks by topic.")
+@click.option(
+    "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, autocompletion=list_topics
+)
 @output_format_option
 @default_options
 def get_watermarks(state: State, topic_name: str, output_format: str):
+    """Returns the high and low watermarks for <topic_name>, or if not specified, all topics."""
     # TODO: Gathering of all watermarks takes super long
     topics = state.cluster.topic_controller.list_topics(search_string=topic_name)
 
@@ -433,11 +512,13 @@ def get_watermarks(state: State, topic_name: str, output_format: str):
     click.echo(format_output(watermarks, output_format))
 
 
-@describe.command("broker")
+@describe.command("broker", short_help="Describe a broker.")
 @click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
 @output_format_option
 @default_options
-def describe_broker(state, broker, output_format):
+def describe_broker(state: State, broker: str, output_format: str):
+    """Return configuration options for broker BROKER. BROKER can be given with broker id (integer),
+    the host name (if hostname is unique), or socket address ('hostname:port')"""
     if broker.isdigit():
         broker = Broker.from_id(state.cluster, broker).describe()
     elif ":" not in broker:
@@ -447,14 +528,12 @@ def describe_broker(state, broker, output_format):
             host, port = broker.split(":")
             broker = Broker.from_host_and_port(state.cluster, host, int(port)).describe()
         except ValueError:
-            raise ValidationException(
-                "BROKER must either be the broker id (int), the hostname (str), or in the form 'host:port' (str)"
-            )
+            raise ValidationException("BROKER must either be the broker id, the hostname, or in the form 'host:port'")
 
     click.echo(format_output(broker, output_format))
 
 
-@describe.command("consumergroup")
+@describe.command("consumergroup", short_help="Describe a consumer group.")
 @click.argument("consumer-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
 @click.option(
     "--all-partitions",
@@ -465,6 +544,8 @@ def describe_broker(state, broker, output_format):
 @output_format_option
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
+    """Return information on group coordinator, offsets, watermarks, lag, and various metadata
+     for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -475,6 +556,10 @@ def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool,
 @output_format_option
 @default_options
 def get_brokers(state: State, output_format: str):
+    """List all brokers.
+
+    Return the broker id's and socket addresses of all the brokers in the kafka cluster defined in the current context.
+    """
     brokers = Broker.get_all(state.cluster)
     broker_ids_and_hosts = [f"{broker.broker_id}: {broker.host}:{broker.port}" for broker in brokers]
     click.echo(format_output(broker_ids_and_hosts, output_format))
@@ -484,6 +569,7 @@ def get_brokers(state: State, output_format: str):
 @output_format_option
 @default_options
 def get_consumergroups(state: State, output_format: str):
+    """List all consumer groups."""
     groups = ConsumerGroupController(state.cluster).list_consumer_groups()
     click.echo(format_output(groups, output_format))
 
@@ -493,42 +579,57 @@ def get_consumergroups(state: State, output_format: str):
 @output_format_option
 @default_options
 def get_topics(state: State, prefix: str, output_format: str):
+    """List all topics."""
     topics = state.cluster.topic_controller.list_topics(search_string=prefix, get_topic_objects=False)
     topic_names = [topic.name for topic in topics]
     click.echo(format_output(topic_names, output_format))
 
 
-@esque.command("consume", help="Consume messages of a topic from one environment to a file or STDOUT")
+@esque.command("consume")
 @click.argument("topic", autocompletion=list_topics)
-@click.option("-f", "--from", "from_context", help="Source Context.", autocompletion=list_contexts, type=click.STRING)
-@click.option("-m", "--match", help="Message filtering expression.", type=click.STRING)
-@click.option("-n", "--numbers", help="Number of messages.", type=click.INT, default=sys.maxsize)
-@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.")
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", is_flag=True)
 @click.option(
     "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
 )
 @click.option(
+    "-f",
+    "--from",
+    "from_context",
+    metavar="<source_ctx>",
+    help="Source context. If not provided, the current context will be used.",
+    autocompletion=list_contexts,
+    type=click.STRING,
+    required=False,
+)
+@click.option(
+    "-n", "--numbers", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
+)
+@click.option(
+    "-m",
+    "--match",
+    metavar="<filter_expression>",
+    help="Message filtering expression.",
+    type=click.STRING,
+    required=False,
+)
+@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
+@click.option(
     "-c",
     "--consumergroup",
-    help="Consumergroup to store the offset in",
+    metavar="<consumer_group>",
+    help="Consumer group to store the offset in.",
     type=click.STRING,
     autocompletion=list_consumergroups,
     default=None,
+    required=False,
 )
 @click.option(
     "--preserve-order",
-    help="Preserve the order of messages, regardless of their partition",
+    help="Preserve the order of messages, regardless of their partition.",
     default=False,
     is_flag=True,
 )
-@click.option(
-    "--stdout",
-    "write_to_stdout",
-    help="Write messages to STDOUT or to an automatically generated file.",
-    default=False,
-    is_flag=True,
-)
+@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
 @default_options
 def consume(
     state: State,
@@ -543,11 +644,34 @@ def consume(
     preserve_order: bool,
     write_to_stdout: bool,
 ):
+    """Consume messages from a topic.
+
+    Read messages from a given topic in a given context. These messages can either be written
+    to files in an automatically generated directory (default behavior), or to STDOUT.
+
+    \b
+    EXAMPLES:
+    # Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
+    esque consume --first -n 10 --preserve-order --stdout TOPIC
+
+    \b
+    # Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
+    esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
+
+    \b
+    # Copy source_topic in first context to destination_topic in second-context.
+    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
     consumergroup_prefix = "group_for_"
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+
+    if not from_context:
+        from_context = state.config.current_context
+    state.config.context_switch(from_context)
+
     if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
@@ -555,24 +679,18 @@ def consume(
         consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
     if not directory:
         directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
-    working_dir = Path(directory)
-
-    if not from_context:
-        from_context = state.config.current_context
-    if not write_to_stdout and from_context != state.config.current_context:
-        click.echo(f"Switching to context: {from_context}.")
-    state.config.context_switch(from_context)
+    output_directory = Path(directory)
 
     if not write_to_stdout:
-        click.echo("Creating directory " + blue_bold(working_dir.absolute().name) + " if it does not exist.")
-        working_dir.mkdir(parents=True, exist_ok=True)
-        click.echo("Start consuming from topic " + blue_bold(topic) + " in source context " + blue_bold(from_context))
+        click.echo(f"Creating directory {blue_bold(str(output_directory))} if it does not exist.")
+        output_directory.mkdir(parents=True, exist_ok=True)
+        click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
     if preserve_order:
         partitions = []
         for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
             partitions.append(partition.partition_id)
         total_number_of_consumed_messages = consume_to_file_ordered(
-            working_dir=working_dir,
+            output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             partitions=partitions,
@@ -584,7 +702,7 @@ def consume(
         )
     else:
         total_number_of_consumed_messages = consume_to_files(
-            working_dir=working_dir,
+            output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             numbers=numbers,
@@ -595,12 +713,12 @@ def consume(
         )
 
     if not write_to_stdout:
-        click.echo("Output generated to " + blue_bold(directory))
+        click.echo(f"Output generated to {blue_bold(str(output_directory))}")
         if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
-                "Found only "
+                "Only found "
                 + bold(str(total_number_of_consumed_messages))
                 + " messages in topic, out of "
                 + blue_bold(str(numbers))
@@ -608,18 +726,35 @@ def consume(
             )
 
 
-@esque.command("produce", help="Produce messages from <directory> based on output from transfer command")
+@esque.command("produce")
 @click.argument("topic", autocompletion=list_topics)
 @click.option(
     "-d",
     "--directory",
     metavar="<directory>",
-    help="Sets the directory that contains Kafka messages",
+    help="Directory containing Kafka messages.",
     type=click.STRING,
+    required=False,
 )
-@click.option("-t", "--to", "to_context", help="Destination Context", autocompletion=list_contexts, type=click.STRING)
-@click.option("-m", "--match", help="Message filtering expression", type=click.STRING)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data", default=False, is_flag=True)
+@click.option(
+    "-t",
+    "--to",
+    "to_context",
+    metavar="<destination_ctx>",
+    help="Destination context.",
+    type=click.STRING,
+    autocompletion=list_contexts,
+    required=False,
+)
+@click.option(
+    "-m",
+    "--match",
+    metavar="<filter_expresion>",
+    help="Message filtering expression.",
+    type=click.STRING,
+    required=False,
+)
+@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
 )
@@ -627,7 +762,8 @@ def consume(
     "-y",
     "--ignore-errors",
     "ignore_stdin_errors",
-    help="When reading from STDIN, use malformed strings as message values (ignore JSON).",
+    help="Only when reading from STDIN. If JSON validation fails, write the malformed JSON as a string in message value"
+    " (without key and specified partition assignment).",
     default=False,
     is_flag=True,
 )
@@ -642,60 +778,89 @@ def produce(
     read_from_stdin: bool = False,
     ignore_stdin_errors: bool = False,
 ):
+    """Produce messages to a topic.
+
+       Write messages to a given topic in a given context. These messages can come from either a directory <directory>
+       containing files corresponding to the different partitions or from STDIN.
+
+       \b
+       EXAMPLES:
+       # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+       esque produce -d <directory> -t <destination_ctx> TOPIC
+
+       \b
+       # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+       esque produce --stdin -f <destination_ctx> -y TOPIC
+
+       \b
+       # Copy source_topic to destination_topic.
+       esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+       """
     if directory is None and not read_from_stdin:
-        click.echo("You have to provide the directory or use a --stdin flag")
-    else:
-        if not to_context:
-            to_context = state.config.current_context
-        if directory is not None:
-            working_dir = Path(directory)
-            if not working_dir.exists():
-                click.echo("You have to provide an existing directory")
-                exit(1)
-        state.config.context_switch(to_context)
-        stdin = click.get_text_stream("stdin")
-        if read_from_stdin and isatty(stdin):
-            click.echo(
-                "Type the messages to produce, "
-                + ("in JSON format, " if not ignore_stdin_errors else "")
-                + blue_bold("one per line")
-                + ". End with "
-                + blue_bold("CTRL+D")
-            )
-        elif read_from_stdin and not isatty(stdin):
-            click.echo("Reading messages from an external source, " + blue_bold("one per line"))
+        raise ValueError("You have to provide a directory or use the --stdin flag.")
+
+    if directory is not None:
+        input_directory = Path(directory)
+        if not input_directory.exists():
+            raise ValueError(f"Directory {directory} does not exist!")
+
+    if not to_context:
+        to_context = state.config.current_context
+    state.config.context_switch(to_context)
+
+    topic_controller = state.cluster.topic_controller
+    if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
+        click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
+        if ensure_approval(f"Would you like to create it now?"):
+            topic_controller.create_topics([Topic(topic)])
         else:
-            click.echo(
-                "Producing from directory "
-                + directory
-                + " to topic "
-                + blue_bold(topic)
-                + " in target context "
-                + blue_bold(to_context)
-            )
-        producer = ProducerFactory().create_producer(
-            topic_name=topic,
-            working_dir=working_dir if not read_from_stdin else None,
-            avro=avro,
-            match=match,
-            ignore_stdin_errors=ignore_stdin_errors,
-        )
-        total_number_of_messages_produced = producer.produce()
+            raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
+
+    stdin = click.get_text_stream("stdin")
+    if read_from_stdin and isatty(stdin):
         click.echo(
-            green_bold(str(total_number_of_messages_produced))
-            + " messages successfully produced to context "
-            + blue_bold(to_context)
-            + " and topic "
-            + blue_bold(topic)
+            "Type the messages to produce, "
+            + ("in JSON format, " if not ignore_stdin_errors else "")
+            + blue_bold("one per line")
+            + ". End with "
+            + blue_bold("CTRL+D")
             + "."
         )
+    elif read_from_stdin and not isatty(stdin):
+        click.echo(f"Reading messages from an external source, {blue_bold('one per line')}).")
+    else:
+        click.echo(
+            f"Producing from directory {blue_bold(str(directory))} to topic {blue_bold(topic)}"
+            f" in target context {blue_bold(to_context)}"
+        )
+    producer = ProducerFactory().create_producer(
+        topic_name=topic,
+        input_directory=input_directory if not read_from_stdin else None,
+        avro=avro,
+        match=match,
+        ignore_stdin_errors=ignore_stdin_errors,
+    )
+    total_number_of_messages_produced = producer.produce()
+    click.echo(
+        green_bold(str(total_number_of_messages_produced))
+        + " messages successfully produced to topic "
+        + blue_bold(topic)
+        + " in context "
+        + blue_bold(to_context)
+        + "."
+    )
 
 
-@esque.command("ping", help="Tests the connection to the kafka cluster.")
+@esque.command("ping")
 @click.option("-t", "--times", help="Number of pings.", default=10)
 @click.option("-w", "--wait", help="Seconds to wait between pings.", default=1)
 @default_options
 def ping(state: State, times: int, wait: int):
+    """Test the connection to the kafka cluster.
+
+    Ping the kafka cluster by writing messages to and reading messages from it.
+    After the specified number of "pings", return the minimum, maximum, and average time for the round trip.
+    """
     topic_controller = state.cluster.topic_controller
     deltas = []
     try:
@@ -705,7 +870,7 @@ def ping(state: State, times: int, wait: int):
             pass
         producer = PingProducer(PING_TOPIC)
         consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
-        click.echo(f"Ping with {state.cluster.bootstrap_servers}")
+        click.echo(f"Pinging with {state.cluster.bootstrap_servers}.")
 
         for i in range(times):
             producer.produce()
@@ -717,5 +882,5 @@ def ping(state: State, times: int, wait: int):
         return
     topic_controller.delete_topic(Topic(PING_TOPIC))
     click.echo("--- statistics ---")
-    click.echo(f"{len(deltas)} messages sent/received")
+    click.echo(f"{len(deltas)} messages sent/received.")
     click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")

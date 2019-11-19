@@ -136,19 +136,21 @@ class PlaintextConsumer(AbstractConsumer):
         self,
         group_id: str,
         topic_name: str,
-        working_dir: pathlib.Path,
+        output_directory: pathlib.Path,
         last: bool,
         match: str = None,
         initialize_default_output_directory: bool = False,
         enable_auto_commit: bool = True,
     ):
         super().__init__(group_id, topic_name, last, match, enable_auto_commit)
-        self.working_dir = working_dir
+        self.output_directory = output_directory
         self.writers[-1] = (
-            StdOutWriter() if working_dir is None else PlainTextFileWriter(self.working_dir / "partition_any")
+            StdOutWriter()
+            if output_directory is None
+            else PlainTextFileWriter(self.output_directory / "partition_any")
         )
         self._initialize_default_output_directory = initialize_default_output_directory
-        if self._initialize_default_output_directory and self.working_dir is not None:
+        if self._initialize_default_output_directory and self.output_directory is not None:
             self.writers[-1].init_destination_directory()
 
     def consume(self, amount: int) -> int:
@@ -175,11 +177,11 @@ class PlaintextConsumer(AbstractConsumer):
 
     def output_consumed(self, message: Message):
         if (
-            self.working_dir
+            self.output_directory
             and not self._initialize_default_output_directory
             and message.partition() not in self.writers
         ):
-            writer = PlainTextFileWriter(self.working_dir / f"partition_{message.partition()}")
+            writer = PlainTextFileWriter(self.output_directory / f"partition_{message.partition()}")
             writer.init_destination_directory()
             self.writers[message.partition()] = writer
         else:
@@ -192,31 +194,39 @@ class AvroFileConsumer(PlaintextConsumer):
         self,
         group_id: str,
         topic_name: str,
-        working_dir: pathlib.Path,
+        output_directory: pathlib.Path,
         last: bool,
         match: str = None,
         initialize_default_output_directory: bool = False,
         enable_auto_commit: bool = True,
     ):
         super().__init__(
-            group_id, topic_name, working_dir, last, match, initialize_default_output_directory, enable_auto_commit
+            group_id,
+            topic_name,
+            output_directory,
+            last,
+            match,
+            initialize_default_output_directory,
+            enable_auto_commit,
         )
         self.schema_registry_client = SchemaRegistryClient(Config.get_instance().schema_registry)
         self.writers[-1] = (
             StdOutAvroWriter(schema_registry_client=self.schema_registry_client)
-            if working_dir is None
-            else AvroFileWriter(self.working_dir / "partition_any", self.schema_registry_client)
+            if output_directory is None
+            else AvroFileWriter(self.output_directory / "partition_any", self.schema_registry_client)
         )
-        if self._initialize_default_output_directory and self.working_dir is not None:
+        if self._initialize_default_output_directory and self.output_directory is not None:
             self.writers[-1].init_destination_directory()
 
     def output_consumed(self, message: Message):
         if (
-            self.working_dir
+            self.output_directory
             and not self._initialize_default_output_directory
             and message.partition() not in self.writers
         ):
-            writer = AvroFileWriter(self.working_dir / f"partition_{message.partition()}", self.schema_registry_client)
+            writer = AvroFileWriter(
+                self.output_directory / f"partition_{message.partition()}", self.schema_registry_client
+            )
             writer.init_destination_directory()
             self.writers[message.partition()] = writer
         else:
@@ -230,7 +240,7 @@ class ConsumerFactory:
         self,
         group_id: str,
         topic_name: str,
-        working_dir: pathlib.Path,
+        output_directory: pathlib.Path,
         last: bool,
         avro: bool,
         initialize_default_output_directory: bool = False,
@@ -241,10 +251,10 @@ class ConsumerFactory:
         Creates a Kafka consumer
         :param group_id: ID of the consumer group
         :param topic_name: Topic name for the new consumer
-        :param working_dir: The directory to store the consumed messages (if None, than STDOUT is used)
+        :param output_directory: The directory to store the consumed messages (if None, than STDOUT is used)
         :param last: Start consuming from the latest committed offset
         :param avro: Are messages in Avro format?
-        :param initialize_default_output_directory: If set to true, all messages will be stored in a directory named partition_any, instead having a separate directory for each partition. This argument is only used if working_dir is not None.
+        :param initialize_default_output_directory: If set to true, all messages will be stored in a directory named partition_any, instead having a separate directory for each partition. This argument is only used if output_directory is not None.
         :param match: Match expression for message filtering
         :param enable_auto_commit: Allow the consumer to automatically commit offset
         :return: Consumer object
@@ -253,7 +263,7 @@ class ConsumerFactory:
             consumer = AvroFileConsumer(
                 group_id=group_id,
                 topic_name=topic_name,
-                working_dir=working_dir,
+                output_directory=output_directory,
                 last=last,
                 match=match,
                 initialize_default_output_directory=initialize_default_output_directory,
@@ -263,7 +273,7 @@ class ConsumerFactory:
             consumer = PlaintextConsumer(
                 group_id=group_id,
                 topic_name=topic_name,
-                working_dir=working_dir,
+                output_directory=output_directory,
                 last=last,
                 match=match,
                 initialize_default_output_directory=initialize_default_output_directory,
@@ -277,7 +287,7 @@ class ConsumerFactory:
 
 
 def consume_to_file_ordered(
-    working_dir: pathlib.Path,
+    output_directory: pathlib.Path,
     topic: str,
     group_id: str,
     partitions: list,
@@ -293,7 +303,7 @@ def consume_to_file_ordered(
         consumer = factory.create_consumer(
             group_id=group_id + "_" + str(partition),
             topic_name=None,
-            working_dir=None if write_to_stdout else working_dir,
+            output_directory=None if write_to_stdout else output_directory,
             avro=avro,
             match=match,
             last=last,
@@ -354,7 +364,7 @@ def consume_to_file_ordered(
 
 
 def consume_to_files(
-    working_dir: pathlib.Path,
+    output_directory: pathlib.Path,
     topic: str,
     group_id: str,
     numbers: int,
@@ -366,7 +376,7 @@ def consume_to_files(
     consumer = ConsumerFactory().create_consumer(
         group_id=group_id,
         topic_name=topic,
-        working_dir=working_dir if not write_to_stdout else None,
+        output_directory=output_directory if not write_to_stdout else None,
         last=last,
         avro=avro,
         match=match,
