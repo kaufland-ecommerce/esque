@@ -2,13 +2,12 @@ import logging
 import random
 import string
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import click
 import yaml
 from confluent_kafka.admin import ConfigResource
 from pykafka import SslConfig
-from pykafka.sasl_authenticators import BaseAuthenticator, PlainAuthenticator, ScramAuthenticator
 
 import esque.validation
 from esque.cli import environment
@@ -17,10 +16,20 @@ from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
     ContextNotDefinedException,
+    ExceptionWithMessage,
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
 from esque.helpers import SingletonMeta
+
+if TYPE_CHECKING:
+    try:
+        from pykafka.sasl_authenticators import BaseAuthenticator
+    except ImportError:
+        raise ImportError(
+            "Please install our pykafka fork:\n"
+            "pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support"
+        )
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -250,7 +259,16 @@ class Config(metaclass=SingletonMeta):
             ssl_params["password"] = self.ssl_params["password"]
         return SslConfig(**ssl_params)
 
-    def _get_pykafka_authenticator(self) -> BaseAuthenticator:
+    def _get_pykafka_authenticator(self) -> "BaseAuthenticator":
+        try:
+            from pykafka.sasl_authenticators import PlainAuthenticator, ScramAuthenticator
+        except ImportError:
+            raise ExceptionWithMessage(
+                "In order to support SASL you'll need to install our fork of pykafka.\n"
+                "Please run:\n"
+                "    pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support"
+            )
+
         try:
             if self.sasl_mechanism == "PLAIN":
                 return PlainAuthenticator(

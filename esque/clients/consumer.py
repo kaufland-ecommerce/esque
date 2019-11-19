@@ -115,6 +115,15 @@ class AbstractConsumer(ABC):
             return True
 
 
+class MessageConsumer(AbstractConsumer):
+    def create_internal_consumer(self):
+        self._consumer = confluent_kafka.Consumer(self._config)
+
+    def consume(self, offset: int = 0, partition: int = 0) -> Message:
+        self.assign_specific_partitions(self._topic_name, partitions=[partition], offset=offset)
+        return self.consume_single_message(timeout=1)
+
+
 class PingConsumer(AbstractConsumer):
     def consume(self) -> Optional[Tuple[str, int]]:
         message = self.consume_single_message(timeout=10)

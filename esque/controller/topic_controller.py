@@ -13,8 +13,8 @@ from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic
 from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.clients.consumer import ConsumerFactory
-from esque.config import Config
+from esque.clients.consumer import ConsumerFactory, MessageConsumer
+from esque.config import PING_GROUP_ID, Config
 from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
@@ -159,7 +159,7 @@ class TopicController:
         low_watermarks = pykafka_topic.earliest_available_offsets()
         high_watermarks = pykafka_topic.latest_available_offsets()
 
-        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks)
+        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks, topic)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
@@ -167,15 +167,24 @@ class TopicController:
         return topic
 
     def _get_partition_data(
-        self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
+        self,
+        confluent_topic: ConfluentTopic,
+        low_watermarks: PartitionInfo,
+        high_watermarks: PartitionInfo,
+        topic: Topic,
     ) -> List[Partition]:
 
+        consumer = MessageConsumer(PING_GROUP_ID, topic.name, True)
         partitions = []
 
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
-            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas)
+            if high > low:
+                latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+            else:
+                latest_timestamp = None
+            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
         return partitions

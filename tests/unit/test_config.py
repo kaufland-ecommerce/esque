@@ -128,7 +128,7 @@ def test_pykafka_config(mocker: mock, config: Config):
     ssl_config_mock = mocker.patch("esque.config.SslConfig", return_value=ssl_config_sentinel)
     plain_authenticator_sentinel = mock.sentinel.plain_authenticator
     plain_authenticator_mock = mocker.patch(
-        "esque.config.PlainAuthenticator", return_value=plain_authenticator_sentinel
+        "pykafka.sasl_authenticators.PlainAuthenticator", return_value=plain_authenticator_sentinel
     )
 
     config.context_switch("context_5")
