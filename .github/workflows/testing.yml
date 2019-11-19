@@ -73,6 +73,7 @@ jobs:
       - name: Install esque requirements
         run: |
           poetry install -vvv
+          poetry run -- pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
       - name: Run unit tests
         run: |
           poetry run -- pytest tests/unit/
