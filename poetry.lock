@@ -137,6 +137,30 @@ version = "4.5.4"
 
 [[package]]
 category = "dev"
+description = "Show coverage stats online via coveralls.io"
+name = "coveralls"
+optional = false
+python-versions = "*"
+version = "1.8.2"
+
+[package.dependencies]
+coverage = ">=3.6,<5.0"
+docopt = ">=0.6.1"
+requests = ">=1.0.0"
+
+[package.extras]
+yaml = ["PyYAML (>=3.10)"]
+
+[[package]]
+category = "dev"
+description = "Pythonic argument parser, that will make you smile"
+name = "docopt"
+optional = false
+python-versions = "*"
+version = "0.6.2"
+
+[[package]]
+category = "dev"
 description = "Discover and load entry points from installed packages."
 name = "entrypoints"
 optional = false
@@ -560,7 +584,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["pathlib2", "contextlib2", "unittest2"]
 
 [metadata]
-content-hash = "4c9f5a0d8f0b2ce5f7b20d126cfd0e3230ca25e94c201378b2ce1cac1237ab49"
+content-hash = "e4cda121ffeae37cec35e702f2836a5ecea91eaf9f33e8a61b31c7987512e7d9"
 python-versions = "^3.6"
 
 [metadata.files]
@@ -664,6 +688,13 @@ coverage = [
     {file = "coverage-4.5.4-cp37-cp37m-win_amd64.whl", hash = "sha256:23cc09ed395b03424d1ae30dcc292615c1372bfba7141eb85e11e50efaa6b351"},
     {file = "coverage-4.5.4-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:141f08ed3c4b1847015e2cd62ec06d35e67a3ac185c26f7635f4406b90afa9c5"},
     {file = "coverage-4.5.4.tar.gz", hash = "sha256:e07d9f1a23e9e93ab5c62902833bf3e4b1f65502927379148b6622686223125c"},
+]
+coveralls = [
+    {file = "coveralls-1.8.2-py2.py3-none-any.whl", hash = "sha256:9bc5a1f92682eef59f688a8f280207190d9a6afb84cef8f567fa47631a784060"},
+    {file = "coveralls-1.8.2.tar.gz", hash = "sha256:fb51cddef4bc458de347274116df15d641a735d3f0a580a9472174e2e62f408c"},
+]
+docopt = [
+    {file = "docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
