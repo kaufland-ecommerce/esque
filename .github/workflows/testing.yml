@@ -85,6 +85,7 @@ jobs:
         run: |
           poetry run -- pytest -v --integration --local --cov=esque tests/
       - name: Update coverage
+        if: matrix.python == '3.6'
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         run: |
