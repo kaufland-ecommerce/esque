@@ -1,5 +1,10 @@
 name: Style, Unit And Integration Tests
-on: push
+on:
+  push:
+    branches:
+      - "*"
+    ignore-tags:
+      - "*"
 
 jobs:
   test-style:
@@ -89,6 +94,7 @@ jobs:
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         run: |
+          export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           poetry run coveralls
       - name: Output logs
         if: failure()
