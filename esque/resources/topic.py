@@ -42,7 +42,7 @@ class Partition(KafkaResource):
             "partition_isrs": self.partition_isrs,
             "partition_leader": self.partition_leader,
             "partition_replicas": self.partition_replicas,
-            "latest_message_timestamp": self.latest_message_timestamp or "Missing due to timeout.",
+            "latest_message_timestamp": self.latest_message_timestamp,
         }
 
 

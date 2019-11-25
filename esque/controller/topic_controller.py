@@ -1,4 +1,5 @@
 import datetime
+import logging
 import re
 import time
 from datetime import timezone
@@ -35,6 +36,7 @@ class TopicController:
     def __init__(self, cluster: "Cluster", config: Config):
         self.cluster: "Cluster" = cluster
         self.config = config
+        self._logger = logging.getLogger(__name__)
 
     def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
@@ -185,7 +187,9 @@ class TopicController:
                 try:
                     latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
                 except MessageEmptyException:
-                    """Due to timeout latest timestamp is missing."""
+                    self._logger.warning(
+                        f"Due to timeout latest timestamp for topic `{topic.name}` and partition `{partition_id}` is missing."
+                    )
             partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
