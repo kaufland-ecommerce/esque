@@ -30,9 +30,8 @@ class Partition(KafkaResource):
         self.partition_isrs = partition_isrs
         self.partition_leader = partition_leader
         self.partition_replicas = partition_replicas
-        if latest_message_timestamp is None:
-            self.latest_message_timestamp = None
-        else:
+        self.latest_message_timestamp = None
+        if latest_message_timestamp is not None:
             self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp).to_datetime_string()
 
     def as_dict(self):
@@ -43,7 +42,7 @@ class Partition(KafkaResource):
             "partition_isrs": self.partition_isrs,
             "partition_leader": self.partition_leader,
             "partition_replicas": self.partition_replicas,
-            "latest_message_timestamp": self.latest_message_timestamp,
+            "latest_message_timestamp": self.latest_message_timestamp or "Missing due to timeout.",
         }
 
 

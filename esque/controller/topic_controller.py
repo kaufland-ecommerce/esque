@@ -180,10 +180,12 @@ class TopicController:
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
+            latest_timestamp = None
             if high > low:
-                latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
-            else:
-                latest_timestamp = None
+                try:
+                    latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+                except MessageEmptyException:
+                    """Due to timeout latest timestamp is missing."""
             partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
