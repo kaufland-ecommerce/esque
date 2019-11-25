@@ -1,9 +1,11 @@
 import datetime
+import logging
 import re
 import time
 from datetime import timezone
 from enum import Enum
 from itertools import islice
+from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Union
 
 import pendulum
@@ -18,6 +20,8 @@ from esque.config import PING_GROUP_ID, Config
 from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+
+logger: Logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -180,10 +184,14 @@ class TopicController:
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
+            latest_timestamp = None
             if high > low:
-                latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
-            else:
-                latest_timestamp = None
+                try:
+                    latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+                except MessageEmptyException:
+                    logger.warning(
+                        f"Due to timeout latest timestamp for topic `{topic.name}` and partition `{partition_id}` is missing."
+                    )
             partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
