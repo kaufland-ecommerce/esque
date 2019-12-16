@@ -245,7 +245,7 @@ def test_set_offsets_offset_to_timestamp_value(
 
     interactive_cli_runner.invoke(
         set_offsets,
-        args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt.format("YYYY-MM-DDTHH:mm:ss")],
+        args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt],
         input="y\n",
         catch_exceptions=True,
     )
