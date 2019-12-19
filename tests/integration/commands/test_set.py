@@ -215,7 +215,7 @@ def test_set_offsets_offset_to_timestamp_value(
     consumer_group,
     consumergroup_controller,
 ):
-    produced_messages_same_partition(topic, producer, 1.0)
+    produced_messages_same_partition(topic, producer, 1.5)
 
     vanilla_consumer = ConsumerFactory().create_consumer(
         group_id=consumer_group,
