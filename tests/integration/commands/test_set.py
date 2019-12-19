@@ -215,7 +215,7 @@ def test_set_offsets_offset_to_timestamp_value(
     consumer_group,
     consumergroup_controller,
 ):
-    produced_messages_same_partition(topic, producer)
+    produced_messages_same_partition(topic, producer, 1.0)
 
     vanilla_consumer = ConsumerFactory().create_consumer(
         group_id=consumer_group,
@@ -241,11 +241,11 @@ def test_set_offsets_offset_to_timestamp_value(
 
     fifth_message = messages[4]
     timestamp = fifth_message.timestamp()
-    dt = pendulum.from_timestamp(timestamp)
+    dt = pendulum.from_timestamp(round(timestamp[1] / 1000) - 1)
 
     interactive_cli_runner.invoke(
         set_offsets,
-        args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt],
+        args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt.format("YYYY-MM-DDTHH:mm:ss")],
         input="y\n",
         catch_exceptions=True,
     )
