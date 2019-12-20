@@ -13,7 +13,6 @@ from esque.errors import EndOfPartitionReachedException, MessageEmptyException, 
 from esque.helpers import log_error
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
 from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
-from esque.resources.topic import Topic
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -371,17 +370,6 @@ def consume_to_file_ordered(
     for c in consumers:
         c.close_all_writers()
     return total_number_of_messages
-
-
-def offsets_for_timestamp(group_id: str, topic: Topic, timestamp_seconds: int) -> Dict[int, int]:
-    config = Config.get_instance().create_confluent_config()
-    config.update({"group.id": group_id})
-    consumer = confluent_kafka.Consumer(config)
-    topic_partitions_with_timestamp = [
-        TopicPartition(topic.name, partition.partition_id, timestamp_seconds * 1000) for partition in topic.partitions
-    ]
-    topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
-    return {topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets}
 
 
 def consume_to_files(

@@ -5,14 +5,15 @@ from itertools import islice
 from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Union
 
+import confluent_kafka
 import pendulum
 from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
-from confluent_kafka.cimpl import NewTopic
+from confluent_kafka.cimpl import NewTopic, TopicPartition
 from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.clients.consumer import MessageConsumer, offsets_for_timestamp
+from esque.clients.consumer import MessageConsumer
 from esque.config import PING_GROUP_ID, Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
@@ -115,8 +116,17 @@ class TopicController:
         self, group_id: str, topic_name: str, timestamp_limit: pendulum
     ) -> Dict[int, int]:
         topic = self.get_cluster_topic(topic_name=topic_name)
-        offset_for_timestamp = offsets_for_timestamp(group_id, topic, timestamp_limit.int_timestamp)
-        return offset_for_timestamp
+        config = Config.get_instance().create_confluent_config()
+        config.update({"group.id": group_id})
+        consumer = confluent_kafka.Consumer(config)
+        topic_partitions_with_timestamp = [
+            TopicPartition(topic.name, partition.partition_id, timestamp_limit.int_timestamp * 1000)
+            for partition in topic.partitions
+        ]
+        topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
+        return {
+            topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
+        }
 
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
