@@ -112,11 +112,11 @@ class ConsumerGroupController:
                         self._logger.error(message)
             elif offset_to_timestamp is not None:
                 timestamp_limit = pendulum.parse(offset_to_timestamp)
-                current_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
-                    topic_name=topic_name, timestamp_limit=timestamp_limit
+                proposed_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
+                    group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
                 )
                 for plan_element in offset_plans.values():
-                    plan_element.current_offset = current_offset_dict.get(plan_element.partition_id, 0)
+                    plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
             elif offset_from_group is not None:
                 _, mirror_consumer_group = self._read_current_consumergroup_offsets(
                     consumer_id=offset_from_group, topic_name_expression=topic_name

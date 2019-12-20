@@ -1,23 +1,21 @@
-import datetime
 import logging
 import re
-import time
-from datetime import timezone
 from enum import Enum
 from itertools import islice
 from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Union
 
+import confluent_kafka
 import pendulum
 from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
-from confluent_kafka.cimpl import NewTopic
+from confluent_kafka.cimpl import NewTopic, TopicPartition
 from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.clients.consumer import ConsumerFactory, MessageConsumer
+from esque.clients.consumer import MessageConsumer
 from esque.config import PING_GROUP_ID, Config
-from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
+from esque.errors import MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
 
@@ -114,46 +112,21 @@ class TopicController:
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum) -> Dict[int, int]:
+    def get_offsets_closest_to_timestamp(
+        self, group_id: str, topic_name: str, timestamp_limit: pendulum
+    ) -> Dict[int, int]:
         topic = self.get_cluster_topic(topic_name=topic_name)
-        partition_offsets = {partition.partition_id: 0 for partition in topic.partitions}
-        consumers = []
-        factory = ConsumerFactory()
-        partitions = partition_offsets.keys()
-        group_id = "group_for_" + topic_name + "_" + str(int(round(time.time() * 1000)))
-        for partition in partitions:
-            consumer = factory.create_consumer(
-                group_id=group_id,
-                topic_name=None,
-                output_directory=None,
-                avro=False,
-                match=None,
-                last=False,
-                initialize_default_output_directory=False,
-            )
-            consumer.assign_specific_partitions(topic_name, [partition])
-            consumers.append(consumer)
-
-        for partition_counter in range(0, len(consumers)):
-            max_retry_count = 5
-            keep_polling_current_partition = True
-            while keep_polling_current_partition:
-                try:
-                    message = consumers[partition_counter].consume_single_message(timeout=10)
-                except MessageEmptyException:
-                    # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
-                    max_retry_count -= 1
-                    if max_retry_count <= 0:
-                        keep_polling_current_partition = False
-                except EndOfPartitionReachedException:
-                    keep_polling_current_partition = False
-                else:
-                    if (
-                        datetime.datetime.fromtimestamp(int(message.timestamp()[1] / 1000.0), timezone.utc)
-                        < timestamp_limit
-                    ):
-                        partition_offsets[message.partition()] = message.offset() + 1
-        return partition_offsets
+        config = Config.get_instance().create_confluent_config()
+        config.update({"group.id": group_id})
+        consumer = confluent_kafka.Consumer(config)
+        topic_partitions_with_timestamp = [
+            TopicPartition(topic.name, partition.partition_id, timestamp_limit.int_timestamp * 1000)
+            for partition in topic.partitions
+        ]
+        topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
+        return {
+            topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
+        }
 
     def update_from_cluster(self, topic: Topic):
         """Takes a topic and, based on its name, updates all attributes from the cluster"""

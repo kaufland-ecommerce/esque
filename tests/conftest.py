@@ -304,10 +304,10 @@ def produced_messages_different_partitions_with_headers(
 
 @pytest.fixture()
 def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluentProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer, sleep_time: float = 0.5):
         for message in messages_ordered_same_partition:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
-            time.sleep(0.5)
+            time.sleep(sleep_time)
             producer.flush()
 
     return _produce
