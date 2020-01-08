@@ -1,3 +1,5 @@
+### Version 0.2.0b2
+* Fix for #125
 ### Version 0.2.0b0
 * Moved the CI workflow to GitHub Actions
 * Command `edit consumergroup` renamed to `set offsets`
