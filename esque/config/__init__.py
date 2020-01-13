@@ -192,7 +192,7 @@ class Config(metaclass=SingletonMeta):
             yaml.dump(self._cfg, f, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
 
     def create_pykafka_config(self) -> Dict[str, Any]:
-        config = {"hosts": ",".join(self.bootstrap_servers)}
+        config = {"hosts": ",".join(self.bootstrap_servers), "exclude_internal_topics": False}
         if self.sasl_enabled:
             config["sasl_authenticator"] = self._get_pykafka_authenticator()
         if self.ssl_enabled:
