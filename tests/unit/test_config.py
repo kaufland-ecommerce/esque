@@ -136,6 +136,7 @@ def test_pykafka_config(mocker: mock, config: Config):
         "hosts": "kafka:9094,kafka1:9094,kafka2:9094,kafka3:9094",
         "sasl_authenticator": plain_authenticator_sentinel,
         "ssl_config": ssl_config_sentinel,
+        "exclude_internal_topics": False,
     }
     actual_config = config.create_pykafka_config()
     assert expected_config == actual_config
