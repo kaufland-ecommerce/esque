@@ -15,7 +15,7 @@ include = [
 
 exclude = ["tests/**/*"]
 
-repository = "https://github.com/real.digital/esque"
+repository = "https://github.com/real-digital/esque"
 
 keywords = ["kafka", "cli", "commandline", "administration", "operation"]
 
@@ -55,7 +55,7 @@ pytest-mock = "^1.11"
 pytest-cov = "^2.8"
 flake8 = "^3.7"
 #TODO unpin once it's more stable
-black = {version = "19.3b0", allows-prereleases = true}
+black = {version = "19.3b0", allow-prereleases = true}
 isort = {version = "^4.3", extras = ["pyproject"]}
 bandit = "^1.6.2"
 coveralls = "^1.8.2"
@@ -73,6 +73,5 @@ default_section = "THIRDPARTY"
 known_first_party = ["esque", "tests"]
 
 [build-system]
-#TODO unpin once it's more stable
-requires = ["poetry==1.0.0b3"]
+requires = ["poetry>=1.0.2"]
 build-backend = "poetry.masonry.api"

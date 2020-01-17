@@ -73,12 +73,12 @@ jobs:
           popd
       - name: Install and configure poetry
         run: |
-          pip3 install "poetry==1.0.0b3"
+          pip3 install "poetry>=1.0.2"
           poetry config virtualenvs.in-project true
       - name: Install esque requirements
         run: |
           poetry install -vvv
-          poetry run -- pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
+          poetry run pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
       - name: Run kafka stack
         run: |
           docker-compose up -d
@@ -88,7 +88,7 @@ jobs:
           sleep 5
       - name: Run integration tests
         run: |
-          poetry run -- pytest -v --integration --local --cov=esque tests/
+          poetry run pytest -v --integration --local --cov=esque tests/
       - name: Update coverage
         if: matrix.python == '3.6'
         env:
