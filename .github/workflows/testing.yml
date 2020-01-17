@@ -73,7 +73,7 @@ jobs:
           popd
       - name: Install and configure poetry
         run: |
-          pip3 install "poetry==1.0.0b3"
+          pip3 install "poetry>=1.0.2"
           poetry config virtualenvs.in-project true
       - name: Install esque requirements
         run: |

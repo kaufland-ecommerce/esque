@@ -73,6 +73,5 @@ default_section = "THIRDPARTY"
 known_first_party = ["esque", "tests"]
 
 [build-system]
-#TODO unpin once it's more stable
-requires = ["poetry==1.0.0b3"]
+requires = ["poetry>=1.0.2"]
 build-backend = "poetry.masonry.api"
