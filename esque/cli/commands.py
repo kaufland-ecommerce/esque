@@ -28,7 +28,7 @@ from esque.cli.output import (
 )
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
+from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
@@ -161,6 +161,26 @@ def config_recreate(state: State):
     config_dir().mkdir(exist_ok=True)
     if ensure_approval(f"Should the current config in {config_dir()} get replaced?", no_verify=state.no_verify):
         copyfile(sample_config_path().as_posix(), config_path())
+
+
+@config.command("fix")
+@default_options
+def config_fix(state: State):
+    """Fix simple errors in esque config.
+
+    Fixes simple errors like wrong current_contexts in the esque config when the configs was tampered with manually."""
+    try:
+        state.config.context_switch(state.config.current_context)
+        click.echo("Your config seems fine. 🎉")
+    except ValidationException:
+        _cfg: Config = Config(disable_validation=True)
+        if _cfg.current_context not in _cfg.available_contexts:
+            click.echo(f"Found invalid current context. Switching context to state {_cfg.available_contexts[0]}.")
+            _cfg.context_switch(_cfg.available_contexts[0])
+            Config.set_instance(_cfg)
+            state.config.save()
+        else:
+            click.echo("Can't fix this configuration error try fixing it manually.")
 
 
 @config.command("autocomplete")

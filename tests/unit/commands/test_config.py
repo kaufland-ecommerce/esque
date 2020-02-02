@@ -5,10 +5,10 @@ import click
 import yaml
 from click.testing import CliRunner
 
-from esque.cli.commands import config_edit, config_migrate
+from esque.cli.commands import config_edit, config_fix, config_migrate
 from esque.config import Config, migration
 from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
-from tests.conftest import config_loader
+from tests.conftest import LOAD_BROKEN_CONFIG, config_loader
 
 
 def test_migrate_config(mocker: mock, interactive_cli_runner: CliRunner, load_config: config_loader):
@@ -43,3 +43,16 @@ def test_edit_config(mocker: mock, interactive_cli_runner: CliRunner, load_confi
     assert result.exit_code == 0
     config = Config()
     assert "dupe" in config.available_contexts
+
+
+def test_fix_missing_context_config(interactive_cli_runner: CliRunner, load_config: config_loader):
+    load_config(LOAD_BROKEN_CONFIG)
+
+    _cfg = Config(disable_validation=True)
+    assert _cfg.current_context not in _cfg.available_contexts
+
+    interactive_cli_runner.invoke(config_fix, catch_exceptions=False)
+
+    _cfg = Config.get_instance()
+
+    assert _cfg.current_context in _cfg.available_contexts
