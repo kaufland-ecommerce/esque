@@ -67,12 +67,13 @@ def sample_config_path() -> Path:
 
 
 class Config(metaclass=SingletonMeta):
-    def __init__(self):
+    def __init__(self, *, disable_validation=False):
         if not config_path().exists():
             raise ConfigNotExistsException()
         check_config_version(config_path())
         self._cfg = yaml.safe_load(config_path().read_text())
-        esque.validation.validate_esque_config(self._cfg)
+        if not disable_validation:
+            esque.validation.validate_esque_config(self._cfg)
         self._current_dict: Optional[Dict[str, str]] = None
 
     @property
