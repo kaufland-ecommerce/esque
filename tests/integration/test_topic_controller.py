@@ -54,6 +54,7 @@ def test_alter_topic_config_works(topic_controller: TopicController, topic_id: s
     final_config = after_changes_applied_topic.config
     assert final_config.get("cleanup.policy") == "compact"
 
+
 @pytest.mark.integration
 def test_alter_topic_config_only_changes_mentioned_attributes(topic_controller: TopicController, topic_id: str):
     initial_topic = Topic(topic_id, config={"cleanup.policy": "delete", "min.compaction.lag": "1000000"})
