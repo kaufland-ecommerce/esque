@@ -101,7 +101,7 @@ class TopicController:
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
 
-    def _get_altered_config(self, topic) -> Dict[str, str]:
+    def _get_altered_config(self, topic: Topic) -> Dict[str, str]:
         cluster_topic = self.get_cluster_topic(topic.name)
         current_config = cluster_topic.config.items()
         altered_config = {}
