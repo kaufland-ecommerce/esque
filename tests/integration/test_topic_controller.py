@@ -57,13 +57,13 @@ def test_alter_topic_config_works(topic_controller: TopicController, topic_id: s
 
 @pytest.mark.integration
 def test_alter_topic_config_only_changes_mentioned_attributes(topic_controller: TopicController, topic_id: str):
-    initial_topic = Topic(topic_id, config={"cleanup.policy": "delete", "min.compaction.lag": "1000000"})
+    initial_topic = Topic(topic_id, config={"cleanup.policy": "delete", "min.compaction.lag.ms": "1000000"})
 
     topic_controller.create_topics([initial_topic])
     topic_controller.update_from_cluster(initial_topic)
     config = initial_topic.config
     assert config.get("cleanup.policy") == "delete"
-    assert config.get("min.compaction.lag") == "1000000"
+    assert config.get("min.compaction.lag.ms") == "1000000"
     change_topic = Topic(topic_id, config={"cleanup.policy": "compact"})
     topic_controller.alter_configs([change_topic])
     topic_controller.update_from_cluster(change_topic)
@@ -71,7 +71,7 @@ def test_alter_topic_config_only_changes_mentioned_attributes(topic_controller: 
 
     final_config = after_changes_applied_topic.config
     assert final_config.get("cleanup.policy") == "compact"
-    assert final_config.get("min.compaction.lag") == "1000000"
+    assert final_config.get("min.compaction.lag.ms") == "1000000"
 
 
 @pytest.mark.integration
