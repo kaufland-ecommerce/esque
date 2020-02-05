@@ -96,9 +96,21 @@ class TopicController:
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
         for topic in topics:
-            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
+            altered_config = self._get_altered_config(topic)
+            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, altered_config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
+
+    def _get_altered_config(self, topic: Topic) -> Dict[str, str]:
+        cluster_topic = self.get_cluster_topic(topic.name)
+        current_config = cluster_topic.config.items()
+        altered_config = {}
+        for name, value in current_config:
+            if name in topic.config:
+                altered_config[name] = topic.config[name]
+                continue
+            altered_config[name] = value
+        return altered_config
 
     @invalidate_cache_after
     def delete_topic(self, topic: Topic):
@@ -128,7 +140,7 @@ class TopicController:
             topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
         }
 
-    def update_from_cluster(self, topic: Topic):
+    def update_from_cluster(self, topic: Topic) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
