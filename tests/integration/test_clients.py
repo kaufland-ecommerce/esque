@@ -3,6 +3,7 @@ import pathlib
 import random
 from contextlib import ExitStack
 from glob import glob
+from itertools import chain
 from string import ascii_letters
 from typing import Iterable, List, Tuple
 
@@ -42,11 +43,14 @@ def test_avro_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
+    produced_messages = chain(
+        produce_test_messages_with_avro(avro_producer, source_topic),
+        produce_delete_tombstone_messages_with_avro(avro_producer, source_topic, 2)
+    )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
-    number_of_consumer_messages = file_consumer.consume(10)
+    number_of_consumer_messages = file_consumer.consume(20)
 
     consumed_messages = get_consumed_messages(output_directory, True)
 
@@ -336,6 +340,27 @@ def produce_test_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[st
             value=value,
             key_schema=key_schema,
             value_schema=value_schema,
+            partition=partition,
+        )
+        avro_producer.flush()
+    return messages
+
+
+def produce_delete_tombstone_messages_with_avro(avro_producer: AvroProducer, topic: Tuple[str, int], amount: int) -> Iterable[KafkaMessage]:
+    topic_name, num_partitions = topic
+    with open("tests/test_samples/key_schema.avsc", "r") as file:
+        key_schema = load_schema(file.read())
+    messages = []
+    for i in range(amount):
+        partition = random.randrange(0, num_partitions)
+        key = {"id": str(i)}
+        messages.append(KafkaMessage(json.dumps(key), None, partition, key_schema, None))
+        avro_producer.produce(
+            topic=topic_name,
+            key=key,
+            value=None,
+            key_schema=key_schema,
+            value_schema=None,
             partition=partition,
         )
         avro_producer.flush()
