@@ -32,11 +32,11 @@ def test_plain_text_consume_to_file(
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
     )
-    number_of_consumer_messages = file_consumer.consume(20)
+    number_of_consumer_messages = file_consumer.consume(12)
 
     consumed_messages = get_consumed_messages(output_directory, False)
 
-    assert number_of_consumer_messages == 20
+    assert number_of_consumer_messages == 12
     assert produced_messages == consumed_messages
 
 
@@ -53,11 +53,11 @@ def test_avro_consume_to_file(
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
-    number_of_consumer_messages = file_consumer.consume(20)
+    number_of_consumer_messages = file_consumer.consume(12)
 
     consumed_messages = get_consumed_messages(output_directory, True)
 
-    assert number_of_consumer_messages == 20
+    assert number_of_consumer_messages == 12
     assert produced_messages == consumed_messages
 
 
@@ -72,11 +72,14 @@ def test_plain_text_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = produce_test_messages(producer, source_topic)
+    produced_messages = chain(
+        produce_test_messages(producer, source_topic),
+        produce_delete_tombstones_messages(producer, source_topic)
+    )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
     )
-    file_consumer.consume(10)
+    file_consumer.consume(12)
 
     producer = ProducerFactory().create_producer(target_topic_id, output_directory, avro=False)
     producer.produce()
@@ -86,7 +89,7 @@ def test_plain_text_consume_and_produce(
     file_consumer = ConsumerFactory().create_consumer(
         (consumer_group + "assertion_check"), target_topic_id, assertion_check_directory, False, avro=False
     )
-    file_consumer.consume(10)
+    file_consumer.consume(12)
 
     consumed_messages = get_consumed_messages(assertion_check_directory, False)
 
@@ -104,12 +107,15 @@ def test_avro_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = produce_test_messages_with_avro(avro_producer, source_topic)
+    produced_messages = chain(
+        produce_test_messages_with_avro(avro_producer, source_topic),
+        produce_delete_tombstone_messages_with_avro(avro_producer, source_topic)
+    )
 
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
-    file_consumer.consume(10)
+    file_consumer.consume(12)
 
     producer = ProducerFactory().create_producer(
         topic_name=target_topic_id, input_directory=output_directory, avro=True
@@ -121,7 +127,7 @@ def test_avro_consume_and_produce(
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group + "assertion_check", target_topic_id, assertion_check_directory, False, avro=True
     )
-    file_consumer.consume(10)
+    file_consumer.consume(12)
 
     consumed_messages = get_consumed_messages(assertion_check_directory, True)
 
@@ -328,7 +334,7 @@ def produce_test_messages(
 
 
 def produce_delete_tombstones_messages(
-    producer: ConfluenceProducer, topic: Tuple[str, int], amount: int = 10
+    producer: ConfluenceProducer, topic: Tuple[str, int], amount: int = 2
 ) -> Iterable[KafkaMessage]:
     topic_name, num_partitions = topic
     messages = []
@@ -368,7 +374,7 @@ def produce_test_messages_with_avro(
 
 
 def produce_delete_tombstone_messages_with_avro(
-    avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 10
+    avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 2
 ) -> Iterable[KafkaMessage]:
     topic_name, num_partitions = topic
     with open("tests/test_samples/key_schema.avsc", "r") as file:
