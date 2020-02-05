@@ -54,7 +54,7 @@ class AvroFileWriter(FileWriter):
         directory = self.directory / schema_dir_name
         if directory.exists():
             return
-        directory.mkdir(exist_ok=True)
+        directory.mkdir()
         (directory / "key_schema.avsc").write_text(
             json.dumps(self.schema_registry_client.get_schema_from_id(key_schema_id).original_schema), encoding="utf-8"
         )
@@ -63,7 +63,7 @@ class AvroFileWriter(FileWriter):
         directory = self.directory / schema_dir_name
         if directory.exists():
             return
-        directory.mkdir(exist_ok=True)
+        directory.mkdir()
         (directory / "value_schema.avsc").write_text(
             json.dumps(self.schema_registry_client.get_schema_from_id(value_schema_id).original_schema),
             encoding="utf-8",
