@@ -25,9 +25,11 @@ def test_plain_text_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(chain(
-        produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
-    ))
+    produced_messages = list(
+        chain(
+            produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
+        )
+    )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
     )
@@ -45,10 +47,12 @@ def test_avro_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(chain(
-        produce_test_messages_with_avro(avro_producer, source_topic),
-        produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
-    ))
+    produced_messages = list(
+        chain(
+            produce_test_messages_with_avro(avro_producer, source_topic),
+            produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
+        )
+    )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
@@ -71,9 +75,11 @@ def test_plain_text_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(chain(
-        produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
-    ))
+    produced_messages = list(
+        chain(
+            produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
+        )
+    )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
     )
@@ -105,10 +111,12 @@ def test_avro_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(chain(
-        produce_test_messages_with_avro(avro_producer, source_topic),
-        produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
-    ))
+    produced_messages = list(
+        chain(
+            produce_test_messages_with_avro(avro_producer, source_topic),
+            produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
+        )
+    )
 
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
