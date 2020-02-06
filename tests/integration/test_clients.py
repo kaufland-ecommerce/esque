@@ -2,7 +2,6 @@ import json
 import pathlib
 import random
 from contextlib import ExitStack
-from glob import glob
 from itertools import chain
 from string import ascii_letters
 from typing import Iterable, List, Tuple

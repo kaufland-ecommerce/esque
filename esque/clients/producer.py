@@ -3,7 +3,6 @@ import logging
 import pathlib
 import sys
 from abc import ABC, abstractmethod
-from glob import glob
 from json import JSONDecodeError
 from typing import Optional
 
