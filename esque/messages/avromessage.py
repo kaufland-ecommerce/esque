@@ -102,7 +102,7 @@ class AvroFileReader(FileReader):
 
             yield KafkaMessage(
                 json.dumps(record["key"]),
-                None if record["value"] is None else json.dumps(record["value"]),
+                json.dumps(record["value"]) if record["value"] is not None else None,
                 record["partition"],
                 key_schema,
                 value_schema,
