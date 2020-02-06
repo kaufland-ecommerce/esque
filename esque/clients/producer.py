@@ -5,6 +5,7 @@ import sys
 from abc import ABC, abstractmethod
 from glob import glob
 from json import JSONDecodeError
+from typing import Optional
 
 import confluent_kafka
 import pendulum
@@ -14,7 +15,13 @@ from esque.config import Config
 from esque.errors import raise_for_kafka_error
 from esque.helpers import delta_t, log_error
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import FileReader, KafkaMessage, PlainTextFileReader, deserialize_message
+from esque.messages.message import (
+    FileReader,
+    KafkaMessage,
+    PlainTextFileReader,
+    deserialize_message,
+    get_partitions_in_path,
+)
 from esque.ruleparser.ruleengine import RuleTree
 
 
@@ -106,10 +113,10 @@ class FileProducer(AbstractProducer):
         self.input_directory = input_directory
 
     def produce(self) -> int:
-        path_list = glob(str(self.input_directory / "partition_*"))
+        partitions = get_partitions_in_path(self.input_directory)
         counter = 0
-        for partition_path in path_list:
-            with self.get_file_reader(pathlib.Path(partition_path)) as file_reader:
+        for partition in partitions:
+            with self.get_file_reader(pathlib.Path(self.input_directory), partition) as file_reader:
                 for message in file_reader.read_message_from_file():
                     self.produce_message(self._topic_name, message)
                     left_messages = self._producer.flush(0)
@@ -119,16 +126,16 @@ class FileProducer(AbstractProducer):
                 self.flush_all()
         return counter
 
-    def get_file_reader(self, directory: pathlib.Path) -> FileReader:
-        return PlainTextFileReader(directory)
+    def get_file_reader(self, directory: pathlib.Path, partition: Optional[str]) -> FileReader:
+        return PlainTextFileReader(directory, partition)
 
 
 class AvroFileProducer(FileProducer):
     def create_internal_producer(self):
         self._producer = AvroProducer(self._config)
 
-    def get_file_reader(self, directory: pathlib.Path) -> FileReader:
-        return AvroFileReader(directory)
+    def get_file_reader(self, directory: pathlib.Path, partition: Optional[str]) -> FileReader:
+        return AvroFileReader(directory, partition)
 
     def _setup_config(self):
         super()._setup_config()

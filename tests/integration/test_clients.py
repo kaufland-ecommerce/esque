@@ -16,7 +16,7 @@ from esque.cli.commands import consume_to_file_ordered
 from esque.clients.consumer import ConsumerFactory
 from esque.clients.producer import ProducerFactory
 from esque.messages.avromessage import AvroFileReader
-from esque.messages.message import KafkaMessage, PlainTextFileReader
+from esque.messages.message import KafkaMessage, PlainTextFileReader, get_partitions_in_path
 
 
 @pytest.mark.integration
@@ -391,13 +391,13 @@ def produce_delete_tombstone_messages_with_avro(
 
 def get_consumed_messages(directory, avro: bool, sort: bool = True) -> List[KafkaMessage]:
     consumed_messages = []
-    path_list = glob(str(directory / "partition_*"))
+    partitions = get_partitions_in_path(directory)
     with ExitStack() as stack:
-        for partition_path in path_list:
+        for partition in partitions:
             if avro:
-                file_reader = AvroFileReader(pathlib.Path(partition_path))
+                file_reader = AvroFileReader(pathlib.Path(directory), partition)
             else:
-                file_reader = PlainTextFileReader(pathlib.Path(partition_path))
+                file_reader = PlainTextFileReader(pathlib.Path(directory), partition)
             stack.enter_context(file_reader)
             for message in file_reader.read_message_from_file():
                 consumed_messages.append(message)

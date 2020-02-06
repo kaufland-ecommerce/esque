@@ -1,6 +1,7 @@
 import json
 import pathlib
 from abc import abstractmethod
+from glob import glob
 from typing import Any, Iterable, List, NamedTuple, Optional
 
 import click
@@ -26,8 +27,8 @@ class KafkaMessage(NamedTuple):
     key: Any
     value: Any
     partition: int
-    key_schema: RecordSchema = None
-    value_schema: RecordSchema = None
+    key_schema: Optional[RecordSchema] = None
+    value_schema: Optional[RecordSchema] = None
     headers: List[MessageHeader] = []
 
 
@@ -38,8 +39,9 @@ class GenericWriter:
 
 
 class FileHandler:
-    def __init__(self, directory: pathlib.Path):
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
         self.directory = directory
+        self.partition = partition
         self.file_name = "data"
         self.open_mode = "w+"
         self.file = None
@@ -52,9 +54,11 @@ class FileHandler:
         self.file.close()
 
     def init_destination_directory(self):
-        if not self.directory.exists() and "w" in self.open_mode:
-            self.directory.mkdir()
-        self.file = (self.directory / self.file_name).open(self.open_mode)
+        partition = "any" if self.partition is None else self.partition
+        partition_directory = self.directory / f"partition_{partition}"
+        if not partition_directory.exists() and "w" in self.open_mode:
+            partition_directory.mkdir()
+        self.file = (partition_directory / self.file_name).open(self.open_mode)
 
 
 class StdOutWriter(GenericWriter):
@@ -63,8 +67,8 @@ class StdOutWriter(GenericWriter):
 
 
 class FileWriter(GenericWriter, FileHandler):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
+        super().__init__(directory, partition)
         self.open_mode = "w+"
 
     def write_message(self, message: Message):
@@ -72,8 +76,8 @@ class FileWriter(GenericWriter, FileHandler):
 
 
 class FileReader(FileHandler):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
+        super().__init__(directory, partition)
         self.open_mode = "r"
 
     def read_message_from_file(self) -> Iterable[KafkaMessage]:
@@ -139,3 +143,11 @@ def deserialize_message(message_line: str) -> KafkaMessage:
     return KafkaMessage(
         key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema, headers=headers
     )
+
+
+def get_partitions_in_path(input_directory: pathlib.Path) -> Iterable[str]:
+    path_list = glob(str(input_directory / "partition_*"))
+    partitions = []
+    for partition_path in path_list:
+        partitions.append(partition_path.rpartition("_")[2])
+    return partitions

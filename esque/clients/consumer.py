@@ -153,11 +153,7 @@ class PlaintextConsumer(AbstractConsumer):
     ):
         super().__init__(group_id, topic_name, last, match, enable_auto_commit)
         self.output_directory = output_directory
-        self.writers[-1] = (
-            StdOutWriter()
-            if output_directory is None
-            else PlainTextFileWriter(self.output_directory / "partition_any")
-        )
+        self.writers[-1] = StdOutWriter() if output_directory is None else PlainTextFileWriter(self.output_directory)
         self._initialize_default_output_directory = initialize_default_output_directory
         if self._initialize_default_output_directory and self.output_directory is not None:
             self.writers[-1].init_destination_directory()
@@ -190,7 +186,7 @@ class PlaintextConsumer(AbstractConsumer):
             and not self._initialize_default_output_directory
             and message.partition() not in self.writers
         ):
-            writer = PlainTextFileWriter(self.output_directory / f"partition_{message.partition()}")
+            writer = PlainTextFileWriter(self.output_directory, message.partition())
             writer.init_destination_directory()
             self.writers[message.partition()] = writer
         else:
@@ -222,7 +218,7 @@ class AvroFileConsumer(PlaintextConsumer):
         self.writers[-1] = (
             StdOutAvroWriter(schema_registry_client=self.schema_registry_client)
             if output_directory is None
-            else AvroFileWriter(self.output_directory / "partition_any", self.schema_registry_client)
+            else AvroFileWriter(self.schema_registry_client, self.output_directory)
         )
         if self._initialize_default_output_directory and self.output_directory is not None:
             self.writers[-1].init_destination_directory()
@@ -233,9 +229,7 @@ class AvroFileConsumer(PlaintextConsumer):
             and not self._initialize_default_output_directory
             and message.partition() not in self.writers
         ):
-            writer = AvroFileWriter(
-                self.output_directory / f"partition_{message.partition()}", self.schema_registry_client
-            )
+            writer = AvroFileWriter(self.schema_registry_client, self.output_directory, message.partition())
             writer.init_destination_directory()
             self.writers[message.partition()] = writer
         else:

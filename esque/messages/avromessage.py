@@ -25,8 +25,10 @@ class DecodedAvroMessage(NamedTuple):
 
 
 class AvroFileWriter(FileWriter):
-    def __init__(self, directory: pathlib.Path, schema_registry_client: SchemaRegistryClient):
-        super().__init__(directory)
+    def __init__(
+        self, schema_registry_client: SchemaRegistryClient, directory: pathlib.Path, partition: Optional[str] = None
+    ):
+        super().__init__(directory, partition)
         self.directory = directory
         self.schema_registry_client = schema_registry_client
         self.current_key_schema_id = None
@@ -80,8 +82,8 @@ class StdOutAvroWriter(StdOutWriter):
 
 
 class AvroFileReader(FileReader):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
+        super().__init__(directory, partition)
         self.open_mode = "rb"
 
     def read_message_from_file(self) -> Iterable[KafkaMessage]:
