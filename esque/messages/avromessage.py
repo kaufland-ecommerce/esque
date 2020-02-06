@@ -86,7 +86,7 @@ class AvroFileReader(FileReader):
 
             key_schema, value_schema = get_schemata(self.directory, record["key_schema_id"], record["value_schema_id"])
             yield KafkaMessage(
-                json.dumps(record["key"]),
+                json.dumps(record["key"]) if record["key"] is not None else None,
                 json.dumps(record["value"]) if record["value"] is not None else None,
                 record["partition"],
                 key_schema,

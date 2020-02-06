@@ -144,7 +144,7 @@ class AvroFileProducer(FileProducer):
         if self._rule_tree is None or self._rule_tree.evaluate(message):
             self._producer.produce(
                 topic=topic_name,
-                key=json.loads(message.key),
+                key=None if message.key is None else json.loads(message.key),
                 value=None if message.value is None else json.loads(message.value),
                 partition=message.partition,
                 key_schema=message.key_schema,

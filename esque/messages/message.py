@@ -125,8 +125,8 @@ def serialize_message(message: Message):
 
 def deserialize_message(message_line: str) -> KafkaMessage:
     json_record = json.loads(message_line)
-    key = None if "key" not in json_record or not json_record["key"] else json_record["key"]
-    value = json_record["value"]
+    key = None if "key" not in json_record or json_record["key"] is None else json_record["key"]
+    value = None if "value" not in json_record or json_record["value"] is None else json_record["value"]
     partition = json_record.get("partition", 0)
     headers = []
     if json_record["headers"]:
