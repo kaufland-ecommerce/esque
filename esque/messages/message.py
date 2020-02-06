@@ -15,7 +15,7 @@ class MessageHeader(NamedTuple):
 
 class DecodedMessage(NamedTuple):
     key: str
-    value: str
+    value: Optional[str]
     partition: int
     offset: int
     timestamp: str
@@ -92,11 +92,8 @@ class PlainTextFileReader(FileReader):
 
 
 def decode_message(message: Message) -> DecodedMessage:
-    if message.key() is None:
-        decoded_key = None
-    else:
-        decoded_key = message.key().decode("utf-8")
-    decoded_value = message.value().decode("utf-8")
+    decoded_key = None if message.key() is None else message.key().decode("utf-8")
+    decoded_value = None if message.value() is None else message.value().decode("utf-8")
     headers = []
     if message.headers():
         for header_key, header_value in message.headers():

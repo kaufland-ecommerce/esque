@@ -99,7 +99,11 @@ class AvroFileReader(FileReader):
                 value_schema = load_schema((value_schema_directory / "value_schema.avsc").read_text(encoding="utf-8"))
 
             yield KafkaMessage(
-                json.dumps(record["key"]), json.dumps(record["value"]), record["partition"], key_schema, value_schema
+                json.dumps(record["key"]),
+                None if record["value"] is None else json.dumps(record["value"]),
+                record["partition"],
+                key_schema,
+                value_schema,
             )
 
 

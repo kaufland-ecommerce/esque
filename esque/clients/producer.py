@@ -139,7 +139,7 @@ class AvroFileProducer(FileProducer):
             self._producer.produce(
                 topic=topic_name,
                 key=json.loads(message.key),
-                value=json.loads(message.value),
+                value=None if message.value is None else json.loads(message.value),
                 partition=message.partition,
                 key_schema=message.key_schema,
                 value_schema=message.value_schema,
