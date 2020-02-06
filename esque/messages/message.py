@@ -128,8 +128,6 @@ def deserialize_message(message_line: str) -> KafkaMessage:
     key = None if "key" not in json_record or not json_record["key"] else json_record["key"]
     value = json_record["value"]
     partition = json_record.get("partition", 0)
-    key_schema = json_record["key_schema"] if "key_schema" in json_record else None
-    value_schema = json_record["value_schema"] if "value_schema" in json_record else None
     headers = []
     if json_record["headers"]:
         for header_item in json_record["headers"]:
@@ -138,7 +136,7 @@ def deserialize_message(message_line: str) -> KafkaMessage:
             if header_key:
                 headers.append(MessageHeader(header_key, header_value if header_value else None))
     return KafkaMessage(
-        key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema, headers=headers
+        key=key, value=value, partition=partition, headers=headers
     )
 
 
