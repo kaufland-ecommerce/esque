@@ -135,9 +135,7 @@ def deserialize_message(message_line: str) -> KafkaMessage:
             header_value = header_item["value"] if "value" in header_item else None
             if header_key:
                 headers.append(MessageHeader(header_key, header_value if header_value else None))
-    return KafkaMessage(
-        key=key, value=value, partition=partition, headers=headers
-    )
+    return KafkaMessage(key=key, value=value, partition=partition, headers=headers)
 
 
 def get_partitions_in_path(input_directory: pathlib.Path) -> Iterable[str]:
