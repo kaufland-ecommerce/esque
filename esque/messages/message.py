@@ -42,7 +42,6 @@ class FileHandler:
     def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
         self.directory = directory
         self.partition = partition
-        self.file_name = "data"
         self.open_mode = "w+"
         self.file = None
 
@@ -55,10 +54,8 @@ class FileHandler:
 
     def init_destination_directory(self):
         partition = "any" if self.partition is None else self.partition
-        partition_directory = self.directory / f"partition_{partition}"
-        if not partition_directory.exists() and "w" in self.open_mode:
-            partition_directory.mkdir()
-        self.file = (partition_directory / self.file_name).open(self.open_mode)
+        partition_file = self.directory / f"partition_{partition}"
+        self.file = partition_file.open(self.open_mode)
 
 
 class StdOutWriter(GenericWriter):

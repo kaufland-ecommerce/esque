@@ -8,11 +8,15 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import click
 import fastavro
+from avro.schema import RecordSchema
 from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Message
 
 from esque.clients.schemaregistry import SchemaRegistryClient
 from esque.messages.message import FileReader, FileWriter, KafkaMessage, MessageHeader, StdOutWriter
+
+KEY_SCHEMA_FOLDER_NAME = "key_schema"
+VALUE_SCHEMA_FOLDER_NAME = "value_schema"
 
 
 class DecodedAvroMessage(NamedTuple):
@@ -43,32 +47,19 @@ class AvroFileWriter(FileWriter):
             message
         )
 
-        if value_schema_id != -1:
-            value_schema_dir_name = f"value_schema_{value_schema_id}"
-            self._dump_value_schema(value_schema_id, value_schema_dir_name)
-
-        key_schema_dir_name = f"key_schema_{key_schema_id}"
-        self._dump_key_schema(key_schema_id, key_schema_dir_name)
-
+        self._dump_schema(value_schema_id, VALUE_SCHEMA_FOLDER_NAME)
+        self._dump_schema(key_schema_id, KEY_SCHEMA_FOLDER_NAME)
         pickle.dump(serializable_message, self.file)
 
-    def _dump_key_schema(self, key_schema_id, schema_dir_name: str):
-        directory = self.directory / schema_dir_name
-        if directory.exists():
+    def _dump_schema(self, schema_id: int, schema_folder_name: str):
+        if schema_id == -1:
             return
-        directory.mkdir()
-        (directory / "key_schema.avsc").write_text(
-            json.dumps(self.schema_registry_client.get_schema_from_id(key_schema_id).original_schema), encoding="utf-8"
-        )
-
-    def _dump_value_schema(self, value_schema_id, schema_dir_name: str):
-        directory = self.directory / schema_dir_name
-        if directory.exists():
-            return
-        directory.mkdir()
-        (directory / "value_schema.avsc").write_text(
-            json.dumps(self.schema_registry_client.get_schema_from_id(value_schema_id).original_schema),
-            encoding="utf-8",
+        schema_file_path = get_schema_file_path(self.directory, schema_id, schema_folder_name)
+        folder_path = schema_file_path.parent
+        if not folder_path.exists():
+            folder_path.mkdir()
+        schema_file_path.write_text(
+            json.dumps(self.schema_registry_client.get_schema_from_id(schema_id).original_schema), encoding="utf-8"
         )
 
 
@@ -92,14 +83,8 @@ class AvroFileReader(FileReader):
                 record = pickle.load(self.file)
             except EOFError:
                 return
-            key_schema_directory = self.directory / record["key_schema_directory_name"]
-            key_schema = load_schema((key_schema_directory / "key_schema.avsc").read_text(encoding="utf-8"))
 
-            value_schema = None
-            if record["value_schema_directory_name"] is not None:
-                value_schema_directory = self.directory / record["value_schema_directory_name"]
-                value_schema = load_schema((value_schema_directory / "value_schema.avsc").read_text(encoding="utf-8"))
-
+            key_schema, value_schema = get_schemata(self.directory, record["key_schema_id"], record["value_schema_id"])
             yield KafkaMessage(
                 json.dumps(record["key"]),
                 json.dumps(record["value"]) if record["value"] is not None else None,
@@ -141,8 +126,8 @@ class AvroMessageDecoder:
             "key": decoded_message.key,
             "value": decoded_message.value,
             "partition": decoded_message.partition,
-            "key_schema_directory_name": f"key_schema_{key_schema_id}",
-            "value_schema_directory_name": f"value_schema_{value_schema_id}" if value_schema_id != -1 else None,
+            "key_schema_id": key_schema_id if key_schema_id != -1 else None,
+            "value_schema_id": value_schema_id if value_schema_id != -1 else None,
         }
 
         return key_schema_id, value_schema_id, decoded_message, serializable_message
@@ -152,3 +137,19 @@ def extract_schema_id(message: bytes) -> int:
     magic_byte, schema_id = struct.unpack(">bI", message[:5])
     assert magic_byte == 0, f"Wrong magic byte ({magic_byte}), no AVRO message."
     return schema_id
+
+
+def get_schemata(base_directory: pathlib.Path, key_schema_id: Optional[int], value_schema_id: Optional[int]):
+    return (
+        (None if key_schema_id is None else get_schema(base_directory, key_schema_id, KEY_SCHEMA_FOLDER_NAME)),
+        (None if value_schema_id is None else get_schema(base_directory, value_schema_id, VALUE_SCHEMA_FOLDER_NAME)),
+    )
+
+
+def get_schema_file_path(base_directory: pathlib.Path, schema_id: int, schema_folder_name: str) -> pathlib.Path:
+    return pathlib.Path(base_directory / schema_folder_name / ("schema_id_" + str(schema_id) + ".avsc"))
+
+
+def get_schema(base_directory: pathlib.Path, schema_id: int, schema_folder_name: str) -> RecordSchema:
+    schema_file_path = get_schema_file_path(base_directory, schema_id, schema_folder_name)
+    return load_schema(schema_file_path.read_text(encoding="utf-8"))
