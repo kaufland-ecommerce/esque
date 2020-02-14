@@ -57,7 +57,7 @@ class AvroFileWriter(FileWriter):
         schema_file_path = get_schema_file_path(self.directory, schema_id, schema_folder_name)
         folder_path = schema_file_path.parent
         if not folder_path.exists():
-            folder_path.mkdir()
+            folder_path.mkdir(exist_ok=True)
         schema_file_path.write_text(
             json.dumps(self.schema_registry_client.get_schema_from_id(schema_id).original_schema), encoding="utf-8"
         )

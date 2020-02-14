@@ -142,5 +142,5 @@ def get_partitions_in_path(input_directory: pathlib.Path) -> Iterable[str]:
     path_list = glob(str(input_directory / "partition_*"))
     partitions = []
     for partition_path in path_list:
-        partitions.append(partition_path.rpartition("_")[2])
+        partitions.append(partition_path.rsplit("_", 1)[1])
     return partitions
