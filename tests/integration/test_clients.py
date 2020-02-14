@@ -2,9 +2,8 @@ import json
 import pathlib
 import random
 from contextlib import ExitStack
-from itertools import chain
 from string import ascii_letters
-from typing import Iterable, List, Tuple
+from typing import List, Tuple
 
 import pytest
 from confluent_kafka.avro import AvroProducer
@@ -24,10 +23,8 @@ def test_plain_text_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(
-        chain(
-            produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
-        )
+    produced_messages = produce_test_messages(producer, source_topic) + produce_delete_tombstones_messages(
+        producer, source_topic
     )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
@@ -46,12 +43,9 @@ def test_avro_consume_to_file(
 ):
     source_topic_id, _ = source_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(
-        chain(
-            produce_test_messages_with_avro(avro_producer, source_topic),
-            produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
-        )
-    )
+    produced_messages = produce_test_messages_with_avro(
+        avro_producer, source_topic
+    ) + produce_delete_tombstone_messages_with_avro(avro_producer, source_topic)
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
@@ -74,10 +68,8 @@ def test_plain_text_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(
-        chain(
-            produce_test_messages(producer, source_topic), produce_delete_tombstones_messages(producer, source_topic)
-        )
+    produced_messages = produce_test_messages(producer, source_topic) + produce_delete_tombstones_messages(
+        producer, source_topic
     )
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=False
@@ -110,13 +102,9 @@ def test_avro_consume_and_produce(
     source_topic_id, _ = source_topic
     target_topic_id, _ = target_topic
     output_directory = tmpdir_factory.mktemp("output_directory")
-    produced_messages = list(
-        chain(
-            produce_test_messages_with_avro(avro_producer, source_topic),
-            produce_delete_tombstone_messages_with_avro(avro_producer, source_topic),
-        )
-    )
-
+    produced_messages = produce_test_messages_with_avro(
+        avro_producer, source_topic
+    ) + produce_delete_tombstone_messages_with_avro(avro_producer, source_topic)
     file_consumer = ConsumerFactory().create_consumer(
         consumer_group, source_topic_id, output_directory, False, avro=True
     )
@@ -325,7 +313,7 @@ def test_avro_consume_produce_messages_with_header(
 
 def produce_test_messages(
     producer: ConfluenceProducer, topic: Tuple[str, int], amount: int = 10
-) -> Iterable[KafkaMessage]:
+) -> List[KafkaMessage]:
     topic_name, num_partitions = topic
     messages = []
     for i in range(amount):
@@ -340,7 +328,7 @@ def produce_test_messages(
 
 def produce_delete_tombstones_messages(
     producer: ConfluenceProducer, topic: Tuple[str, int], amount: int = 2
-) -> Iterable[KafkaMessage]:
+) -> List[KafkaMessage]:
     topic_name, num_partitions = topic
     messages = []
     for i in range(amount):
@@ -354,7 +342,7 @@ def produce_delete_tombstones_messages(
 
 def produce_test_messages_with_avro(
     avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 10
-) -> Iterable[KafkaMessage]:
+) -> List[KafkaMessage]:
     topic_name, num_partitions = topic
     with open("tests/test_samples/key_schema.avsc", "r") as file:
         key_schema = load_schema(file.read())
@@ -380,7 +368,7 @@ def produce_test_messages_with_avro(
 
 def produce_delete_tombstone_messages_with_avro(
     avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 2
-) -> Iterable[KafkaMessage]:
+) -> List[KafkaMessage]:
     topic_name, num_partitions = topic
     with open("tests/test_samples/key_schema.avsc", "r") as file:
         key_schema = load_schema(file.read())
