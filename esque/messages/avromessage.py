@@ -108,7 +108,7 @@ class AvroMessageDecoder:
             record = fastavro.schemaless_reader(fake_stream, parsed_schema)
         return schema_id, record
 
-    def decode_message_from_avro(self, message: Message):
+    def decode_message_from_avro(self, message: Message) -> Tuple[int, int, DecodedAvroMessage, Dict]:
         key_schema_id, decoded_key = self.decode_bytes(message.key())
         value_schema_id, decoded_value = self.decode_bytes(message.value())
 
@@ -139,7 +139,9 @@ def extract_schema_id(message: bytes) -> int:
     return schema_id
 
 
-def get_schemata(base_directory: pathlib.Path, key_schema_id: Optional[int], value_schema_id: Optional[int]):
+def get_schemata(
+    base_directory: pathlib.Path, key_schema_id: Optional[int], value_schema_id: Optional[int]
+) -> Tuple[RecordSchema, RecordSchema]:
     return (
         (None if key_schema_id is None else get_schema(base_directory, key_schema_id, KEY_SCHEMA_FOLDER_NAME)),
         (None if value_schema_id is None else get_schema(base_directory, value_schema_id, VALUE_SCHEMA_FOLDER_NAME)),
