@@ -141,7 +141,7 @@ def extract_schema_id(message: bytes) -> int:
 
 def get_schemata(
     base_directory: pathlib.Path, key_schema_id: Optional[int], value_schema_id: Optional[int]
-) -> Tuple[RecordSchema, RecordSchema]:
+) -> Tuple[Optional[RecordSchema], Optional[RecordSchema]]:
     return (
         (None if key_schema_id is None else get_schema(base_directory, key_schema_id, KEY_SCHEMA_FOLDER_NAME)),
         (None if value_schema_id is None else get_schema(base_directory, value_schema_id, VALUE_SCHEMA_FOLDER_NAME)),
