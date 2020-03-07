@@ -1,6 +1,7 @@
 ### next version
-* Fix for issue #132: getting information about internal topics is not possible
 * Enhancement #141: Split folder for key and value schema when consuming messages
+* Fix for issue #132: getting information about internal topics is not possible
+* Fix for issue #143: Consume sometimes finishes successfully without writing any messages
 ### Version 0.2.0b2
 * Enhancement #129: use offsets_for_times to set consumer group offsets
  to specific point in time

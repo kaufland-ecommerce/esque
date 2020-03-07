@@ -15,6 +15,8 @@ from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
 from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
 from esque.ruleparser.ruleengine import RuleTree
 
+DEFAULT_CONSUME_TIMEOUT = 30  # seconds
+
 
 class AbstractConsumer(ABC):
     def __init__(self, group_id: str, topic_name: str, last: bool, match: str = None, enable_auto_commit: bool = True):
@@ -93,12 +95,12 @@ class AbstractConsumer(ABC):
             if isinstance(w, FileWriter) and w.file is not None:
                 w.file.close()
 
-    def consume_single_message(self, timeout=30) -> Message:
+    def consume_single_message(self, timeout=DEFAULT_CONSUME_TIMEOUT) -> Message:
         message = self._consumer.poll(timeout=timeout)
         raise_for_message(message)
         return message
 
-    def consume_single_acceptable_message(self, timeout=30) -> Optional[Message]:
+    def consume_single_acceptable_message(self, timeout=DEFAULT_CONSUME_TIMEOUT) -> Optional[Message]:
         message_acceptable = False
         total_time_remaining = timeout
         while not message_acceptable and total_time_remaining > 0:
@@ -121,12 +123,12 @@ class MessageConsumer(AbstractConsumer):
 
     def consume(self, offset: int = 0, partition: int = 0) -> Message:
         self.assign_specific_partitions(self._topic_name, partitions=[partition], offset=offset)
-        return self.consume_single_message(30)
+        return self.consume_single_message()
 
 
 class PingConsumer(AbstractConsumer):
     def consume(self) -> Optional[Tuple[str, int]]:
-        message = self.consume_single_message(timeout=10)
+        message = self.consume_single_message()
         msg_sent_at = pendulum.from_timestamp(float(message.value()))
         delta_sent = pendulum.now() - msg_sent_at
         return message.key(), delta_sent.microseconds / 1000
@@ -163,7 +165,7 @@ class PlaintextConsumer(AbstractConsumer):
 
         while counter < amount:
             try:
-                message = self.consume_single_acceptable_message(7)
+                message = self.consume_single_acceptable_message()
             except MessageEmptyException:
                 return counter
             except EndOfPartitionReachedException:
@@ -324,7 +326,7 @@ def consume_to_file_ordered(
         keep_polling_current_partition = True
         while keep_polling_current_partition:
             try:
-                message = consumers[partition_counter].consume_single_acceptable_message(timeout=10)
+                message = consumers[partition_counter].consume_single_acceptable_message()
                 decoded_message = decode_message(message)
             except MessageEmptyException:
                 # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
@@ -354,7 +356,7 @@ def consume_to_file_ordered(
             total_number_of_messages += 1
             partition = message.partition()
             try:
-                message = consumers[partition].consume_single_acceptable_message(timeout=10)
+                message = consumers[partition].consume_single_acceptable_message()
                 decoded_message = decode_message(message)
                 heappush(message_heap, (decoded_message.timestamp, message))
             except (MessageEmptyException, EndOfPartitionReachedException):
