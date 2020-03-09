@@ -1,4 +1,5 @@
 ### next version
+* Bugfix #136: Fix wrong schema version for null payload
 * Enhancement #141: Split folder for key and value schema when consuming messages
 * Fix for issue #132: getting information about internal topics is not possible
 * Fix for issue #143: Consume sometimes finishes successfully without writing any messages
