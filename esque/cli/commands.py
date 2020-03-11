@@ -82,7 +82,7 @@ def config(state: State):
     pass
 
 
-@esque.group(name="set", help="Set resource attributes.")
+@esque.group(name="set", help="Set resource attributes.", no_args_is_help=True)
 @default_options
 def set_(state: State):
     pass
@@ -233,7 +233,7 @@ def config_migrate(state: State):
     click.echo(f"Your config has been migrated and is now at {new_path}. A backup has been created at {backup}.")
 
 
-@create.command("topic")
+@create.command("topic", no_args_is_help=True)
 @click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
 @click.option(
     "-l",
@@ -266,7 +266,7 @@ def create_topic(state: State, topic_name: str, like: str):
     click.echo(click.style(f"Topic with name '{topic.name}' successfully created.", fg="green"))
 
 
-@edit.command("topic")
+@edit.command("topic", no_args_is_help=True)
 @click.argument("topic-name", required=True, autocompletion=list_topics)
 @default_options
 def edit_topic(state: State, topic_name: str):
@@ -294,7 +294,7 @@ def edit_topic(state: State, topic_name: str):
         click.echo("Canceled!")
 
 
-@set_.command("offsets")
+@set_.command("offsets", no_args_is_help=True)
 @click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
 @click.option(
     "-t",
@@ -373,7 +373,7 @@ def set_offsets(
         return
 
 
-@delete.command("topic")
+@delete.command("topic", no_args_is_help=True)
 @click.argument(
     "topic-name",
     metavar="TOPIC_NAME",
@@ -397,7 +397,7 @@ def delete_topic(state: State, topic_name: str):
     click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted.", fg="green"))
 
 
-@esque.command("apply")
+@esque.command("apply", no_args_is_help=True)
 @click.option("-f", "--file", metavar="<file>", help="Config file path.", required=True)
 @default_options
 def apply(state: State, file: str):
@@ -468,7 +468,7 @@ def apply(state: State, file: str):
     click.echo(click.style(pretty({"Successfully applied changes": changes}), fg="green"))
 
 
-@describe.command("topic")
+@describe.command("topic", no_args_is_help=True)
 @click.argument(
     "topic-name",
     metavar="TOPIC_NAME",
@@ -516,7 +516,7 @@ def describe_topic(state: State, topic_name: str, consumers: bool, output_format
     click.echo(format_output(output_dict, output_format))
 
 
-@get.command("watermarks", short_help="Return watermarks by topic.")
+@get.command("watermarks", short_help="Return watermarks by topic.", no_args_is_help=True)
 @click.option(
     "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, autocompletion=list_topics
 )
@@ -553,7 +553,7 @@ def describe_broker(state: State, broker: str, output_format: str):
     click.echo(format_output(broker, output_format))
 
 
-@describe.command("consumergroup", short_help="Describe a consumer group.")
+@describe.command("consumergroup", short_help="Describe a consumer group.", no_args_is_help=True)
 @click.argument("consumer-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
 @click.option(
     "--all-partitions",
@@ -605,7 +605,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     click.echo(format_output(topic_names, output_format))
 
 
-@esque.command("consume")
+@esque.command("consume", no_args_is_help=True)
 @click.argument("topic", autocompletion=list_topics)
 @click.option(
     "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
@@ -746,7 +746,7 @@ def consume(
             )
 
 
-@esque.command("produce")
+@esque.command("produce", no_args_is_help=True)
 @click.argument("topic", autocompletion=list_topics)
 @click.option(
     "-d",
