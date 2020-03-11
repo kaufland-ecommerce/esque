@@ -1,6 +1,7 @@
 import json
 import pathlib
 from abc import abstractmethod
+from glob import glob
 from typing import Any, Iterable, List, NamedTuple, Optional
 
 import click
@@ -15,7 +16,7 @@ class MessageHeader(NamedTuple):
 
 class DecodedMessage(NamedTuple):
     key: str
-    value: str
+    value: Optional[str]
     partition: int
     offset: int
     timestamp: str
@@ -26,8 +27,8 @@ class KafkaMessage(NamedTuple):
     key: Any
     value: Any
     partition: int
-    key_schema: RecordSchema = None
-    value_schema: RecordSchema = None
+    key_schema: Optional[RecordSchema] = None
+    value_schema: Optional[RecordSchema] = None
     headers: List[MessageHeader] = []
 
 
@@ -38,9 +39,9 @@ class GenericWriter:
 
 
 class FileHandler:
-    def __init__(self, directory: pathlib.Path):
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
         self.directory = directory
-        self.file_name = "data"
+        self.partition = partition
         self.open_mode = "w+"
         self.file = None
 
@@ -52,9 +53,9 @@ class FileHandler:
         self.file.close()
 
     def init_destination_directory(self):
-        if not self.directory.exists() and "w" in self.open_mode:
-            self.directory.mkdir()
-        self.file = (self.directory / self.file_name).open(self.open_mode)
+        partition = "any" if self.partition is None else self.partition
+        partition_file = self.directory / f"partition_{partition}"
+        self.file = partition_file.open(self.open_mode)
 
 
 class StdOutWriter(GenericWriter):
@@ -63,8 +64,8 @@ class StdOutWriter(GenericWriter):
 
 
 class FileWriter(GenericWriter, FileHandler):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
+        super().__init__(directory, partition)
         self.open_mode = "w+"
 
     def write_message(self, message: Message):
@@ -72,8 +73,8 @@ class FileWriter(GenericWriter, FileHandler):
 
 
 class FileReader(FileHandler):
-    def __init__(self, directory: pathlib.Path):
-        super().__init__(directory)
+    def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
+        super().__init__(directory, partition)
         self.open_mode = "r"
 
     def read_message_from_file(self) -> Iterable[KafkaMessage]:
@@ -92,11 +93,8 @@ class PlainTextFileReader(FileReader):
 
 
 def decode_message(message: Message) -> DecodedMessage:
-    if message.key() is None:
-        decoded_key = None
-    else:
-        decoded_key = message.key().decode("utf-8")
-    decoded_value = message.value().decode("utf-8")
+    decoded_key = None if message.key() is None else message.key().decode("utf-8")
+    decoded_value = None if message.value() is None else message.value().decode("utf-8")
     headers = []
     if message.headers():
         for header_key, header_value in message.headers():
@@ -127,11 +125,9 @@ def serialize_message(message: Message):
 
 def deserialize_message(message_line: str) -> KafkaMessage:
     json_record = json.loads(message_line)
-    key = None if "key" not in json_record or not json_record["key"] else json_record["key"]
-    value = json_record["value"]
+    key = None if "key" not in json_record or json_record["key"] is None else json_record["key"]
+    value = None if "value" not in json_record or json_record["value"] is None else json_record["value"]
     partition = json_record.get("partition", 0)
-    key_schema = json_record["key_schema"] if "key_schema" in json_record else None
-    value_schema = json_record["value_schema"] if "value_schema" in json_record else None
     headers = []
     if json_record["headers"]:
         for header_item in json_record["headers"]:
@@ -139,6 +135,12 @@ def deserialize_message(message_line: str) -> KafkaMessage:
             header_value = header_item["value"] if "value" in header_item else None
             if header_key:
                 headers.append(MessageHeader(header_key, header_value if header_value else None))
-    return KafkaMessage(
-        key=key, value=value, partition=partition, key_schema=key_schema, value_schema=value_schema, headers=headers
-    )
+    return KafkaMessage(key=key, value=value, partition=partition, headers=headers)
+
+
+def get_partitions_in_path(input_directory: pathlib.Path) -> Iterable[str]:
+    path_list = glob(str(input_directory / "partition_*"))
+    partitions = []
+    for partition_path in path_list:
+        partitions.append(partition_path.rsplit("_", 1)[1])
+    return partitions
