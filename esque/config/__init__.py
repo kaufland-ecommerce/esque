@@ -10,7 +10,7 @@ from confluent_kafka.admin import ConfigResource
 from pykafka import SslConfig
 
 import esque.validation
-from esque.cli import environment
+from esque.cli import environment as env
 from esque.config.migration import check_config_version
 from esque.errors import (
     ConfigException,
@@ -21,6 +21,7 @@ from esque.errors import (
     UnsupportedSaslMechanism,
 )
 from esque.helpers import SingletonMeta
+from esque.validation import SCHEMA_DIR, validate
 
 if TYPE_CHECKING:
     try:
@@ -49,8 +50,8 @@ def config_path() -> Path:
 
 # create functions we can mock during tests
 def _config_path() -> Path:
-    if environment.ESQUE_CONF_PATH:
-        return Path(environment.ESQUE_CONF_PATH)
+    if env.ESQUE_CONF_PATH:
+        return Path(env.ESQUE_CONF_PATH)
     legacy_path = config_dir() / "esque.cfg"
     current_path = config_dir() / "esque_config.yaml"
     if legacy_path.exists() and not current_path.exists():
@@ -85,11 +86,51 @@ class Config(metaclass=SingletonMeta):
         return self.current_context_dict.get("default_values", {})
 
     @property
+    def env_context(self) -> Optional[Dict]:
+        if not env.ESQUE_CONTEXT_ENABLED:
+            return None
+        context = {
+            "bootstrap_servers": env.ESQUE_BOOTSTRAP_SERVERS,
+            "security_protocol": env.ESQUE_SECURITY_PROTOCOL,
+            "schema_registry": env.ESQUE_SCHEMA_REGISTRY,
+            "default_values": {
+                "num_partitions": env.ESQUE_NUM_PARTITIONS,
+                "replication_factor": env.ESQUE_REPLICATION_FACTOR,
+            },
+        }
+
+        security_protocol = env.ESQUE_SECURITY_PROTOCOL
+        if security_protocol.startswith("SASL"):
+
+            context["sasl_params"] = {
+                "mechanism": env.ESQUE_SASL_MECHANISM,
+                "user": env.ESQUE_SASL_USER,
+                "password": env.ESQUE_SASL_PASSWORD,
+            }
+
+        if "SSL" in security_protocol:
+            context["ssl_params"] = (
+                {
+                    "cafile": env.ESQUE_SSL_CAFILE,
+                    "certfile": env.ESQUE_SSL_CERTFILE,
+                    "keyfile": env.ESQUE_SSL_KEYFILE,
+                    "password": env.ESQUE_SSL_PASSWORD,
+                },
+            )
+
+        validate(context, SCHEMA_DIR / "esque_context.yaml")
+        return context
+
+    @property
     def current_context(self) -> str:
+        if env.ESQUE_CONTEXT_ENABLED:
+            return "env"
         return self._cfg["current_context"]
 
     @property
     def current_context_dict(self) -> Dict[str, Any]:
+        if env.ESQUE_CONTEXT_ENABLED:
+            return self.env_context
         return self._cfg["contexts"][self.current_context]
 
     @property
