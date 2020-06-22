@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.2.0-beta.3"
+version = "0.2.0"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -27,7 +27,8 @@ classifiers = [
   "Topic :: Software Development",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7"
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8"
   ]
 # esque entrypoint
 [tool.poetry.scripts]
