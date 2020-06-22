@@ -94,7 +94,7 @@ def test_apply_duplicate_names(interactive_cli_runner: CliRunner, topic_id: str)
     result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert result.exit_code != 0
     assert isinstance(result.exception, ValidationException), (
-        f"Calling apply should have failed with " "ValidationException"
+        "Calling apply should have failed with " "ValidationException"
     )
 
 
