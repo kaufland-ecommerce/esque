@@ -74,7 +74,7 @@ def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunn
 
 @pytest.mark.integration
 def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner, topic_controller):
-    validator_mock = mocker.patch(f"esque.validation.validate_editable_topic_config", side_effect=EditCanceled())
+    validator_mock = mocker.patch("esque.validation.validate_editable_topic_config", side_effect=EditCanceled())
     config_dict = {
         "config": {
             "cleanup.policy": "delete",

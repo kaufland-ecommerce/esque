@@ -486,15 +486,23 @@ def apply(state: State, file: str):
     help="Will output the consumer groups reading from this topic."
     f" {red_bold('Beware! This can be a really expensive operation.')}",
 )
+@click.option(
+    "--last-timestamp",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Will output the last message's timestamp for each partition"
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
+)
 @output_format_option
 @default_options
-def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
+def describe_topic(state: State, topic_name: str, consumers: bool, last_timestamp: bool, output_format: str):
     """Describe a topic.
 
     Returns information on a given topic and its partitions, with the option of including
     all consumer groups that read from the topic.
     """
-    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+    topic = state.cluster.topic_controller.get_cluster_topic(topic_name, retrieve_last_timestamp=last_timestamp)
 
     output_dict = {
         "topic": topic_name,
@@ -831,7 +839,7 @@ def produce(
     topic_controller = state.cluster.topic_controller
     if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
         click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
-        if ensure_approval(f"Would you like to create it now?"):
+        if ensure_approval("Would you like to create it now?"):
             topic_controller.create_topics([Topic(topic)])
         else:
             raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)

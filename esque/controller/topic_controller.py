@@ -117,9 +117,9 @@ class TopicController:
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_future_done(future)
 
-    def get_cluster_topic(self, topic_name: str) -> Topic:
+    def get_cluster_topic(self, topic_name: str, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
-        return self.update_from_cluster(Topic(topic_name))
+        return self.update_from_cluster(Topic(topic_name), retrieve_last_timestamp=retrieve_last_timestamp)
 
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
@@ -140,7 +140,7 @@ class TopicController:
             topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
         }
 
-    def update_from_cluster(self, topic: Topic) -> Topic:
+    def update_from_cluster(self, topic: Topic, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
@@ -148,7 +148,9 @@ class TopicController:
         low_watermarks = pykafka_topic.earliest_available_offsets()
         high_watermarks = pykafka_topic.latest_available_offsets()
 
-        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks, topic)
+        topic.partition_data = self._get_partition_data(
+            confluent_topic, low_watermarks, high_watermarks, topic, retrieve_last_timestamp
+        )
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
@@ -161,6 +163,7 @@ class TopicController:
         low_watermarks: PartitionInfo,
         high_watermarks: PartitionInfo,
         topic: Topic,
+        retrieve_last_timestamp: bool,
     ) -> List[Partition]:
 
         consumer = MessageConsumer(PING_GROUP_ID, topic.name, True)
@@ -170,7 +173,7 @@ class TopicController:
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
             latest_timestamp = None
-            if high > low:
+            if high > low and retrieve_last_timestamp:
                 try:
                     latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
                 except MessageEmptyException:

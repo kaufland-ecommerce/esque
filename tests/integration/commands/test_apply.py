@@ -94,7 +94,7 @@ def test_apply_duplicate_names(interactive_cli_runner: CliRunner, topic_id: str)
     result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n")
     assert result.exit_code != 0
     assert isinstance(result.exception, ValidationException), (
-        f"Calling apply should have failed with " f"ValidationException"
+        "Calling apply should have failed with " "ValidationException"
     )
 
 
@@ -115,7 +115,7 @@ def test_apply_invalid_replicas(interactive_cli_runner: CliRunner, topic_id: str
     assert result.exit_code != 0
     assert isinstance(
         result.exception, InvalidReplicationFactorException
-    ), f"Calling apply should have failed with INVALID_REPLICATION_FACTOR error"
+    ), "Calling apply should have failed with INVALID_REPLICATION_FACTOR error"
 
 
 def save_yaml(fname: str, data: Dict[str, Any]) -> str:
