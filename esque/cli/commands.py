@@ -839,7 +839,7 @@ def produce(
     topic_controller = state.cluster.topic_controller
     if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
         click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
-        if ensure_approval(f"Would you like to create it now?"):
+        if ensure_approval("Would you like to create it now?"):
             topic_controller.create_topics([Topic(topic)])
         else:
             raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)

@@ -130,7 +130,7 @@ class ConnectionFailedException(ExceptionWithMessage):
         if isinstance(self.pykafka_exception.args, str):
             msg = self.pykafka_exception.args
         else:
-            msg = f"Connection to brokers failed."
+            msg = "Connection to brokers failed."
         super().__init__(msg)
 
 
