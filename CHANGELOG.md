@@ -1,3 +1,5 @@
+### Version 0.2.0
+* Bugfix for issue #149
 ### Version 0.2.0b3
 * Bugfix #136: Fix wrong schema version for null payload
 * Enhancement #141: Split folder for key and value schema when consuming messages
