@@ -1,3 +1,5 @@
+### Version 0.2.1
+* Bugfix for issue #154
 ### Version 0.2.0
 * Bugfix for issue #149
 ### Version 0.2.0b3
