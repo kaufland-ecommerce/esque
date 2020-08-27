@@ -691,7 +691,6 @@ def consume(
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    consumergroup_prefix = "group_for_"
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -704,7 +703,7 @@ def consume(
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     if not consumergroup:
-        consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
+        consumergroup = ESQUE_GROUP_ID
     if not directory:
         directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
     output_directory = Path(directory)
