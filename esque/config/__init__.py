@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
-ESQUE_GROUP_ID = f"esque-client"
+ESQUE_GROUP_ID = "esque-client"
 SLEEP_INTERVAL = 2
 SUPPORTED_SASL_MECHANISMS = ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512")
 log = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import ping
 from esque import config
+from esque.cli.commands import ping
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 
