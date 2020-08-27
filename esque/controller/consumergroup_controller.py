@@ -94,7 +94,7 @@ class ConsumerGroupController:
         elif consumer_group_state == "Empty":
             if offset_to_value is not None:
                 for plan_element in offset_plans.values():
-                    (allowed_offset, error, message) = self._select_new_offset_for_consumer(
+                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
                         offset_to_value, plan_element
                     )
                     plan_element.proposed_offset = allowed_offset
@@ -103,7 +103,7 @@ class ConsumerGroupController:
             elif offset_by_delta is not None:
                 for plan_element in offset_plans.values():
                     requested_offset = plan_element.current_offset + offset_by_delta
-                    (allowed_offset, error, message) = self._select_new_offset_for_consumer(
+                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
                         requested_offset, plan_element
                     )
                     plan_element.proposed_offset = allowed_offset
@@ -136,7 +136,7 @@ class ConsumerGroupController:
             return list(offset_plans.values())
 
     @staticmethod
-    def _select_new_offset_for_consumer(
+    def select_new_offset_for_consumer(
         requested_offset: int, offset_plan: ConsumerGroupOffsetPlan
     ) -> Tuple[int, bool, str]:
         from esque.cli.output import red_bold

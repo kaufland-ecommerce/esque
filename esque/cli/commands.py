@@ -308,8 +308,7 @@ def edit_topic(state: State, topic_name: str):
 @click.option(
     "--offset-to-timestamp",
     help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
-    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp."
-    f" {red_bold('Beware! This can be a really expensive operation.')}",
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp.",
     type=click.STRING,
     required=False,
 )
@@ -384,14 +383,23 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
         )
     sorted_offset_plan = list(offset_plans.values())
     sorted_offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
-    offset_plan_as_yaml = [
-        {"topic": element.topic_name, "partition": element.partition_id, "offset": element.current_offset}
-        for element in sorted_offset_plan
-    ]
+    offset_plan_as_yaml = {
+        "offsets": [
+            {"topic": element.topic_name, "partition": element.partition_id, "offset": element.current_offset}
+            for element in sorted_offset_plan
+        ]
+    }
     _, new_conf = edit_yaml(str(offset_plan_as_yaml), validator=validation.validate_offset_config)
 
     for new_offset in new_conf["offsets"]:
-        offset_plans[f"{new_offset['topic']}:{new_offset['partition']}"].proposed_offset = new_offset["offset"]
+        plan_key: str = f"{new_offset['topic']}::{new_offset['partition']}"
+        if plan_key in offset_plans:
+            final_value, error, message = ConsumerGroupController.select_new_offset_for_consumer(
+                requested_offset=new_offset["offset"], offset_plan=offset_plans[plan_key]
+            )
+            if error:
+                logger.error(message)
+            offset_plans[plan_key].proposed_offset = final_value
 
     if offset_plans and len(offset_plans) > 0:
         click.echo(green_bold("Proposed offset changes: "))
