@@ -97,9 +97,7 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group
-        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
-        if group.startswith(incomplete)
+        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
     ]
 
 
@@ -629,7 +627,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     required=False,
 )
 @click.option(
-    "-n", "--numbers", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
+    "-n", "--number", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
 )
 @click.option(
     "-m",
@@ -663,7 +661,7 @@ def consume(
     state: State,
     topic: str,
     from_context: str,
-    numbers: int,
+    number: int,
     match: str,
     last: bool,
     avro: bool,
@@ -714,15 +712,15 @@ def consume(
         output_directory.mkdir(parents=True, exist_ok=True)
         click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
     if preserve_order:
-        partitions = []
-        for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
-            partitions.append(partition.partition_id)
+        partitions = [
+            partition.partition_id for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions
+        ]
         total_number_of_consumed_messages = consume_to_file_ordered(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             partitions=partitions,
-            numbers=numbers,
+            desired_count_messages=number,
             avro=avro,
             match=match,
             last=last,
@@ -733,7 +731,7 @@ def consume(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
-            numbers=numbers,
+            desired_count_messages=number,
             avro=avro,
             match=match,
             last=last,

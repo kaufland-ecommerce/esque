@@ -15,7 +15,7 @@ def test_plain_text_message_cli_pipe(
 ):
     produced_messages_same_partition(topic_name=topic, producer=producer)
 
-    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
+    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--number", "10", topic])
     result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
     # Check assertions:
     assert "10" in result2.output
@@ -31,7 +31,7 @@ def test_plain_text_message_with_headers_cli_pipe(
 ):
     produced_messages_same_partition_with_headers(topic_name=topic, producer=producer)
 
-    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", topic])
+    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--number", "10", topic])
     result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
     # Check assertions:
     assert "10" in result2.output
@@ -46,7 +46,7 @@ def test_avro_consume_to_stdout(
     produce_test_messages_with_avro(avro_producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--numbers", "10", "--avro", source_topic_id]
+        consume, args=["--stdout", "--number", "10", "--avro", source_topic_id]
     )
     # Check assertions:
     separate_messages = message_text.output.split("\n")
