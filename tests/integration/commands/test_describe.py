@@ -33,8 +33,13 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
 
 @pytest.mark.integration
 def test_describe_topic_last_timestamp_does_not_commit(
-    non_interactive_cli_runner: CliRunner, topic: str, consumergroup_controller: ConsumerGroupController
+    non_interactive_cli_runner: CliRunner,
+    topic: str,
+    consumergroup_controller: ConsumerGroupController,
+    produced_messages_same_partition,
+    producer,
 ):
+    produced_messages_same_partition(topic_name=topic, producer=producer)
     result = non_interactive_cli_runner.invoke(describe_topic, [topic, "--last-timestamp"], catch_exceptions=False)
     assert result.exit_code == 0
     output = result.output
@@ -44,7 +49,7 @@ def test_describe_topic_last_timestamp_does_not_commit(
     # for this group
     try:
         data = consumergroup_controller.get_consumergroup(config.ESQUE_GROUP_ID).describe(verbose=True)
-        assert topic not in data["offsets"]
+        assert topic.encode() not in data["offsets"]
     except ConsumerGroupDoesNotExistException:
         pass
 

@@ -34,6 +34,6 @@ def test_offset_not_committed(
     # for this group
     try:
         data = consumergroup_controller.get_consumergroup(config.ESQUE_GROUP_ID).describe(verbose=True)
-        assert config.PING_TOPIC not in data["offsets"]
+        assert config.PING_TOPIC.encode() not in data["offsets"]
     except ConsumerGroupDoesNotExistException:
         pass

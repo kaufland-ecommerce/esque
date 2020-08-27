@@ -74,6 +74,6 @@ def test_offset_not_committed(
     # for this group
     try:
         data = consumergroup_controller.get_consumergroup(config.ESQUE_GROUP_ID).describe(verbose=True)
-        assert source_topic not in data["offsets"]
+        assert source_topic_id.encode() not in data["offsets"]
     except ConsumerGroupDoesNotExistException:
         pass
