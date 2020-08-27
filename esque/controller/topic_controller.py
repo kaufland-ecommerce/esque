@@ -166,7 +166,7 @@ class TopicController:
         retrieve_last_timestamp: bool,
     ) -> List[Partition]:
 
-        consumer = MessageConsumer(ESQUE_GROUP_ID, topic.name, True)
+        consumer = MessageConsumer(ESQUE_GROUP_ID, topic.name, True, enable_auto_commit=False)
         partitions = []
 
         for partition_id, meta in confluent_topic.partitions.items():
