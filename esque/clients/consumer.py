@@ -393,6 +393,7 @@ def _consume_message_to_heap(consumer: AbstractConsumer, heap: list):
     message = consumer.consume_single_acceptable_message()
     decoded_message = decode_message(message)
     heappush(heap, (decoded_message.timestamp, message))
+    return heap
 
 
 def consume_to_files(
