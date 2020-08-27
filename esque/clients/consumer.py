@@ -1,7 +1,7 @@
+import logging
 import pathlib
 from abc import ABC, abstractmethod
 from heapq import heappop, heappush
-import logging
 from typing import Dict, List, Optional, Tuple
 
 import confluent_kafka
