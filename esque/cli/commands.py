@@ -742,14 +742,14 @@ def consume(
 
     if not write_to_stdout:
         click.echo(f"Output generated to {blue_bold(str(output_directory))}")
-        if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
+        if total_number_of_consumed_messages == number or number == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
                 "Only found "
                 + bold(str(total_number_of_consumed_messages))
                 + " messages in topic, out of "
-                + blue_bold(str(numbers))
+                + blue_bold(str(number))
                 + " required."
             )
 

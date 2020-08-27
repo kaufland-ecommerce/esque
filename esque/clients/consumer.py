@@ -370,12 +370,6 @@ def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]
     return message_heap
 
 
-def _read_message_to_heap(consumer: AbstractConsumer, heap: list):
-    message = consumer.consume_single_acceptable_message()
-    decoded_message = decode_message(message)
-    heappush(heap, (decoded_message.timestamp, message))
-
-
 def _iterate_and_return_messages(
     message_heap: list, consumers: List[AbstractConsumer], desired_count_messages: int
 ) -> int:
@@ -389,13 +383,16 @@ def _iterate_and_return_messages(
         count_messages_returned = count_messages_returned + 1
         partition = message.partition()
         try:
-            message = consumers[partition].consume_single_acceptable_message()
-            decoded_message = decode_message(message)
-            heappush(message_heap, (decoded_message.timestamp, message))
+            message_heap = _consume_message_to_heap(consumers[partition], message_heap)
         except (MessageEmptyException, EndOfPartitionReachedException):
             logger.debug(f"Done reading from partition {partition}.")
 
-    return total_number_of_messages
+    return count_messages_returned
+
+def _consume_message_to_heap(consumer: AbstractConsumer, heap: list):
+    message = consumer.consume_single_acceptable_message()
+    decoded_message = decode_message(message)
+    heappush(heap, (decoded_message.timestamp, message))
 
 
 def consume_to_files(
