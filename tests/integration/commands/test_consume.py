@@ -40,7 +40,7 @@ def test_plain_text_message_with_headers_cli_pipe(
 
 @pytest.mark.integration
 def test_avro_consume_to_stdout(
-    consumer_group, avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
+    avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
     produce_test_messages_with_avro(avro_producer, source_topic)
