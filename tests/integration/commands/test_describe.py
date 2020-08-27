@@ -3,7 +3,10 @@ from typing import Callable, Union
 import pytest
 from click.testing import CliRunner
 
+from esque import config
 from esque.cli.commands import describe_broker, describe_topic
+from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
 
@@ -26,6 +29,24 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
     assert result.exit_code == 0
     output = result.output
     check_described_topic(output)
+
+
+@pytest.mark.integration
+def test_describe_topic_last_timestamp_does_not_commit(
+    non_interactive_cli_runner: CliRunner, topic: str, consumergroup_controller: ConsumerGroupController
+):
+    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "--last-timestamp"], catch_exceptions=False)
+    assert result.exit_code == 0
+    output = result.output
+    check_described_topic(output)
+
+    # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
+    # for this group
+    try:
+        data = consumergroup_controller.get_consumergroup(config.ESQUE_GROUP_ID).describe(verbose=True)
+        assert topic not in data["offsets"]
+    except ConsumerGroupDoesNotExistException:
+        pass
 
 
 @pytest.mark.integration
