@@ -28,7 +28,7 @@ from esque.cli.output import (
 )
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
+from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
@@ -897,7 +897,7 @@ def ping(state: State, times: int, wait: int):
         except TopicAlreadyExistsException:
             pass
         producer = PingProducer(PING_TOPIC)
-        consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
+        consumer = ConsumerFactory().create_ping_consumer(group_id=ESQUE_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Pinging with {state.cluster.bootstrap_servers}.")
 
         for i in range(times):
