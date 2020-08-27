@@ -97,7 +97,9 @@ def list_brokers(ctx, args, incomplete):
 def list_consumergroups(ctx, args, incomplete):
     state = ctx.ensure_object(State)
     return [
-        group for group in ConsumerGroupController(state.cluster).list_consumer_groups() if group.startswith(incomplete)
+        group
+        for group in ConsumerGroupController(state.cluster).list_consumer_groups()
+        if group.startswith(incomplete)
     ]
 
 
@@ -571,7 +573,7 @@ def describe_broker(state: State, broker: str, output_format: str):
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
-     for consumer group CONSUMER_GROUP."""
+    for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -806,22 +808,22 @@ def produce(
 ):
     """Produce messages to a topic.
 
-       Write messages to a given topic in a given context. These messages can come from either a directory <directory>
-       containing files corresponding to the different partitions or from STDIN.
+    Write messages to a given topic in a given context. These messages can come from either a directory <directory>
+    containing files corresponding to the different partitions or from STDIN.
 
-       \b
-       EXAMPLES:
-       # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
-       esque produce -d <directory> -t <destination_ctx> TOPIC
+    \b
+    EXAMPLES:
+    # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+    esque produce -d <directory> -t <destination_ctx> TOPIC
 
-       \b
-       # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
-       esque produce --stdin -f <destination_ctx> -y TOPIC
+    \b
+    # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+    esque produce --stdin -f <destination_ctx> -y TOPIC
 
-       \b
-       # Copy source_topic to destination_topic.
-       esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
-       """
+    \b
+    # Copy source_topic to destination_topic.
+    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    """
     if directory is None and not read_from_stdin:
         raise ValueError("You have to provide a directory or use the --stdin flag.")
 

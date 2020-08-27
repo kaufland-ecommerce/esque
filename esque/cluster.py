@@ -42,7 +42,7 @@ class Cluster:
     def retrieve_config(self, config_type: ConfigResource.Type, id):
         requested_resources = [ConfigResource(config_type, str(id))]
         futures = self.confluent_client.describe_configs(requested_resources)
-        (old_resource, future), = futures.items()
+        ((old_resource, future),) = futures.items()
         future = ensure_kafka_future_done(future)
         result = future.result()
         return unpack_confluent_config(result)

@@ -1,6 +1,7 @@
 import pathlib
 from abc import ABC, abstractmethod
 from heapq import heappop, heappush
+import logging
 from typing import Dict, List, Optional, Tuple
 
 import confluent_kafka
@@ -210,7 +211,13 @@ class AvroFileConsumer(PlaintextConsumer):
         enable_auto_commit: bool = True,
     ):
         super().__init__(
-            group_id, topic_name, output_directory, last, match, initialize_default_output_directory, enable_auto_commit
+            group_id,
+            topic_name,
+            output_directory,
+            last,
+            match,
+            initialize_default_output_directory,
+            enable_auto_commit,
         )
         self.schema_registry_client = SchemaRegistryClient(Config.get_instance().schema_registry)
         self.writers[-1] = (
@@ -338,6 +345,7 @@ def _create_consumers(
 
 def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]) -> list:
     message_heap = []
+    logger = logging.getLogger(__name__)
     for partition_counter in range(0, len(consumers)):
         retry_count = 0
         keep_polling_current_partition = True
@@ -351,7 +359,12 @@ def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]
                 retry_count = retry_count + 1
                 if retry_count > MAX_RETRY_COUNT:
                     keep_polling_current_partition = False
-            except:
+                    logger.debug(
+                        f"Could not connect to {partition_counter}. "
+                        f"Retried {MAX_RETRY_COUNT} times and only got MessageEmptyException."
+                    )
+            except EndOfPartitionReachedException:
+                logger.debug(f"No data in partition {partition_counter}.")
                 keep_polling_current_partition = False
 
     return message_heap
@@ -369,6 +382,7 @@ def _iterate_and_return_messages(
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
     count_messages_returned = 0
+    logger = logging.getLogger(__name__)
     while count_messages_returned < desired_count_messages and message_heap:
         (timestamp, message) = heappop(message_heap)
         consumers[0].output_consumed(message)
@@ -379,7 +393,8 @@ def _iterate_and_return_messages(
             decoded_message = decode_message(message)
             heappush(message_heap, (decoded_message.timestamp, message))
         except (MessageEmptyException, EndOfPartitionReachedException):
-            pass  # TODO: print debug message
+            logger.debug(f"Done reading from partition {partition}.")
+
     return total_number_of_messages
 
 

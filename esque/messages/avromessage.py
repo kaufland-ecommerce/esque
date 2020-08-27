@@ -43,9 +43,12 @@ class AvroFileWriter(FileWriter):
         self.avro_decoder = AvroMessageDecoder(self.schema_registry_client)
 
     def write_message(self, message: Message):
-        key_schema_id, value_schema_id, decoded_message, serializable_message = self.avro_decoder.decode_message_from_avro(
-            message
-        )
+        (
+            key_schema_id,
+            value_schema_id,
+            decoded_message,
+            serializable_message,
+        ) = self.avro_decoder.decode_message_from_avro(message)
 
         self._dump_schema(value_schema_id, VALUE_SCHEMA_FOLDER_NAME)
         self._dump_schema(key_schema_id, KEY_SCHEMA_FOLDER_NAME)
