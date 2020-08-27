@@ -389,6 +389,7 @@ def _iterate_and_return_messages(
 
     return count_messages_returned
 
+
 def _consume_message_to_heap(consumer: AbstractConsumer, heap: list):
     message = consumer.consume_single_acceptable_message()
     decoded_message = decode_message(message)
