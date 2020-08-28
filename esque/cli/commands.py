@@ -3,7 +3,6 @@ import logging
 import pwd
 import sys
 import time
-from itertools import groupby
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -22,6 +21,7 @@ from esque.cli.output import (
     green_bold,
     pretty,
     pretty_new_topic_configs,
+    pretty_offset_plan,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
     red_bold,
@@ -308,8 +308,7 @@ def edit_topic(state: State, topic_name: str):
 @click.option(
     "--offset-to-timestamp",
     help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
-    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp."
-    f" {red_bold('Beware! This can be a really expensive operation.')}",
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp.",
     type=click.STRING,
     required=False,
 )
@@ -347,27 +346,68 @@ def set_offsets(
 
     if offset_plan and len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
-        offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
-        for topic_name, group in groupby(offset_plan, attrgetter("topic_name")):
-            group = list(group)
-            max_proposed = max(len(str(elem.proposed_offset)) for elem in group)
-            max_current = max(len(str(elem.current_offset)) for elem in group)
-            for plan_element in group:
-                new_offset = str(plan_element.proposed_offset).rjust(max_proposed)
-                format_args = dict(
-                    topic_name=plan_element.topic_name,
-                    partition_id=plan_element.partition_id,
-                    current_offset=plan_element.current_offset,
-                    new_offset=new_offset if plan_element.offset_equal else red_bold(new_offset),
-                    max_current=max_current,
-                )
-                click.echo(
-                    "Topic: {topic_name}, partition {partition_id:2}, current offset: {current_offset:{max_current}}, new offset: {new_offset}".format(
-                        **format_args
-                    )
-                )
+        pretty_offset_plan(offset_plan)
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
             consumergroup_controller.edit_consumer_group_offsets(consumer_id=consumer_id, offset_plan=offset_plan)
+    else:
+        logger.info("No changes proposed.")
+        return
+
+
+@edit.command("offsets")
+@click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
+@click.option(
+    "-t",
+    "--topic-name",
+    help="Regular expression describing the topic name (default: all subscribed topics)",
+    type=click.STRING,
+    required=False,
+)
+@default_options
+def edit_offsets(state: State, consumer_id: str, topic_name: str):
+    """Edit a topic.
+
+    Open the offsets of the consumer group in the default editor. If the user saves upon exiting the editor,
+    all the offsets will be set to the given values.
+    """
+    logger = logging.getLogger(__name__)
+    consumergroup_controller = ConsumerGroupController(state.cluster)
+    consumer_group_state, offset_plans = consumergroup_controller.read_current_consumergroup_offsets(
+        consumer_id=consumer_id, topic_name_expression=topic_name if topic_name else ".*"
+    )
+    if consumer_group_state != "Empty":
+        logger.error(
+            "Consumergroup {} is not empty. Setting offsets is only allowed for empty consumer groups.".format(
+                consumer_id
+            )
+        )
+    sorted_offset_plan = list(offset_plans.values())
+    sorted_offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
+    offset_plan_as_yaml = {
+        "offsets": [
+            {"topic": element.topic_name, "partition": element.partition_id, "offset": element.current_offset}
+            for element in sorted_offset_plan
+        ]
+    }
+    _, new_conf = edit_yaml(str(offset_plan_as_yaml), validator=validation.validate_offset_config)
+
+    for new_offset in new_conf["offsets"]:
+        plan_key: str = f"{new_offset['topic']}::{new_offset['partition']}"
+        if plan_key in offset_plans:
+            final_value, error, message = ConsumerGroupController.select_new_offset_for_consumer(
+                requested_offset=new_offset["offset"], offset_plan=offset_plans[plan_key]
+            )
+            if error:
+                logger.error(message)
+            offset_plans[plan_key].proposed_offset = final_value
+
+    if offset_plans and len(offset_plans) > 0:
+        click.echo(green_bold("Proposed offset changes: "))
+        pretty_offset_plan(list(offset_plans.values()))
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            consumergroup_controller.edit_consumer_group_offsets(
+                consumer_id=consumer_id, offset_plan=list(offset_plans.values())
+            )
     else:
         logger.info("No changes proposed.")
         return

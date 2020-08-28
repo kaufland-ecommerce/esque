@@ -1,6 +1,7 @@
 import json
 from collections import OrderedDict
 from functools import partial
+from itertools import groupby
 from typing import Any, Dict, List, MutableMapping, Tuple
 
 import click
@@ -9,6 +10,8 @@ import yaml
 from yaml import SafeDumper, ScalarNode, SequenceNode
 from yaml.representer import SafeRepresenter
 
+from esque.cli.helpers import attrgetter
+from esque.controller.consumergroup_controller import ConsumerGroupOffsetPlan
 from esque.resources.topic import Topic, TopicDiff, Watermark
 
 C_MAX_INT = 2 ** 31 - 1
@@ -122,11 +125,11 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     value *= multiplier
 
     # Fix for conversion errors of ms > C_MAX_INT in some internal lib
-    if value > C_MAX_INT:
-        value = int(value / MILLISECONDS_PER_YEAR)
-        return pendulum.duration(years=value).in_words()
-
-    return pendulum.duration(milliseconds=value).in_words()
+    try:
+        years, millis = divmod(value, MILLISECONDS_PER_YEAR)
+        return pendulum.duration(years=years, milliseconds=millis).in_words()
+    except OverflowError:
+        return "unlimited"
 
 
 def pretty_topic_diffs(topics_config_diff: Dict[str, TopicDiff]) -> str:
@@ -164,6 +167,28 @@ def pretty_unchanged_topic_configs(new_topics: List[Topic]) -> str:
         new_topic_configs.append({click.style(topic.name, bold=True, fg="blue"): new_topic_config})
 
     return pretty({"No changes": new_topic_configs})
+
+
+def pretty_offset_plan(offset_plan: List[ConsumerGroupOffsetPlan]):
+    offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
+    for topic_name, group in groupby(offset_plan, attrgetter("topic_name")):
+        group = list(group)
+        max_proposed = max(len(str(elem.proposed_offset)) for elem in group)
+        max_current = max(len(str(elem.current_offset)) for elem in group)
+        for plan_element in group:
+            new_offset = str(plan_element.proposed_offset).rjust(max_proposed)
+            format_args = dict(
+                topic_name=plan_element.topic_name,
+                partition_id=plan_element.partition_id,
+                current_offset=plan_element.current_offset,
+                new_offset=new_offset if plan_element.offset_equal else bold(click.style(new_offset, fg="red")),
+                max_current=max_current,
+            )
+            click.echo(
+                "Topic: {topic_name}, partition {partition_id:2}, current offset: {current_offset:{max_current}}, new offset: {new_offset}".format(
+                    **format_args
+                )
+            )
 
 
 def pretty_size(value: Any) -> str:
