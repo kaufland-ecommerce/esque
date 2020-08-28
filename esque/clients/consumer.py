@@ -299,7 +299,7 @@ def consume_to_file_ordered(
     topic: str,
     group_id: str,
     partitions: List[int],
-    desired_count_messages: int,
+    desired_message_count: int,
     avro: bool,
     match: str,
     last: bool,
@@ -308,7 +308,7 @@ def consume_to_file_ordered(
 
     consumers = _create_consumers(output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout)
     message_heap = _initialize_heap_one_message_per_partition(consumers)
-    number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_count_messages)
+    number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
 
     for c in consumers:
         c.close_all_writers()
@@ -371,13 +371,13 @@ def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]
 
 
 def _iterate_and_return_messages(
-    message_heap: list, consumers: List[AbstractConsumer], desired_count_messages: int
+    message_heap: list, consumers: List[AbstractConsumer], desired_message_count: int
 ) -> int:
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
     count_messages_returned = 0
     logger = logging.getLogger(__name__)
-    while count_messages_returned < desired_count_messages and message_heap:
+    while count_messages_returned < desired_message_count and message_heap:
         (timestamp, message) = heappop(message_heap)
         consumers[0].output_consumed(message)
         count_messages_returned = count_messages_returned + 1
@@ -401,7 +401,7 @@ def consume_to_files(
     output_directory: pathlib.Path,
     topic: str,
     group_id: str,
-    desired_count_messages: int,
+    desired_message_count: int,
     avro: bool,
     match: str,
     last: bool,
@@ -416,6 +416,6 @@ def consume_to_files(
         match=match,
         initialize_default_output_directory=False,
     )
-    number_consumed_messages = consumer.consume(int(desired_count_messages))
+    number_consumed_messages = consumer.consume(int(desired_message_count))
     consumer.close_all_writers()
     return number_consumed_messages
