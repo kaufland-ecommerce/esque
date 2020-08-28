@@ -39,4 +39,4 @@ def test_duration_unlimited():
 
 
 def test_duration_valid():
-    assert pretty_duration(9223372036854775) == "292471 years"
+    assert pretty_duration(9223372036854775) == "292471 years 10 weeks 6 days 4 hours 54 seconds"
