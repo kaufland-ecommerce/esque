@@ -1,6 +1,6 @@
 from typing import Callable
 
-from esque.cli.output import format_output
+from esque.cli.output import format_output, pretty_duration
 from tests.conftest import parameterized_output_formats
 
 TUPLE_BYTES_DICT = {"list": [1, 2, "3"], "string": "string", "int": 4, "tuple": ("a", "b"), "bytes": str(4).encode()}
@@ -32,3 +32,11 @@ def check_loaded_dict(original_dict: dict, loaded_dict: dict):
             assert original_value.decode("UTF-8") == loaded_dict[key]
         else:
             assert original_value == loaded_dict[key]
+
+
+def test_duration_unlimited():
+    assert pretty_duration(92233720368547750000000000000) == "unlimited"
+
+
+def test_duration_valid():
+    assert pretty_duration(9223372036854775) == "292471 years"

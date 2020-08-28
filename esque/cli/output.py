@@ -126,7 +126,7 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
 
     # Fix for conversion errors of ms > C_MAX_INT in some internal lib
     try:
-        value = int(float(value) / MILLISECONDS_PER_YEAR)
+        value //= MILLISECONDS_PER_YEAR
         return pendulum.duration(years=value).in_words()
     except OverflowError:
         return "unlimited"
