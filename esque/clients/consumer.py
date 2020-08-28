@@ -360,7 +360,7 @@ def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]
                 if retry_count > MAX_RETRY_COUNT:
                     keep_polling_current_partition = False
                     logger.debug(
-                        f"Could not connect to {partition_counter}. "
+                        f"Could not read from partition {partition_counter}. "
                         f"Retried {MAX_RETRY_COUNT} times and only got MessageEmptyException."
                     )
             except EndOfPartitionReachedException:
