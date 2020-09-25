@@ -1,3 +1,5 @@
+### Version 1.0.0
+* Consume option renamed from `numbers` to `number`.
 ### Version 0.2.1
 * Bugfix for issue #154
 ### Version 0.2.0
