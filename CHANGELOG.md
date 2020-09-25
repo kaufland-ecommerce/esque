@@ -2,6 +2,8 @@
 * Consume option renamed from `numbers` to `number`.
 * Add `edit offsets` command.
 * Bugfix for `OverflowError` in `pretty_duration` function.
+* use `esque-client` as default group id for all esque commands
+* disable group offset commits for ping, consume and describe
 ### Version 0.2.1
 * Bugfix for issue #154
 ### Version 0.2.0
