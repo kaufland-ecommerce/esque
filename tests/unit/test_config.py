@@ -201,5 +201,5 @@ def test_validation_called(mocker: mock, load_config: config_loader):
     validator_mock = mocker.patch("esque.validation.validate_esque_config")
     Config()
 
-    validated_config_dict, = validator_mock.call_args[0]
+    (validated_config_dict,) = validator_mock.call_args[0]
     assert validated_config_dict == yaml.safe_load(conf_content)

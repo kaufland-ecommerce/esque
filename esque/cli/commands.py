@@ -613,7 +613,7 @@ def describe_broker(state: State, broker: str, output_format: str):
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
-     for consumer group CONSUMER_GROUP."""
+    for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -669,7 +669,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     required=False,
 )
 @click.option(
-    "-n", "--numbers", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
+    "-n", "--number", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
 )
 @click.option(
     "-m",
@@ -703,7 +703,7 @@ def consume(
     state: State,
     topic: str,
     from_context: str,
-    numbers: int,
+    number: int,
     match: str,
     last: bool,
     avro: bool,
@@ -753,15 +753,15 @@ def consume(
         output_directory.mkdir(parents=True, exist_ok=True)
         click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
     if preserve_order:
-        partitions = []
-        for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
-            partitions.append(partition.partition_id)
+        partitions = [
+            partition.partition_id for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions
+        ]
         total_number_of_consumed_messages = consume_to_file_ordered(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             partitions=partitions,
-            numbers=numbers,
+            desired_message_count=number,
             avro=avro,
             match=match,
             last=last,
@@ -772,7 +772,7 @@ def consume(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
-            numbers=numbers,
+            desired_message_count=number,
             avro=avro,
             match=match,
             last=last,
@@ -781,14 +781,14 @@ def consume(
 
     if not write_to_stdout:
         click.echo(f"Output generated to {blue_bold(str(output_directory))}")
-        if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
+        if total_number_of_consumed_messages == number or number == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
                 "Only found "
                 + bold(str(total_number_of_consumed_messages))
                 + " messages in topic, out of "
-                + blue_bold(str(numbers))
+                + blue_bold(str(number))
                 + " required."
             )
 
@@ -847,22 +847,22 @@ def produce(
 ):
     """Produce messages to a topic.
 
-       Write messages to a given topic in a given context. These messages can come from either a directory <directory>
-       containing files corresponding to the different partitions or from STDIN.
+    Write messages to a given topic in a given context. These messages can come from either a directory <directory>
+    containing files corresponding to the different partitions or from STDIN.
 
-       \b
-       EXAMPLES:
-       # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
-       esque produce -d <directory> -t <destination_ctx> TOPIC
+    \b
+    EXAMPLES:
+    # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+    esque produce -d <directory> -t <destination_ctx> TOPIC
 
-       \b
-       # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
-       esque produce --stdin -f <destination_ctx> -y TOPIC
+    \b
+    # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+    esque produce --stdin -f <destination_ctx> -y TOPIC
 
-       \b
-       # Copy source_topic to destination_topic.
-       esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
-       """
+    \b
+    # Copy source_topic to destination_topic.
+    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    """
     if directory is None and not read_from_stdin:
         raise ValueError("You have to provide a directory or use the --stdin flag.")
 

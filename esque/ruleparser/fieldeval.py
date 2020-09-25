@@ -19,9 +19,9 @@ class FieldEval:
         self.__header_pattern = re.compile(Operator.FIELDS["MESSAGE_HEADER"], flags=re.IGNORECASE)
 
     def evaluate_field(self, field_name: str):
-        """ This method contains the logic to evaluate the field values. New fields are added as follows:
-            (1) add a new element to the Operator.FIELDS set. The key is arbitrary, and the field contains a regex for the parser,
-            (2) add an implementation to this method
+        """This method contains the logic to evaluate the field values. New fields are added as follows:
+        (1) add a new element to the Operator.FIELDS set. The key is arbitrary, and the field contains a regex for the parser,
+        (2) add an implementation to this method
         """
         if field_name == Operator.FIELDS["SYSTEM_TIMESTAMP"].replace("\\", ""):
             return datetime.datetime.strftime(datetime.datetime.now(), self.__time_format)

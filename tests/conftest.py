@@ -295,7 +295,7 @@ def produced_messages_different_partitions(messages_ordered_different_partitions
 
 @pytest.fixture()
 def produced_messages_different_partitions_with_headers(
-    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage]
+    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage],
 ):
     def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partition_with_headers:
@@ -325,7 +325,7 @@ def produced_messages_same_partition(messages_ordered_same_partition: Iterable[K
 
 @pytest.fixture()
 def produced_messages_same_partition_with_headers(
-    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]
+    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage],
 ):
     def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition_with_headers:

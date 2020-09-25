@@ -1,3 +1,4 @@
+import logging
 import pathlib
 from abc import ABC, abstractmethod
 from heapq import heappop, heappush
@@ -16,6 +17,8 @@ from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWrite
 from esque.ruleparser.ruleengine import RuleTree
 
 DEFAULT_CONSUME_TIMEOUT = 30  # seconds
+
+MAX_RETRY_COUNT = 5
 
 
 class AbstractConsumer(ABC):
@@ -251,7 +254,7 @@ class ConsumerFactory:
         initialize_default_output_directory: bool = False,
         match: str = None,
         enable_auto_commit: bool = True,
-    ):
+    ) -> AbstractConsumer:
         """
         Creates a Kafka consumer
         :param group_id: ID of the consumer group
@@ -295,13 +298,34 @@ def consume_to_file_ordered(
     output_directory: pathlib.Path,
     topic: str,
     group_id: str,
-    partitions: list,
-    numbers: int,
+    partitions: List[int],
+    desired_message_count: int,
     avro: bool,
     match: str,
     last: bool,
     write_to_stdout: bool = False,
 ) -> int:
+
+    consumers = _create_consumers(output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout)
+    message_heap = _initialize_heap_one_message_per_partition(consumers)
+    number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
+
+    for c in consumers:
+        c.close_all_writers()
+
+    return number_of_messages_returned
+
+
+def _create_consumers(
+    output_directory: pathlib.Path,
+    topic: str,
+    group_id: str,
+    partitions: List[int],
+    avro: bool,
+    match: str,
+    last: bool,
+    write_to_stdout: bool = False,
+) -> List[AbstractConsumer]:
     consumers = []
     factory = ConsumerFactory()
     for partition in partitions:
@@ -317,63 +341,68 @@ def consume_to_file_ordered(
         )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
+    return consumers
 
+
+def _initialize_heap_one_message_per_partition(consumers: List[AbstractConsumer]) -> list:
     message_heap = []
-    total_number_of_messages = 0
-    messages_left = True
-    # get at least one message from each partition, or exclude those that don't have any messages
+    logger = logging.getLogger(__name__)
     for partition_counter in range(0, len(consumers)):
-        max_retry_count = 5
+        retry_count = 0
         keep_polling_current_partition = True
         while keep_polling_current_partition:
             try:
-                message = consumers[partition_counter].consume_single_acceptable_message()
-                decoded_message = decode_message(message)
+                message_heap = _consume_message_to_heap(consumers[partition_counter], message_heap)
+                keep_polling_current_partition = False
             except MessageEmptyException:
-                # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
-                max_retry_count -= 1
-                if max_retry_count <= 0:
-                    partitions.remove(partition_counter)
-                    if len(partitions) == 0:
-                        messages_left = False
+                # a possible timeout due to a network issue, retry (but not more than MAX_RETRY_COUNT attempts)
+                # retry_count = _handle_empty_message_exception(retry_count)
+                retry_count = retry_count + 1
+                if retry_count > MAX_RETRY_COUNT:
                     keep_polling_current_partition = False
+                    logger.debug(
+                        f"Could not read from partition {partition_counter}. "
+                        f"Retried {MAX_RETRY_COUNT} times and only got MessageEmptyException."
+                    )
             except EndOfPartitionReachedException:
+                logger.debug(f"No data in partition {partition_counter}.")
                 keep_polling_current_partition = False
-                partitions.remove(partition_counter)
-                if len(partitions) == 0:
-                    messages_left = False
-            else:
-                keep_polling_current_partition = False
-                heappush(message_heap, (decoded_message.timestamp, message))
 
+    return message_heap
+
+
+def _iterate_and_return_messages(
+    message_heap: list, consumers: List[AbstractConsumer], desired_message_count: int
+) -> int:
     # in each iteration, take the earliest message from the map, output it and replace it with a new one (if available)
     # if not, remove the consumer and move to the next one
-    while total_number_of_messages < numbers and messages_left:
-        if len(message_heap) == 0:
-            messages_left = False
-        else:
-            (timestamp, message) = heappop(message_heap)
-            consumers[0].output_consumed(message)
-            total_number_of_messages += 1
-            partition = message.partition()
-            try:
-                message = consumers[partition].consume_single_acceptable_message()
-                decoded_message = decode_message(message)
-                heappush(message_heap, (decoded_message.timestamp, message))
-            except (MessageEmptyException, EndOfPartitionReachedException):
-                partitions.remove(partition)
-                if len(partitions) == 0:
-                    messages_left = False
-    for c in consumers:
-        c.close_all_writers()
-    return total_number_of_messages
+    count_messages_returned = 0
+    logger = logging.getLogger(__name__)
+    while count_messages_returned < desired_message_count and message_heap:
+        (timestamp, message) = heappop(message_heap)
+        consumers[0].output_consumed(message)
+        count_messages_returned = count_messages_returned + 1
+        partition = message.partition()
+        try:
+            message_heap = _consume_message_to_heap(consumers[partition], message_heap)
+        except (MessageEmptyException, EndOfPartitionReachedException):
+            logger.debug(f"Done reading from partition {partition}.")
+
+    return count_messages_returned
+
+
+def _consume_message_to_heap(consumer: AbstractConsumer, heap: list):
+    message = consumer.consume_single_acceptable_message()
+    decoded_message = decode_message(message)
+    heappush(heap, (decoded_message.timestamp, message))
+    return heap
 
 
 def consume_to_files(
     output_directory: pathlib.Path,
     topic: str,
     group_id: str,
-    numbers: int,
+    desired_message_count: int,
     avro: bool,
     match: str,
     last: bool,
@@ -389,6 +418,6 @@ def consume_to_files(
         initialize_default_output_directory=False,
         enable_auto_commit=False,
     )
-    number_consumed_messages = consumer.consume(int(numbers))
+    number_consumed_messages = consumer.consume(int(desired_message_count))
     consumer.close_all_writers()
     return number_consumed_messages
