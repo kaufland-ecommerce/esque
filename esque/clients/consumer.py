@@ -306,13 +306,14 @@ def consume_to_file_ordered(
     factory = ConsumerFactory()
     for partition in partitions:
         consumer = factory.create_consumer(
-            group_id=group_id + "_" + str(partition),
+            group_id=group_id,
             topic_name=None,
             output_directory=None if write_to_stdout else output_directory,
             avro=avro,
             match=match,
             last=last,
             initialize_default_output_directory=True,
+            enable_auto_commit=False,
         )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
@@ -386,6 +387,7 @@ def consume_to_files(
         avro=avro,
         match=match,
         initialize_default_output_directory=False,
+        enable_auto_commit=False,
     )
     number_consumed_messages = consumer.consume(int(numbers))
     consumer.close_all_writers()

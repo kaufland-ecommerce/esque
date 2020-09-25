@@ -14,7 +14,7 @@ from confluent_kafka.cimpl import NewTopic, TopicPartition
 from pykafka.topic import Topic as PyKafkaTopic
 
 from esque.clients.consumer import MessageConsumer
-from esque.config import PING_GROUP_ID, Config
+from esque.config import ESQUE_GROUP_ID, Config
 from esque.errors import MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
@@ -166,7 +166,7 @@ class TopicController:
         retrieve_last_timestamp: bool,
     ) -> List[Partition]:
 
-        consumer = MessageConsumer(PING_GROUP_ID, topic.name, True)
+        consumer = MessageConsumer(ESQUE_GROUP_ID, topic.name, True, enable_auto_commit=False)
         partitions = []
 
         for partition_id, meta in confluent_topic.partitions.items():

@@ -28,7 +28,7 @@ from esque.cli.output import (
 )
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import PING_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
+from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
@@ -731,7 +731,6 @@ def consume(
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    consumergroup_prefix = "group_for_"
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -744,7 +743,7 @@ def consume(
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     if not consumergroup:
-        consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
+        consumergroup = ESQUE_GROUP_ID
     if not directory:
         directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
     output_directory = Path(directory)
@@ -937,7 +936,7 @@ def ping(state: State, times: int, wait: int):
         except TopicAlreadyExistsException:
             pass
         producer = PingProducer(PING_TOPIC)
-        consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
+        consumer = ConsumerFactory().create_ping_consumer(group_id=ESQUE_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Pinging with {state.cluster.bootstrap_servers}.")
 
         for i in range(times):
