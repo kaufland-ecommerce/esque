@@ -57,5 +57,5 @@ def test_converting_unserializable_values_to_strings():
         "simple": "some string",
         "date": "2020-10-05",
         "datetime": "2020-10-05T11:15:20",
-        "binary": "0x536f6d65206f7468657220737472696e67",
+        "binary": "U29tZSBvdGhlciBzdHJpbmc=",
     }

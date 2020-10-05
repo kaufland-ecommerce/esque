@@ -1,3 +1,4 @@
+import base64
 import itertools as it
 import json
 import pathlib
@@ -80,7 +81,7 @@ class StdOutAvroWriter(StdOutWriter):
         if isinstance(value, (datetime, date)):
             return value.isoformat()
         elif isinstance(value, bytes):
-            return "0x{}".format(value.hex())
+            return base64.b64encode(value).decode("ascii")
 
 
 class AvroFileReader(FileReader):
