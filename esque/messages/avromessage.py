@@ -1,8 +1,10 @@
+import base64
 import itertools as it
 import json
 import pathlib
 import pickle
 import struct
+from datetime import date, datetime
 from io import BytesIO
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
@@ -72,7 +74,14 @@ class StdOutAvroWriter(StdOutWriter):
 
     def write_message(self, message: Message):
         _, _, _, plaintext_message = self.avro_decoder.decode_message_from_avro(message)
-        click.echo(json.dumps(plaintext_message))
+        click.echo(json.dumps(plaintext_message, default=StdOutAvroWriter.deserializer))
+
+    @staticmethod
+    def deserializer(value):
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        elif isinstance(value, bytes):
+            return base64.b64encode(value).decode("ascii")
 
 
 class AvroFileReader(FileReader):
