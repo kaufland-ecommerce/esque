@@ -17,6 +17,10 @@ def validate_editable_topic_config(editable_topic_config: Dict) -> None:
     validate(editable_topic_config, SCHEMA_DIR / "editable_topic.yaml")
 
 
+def validate_offset_config(offset_config: Dict) -> None:
+    validate(offset_config, SCHEMA_DIR / "offset_config.yaml")
+
+
 def validate_esque_config(esque_config: Dict) -> None:
     validate(esque_config, SCHEMA_DIR / "esque_config.yaml")
     ctx = esque_config["current_context"]

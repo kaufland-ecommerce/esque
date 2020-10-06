@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.2.0b0"
+version = "0.2.2"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -15,17 +15,20 @@ include = [
 
 exclude = ["tests/**/*"]
 
-repository = "https://github.com/real.digital/esque"
+repository = "https://github.com/real-digital/esque"
 
 keywords = ["kafka", "cli", "commandline", "administration", "operation"]
 
 classifiers = [
   "Development Status :: 4 - Beta",
-  "Intended Audience :: System Administrators and Developers",
-  "Topic :: System Administration :: Operational Tools",
+  "Intended Audience :: System Administrators",
+  "Intended Audience :: Developers",
+  "Topic :: System :: Systems Administration",
+  "Topic :: Software Development",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7"
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8"
   ]
 # esque entrypoint
 [tool.poetry.scripts]
@@ -40,7 +43,7 @@ click = "^7.0"
 confluent-kafka = {version = "^1.2", extras = ["avro"]}
 fastavro = "^0.22.5"
 pendulum = "^2.0"
-pykafka = {git = "https://github.com/real-digital/pykafka.git", branch="feature/sasl-scram-support"}
+pykafka = "^2.8"
 pyyaml = "^5.1"
 requests = "^2.22"
 yamale = "^2.0"
@@ -53,8 +56,10 @@ pytest-mock = "^1.11"
 pytest-cov = "^2.8"
 flake8 = "^3.7"
 #TODO unpin once it's more stable
-black = {version = "19.3b0", allows-prereleases = true}
-isort = {version="^4.3", extras = ["pyproject"]}
+black = {version = "19.3b0", allow-prereleases = true}
+isort = {version = "^4.3", extras = ["pyproject"]}
+bandit = "^1.6.2"
+coveralls = "^1.8.2"
 
 [tool.black]
 line-length = 119
@@ -69,6 +74,5 @@ default_section = "THIRDPARTY"
 known_first_party = ["esque", "tests"]
 
 [build-system]
-#TODO unpin once it's more stable
-requires = ["poetry==1.0.0b3"]
+requires = ["poetry>=1.0.2"]
 build-backend = "poetry.masonry.api"

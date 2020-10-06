@@ -33,6 +33,7 @@ from esque.resources.topic import Topic
 # see function get_path_for_config_version
 LOAD_SAMPLE_CONFIG = -1
 LOAD_INTEGRATION_TEST_CONFIG = -2
+LOAD_BROKEN_CONFIG = -3
 LOAD_CURRENT_VERSION = CURRENT_VERSION
 
 
@@ -61,7 +62,7 @@ def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
     ...
 
 
-@pytest.fixture()
+@pytest.fixture(scope="function")
 def load_config(mocker: mock, tmp_path: Path) -> config_loader:
     """
     Loads config of the given version or key into a temporary directory and set this directory as esque config
@@ -98,7 +99,16 @@ def get_path_for_config_version(config_version: int) -> Path:
         return base_path / "integration_test_config.yaml"
     if config_version == LOAD_SAMPLE_CONFIG:
         return esque.config.sample_config_path()
+    if config_version == LOAD_BROKEN_CONFIG:
+        return base_path / "broken_test_config.yaml"
     return base_path / f"v{config_version}_sample.yaml"
+
+
+@pytest.fixture()
+def broken_test_config(load_config: config_loader) -> Config:
+    conffile, _ = load_config(LOAD_BROKEN_CONFIG)
+    esque_config = Config.get_instance()
+    return esque_config
 
 
 @pytest.fixture()
@@ -285,7 +295,7 @@ def produced_messages_different_partitions(messages_ordered_different_partitions
 
 @pytest.fixture()
 def produced_messages_different_partitions_with_headers(
-    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage]
+    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage],
 ):
     def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partition_with_headers:
@@ -304,10 +314,10 @@ def produced_messages_different_partitions_with_headers(
 
 @pytest.fixture()
 def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluentProducer):
+    def _produce(topic_name: str, producer: ConfluentProducer, sleep_time: float = 0.5):
         for message in messages_ordered_same_partition:
             producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
-            time.sleep(0.5)
+            time.sleep(sleep_time)
             producer.flush()
 
     return _produce
@@ -315,7 +325,7 @@ def produced_messages_same_partition(messages_ordered_same_partition: Iterable[K
 
 @pytest.fixture()
 def produced_messages_same_partition_with_headers(
-    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]
+    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage],
 ):
     def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_same_partition_with_headers:

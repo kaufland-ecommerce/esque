@@ -75,8 +75,8 @@ class KafkaException(ExceptionWithMessage):
 
 class ConsumerGroupDoesNotExistException(ExceptionWithMessage):
     def __init__(self, consumer_id: str):
-        super().__init__(f"Consumer Group does not exist for consumer id '{self.consumer_id}'.")
         self.consumer_id = consumer_id
+        super().__init__(f"Consumer Group does not exist for consumer id '{self.consumer_id}'.")
 
 
 class ConfigNotExistsException(ExceptionWithMessage):
@@ -130,7 +130,7 @@ class ConnectionFailedException(ExceptionWithMessage):
         if isinstance(self.pykafka_exception.args, str):
             msg = self.pykafka_exception.args
         else:
-            msg = f"Connection to brokers failed."
+            msg = "Connection to brokers failed."
         super().__init__(msg)
 
 

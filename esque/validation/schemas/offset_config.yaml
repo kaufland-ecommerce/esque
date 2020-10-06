@@ -1,0 +1,6 @@
+offsets: list(include('topic'))
+---
+topic:
+  topic: str()
+  partition: s_int(min=0, required=True)
+  offset: s_int(min=0, required=True)

@@ -2,6 +2,7 @@ from collections import namedtuple
 from functools import total_ordering
 from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
+import pendulum
 import yaml
 from pykafka.protocol.offset import OffsetPartitionResponse
 
@@ -22,12 +23,16 @@ class Partition(KafkaResource):
         partition_isrs,
         partition_leader,
         partition_replicas: List[int],  # list of brokers holding a replica
+        latest_message_timestamp: float = None,
     ):
         self.partition_id = partition_id
         self.watermark = Watermark(high_watermark, low_watermark)
         self.partition_isrs = partition_isrs
         self.partition_leader = partition_leader
         self.partition_replicas = partition_replicas
+        self.latest_message_timestamp = None
+        if latest_message_timestamp is not None:
+            self.latest_message_timestamp = pendulum.from_timestamp(latest_message_timestamp).to_datetime_string()
 
     def as_dict(self):
         return {
@@ -37,6 +42,7 @@ class Partition(KafkaResource):
             "partition_isrs": self.partition_isrs,
             "partition_leader": self.partition_leader,
             "partition_replicas": self.partition_replicas,
+            "latest_message_timestamp": self.latest_message_timestamp,
         }
 
 

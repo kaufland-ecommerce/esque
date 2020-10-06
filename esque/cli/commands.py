@@ -3,7 +3,6 @@ import logging
 import pwd
 import sys
 import time
-from itertools import groupby
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -22,13 +21,14 @@ from esque.cli.output import (
     green_bold,
     pretty,
     pretty_new_topic_configs,
+    pretty_offset_plan,
     pretty_topic_diffs,
     pretty_unchanged_topic_configs,
     red_bold,
 )
 from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, consume_to_files
 from esque.clients.producer import PingProducer, ProducerFactory
-from esque.config import PING_GROUP_ID, PING_TOPIC, config_dir, config_path, migration, sample_config_path
+from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
@@ -163,6 +163,26 @@ def config_recreate(state: State):
         copyfile(sample_config_path().as_posix(), config_path())
 
 
+@config.command("fix")
+@default_options
+def config_fix(state: State):
+    """Fix simple errors in esque config.
+
+    Fixes simple errors like wrong current_contexts in the esque config when the configs was tampered with manually."""
+    try:
+        state.config.context_switch(state.config.current_context)
+        click.echo("Your config seems fine. 🎉")
+    except ValidationException:
+        _cfg: Config = Config(disable_validation=True)
+        if _cfg.current_context not in _cfg.available_contexts:
+            click.echo(f"Found invalid current context. Switching context to state {_cfg.available_contexts[0]}.")
+            _cfg.context_switch(_cfg.available_contexts[0])
+            Config.set_instance(_cfg)
+            state.config.save()
+        else:
+            click.echo("Can't fix this configuration error try fixing it manually.")
+
+
 @config.command("autocomplete")
 @default_options
 def config_autocomplete(state: State):
@@ -288,8 +308,7 @@ def edit_topic(state: State, topic_name: str):
 @click.option(
     "--offset-to-timestamp",
     help="Set offset to that of the first message with timestamp on or after the specified timestamp in format "
-    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp."
-    f" {red_bold('Beware! This can be a really expensive operation.')}",
+    "YYYY-MM-DDTHH:mm:ss, i.e. skip all messages before this timestamp.",
     type=click.STRING,
     required=False,
 )
@@ -327,27 +346,68 @@ def set_offsets(
 
     if offset_plan and len(offset_plan) > 0:
         click.echo(green_bold("Proposed offset changes: "))
-        offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
-        for topic_name, group in groupby(offset_plan, attrgetter("topic_name")):
-            group = list(group)
-            max_proposed = max(len(str(elem.proposed_offset)) for elem in group)
-            max_current = max(len(str(elem.current_offset)) for elem in group)
-            for plan_element in group:
-                new_offset = str(plan_element.proposed_offset).rjust(max_proposed)
-                format_args = dict(
-                    topic_name=plan_element.topic_name,
-                    partition_id=plan_element.partition_id,
-                    current_offset=plan_element.current_offset,
-                    new_offset=new_offset if plan_element.offset_equal else red_bold(new_offset),
-                    max_current=max_current,
-                )
-                click.echo(
-                    "Topic: {topic_name}, partition {partition_id:2}, current offset: {current_offset:{max_current}}, new offset: {new_offset}".format(
-                        **format_args
-                    )
-                )
+        pretty_offset_plan(offset_plan)
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
             consumergroup_controller.edit_consumer_group_offsets(consumer_id=consumer_id, offset_plan=offset_plan)
+    else:
+        logger.info("No changes proposed.")
+        return
+
+
+@edit.command("offsets")
+@click.argument("consumer-id", callback=fallback_to_stdin, type=click.STRING, required=True)
+@click.option(
+    "-t",
+    "--topic-name",
+    help="Regular expression describing the topic name (default: all subscribed topics)",
+    type=click.STRING,
+    required=False,
+)
+@default_options
+def edit_offsets(state: State, consumer_id: str, topic_name: str):
+    """Edit a topic.
+
+    Open the offsets of the consumer group in the default editor. If the user saves upon exiting the editor,
+    all the offsets will be set to the given values.
+    """
+    logger = logging.getLogger(__name__)
+    consumergroup_controller = ConsumerGroupController(state.cluster)
+    consumer_group_state, offset_plans = consumergroup_controller.read_current_consumergroup_offsets(
+        consumer_id=consumer_id, topic_name_expression=topic_name if topic_name else ".*"
+    )
+    if consumer_group_state != "Empty":
+        logger.error(
+            "Consumergroup {} is not empty. Setting offsets is only allowed for empty consumer groups.".format(
+                consumer_id
+            )
+        )
+    sorted_offset_plan = list(offset_plans.values())
+    sorted_offset_plan.sort(key=attrgetter("topic_name", "partition_id"))
+    offset_plan_as_yaml = {
+        "offsets": [
+            {"topic": element.topic_name, "partition": element.partition_id, "offset": element.current_offset}
+            for element in sorted_offset_plan
+        ]
+    }
+    _, new_conf = edit_yaml(str(offset_plan_as_yaml), validator=validation.validate_offset_config)
+
+    for new_offset in new_conf["offsets"]:
+        plan_key: str = f"{new_offset['topic']}::{new_offset['partition']}"
+        if plan_key in offset_plans:
+            final_value, error, message = ConsumerGroupController.select_new_offset_for_consumer(
+                requested_offset=new_offset["offset"], offset_plan=offset_plans[plan_key]
+            )
+            if error:
+                logger.error(message)
+            offset_plans[plan_key].proposed_offset = final_value
+
+    if offset_plans and len(offset_plans) > 0:
+        click.echo(green_bold("Proposed offset changes: "))
+        pretty_offset_plan(list(offset_plans.values()))
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            consumergroup_controller.edit_consumer_group_offsets(
+                consumer_id=consumer_id, offset_plan=list(offset_plans.values())
+            )
     else:
         logger.info("No changes proposed.")
         return
@@ -466,15 +526,23 @@ def apply(state: State, file: str):
     help="Will output the consumer groups reading from this topic."
     f" {red_bold('Beware! This can be a really expensive operation.')}",
 )
+@click.option(
+    "--last-timestamp",
+    required=False,
+    is_flag=True,
+    default=False,
+    help="Will output the last message's timestamp for each partition"
+    f" {red_bold('Beware! This can be a really expensive operation.')}",
+)
 @output_format_option
 @default_options
-def describe_topic(state: State, topic_name: str, consumers: bool, output_format: str):
+def describe_topic(state: State, topic_name: str, consumers: bool, last_timestamp: bool, output_format: str):
     """Describe a topic.
 
     Returns information on a given topic and its partitions, with the option of including
     all consumer groups that read from the topic.
     """
-    topic = state.cluster.topic_controller.get_cluster_topic(topic_name)
+    topic = state.cluster.topic_controller.get_cluster_topic(topic_name, retrieve_last_timestamp=last_timestamp)
 
     output_dict = {
         "topic": topic_name,
@@ -545,7 +613,7 @@ def describe_broker(state: State, broker: str, output_format: str):
 @default_options
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
-     for consumer group CONSUMER_GROUP."""
+    for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
@@ -601,7 +669,7 @@ def get_topics(state: State, prefix: str, output_format: str):
     required=False,
 )
 @click.option(
-    "-n", "--numbers", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
+    "-n", "--number", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
 )
 @click.option(
     "-m",
@@ -635,7 +703,7 @@ def consume(
     state: State,
     topic: str,
     from_context: str,
-    numbers: int,
+    number: int,
     match: str,
     last: bool,
     avro: bool,
@@ -663,7 +731,6 @@ def consume(
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
-    consumergroup_prefix = "group_for_"
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -676,7 +743,7 @@ def consume(
         raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
 
     if not consumergroup:
-        consumergroup = consumergroup_prefix + topic + "_" + str(current_timestamp_milliseconds)
+        consumergroup = ESQUE_GROUP_ID
     if not directory:
         directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
     output_directory = Path(directory)
@@ -686,15 +753,15 @@ def consume(
         output_directory.mkdir(parents=True, exist_ok=True)
         click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
     if preserve_order:
-        partitions = []
-        for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions:
-            partitions.append(partition.partition_id)
+        partitions = [
+            partition.partition_id for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions
+        ]
         total_number_of_consumed_messages = consume_to_file_ordered(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
             partitions=partitions,
-            numbers=numbers,
+            desired_message_count=number,
             avro=avro,
             match=match,
             last=last,
@@ -705,7 +772,7 @@ def consume(
             output_directory=output_directory,
             topic=topic,
             group_id=consumergroup,
-            numbers=numbers,
+            desired_message_count=number,
             avro=avro,
             match=match,
             last=last,
@@ -714,14 +781,14 @@ def consume(
 
     if not write_to_stdout:
         click.echo(f"Output generated to {blue_bold(str(output_directory))}")
-        if total_number_of_consumed_messages == numbers or numbers == sys.maxsize:
+        if total_number_of_consumed_messages == number or number == sys.maxsize:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
                 "Only found "
                 + bold(str(total_number_of_consumed_messages))
                 + " messages in topic, out of "
-                + blue_bold(str(numbers))
+                + blue_bold(str(number))
                 + " required."
             )
 
@@ -780,22 +847,22 @@ def produce(
 ):
     """Produce messages to a topic.
 
-       Write messages to a given topic in a given context. These messages can come from either a directory <directory>
-       containing files corresponding to the different partitions or from STDIN.
+    Write messages to a given topic in a given context. These messages can come from either a directory <directory>
+    containing files corresponding to the different partitions or from STDIN.
 
-       \b
-       EXAMPLES:
-       # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
-       esque produce -d <directory> -t <destination_ctx> TOPIC
+    \b
+    EXAMPLES:
+    # Write all messages from the files in <directory> to TOPIC in the <destination_ctx> context.
+    esque produce -d <directory> -t <destination_ctx> TOPIC
 
-       \b
-       # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
-       esque produce --stdin -f <destination_ctx> -y TOPIC
+    \b
+    # Start environment in terminal to write messages to TOPIC in the <destination_ctx> context.
+    esque produce --stdin -f <destination_ctx> -y TOPIC
 
-       \b
-       # Copy source_topic to destination_topic.
-       esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
-       """
+    \b
+    # Copy source_topic to destination_topic.
+    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    """
     if directory is None and not read_from_stdin:
         raise ValueError("You have to provide a directory or use the --stdin flag.")
 
@@ -811,7 +878,7 @@ def produce(
     topic_controller = state.cluster.topic_controller
     if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
         click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
-        if ensure_approval(f"Would you like to create it now?"):
+        if ensure_approval("Would you like to create it now?"):
             topic_controller.create_topics([Topic(topic)])
         else:
             raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
@@ -869,7 +936,7 @@ def ping(state: State, times: int, wait: int):
         except TopicAlreadyExistsException:
             pass
         producer = PingProducer(PING_TOPIC)
-        consumer = ConsumerFactory().create_ping_consumer(group_id=PING_GROUP_ID, topic_name=PING_TOPIC)
+        consumer = ConsumerFactory().create_ping_consumer(group_id=ESQUE_GROUP_ID, topic_name=PING_TOPIC)
         click.echo(f"Pinging with {state.cluster.bootstrap_servers}.")
 
         for i in range(times):

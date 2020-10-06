@@ -6,7 +6,6 @@ import pendulum
 import pykafka
 from confluent_kafka.cimpl import TopicPartition
 
-from esque.cli.output import red_bold
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
 from esque.controller.topic_controller import TopicController
@@ -86,39 +85,39 @@ class ConsumerGroupController:
         offset_from_group: Optional[str],
     ) -> List[ConsumerGroupOffsetPlan]:
 
-        consumer_group_state, offset_plans = self._read_current_consumergroup_offsets(
+        consumer_group_state, offset_plans = self.read_current_consumergroup_offsets(
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
             self._logger.error("The consumer group {} does not exist.".format(consumer_id))
             return None
         elif consumer_group_state == "Empty":
-            if offset_to_value:
+            if offset_to_value is not None:
                 for plan_element in offset_plans.values():
-                    (allowed_offset, error, message) = self._select_new_offset_for_consumer(
+                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
                         offset_to_value, plan_element
                     )
                     plan_element.proposed_offset = allowed_offset
                     if error:
                         self._logger.error(message)
-            elif offset_by_delta:
+            elif offset_by_delta is not None:
                 for plan_element in offset_plans.values():
                     requested_offset = plan_element.current_offset + offset_by_delta
-                    (allowed_offset, error, message) = self._select_new_offset_for_consumer(
+                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
                         requested_offset, plan_element
                     )
                     plan_element.proposed_offset = allowed_offset
                     if error:
                         self._logger.error(message)
-            elif offset_to_timestamp:
+            elif offset_to_timestamp is not None:
                 timestamp_limit = pendulum.parse(offset_to_timestamp)
-                current_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
-                    topic_name=topic_name, timestamp_limit=timestamp_limit
+                proposed_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
+                    group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
                 )
                 for plan_element in offset_plans.values():
-                    plan_element.current_offset = current_offset_dict.get(plan_element.partition_id, 0)
-            elif offset_from_group:
-                _, mirror_consumer_group = self._read_current_consumergroup_offsets(
+                    plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
+            elif offset_from_group is not None:
+                _, mirror_consumer_group = self.read_current_consumergroup_offsets(
                     consumer_id=offset_from_group, topic_name_expression=topic_name
                 )
                 for key, value in mirror_consumer_group.items():
@@ -130,16 +129,18 @@ class ConsumerGroupController:
             return list(offset_plans.values())
         else:
             self._logger.error(
-                "Consumergroup {} is not empty. Use the {} option if you want to override this safety mechanism.".format(
-                    consumer_id, red_bold("--force")
+                "Consumergroup {} is not empty. Setting offsets is only allowed for empty consumer groups.".format(
+                    consumer_id
                 )
             )
             return list(offset_plans.values())
 
     @staticmethod
-    def _select_new_offset_for_consumer(
+    def select_new_offset_for_consumer(
         requested_offset: int, offset_plan: ConsumerGroupOffsetPlan
     ) -> Tuple[int, bool, str]:
+        from esque.cli.output import red_bold
+
         if requested_offset < offset_plan.low_watermark:
             final_value = offset_plan.low_watermark
             error = True
@@ -166,9 +167,9 @@ class ConsumerGroupController:
             message = ""
         return final_value, error, message
 
-    def _read_current_consumergroup_offsets(
+    def read_current_consumergroup_offsets(
         self, consumer_id: str, topic_name_expression: str
-    ) -> Tuple[str, List[ConsumerGroupOffsetPlan]]:
+    ) -> Tuple[str, Dict[str, ConsumerGroupOffsetPlan]]:
         offset_plans = {}
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:

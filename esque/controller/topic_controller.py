@@ -1,23 +1,25 @@
-import datetime
+import logging
 import re
-import time
-from datetime import timezone
 from enum import Enum
 from itertools import islice
+from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Union
 
+import confluent_kafka
 import pendulum
 from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
-from confluent_kafka.cimpl import NewTopic
+from confluent_kafka.cimpl import NewTopic, TopicPartition
 from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.clients.consumer import ConsumerFactory
-from esque.config import Config
-from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_kafka_error
+from esque.clients.consumer import MessageConsumer
+from esque.config import ESQUE_GROUP_ID, Config
+from esque.errors import MessageEmptyException, raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+
+logger: Logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
@@ -94,64 +96,51 @@ class TopicController:
     @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
         for topic in topics:
-            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, topic.config)
+            altered_config = self._get_altered_config(topic)
+            config_resource = ConfigResource(ConfigResource.Type.TOPIC, topic.name, altered_config)
             future_list = self.cluster.confluent_client.alter_configs([config_resource])
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
+
+    def _get_altered_config(self, topic: Topic) -> Dict[str, str]:
+        cluster_topic = self.get_cluster_topic(topic.name)
+        current_config = cluster_topic.config.items()
+        altered_config = {}
+        for name, value in current_config:
+            if name in topic.config:
+                altered_config[name] = topic.config[name]
+                continue
+            altered_config[name] = value
+        return altered_config
 
     @invalidate_cache_after
     def delete_topic(self, topic: Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_future_done(future)
 
-    def get_cluster_topic(self, topic_name: str) -> Topic:
+    def get_cluster_topic(self, topic_name: str, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
-        return self.update_from_cluster(Topic(topic_name))
+        return self.update_from_cluster(Topic(topic_name), retrieve_last_timestamp=retrieve_last_timestamp)
 
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    def get_offsets_closest_to_timestamp(self, topic_name: str, timestamp_limit: pendulum) -> Dict[int, int]:
+    def get_offsets_closest_to_timestamp(
+        self, group_id: str, topic_name: str, timestamp_limit: pendulum
+    ) -> Dict[int, int]:
         topic = self.get_cluster_topic(topic_name=topic_name)
-        partition_offsets = {partition.partition_id: 0 for partition in topic.partitions}
-        consumers = []
-        factory = ConsumerFactory()
-        partitions = partition_offsets.keys()
-        group_id = "group_for_" + topic_name + "_" + str(int(round(time.time() * 1000)))
-        for partition in partitions:
-            consumer = factory.create_consumer(
-                group_id=group_id,
-                topic_name=None,
-                output_directory=None,
-                avro=False,
-                match=None,
-                last=False,
-                initialize_default_output_directory=False,
-            )
-            consumer.assign_specific_partitions(topic_name, [partition])
-            consumers.append(consumer)
+        config = Config.get_instance().create_confluent_config()
+        config.update({"group.id": group_id})
+        consumer = confluent_kafka.Consumer(config)
+        topic_partitions_with_timestamp = [
+            TopicPartition(topic.name, partition.partition_id, timestamp_limit.int_timestamp * 1000)
+            for partition in topic.partitions
+        ]
+        topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
+        return {
+            topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
+        }
 
-        for partition_counter in range(0, len(consumers)):
-            max_retry_count = 5
-            keep_polling_current_partition = True
-            while keep_polling_current_partition:
-                try:
-                    message = consumers[partition_counter].consume_single_message(timeout=10)
-                except MessageEmptyException:
-                    # a possible timeout due to a network issue, retry (but not more than max_retry_count attempts)
-                    max_retry_count -= 1
-                    if max_retry_count <= 0:
-                        keep_polling_current_partition = False
-                except EndOfPartitionReachedException:
-                    keep_polling_current_partition = False
-                else:
-                    if (
-                        datetime.datetime.fromtimestamp(int(message.timestamp()[1] / 1000.0), timezone.utc)
-                        < timestamp_limit
-                    ):
-                        partition_offsets[message.partition()] = message.offset() + 1
-        return partition_offsets
-
-    def update_from_cluster(self, topic: Topic):
+    def update_from_cluster(self, topic: Topic, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
@@ -159,7 +148,9 @@ class TopicController:
         low_watermarks = pykafka_topic.earliest_available_offsets()
         high_watermarks = pykafka_topic.latest_available_offsets()
 
-        topic.partition_data = self._get_partition_data(confluent_topic, low_watermarks, high_watermarks)
+        topic.partition_data = self._get_partition_data(
+            confluent_topic, low_watermarks, high_watermarks, topic, retrieve_last_timestamp
+        )
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
@@ -167,15 +158,29 @@ class TopicController:
         return topic
 
     def _get_partition_data(
-        self, confluent_topic: ConfluentTopic, low_watermarks: PartitionInfo, high_watermarks: PartitionInfo
+        self,
+        confluent_topic: ConfluentTopic,
+        low_watermarks: PartitionInfo,
+        high_watermarks: PartitionInfo,
+        topic: Topic,
+        retrieve_last_timestamp: bool,
     ) -> List[Partition]:
 
+        consumer = MessageConsumer(ESQUE_GROUP_ID, topic.name, True, enable_auto_commit=False)
         partitions = []
 
         for partition_id, meta in confluent_topic.partitions.items():
             low = int(low_watermarks[partition_id].offset[0])
             high = int(high_watermarks[partition_id].offset[0])
-            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas)
+            latest_timestamp = None
+            if high > low and retrieve_last_timestamp:
+                try:
+                    latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
+                except MessageEmptyException:
+                    logger.warning(
+                        f"Due to timeout latest timestamp for topic `{topic.name}` and partition `{partition_id}` is missing."
+                    )
+            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
             partitions.append(partition)
 
         return partitions

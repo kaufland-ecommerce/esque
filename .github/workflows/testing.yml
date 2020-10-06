@@ -1,5 +1,10 @@
 name: Style, Unit And Integration Tests
-on: push
+on:
+  push:
+    branches:
+      - "*"
+    ignore-tags:
+      - "*"
 
 jobs:
   test-style:
@@ -68,14 +73,12 @@ jobs:
           popd
       - name: Install and configure poetry
         run: |
-          pip3 install "poetry==1.0.0b3"
+          pip3 install "poetry>=1.0.2"
           poetry config virtualenvs.in-project true
       - name: Install esque requirements
         run: |
           poetry install -vvv
-      - name: Run unit tests
-        run: |
-          poetry run -- pytest tests/unit/
+          poetry run pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
       - name: Run kafka stack
         run: |
           docker-compose up -d
@@ -85,7 +88,14 @@ jobs:
           sleep 5
       - name: Run integration tests
         run: |
-          poetry run -- pytest -v --integration --local tests/integration/
+          poetry run pytest -v --integration --local --cov=esque tests/
+      - name: Update coverage
+        if: matrix.python == '3.6'
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: |
+          export BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          poetry run coveralls
       - name: Output logs
         if: failure()
         run: |
