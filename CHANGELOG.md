@@ -1,3 +1,5 @@
+### Version 0.2.3a1
+* Converted unserializable values to strings when writing to STDOUT
 ### Version 0.2.2
 * Consume option renamed from `numbers` to `number`.
 * Add `edit offsets` command.

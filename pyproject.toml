@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.2.2"
+version = "0.2.3a1"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
