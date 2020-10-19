@@ -48,7 +48,7 @@ def test_describe_topic_last_timestamp_does_not_commit(
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
     # for this group
     try:
-        data = consumergroup_controller.get_consumergroup(config.ESQUE_GROUP_ID).describe(verbose=True)
+        data = consumergroup_controller.get_consumer_group(config.ESQUE_GROUP_ID).describe(verbose=True)
         assert topic.encode() not in data["offsets"]
     except ConsumerGroupDoesNotExistException:
         pass

@@ -33,7 +33,7 @@ def test_set_offsets_offset_to_absolute_value(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -44,7 +44,7 @@ def test_set_offsets_offset_to_absolute_value(
         catch_exceptions=True,
     )
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
@@ -77,7 +77,7 @@ def test_set_offsets_offset_to_delta(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -88,7 +88,7 @@ def test_set_offsets_offset_to_delta(
         catch_exceptions=True,
     )
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
@@ -121,7 +121,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -129,7 +129,7 @@ def test_set_offsets_offset_to_delta_all_topics(
         set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
     )
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
@@ -163,14 +163,14 @@ def test_set_offsets_offset_from_group(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
     interactive_cli_runner.invoke(
         set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
     )
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -197,9 +197,9 @@ def test_set_offsets_offset_from_group(
         input="y\n",
         catch_exceptions=True,
     )
-    consumergroup_desc_target = consumergroup_controller.get_consumergroup(consumer_id=target_consumer_group).describe(
-        verbose=True
-    )
+    consumergroup_desc_target = consumergroup_controller.get_consumer_group(
+        consumer_id=target_consumer_group
+    ).describe(verbose=True)
 
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
@@ -235,7 +235,7 @@ def test_set_offsets_offset_to_timestamp_value(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -250,7 +250,7 @@ def test_set_offsets_offset_to_timestamp_value(
         catch_exceptions=True,
     )
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10

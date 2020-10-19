@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.2.3"
+version = "0.2.4"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -44,6 +44,7 @@ confluent-kafka = {version = "^1.2", extras = ["avro"]}
 fastavro = "^0.22.5"
 pendulum = "^2.0"
 pykafka = "^2.8"
+kafka-python = "^2.0.2"
 pyyaml = "^5.1"
 requests = "^2.22"
 yamale = "^2.0"
