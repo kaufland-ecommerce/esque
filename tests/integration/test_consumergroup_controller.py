@@ -6,7 +6,7 @@ from esque.resources.consumergroup import ConsumerGroup
 
 @pytest.mark.integration
 def test_get_consumer_group(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
-    instance = consumergroup_controller.get_consumergroup(partly_read_consumer_group)
+    instance = consumergroup_controller.get_consumer_group(partly_read_consumer_group)
     assert isinstance(instance, ConsumerGroup)
 
 

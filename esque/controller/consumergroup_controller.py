@@ -40,7 +40,7 @@ class ConsumerGroupController:
         self.cluster = cluster
         self._logger = logging.getLogger(__name__)
 
-    def get_consumergroup(self, consumer_id) -> ConsumerGroup:
+    def get_consumer_group(self, consumer_id) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 
     def list_consumer_groups(self) -> List[str]:
@@ -49,7 +49,7 @@ class ConsumerGroupController:
             set(group.decode("UTF-8") for _, broker in brokers.items() for group in broker.list_groups().groups)
         )
 
-    def delete_consumergroups(self, consumer_ids: List[str]):
+    def delete_consumer_groups(self, consumer_ids: List[str]):
         admin_client: KafkaAdminClient = KafkaAdminClient(bootstrap_servers=self.cluster.bootstrap_servers)
         admin_client.delete_consumer_groups(group_ids=consumer_ids)
 
@@ -90,7 +90,7 @@ class ConsumerGroupController:
         offset_from_group: Optional[str],
     ) -> List[ConsumerGroupOffsetPlan]:
 
-        consumer_group_state, offset_plans = self.read_current_consumergroup_offsets(
+        consumer_group_state, offset_plans = self.read_current_consumer_group_offsets(
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
@@ -122,7 +122,7 @@ class ConsumerGroupController:
                 for plan_element in offset_plans.values():
                     plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
             elif offset_from_group is not None:
-                _, mirror_consumer_group = self.read_current_consumergroup_offsets(
+                _, mirror_consumer_group = self.read_current_consumer_group_offsets(
                     consumer_id=offset_from_group, topic_name_expression=topic_name
                 )
                 for key, value in mirror_consumer_group.items():
@@ -172,13 +172,13 @@ class ConsumerGroupController:
             message = ""
         return final_value, error, message
 
-    def read_current_consumergroup_offsets(
+    def read_current_consumer_group_offsets(
         self, consumer_id: str, topic_name_expression: str
     ) -> Tuple[str, Dict[str, ConsumerGroupOffsetPlan]]:
         offset_plans = {}
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:
-            consumer_group = self.get_consumergroup(consumer_id)
+            consumer_group = self.get_consumer_group(consumer_id)
             consumer_group_desc = consumer_group.describe(verbose=True)
             consumer_group_state = consumer_group_desc["meta"]["state"].decode("UTF-8")
             for subscribed_topic_name in consumer_group_desc["offsets"]:

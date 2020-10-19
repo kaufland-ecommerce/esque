@@ -123,7 +123,7 @@ def test_edit_offsets(
     vanilla_consumer.close()
     del vanilla_consumer
 
-    consumergroup_desc_before = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
 
@@ -139,7 +139,7 @@ def test_edit_offsets(
     assert result.exit_code == 0
 
     # Check assertions:
-    consumergroup_desc_after = consumergroup_controller.get_consumergroup(consumer_id=consumer_group).describe(
+    consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
     assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10

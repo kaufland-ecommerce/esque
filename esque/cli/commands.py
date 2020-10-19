@@ -372,7 +372,7 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
     """
     logger = logging.getLogger(__name__)
     consumergroup_controller = ConsumerGroupController(state.cluster)
-    consumer_group_state, offset_plans = consumergroup_controller.read_current_consumergroup_offsets(
+    consumer_group_state, offset_plans = consumergroup_controller.read_current_consumer_group_offsets(
         consumer_id=consumer_id, topic_name_expression=topic_name if topic_name else ".*"
     )
     if consumer_group_state != "Empty":
@@ -422,14 +422,14 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
     autocompletion=list_consumergroups,
 )
 @default_options
-def delete_consumergroup(state: State, consumergroup_name: str):
-    """Delete a consumergroup
+def delete_consumer_group(state: State, consumergroup_name: str):
+    """Delete a consumer group
     """
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
     if consumergroup_name in current_consumergroups:
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
-            consumergroup_controller.delete_consumergroups([consumergroup_name])
+            consumergroup_controller.delete_consumer_groups([consumergroup_name])
             assert consumergroup_name not in consumergroup_controller.list_consumer_groups()
             click.echo(
                 click.style(f"Consumer group with name '{consumergroup_name}' successfully deleted.", fg="green")
@@ -582,7 +582,7 @@ def describe_topic(state: State, topic_name: str, consumers: bool, last_timestam
         consumergroups = [
             group_name
             for group_name in groups
-            if topic_name in consumergroup_controller.get_consumergroup(group_name).topics
+            if topic_name in consumergroup_controller.get_consumer_group(group_name).topics
         ]
 
         output_dict["consumergroups"] = consumergroups
@@ -639,7 +639,7 @@ def describe_broker(state: State, broker: str, output_format: str):
 def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
     for consumer group CONSUMER_GROUP."""
-    consumer_group = ConsumerGroupController(state.cluster).get_consumergroup(consumer_id)
+    consumer_group = ConsumerGroupController(state.cluster).get_consumer_group(consumer_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
     click.echo(format_output(consumer_group_desc, output_format))

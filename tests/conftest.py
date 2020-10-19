@@ -385,7 +385,7 @@ def consumergroup_controller(cluster: Cluster):
 
 @pytest.fixture()
 def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
-    yield consumergroup_controller.get_consumergroup(partly_read_consumer_group)
+    yield consumergroup_controller.get_consumer_group(partly_read_consumer_group)
 
 
 @pytest.fixture()
