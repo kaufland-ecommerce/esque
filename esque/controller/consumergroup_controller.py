@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import pendulum
 import pykafka
 from confluent_kafka.cimpl import TopicPartition
+from kafka import KafkaAdminClient
 
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
@@ -47,6 +48,10 @@ class ConsumerGroupController:
         return list(
             set(group.decode("UTF-8") for _, broker in brokers.items() for group in broker.list_groups().groups)
         )
+
+    def delete_consumergroups(self, consumer_ids: List[str]):
+        admin_client: KafkaAdminClient = KafkaAdminClient(bootstrap_servers=self.cluster.bootstrap_servers)
+        admin_client.delete_consumer_groups(group_ids=consumer_ids)
 
     def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
         """

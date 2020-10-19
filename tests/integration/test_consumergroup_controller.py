@@ -14,3 +14,17 @@ def test_get_consumer_group(partly_read_consumer_group: str, consumergroup_contr
 def test_list_consumer_groups(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
     groups = consumergroup_controller.list_consumer_groups()
     assert partly_read_consumer_group in groups
+
+
+def test_delete_consumer_groups(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
+    consumergroup_controller.delete_consumergroups(consumer_ids=[partly_read_consumer_group])
+    groups = consumergroup_controller.list_consumer_groups()
+    assert partly_read_consumer_group not in groups
+
+
+def test_delete_nonexistent_consumer_groups(
+    partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController
+):
+    consumergroup_controller.delete_consumergroups(consumer_ids=["definitely_nonexistent"])
+    groups = consumergroup_controller.list_consumer_groups()
+    assert partly_read_consumer_group in groups

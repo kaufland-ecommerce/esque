@@ -413,6 +413,31 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
         return
 
 
+@delete.command("consumergroup")
+@click.argument(
+    "consumergroup-name",
+    callback=fallback_to_stdin,
+    required=False,
+    type=click.STRING,
+    autocompletion=list_consumergroups,
+)
+@default_options
+def delete_consumergroup(state: State, consumergroup_name: str):
+    """Delete a consumergroup
+    """
+    consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
+    current_consumergroups = consumergroup_controller.list_consumer_groups()
+    if consumergroup_name in current_consumergroups:
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            consumergroup_controller.delete_consumergroups([consumergroup_name])
+            assert consumergroup_name not in consumergroup_controller.list_consumer_groups()
+            click.echo(
+                click.style(f"Consumer group with name '{consumergroup_name}' successfully deleted.", fg="green")
+            )
+    else:
+        click.echo(click.style(f"Consumer group with name '{consumergroup_name}' doesn't exist.", fg="yellow"))
+
+
 @delete.command("topic")
 @click.argument(
     "topic-name",
