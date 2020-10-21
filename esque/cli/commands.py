@@ -423,22 +423,21 @@ def delete_consumer_group(state: State, consumergroup_name: Tuple[str]):
     consumer_groups = list(consumergroup_name) + get_piped_stdin_arguments()
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
-    click.echo("The following consumer groups will be deleted:")
     existing_consumer_groups: List[str] = []
     for group in consumer_groups:
         if group in current_consumergroups:
-            click.echo(click.style(group, fg="green"))
+            click.echo(f"Deleting {click.style(group, fg='green')}")
             existing_consumer_groups.append(group)
         else:
-            click.echo(click.style(f"{group} — does not exist", fg="yellow"))
+            click.echo(f"Skipping {click.style(group, fg='yellow')} — does not exist")
     if not existing_consumer_groups:
-        click.echo(click.style("The provided list contains no existing consumer groups. Exiting.", fg="red"))
+        click.echo(click.style("The provided list contains no existing consumer groups.", fg="red"))
     else:
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
             consumergroup_controller.delete_consumer_groups(existing_consumer_groups)
             current_consumergroups = consumergroup_controller.list_consumer_groups()
             assert all(consumer_group not in current_consumergroups for consumer_group in existing_consumer_groups)
-            click.echo(click.style(f"Consumer groups '{existing_consumer_groups}' successfully deleted.", fg="green"))
+        click.echo(click.style(f"Consumer groups '{existing_consumer_groups}' successfully deleted.", fg="green"))
 
 
 @delete.command("topic")
@@ -454,22 +453,21 @@ def delete_topic(state: State, topic_name: str):
     topic_names = list(topic_name) + get_piped_stdin_arguments()
     topic_controller = state.cluster.topic_controller
     current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
-    click.echo("The following topics will be deleted:")
     existing_topics: List[str] = []
     for topic in topic_names:
         if topic in current_topics:
-            click.echo(click.style(topic, fg="green"))
+            click.echo(f"Deleting {click.style(topic, fg='green')}")
             existing_topics.append(topic)
         else:
-            click.echo(click.style(f"{topic} — does not exist", fg="yellow"))
+            click.echo(f"Skipping {click.style(topic, fg='yellow')} — does not exist")
     if not existing_topics:
-        click.echo(click.style("The provided list contains no existing topics. Exiting.", fg="red"))
-    if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        for topic_name in existing_topics:
-            topic_controller.delete_topic(Topic(topic_name))
-            assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
-
-    click.echo(click.style(f"Topics '{existing_topics}' successfully deleted.", fg="green"))
+        click.echo(click.style("The provided list contains no existing topics.", fg="red"))
+    else:
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            for topic_name in existing_topics:
+                topic_controller.delete_topic(Topic(topic_name))
+                assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
+            click.echo(click.style(f"Topics '{existing_topics}' successfully deleted.", fg="green"))
 
 
 @esque.command("apply")

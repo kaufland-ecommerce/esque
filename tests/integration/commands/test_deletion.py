@@ -33,17 +33,6 @@ def test_topic_deletion_without_verification_does_not_work(
 
 
 @pytest.mark.integration
-def test_delete_topic_without_topic_name_fails(
-    interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
-):
-    n_topics_before = len(confluent_admin_client.list_topics(timeout=5).topics)
-    result = interactive_cli_runner.invoke(delete_topic)
-    n_topics_after = len(confluent_admin_client.list_topics(timeout=5).topics)
-    assert result.exit_code != 0
-    assert n_topics_before == n_topics_after
-
-
-@pytest.mark.integration
 def test_topic_deletion_as_argument_works(
     interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
