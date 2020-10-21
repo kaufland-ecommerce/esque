@@ -6,13 +6,14 @@ import time
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
+from typing import List, Tuple
 
 import click
 import yaml
 from click import MissingParameter, version_option
 
 from esque import __version__, validation
-from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, isatty
+from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, get_piped_stdin_arguments, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
     blue_bold,
@@ -414,38 +415,35 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 
 
 @delete.command("consumergroup")
-@click.argument(
-    "consumergroup-name",
-    callback=fallback_to_stdin,
-    required=False,
-    type=click.STRING,
-    autocompletion=list_consumergroups,
-)
+@click.argument("consumergroup-name", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
 @default_options
-def delete_consumer_group(state: State, consumergroup_name: str):
-    """Delete a consumer group
+def delete_consumer_group(state: State, consumergroup_name: Tuple[str]):
+    """Delete consumer groups
     """
+    consumer_groups = list(consumergroup_name) + get_piped_stdin_arguments()
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
-    if consumergroup_name in current_consumergroups:
-        if ensure_approval("Are you sure?", no_verify=state.no_verify):
-            consumergroup_controller.delete_consumer_groups([consumergroup_name])
-            assert consumergroup_name not in consumergroup_controller.list_consumer_groups()
-            click.echo(
-                click.style(f"Consumer group with name '{consumergroup_name}' successfully deleted.", fg="green")
-            )
+    click.echo("The following consumer groups will be deleted:")
+    existing_consumer_groups: List[str] = []
+    for group in consumer_groups:
+        if group in current_consumergroups:
+            click.echo(click.style(group, fg="green"))
+            existing_consumer_groups.append(group)
+        else:
+            click.echo(click.style(f"{group} — does not exist", fg="yellow"))
+    if not existing_consumer_groups:
+        click.echo(click.style("The provided list contains no existing consumer groups. Exiting.", fg="red"))
     else:
-        click.echo(click.style(f"Consumer group with name '{consumergroup_name}' doesn't exist.", fg="yellow"))
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            consumergroup_controller.delete_consumer_groups(existing_consumer_groups)
+            current_consumergroups = consumergroup_controller.list_consumer_groups()
+            assert all(consumer_group not in current_consumergroups for consumer_group in existing_consumer_groups)
+            click.echo(click.style(f"Consumer groups '{existing_consumer_groups}' successfully deleted.", fg="green"))
 
 
 @delete.command("topic")
 @click.argument(
-    "topic-name",
-    metavar="TOPIC_NAME",
-    callback=fallback_to_stdin,
-    required=False,
-    type=click.STRING,
-    autocompletion=list_topics,
+    "topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics, nargs=-1
 )
 @default_options
 def delete_topic(state: State, topic_name: str):
@@ -453,13 +451,25 @@ def delete_topic(state: State, topic_name: str):
 
     WARNING: This command cannot be undone, and all data in the topic will be lost.
     """
+    topic_names = list(topic_name) + get_piped_stdin_arguments()
     topic_controller = state.cluster.topic_controller
+    current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
+    click.echo("The following topics will be deleted:")
+    existing_topics: List[str] = []
+    for topic in topic_names:
+        if topic in current_topics:
+            click.echo(click.style(topic, fg="green"))
+            existing_topics.append(topic)
+        else:
+            click.echo(click.style(f"{topic} — does not exist", fg="yellow"))
+    if not existing_topics:
+        click.echo(click.style("The provided list contains no existing topics. Exiting.", fg="red"))
     if ensure_approval("Are you sure?", no_verify=state.no_verify):
-        topic_controller.delete_topic(Topic(topic_name))
+        for topic_name in existing_topics:
+            topic_controller.delete_topic(Topic(topic_name))
+            assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
 
-        assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
-
-    click.echo(click.style(f"Topic with name '{topic_name}' successfully deleted.", fg="green"))
+    click.echo(click.style(f"Topics '{existing_topics}' successfully deleted.", fg="green"))
 
 
 @esque.command("apply")

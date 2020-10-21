@@ -1,6 +1,7 @@
 import pathlib
 import shutil
-from typing import Callable, Dict, Optional, Tuple, Union
+import sys
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
@@ -16,6 +17,13 @@ def _isatty(stream) -> bool:
 
 def isatty(stream) -> bool:
     return _isatty(stream)
+
+
+def get_piped_stdin_arguments() -> List[str]:
+    arguments: List[str] = []
+    if not isatty(sys.stdin):
+        arguments += [argument.replace("\n", "") for argument in sys.stdin.readlines()]
+    return arguments
 
 
 def ensure_approval(question: str, *, no_verify: bool = False, default_answer=False) -> bool:
