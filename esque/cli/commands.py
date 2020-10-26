@@ -415,12 +415,12 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 
 
 @delete.command("consumergroup")
-@click.argument("consumergroup-name", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
+@click.argument("consumergroup-id", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
 @default_options
-def delete_consumer_group(state: State, consumergroup_name: Tuple[str]):
+def delete_consumer_group(state: State, consumergroup_id: Tuple[str]):
     """Delete consumer groups
     """
-    consumer_groups = list(consumergroup_name) + get_piped_stdin_arguments()
+    consumer_groups = list(consumergroup_id) + get_piped_stdin_arguments()
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
     existing_consumer_groups: List[str] = []
@@ -635,7 +635,7 @@ def describe_broker(state: State, broker: str, output_format: str):
 
 
 @describe.command("consumergroup", short_help="Describe a consumer group.")
-@click.argument("consumer-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
+@click.argument("consumergroup-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",
@@ -644,10 +644,10 @@ def describe_broker(state: State, broker: str, output_format: str):
 )
 @output_format_option
 @default_options
-def describe_consumergroup(state: State, consumer_id: str, all_partitions: bool, output_format: str):
+def describe_consumergroup(state: State, consumergroup_id: str, all_partitions: bool, output_format: str):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
     for consumer group CONSUMER_GROUP."""
-    consumer_group = ConsumerGroupController(state.cluster).get_consumer_group(consumer_id)
+    consumer_group = ConsumerGroupController(state.cluster).get_consumer_group(consumergroup_id)
     consumer_group_desc = consumer_group.describe(verbose=all_partitions)
 
     click.echo(format_output(consumer_group_desc, output_format))
