@@ -66,6 +66,32 @@ def test_topic_deletions_multiple_cli(
 
 
 @pytest.mark.integration
+def test_topic_deletions_piped(
+    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+):
+    topics_to_delete = [randomly_generated_topics(confluent_admin_client) for _ in range(3)]
+    remaining_topic = randomly_generated_topics(confluent_admin_client)
+    topics_pre_deletion = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert all(topic in topics_pre_deletion for topic in topics_to_delete)
+    assert remaining_topic in topics_pre_deletion
+    assert "not_in_the_list_of_topics" not in topics_pre_deletion
+
+    result = non_interactive_cli_runner.invoke(
+        delete_topic,
+        "--no-verify",
+        input="\n".join(topics_to_delete + ["not_in_the_list_of_topics"]),
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    # Invalidate cache
+    confluent_admin_client.poll(timeout=1)
+    topics_post_deletion = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert all(topic not in topics_post_deletion for topic in topics_to_delete)
+    assert remaining_topic in topics_post_deletion
+    assert all(existing_topic in topics_pre_deletion for existing_topic in topics_post_deletion)
+
+
+@pytest.mark.integration
 def test_consumer_group_deletions_multiple_cli(
     interactive_cli_runner: CliRunner,
     consumergroup_controller: ConsumerGroupController,
@@ -83,6 +109,34 @@ def test_consumer_group_deletions_multiple_cli(
         delete_consumer_group,
         consumer_groups_to_delete + ["not_in_the_list_of_consumers"],
         input="Y\n",
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+    consumer_groups_post_deletion = consumergroup_controller.list_consumer_groups()
+    assert all(group not in consumer_groups_post_deletion for group in consumer_groups_to_delete)
+    assert remaining_consumer_group in consumer_groups_post_deletion
+    assert all(existing_group in consumer_groups_pre_deletion for existing_group in consumer_groups_post_deletion)
+
+
+@pytest.mark.integration
+def test_consumer_group_deletions_piped(
+    non_interactive_cli_runner: CliRunner,
+    consumergroup_controller: ConsumerGroupController,
+    filled_topic,
+    unittest_config: Config,
+):
+    consumer_groups_to_delete = [randomly_generated_consumer_groups(filled_topic, unittest_config) for _ in range(2)]
+    remaining_consumer_group = randomly_generated_consumer_groups(filled_topic, unittest_config)
+    consumer_groups_pre_deletion = consumergroup_controller.list_consumer_groups()
+    assert all(group in consumer_groups_pre_deletion for group in consumer_groups_to_delete)
+    assert remaining_consumer_group in consumer_groups_pre_deletion
+    assert "not_in_the_list_of_consumers" not in consumer_groups_pre_deletion
+
+    result = non_interactive_cli_runner.invoke(
+        delete_consumer_group,
+        "--no-verify",
+        input="\n".join(consumer_groups_to_delete + ["not_in_the_list_of_consumers"]),
         catch_exceptions=False,
     )
     assert result.exit_code == 0
