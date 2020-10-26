@@ -8,9 +8,10 @@ from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
-from esque.cli.commands import delete_consumer_group, delete_topic, get_topics
+from esque.cli.commands import delete_consumer_group, delete_topic, get_consumergroups, get_topics
 from esque.config import Config
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.resources.consumergroup import ConsumerGroup
 
 
 def randomly_generated_consumer_groups(filled_topic, unittest_config: Config) -> str:
@@ -160,3 +161,21 @@ def test_topic_list_output_compatibility_for_piping(
     all_topics = list(confluent_admin_client.list_topics(timeout=5).topics.keys())
     # Confluent Kafka will have these two topics after the previous command
     assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]
+
+
+@pytest.mark.integration
+def test_consumergroup_list_output_compatibility_for_piping(
+    non_interactive_cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    consumergroup_instance: ConsumerGroup,
+):
+    all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout
+    assert consumergroup_instance.id in all_consumergroups
+    result = non_interactive_cli_runner.invoke(
+        delete_consumer_group, "--no-verify", input=all_consumergroups, catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    # Invalidate cache
+    confluent_admin_client.poll(timeout=1)
+    all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout.replace("\n", "")
+    assert all_consumergroups == "[]"
