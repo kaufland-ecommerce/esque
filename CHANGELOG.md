@@ -1,3 +1,6 @@
+### Version 0.2.5
+* Enable support for variadic arguments when deleting topics and consumer groups.
+* Enable piping in arguments when deleting topics and consumer groups.
 ### Version 0.2.4
 * Add `delete consumergroup` command.
 ### Version 0.2.3
