@@ -159,7 +159,6 @@ def test_topic_list_output_compatibility_for_piping(
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     all_topics = list(confluent_admin_client.list_topics(timeout=5).topics.keys())
-    # Confluent Kafka will have these two topics after the previous command
     assert len(all_topics) == 0
 
 
