@@ -1,3 +1,5 @@
+### Version 0.2.6
+* Enabled listing internal topics by default. Added `--hide-internal` flag to `get topics` command.
 ### Version 0.2.5
 * Enable support for variadic arguments when deleting topics and consumer groups.
 * Enable piping in arguments when deleting topics and consumer groups.
