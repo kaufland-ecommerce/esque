@@ -152,14 +152,14 @@ def test_consumer_group_deletions_piped(
 def test_topic_list_output_compatibility_for_piping(
     non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
-    all_topics = non_interactive_cli_runner.invoke(get_topics).stdout
+    all_topics = non_interactive_cli_runner.invoke(get_topics, args="--hide-internal").stdout
     assert topic in all_topics
     result = non_interactive_cli_runner.invoke(delete_topic, "--no-verify", input=all_topics, catch_exceptions=False)
     assert result.exit_code == 0
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
     all_topics = list(confluent_admin_client.list_topics(timeout=5).topics.keys())
-    assert len(all_topics) == 0
+    assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]
 
 
 @pytest.mark.integration

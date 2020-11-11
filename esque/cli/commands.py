@@ -678,7 +678,12 @@ def get_consumergroups(state: State, output_format: str):
 @get.command("topics")
 @click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics)
 @click.option(
-    "--hide-internal", type=click.BOOL, help="Hide internal topics in the output", required=False, default=False
+    "--hide-internal",
+    type=click.BOOL,
+    help="Hide internal topics in the output",
+    required=False,
+    default=False,
+    is_flag=True,
 )
 @output_format_option
 @default_options
