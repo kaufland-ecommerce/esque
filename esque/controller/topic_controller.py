@@ -57,7 +57,7 @@ class TopicController:
         *,
         search_string: str = None,
         sort: bool = True,
-        hide_internal: bool = True,
+        hide_internal: bool = False,
         get_topic_objects: bool = True,
     ) -> List[Topic]:
         self.cluster.confluent_client.poll(timeout=1)
