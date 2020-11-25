@@ -1,3 +1,5 @@
+### Version 0.2.7
+* Exit with code 1 when `apply` tries to change the number of partitions or the replication factor for a topic.
 ### Version 0.2.6
 * Enabled listing internal topics by default. Added `--hide-internal` flag to `get topics` command.
 ### Version 0.2.5
