@@ -64,7 +64,7 @@ def test_apply(interactive_cli_runner: CliRunner, topic_controller: TopicControl
     path = save_yaml(topic_id, apply_conf)
     result = interactive_cli_runner.invoke(apply, ["-f", path], input="Y\n", catch_exceptions=False)
     assert (
-        result.exit_code == 0 and "to `replication_factor` and `num_partitions`" in result.output
+        result.exit_code == 1 and "to `replication_factor` and `num_partitions`" in result.output
     ), f"Calling apply failed, error: {result.output}"
     # reset config to the old settings again
     topic_1["num_partitions"] = 50

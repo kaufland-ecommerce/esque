@@ -525,7 +525,7 @@ def apply(state: State, file: str):
             "Changes to `replication_factor` and `num_partitions` can not be applied on already existing topics."
         )
         click.echo("Cancelling due to invalid changes")
-        return
+        exit(1)
 
     # Get approval
     if not ensure_approval("Apply changes?", no_verify=state.no_verify):
