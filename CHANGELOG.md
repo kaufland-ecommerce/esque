@@ -1,3 +1,5 @@
+### Version 0.2.8
+* Updated avro-python3 to version 1.10.0
 ### Version 0.2.7
 * Exit with code 1 when `apply` tries to change the number of partitions or the replication factor for a topic.
 ### Version 0.2.6
