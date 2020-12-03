@@ -38,7 +38,7 @@ esque = "esque.cli.commands:esque"
 [tool.poetry.dependencies]
 python = "^3.6"
 
-avro-python3 = "=1.8.2"
+avro-python3 = "^1.10.0"
 click = "^7.0"
 confluent-kafka = {version = "^1.2", extras = ["avro"]}
 fastavro = "^0.22.5"
