@@ -158,7 +158,7 @@ def test_topic_list_output_compatibility_for_piping(
     assert result.exit_code == 0
     # Invalidate cache
     confluent_admin_client.poll(timeout=1)
-    all_topics = list(confluent_admin_client.list_topics(timeout=5).topics.keys())
+    all_topics = sorted(list(confluent_admin_client.list_topics(timeout=5).topics.keys()))
     assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]
 
 
