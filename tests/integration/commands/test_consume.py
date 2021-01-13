@@ -24,8 +24,12 @@ def test_plain_text_message_cli_pipe(
 ):
     produced_messages_same_partition(topic_name=topic, producer=producer)
 
-    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--number", "10", topic])
-    result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
+    result1 = non_interactive_cli_runner.invoke(
+        consume, args=["--stdout", "--number", "10", topic], catch_exceptions=False
+    )
+    result2 = non_interactive_cli_runner.invoke(
+        produce, args=["--stdin", topic], input=result1.output, catch_exceptions=False
+    )
     # Check assertions:
     assert "10" in result2.output
     assert result2.exit_code == 0
@@ -40,8 +44,12 @@ def test_plain_text_message_with_headers_cli_pipe(
 ):
     produced_messages_same_partition_with_headers(topic_name=topic, producer=producer)
 
-    result1 = non_interactive_cli_runner.invoke(consume, args=["--stdout", "--number", "10", topic])
-    result2 = non_interactive_cli_runner.invoke(produce, args=["--stdin", topic], input=result1.output)
+    result1 = non_interactive_cli_runner.invoke(
+        consume, args=["--stdout", "--number", "10", topic], catch_exceptions=False
+    )
+    result2 = non_interactive_cli_runner.invoke(
+        produce, args=["--stdin", topic], input=result1.output, catch_exceptions=False
+    )
     # Check assertions:
     assert "10" in result2.output
     assert result2.exit_code == 0
@@ -55,7 +63,7 @@ def test_avro_consume_to_stdout(
     produce_test_messages_with_avro(avro_producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--number", "10", "--avro", source_topic_id]
+        consume, args=["--stdout", "--number", "10", "--avro", source_topic_id], catch_exceptions=False
     )
     # Check assertions:
     separate_messages = message_text.output.split("\n")
@@ -74,7 +82,9 @@ def test_offset_not_committed(
     source_topic_id, _ = source_topic
     produce_test_messages_with_avro(avro_producer, source_topic)
 
-    non_interactive_cli_runner.invoke(consume, args=["--stdout", "--numbers", "10", "--avro", source_topic_id])
+    non_interactive_cli_runner.invoke(
+        consume, args=["--stdout", "--numbers", "10", "--avro", source_topic_id], catch_exceptions=False
+    )
 
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
     # for this group
@@ -93,7 +103,7 @@ def test_binary_consume_to_stdout(
     messages = produce_binary_test_messages(producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--number", "10", "--binary", source_topic_id]
+        consume, args=["--stdout", "--number", "10", "--binary", source_topic_id], catch_exceptions=False
     )
     # Check assertions:
     separate_messages = message_text.output.split("\n")
@@ -113,9 +123,11 @@ def test_binary_message_cli_pipe(
     expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--binary", "--number", "10", source_topic[0]]
+        consume, args=["--stdout", "--binary", "--number", "10", source_topic[0]], catch_exceptions=False
     )
-    non_interactive_cli_runner.invoke(produce, args=["--stdin", "--binary", target_topic[0]], input=result1.output)
+    non_interactive_cli_runner.invoke(
+        produce, args=["--stdin", "--binary", target_topic[0]], input=result1.output, catch_exceptions=False
+    )
 
     consumer = Consumer(unittest_config.create_confluent_config())
     consumer.assign([TopicPartition(target_topic[0], i) for i in range(target_topic[1])])
