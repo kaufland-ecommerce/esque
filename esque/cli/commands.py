@@ -723,7 +723,21 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
     required=False,
 )
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
+@click.option(
+    "-a",
+    "--avro",
+    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary flag",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "-b",
+    "--binary",
+    help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
+    "This flag is mutually exclusive with the --avro flag",
+    default=False,
+    is_flag=True,
+)
 @click.option(
     "-c",
     "--consumergroup",
@@ -750,6 +764,7 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    binary: bool,
     directory: str,
     consumergroup: str,
     preserve_order: bool,
@@ -774,6 +789,9 @@ def consume(
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
+
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -864,7 +882,21 @@ def consume(
     type=click.STRING,
     required=False,
 )
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
+@click.option(
+    "-a",
+    "--avro",
+    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary flag",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "-b",
+    "--binary",
+    help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
+    "This flag is mutually exclusive with the --avro flag",
+    default=False,
+    is_flag=True,
+)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
 )
@@ -884,6 +916,7 @@ def produce(
     to_context: str,
     directory: str,
     avro: bool,
+    binary: bool,
     match: str = None,
     read_from_stdin: bool = False,
     ignore_stdin_errors: bool = False,
@@ -906,6 +939,9 @@ def produce(
     # Copy source_topic to destination_topic.
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+
     if directory is None and not read_from_stdin:
         raise ValueError("You have to provide a directory or use the --stdin flag.")
 

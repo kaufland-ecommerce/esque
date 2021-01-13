@@ -125,6 +125,12 @@ def test_binary_message_cli_pipe(
     assert expected_messages == actual_messages
 
 
+@pytest.mark.integration
+def test_binary_and_avro_fails(non_interactive_cli_runner: CliRunner):
+    with pytest.raises(ValueError):
+        non_interactive_cli_runner.invoke(consume, args=["--binary", "--avro", "thetopic"], catch_exceptions=False)
+
+
 def random_bytes(length: int = 16) -> bytes:
     return random.getrandbits(length * 8).to_bytes(length, "big")
 
