@@ -827,6 +827,7 @@ def consume(
             match=match,
             last=last,
             write_to_stdout=write_to_stdout,
+            binary=binary,
         )
     else:
         total_number_of_consumed_messages = consume_to_files(
@@ -838,6 +839,7 @@ def consume(
             match=match,
             last=last,
             write_to_stdout=write_to_stdout,
+            binary=binary,
         )
 
     if not write_to_stdout:
@@ -985,6 +987,7 @@ def produce(
         avro=avro,
         match=match,
         ignore_stdin_errors=ignore_stdin_errors,
+        binary=binary,
     )
     total_number_of_messages_produced = producer.produce()
     click.echo(

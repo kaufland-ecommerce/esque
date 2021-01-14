@@ -15,9 +15,11 @@ from esque.errors import raise_for_kafka_error
 from esque.helpers import delta_t, log_error
 from esque.messages.avromessage import AvroFileReader
 from esque.messages.message import (
+    BinaryFileReader,
     FileReader,
     KafkaMessage,
     PlainTextFileReader,
+    deserialize_binary_message,
     deserialize_message,
     get_partitions_in_path,
 )
@@ -103,6 +105,29 @@ class StdInProducer(AbstractProducer):
             if message:
                 self.produce_message(topic_name=self._topic_name, message=message)
                 total_number_of_produced_messages += 1
+        self.flush_all()
+        return total_number_of_produced_messages
+
+
+class BinaryStdInProducer(AbstractProducer):
+    def __init__(self, topic_name: str, match: str = None, ignore_errors: bool = False):
+        super().__init__(topic_name=topic_name, match=match)
+        self._ignore_errors = ignore_errors
+
+    def produce(self) -> int:
+        total_number_of_produced_messages = 0
+        # accept lines from stdin until EOF
+        for single_message_line in sys.stdin:
+            message = None
+            try:
+                message = deserialize_binary_message(single_message_line.replace("\n", ""))
+            except (JSONDecodeError, KeyError):
+                if self._ignore_errors:
+                    message = KafkaMessage(key=None, value=single_message_line, partition=0)
+            if message:
+                self.produce_message(topic_name=self._topic_name, message=message)
+                total_number_of_produced_messages += 1
+        self.flush_all()
         return total_number_of_produced_messages
 
 
@@ -147,8 +172,24 @@ class AvroFileProducer(FileProducer):
                 key=None if message.key is None else json.loads(message.key),
                 value=None if message.value is None else json.loads(message.value),
                 partition=message.partition,
+                headers=None if message.headers else message.headers,
                 key_schema=message.key_schema,
                 value_schema=message.value_schema,
+            )
+
+
+class BinaryFileProducer(FileProducer):
+    def get_file_reader(self, directory: pathlib.Path, partition: Optional[str]) -> FileReader:
+        return BinaryFileReader(directory, partition)
+
+    def produce_message(self, topic_name: str, message: KafkaMessage):
+        if self._rule_tree is None or self._rule_tree.evaluate(message):
+            self._producer.produce(
+                topic=topic_name,
+                key=None if message.key is None else message.key,
+                value=None if message.value is None else message.value,
+                partition=message.partition,
+                headers=None if message.headers else message.headers,
             )
 
 
@@ -158,13 +199,21 @@ class ProducerFactory:
         topic_name: str,
         input_directory: pathlib.Path,
         avro: bool,
+        binary: bool,
         match: str = None,
         ignore_stdin_errors: bool = False,
     ):
         if input_directory is None:
-            producer = StdInProducer(topic_name=topic_name, match=match, ignore_errors=ignore_stdin_errors)
+            if avro:
+                raise ValueError("Cannot product avro messages from stdin.")
+            elif binary:
+                producer = BinaryStdInProducer(topic_name=topic_name, match=match, ignore_errors=ignore_stdin_errors)
+            else:
+                producer = StdInProducer(topic_name=topic_name, match=match, ignore_errors=ignore_stdin_errors)
         elif avro:
             producer = AvroFileProducer(topic_name=topic_name, input_directory=input_directory, match=match)
+        elif binary:
+            producer = BinaryFileProducer(topic_name=topic_name, input_directory=input_directory, match=match)
         else:
             producer = FileProducer(topic_name=topic_name, input_directory=input_directory, match=match)
         return producer

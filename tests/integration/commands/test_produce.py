@@ -52,7 +52,7 @@ def test_binary_and_avro_fails(non_interactive_cli_runner: CliRunner):
 
 
 @pytest.mark.integration
-def test_produce_to_non_existant_topic_fails(
+def test_produce_to_non_existent_topic_fails(
     confluent_admin_client: confluent_kafka.admin.AdminClient, interactive_cli_runner: CliRunner, topic_id: str
 ):
     target_topic_id = topic_id

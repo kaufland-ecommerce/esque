@@ -13,7 +13,15 @@ from esque.config import Config
 from esque.errors import EndOfPartitionReachedException, MessageEmptyException, raise_for_message
 from esque.helpers import log_error
 from esque.messages.avromessage import AvroFileWriter, StdOutAvroWriter
-from esque.messages.message import FileWriter, GenericWriter, PlainTextFileWriter, StdOutWriter, decode_message
+from esque.messages.message import (
+    BinaryFileWriter,
+    BinaryStdOutWriter,
+    FileWriter,
+    GenericWriter,
+    PlainTextFileWriter,
+    StdOutWriter,
+    decode_message,
+)
 from esque.ruleparser.ruleengine import RuleTree
 
 DEFAULT_CONSUME_TIMEOUT = 30  # seconds
@@ -158,10 +166,17 @@ class PlaintextConsumer(AbstractConsumer):
     ):
         super().__init__(group_id, topic_name, last, match, enable_auto_commit)
         self.output_directory = output_directory
-        self.writers[-1] = StdOutWriter() if output_directory is None else PlainTextFileWriter(self.output_directory)
         self._initialize_default_output_directory = initialize_default_output_directory
-        if self._initialize_default_output_directory and self.output_directory is not None:
-            self.writers[-1].init_destination_directory()
+        self._initialize_writer()
+
+    def _initialize_writer(self):
+        if self.output_directory is None:
+            self.writers[-1] = StdOutWriter()
+        else:
+            writer = PlainTextFileWriter(self.output_directory)
+            self.writers[-1] = writer
+            if self._initialize_default_output_directory:
+                writer.init_destination_directory()
 
     def consume(self, amount: int) -> int:
         counter = 0
@@ -192,6 +207,30 @@ class PlaintextConsumer(AbstractConsumer):
             and message.partition() not in self.writers
         ):
             writer = PlainTextFileWriter(self.output_directory, message.partition())
+            writer.init_destination_directory()
+            self.writers[message.partition()] = writer
+        else:
+            writer = self.writers.get(message.partition(), self.writers[-1])
+        writer.write_message(message)
+
+
+class BinaryConsumer(PlaintextConsumer):
+    def _initialize_writer(self):
+        if self.output_directory is None:
+            self.writers[-1] = BinaryStdOutWriter()
+        else:
+            writer = BinaryFileWriter(self.output_directory)
+            self.writers[-1] = writer
+            if self._initialize_default_output_directory:
+                writer.init_destination_directory()
+
+    def output_consumed(self, message: Message):
+        if (
+            self.output_directory
+            and not self._initialize_default_output_directory
+            and message.partition() not in self.writers
+        ):
+            writer = BinaryFileWriter(self.output_directory, message.partition())
             writer.init_destination_directory()
             self.writers[message.partition()] = writer
         else:
@@ -254,6 +293,7 @@ class ConsumerFactory:
         initialize_default_output_directory: bool = False,
         match: str = None,
         enable_auto_commit: bool = True,
+        binary: bool = False,
     ) -> AbstractConsumer:
         """
         Creates a Kafka consumer
@@ -265,10 +305,22 @@ class ConsumerFactory:
         :param initialize_default_output_directory: If set to true, all messages will be stored in a directory named partition_any, instead having a separate directory for each partition. This argument is only used if output_directory is not None.
         :param match: Match expression for message filtering
         :param enable_auto_commit: Allow the consumer to automatically commit offset
+        :param binary: Are messages in binary format?
+
         :return: Consumer object
         """
         if avro:
             consumer = AvroFileConsumer(
+                group_id=group_id,
+                topic_name=topic_name,
+                output_directory=output_directory,
+                last=last,
+                match=match,
+                initialize_default_output_directory=initialize_default_output_directory,
+                enable_auto_commit=enable_auto_commit,
+            )
+        elif binary:
+            consumer = BinaryConsumer(
                 group_id=group_id,
                 topic_name=topic_name,
                 output_directory=output_directory,
@@ -304,9 +356,12 @@ def consume_to_file_ordered(
     match: str,
     last: bool,
     write_to_stdout: bool = False,
+    binary: bool = False,
 ) -> int:
 
-    consumers = _create_consumers(output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout)
+    consumers = _create_consumers(
+        output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout, binary
+    )
     message_heap = _initialize_heap_one_message_per_partition(consumers)
     number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
 
@@ -325,6 +380,7 @@ def _create_consumers(
     match: str,
     last: bool,
     write_to_stdout: bool = False,
+    binary: bool = False,
 ) -> List[AbstractConsumer]:
     consumers = []
     factory = ConsumerFactory()
@@ -338,6 +394,7 @@ def _create_consumers(
             last=last,
             initialize_default_output_directory=True,
             enable_auto_commit=False,
+            binary=binary,
         )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
@@ -407,6 +464,7 @@ def consume_to_files(
     match: str,
     last: bool,
     write_to_stdout: bool = False,
+    binary: bool = False,
 ) -> int:
     consumer = ConsumerFactory().create_consumer(
         group_id=group_id,
@@ -417,6 +475,7 @@ def consume_to_files(
         match=match,
         initialize_default_output_directory=False,
         enable_auto_commit=False,
+        binary=binary,
     )
     number_consumed_messages = consumer.consume(int(desired_message_count))
     consumer.close_all_writers()
