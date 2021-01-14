@@ -1,3 +1,5 @@
+### Version 0.2.9
+* Added `--binary` flag to `produce` and `consume`
 ### Version 0.2.8
 * Updated avro-python3 to version 1.10.0
 ### Version 0.2.7
