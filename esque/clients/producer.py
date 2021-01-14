@@ -199,9 +199,9 @@ class ProducerFactory:
         topic_name: str,
         input_directory: pathlib.Path,
         avro: bool,
-        binary: bool,
         match: str = None,
         ignore_stdin_errors: bool = False,
+        binary: bool = False,
     ):
         if input_directory is None:
             if avro:
