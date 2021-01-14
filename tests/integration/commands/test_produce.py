@@ -46,7 +46,13 @@ def test_plain_text_consume_and_produce_newly_created_topic(
 
 
 @pytest.mark.integration
-def test_produce_to_non_existant_topic_fails(
+def test_binary_and_avro_fails(non_interactive_cli_runner: CliRunner):
+    with pytest.raises(ValueError):
+        non_interactive_cli_runner.invoke(produce, args=["--binary", "--avro", "thetopic"], catch_exceptions=False)
+
+
+@pytest.mark.integration
+def test_produce_to_non_existent_topic_fails(
     confluent_admin_client: confluent_kafka.admin.AdminClient, interactive_cli_runner: CliRunner, topic_id: str
 ):
     target_topic_id = topic_id

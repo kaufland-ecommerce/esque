@@ -1,3 +1,4 @@
+import base64
 import json
 import pathlib
 from abc import abstractmethod
@@ -63,6 +64,11 @@ class StdOutWriter(GenericWriter):
         click.echo(serialize_message(message))
 
 
+class BinaryStdOutWriter(GenericWriter):
+    def write_message(self, message: Message):
+        click.echo(serialize_binary_message(message))
+
+
 class FileWriter(GenericWriter, FileHandler):
     def __init__(self, directory: pathlib.Path, partition: Optional[str] = None):
         super().__init__(directory, partition)
@@ -90,6 +96,17 @@ class PlainTextFileReader(FileReader):
     def read_message_from_file(self) -> Iterable[KafkaMessage]:
         for line in self.file:
             yield deserialize_message(line)
+
+
+class BinaryFileWriter(FileWriter):
+    def write_message(self, message: Message):
+        self.file.write(serialize_binary_message(message) + "\n")
+
+
+class BinaryFileReader(FileReader):
+    def read_message_from_file(self) -> Iterable[KafkaMessage]:
+        for line in self.file:
+            yield deserialize_binary_message(line)
 
 
 def decode_message(message: Message) -> DecodedMessage:
@@ -127,6 +144,43 @@ def deserialize_message(message_line: str) -> KafkaMessage:
     json_record = json.loads(message_line)
     key = None if "key" not in json_record or json_record["key"] is None else json_record["key"]
     value = None if "value" not in json_record or json_record["value"] is None else json_record["value"]
+    partition = json_record.get("partition", 0)
+    headers = []
+    if json_record["headers"]:
+        for header_item in json_record["headers"]:
+            header_key = header_item["key"]
+            header_value = header_item["value"] if "value" in header_item else None
+            if header_key:
+                headers.append(MessageHeader(header_key, header_value if header_value else None))
+    return KafkaMessage(key=key, value=value, partition=partition, headers=headers)
+
+
+def serialize_binary_message(message: Message):
+    if message.headers():
+        headers = [{"key": header_element.key, "value": header_element.value} for header_element in message.headers()]
+    else:
+        headers = None
+
+    serializable_message = {
+        "key": base64.b64encode(message.key()).decode() if message.key() else None,
+        "value": base64.b64encode(message.value()).decode() if message.value() else None,
+        "partition": message.partition(),
+        "offset": message.offset(),
+        "headers": headers,
+    }
+    return json.dumps(serializable_message)
+
+
+def deserialize_binary_message(line: str) -> KafkaMessage:
+    json_record = json.loads(line)
+    key = None if "key" not in json_record or json_record["key"] is None else json_record["key"]
+    if key is not None:
+        key = base64.b64decode(key.encode())
+
+    value = None if "value" not in json_record or json_record["value"] is None else json_record["value"]
+    if value is not None:
+        value = base64.b64decode(value.encode())
+
     partition = json_record.get("partition", 0)
     headers = []
     if json_record["headers"]:
