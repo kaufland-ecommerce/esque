@@ -86,7 +86,7 @@ class AbstractConsumer(ABC):
         self._consumer.close()
 
     def commit(self, offsets: List[TopicPartition]):
-        self._consumer.commit(offsets=offsets)
+        self._consumer.commit(offsets=offsets, asynchronous=False)
 
     @abstractmethod
     def consume(self, **kwargs) -> int:
