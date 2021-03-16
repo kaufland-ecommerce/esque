@@ -13,6 +13,7 @@ import yaml
 from click import MissingParameter, version_option
 
 from esque import __version__, validation
+from esque.cli import environment
 from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, get_piped_stdin_arguments, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
@@ -44,7 +45,21 @@ def esque(state: State):
 
     In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
     """
-    pass
+    if environment.ESQUE_PROFILE:
+        import cProfile
+        import pstats
+        import atexit
+
+        print("Profiling...")
+        pr = cProfile.Profile()
+        pr.enable()
+
+        def stop_profiling():
+            pr.disable()
+            pstats.Stats(pr).dump_stats("./esque.pstat")
+            print("profiling completed, data dumped to esque.pstat")
+
+        atexit.register(stop_profiling)
 
 
 @esque.group(help="Get a quick overview of different resources.", no_args_is_help=True)
@@ -418,8 +433,7 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 @click.argument("consumergroup-id", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
 @default_options
 def delete_consumer_group(state: State, consumergroup_id: Tuple[str]):
-    """Delete consumer groups
-    """
+    """Delete consumer groups"""
     consumer_groups = list(consumergroup_id) + get_piped_stdin_arguments()
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
