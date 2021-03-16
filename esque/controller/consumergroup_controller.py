@@ -9,6 +9,7 @@ from kafka import KafkaAdminClient
 
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
+from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.resources.consumergroup import ConsumerGroup
 
@@ -50,7 +51,8 @@ class ConsumerGroupController:
         )
 
     def delete_consumer_groups(self, consumer_ids: List[str]):
-        admin_client: KafkaAdminClient = KafkaAdminClient(bootstrap_servers=self.cluster.bootstrap_servers)
+        config = Config.get_instance().create_kafka_python_config()
+        admin_client: KafkaAdminClient = KafkaAdminClient(**config)
         admin_client.delete_consumer_groups(group_ids=consumer_ids)
 
     def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
