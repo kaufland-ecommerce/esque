@@ -104,6 +104,24 @@ def test_sasl_params(config: Config):
     assert config.sasl_mechanism == "PLAIN"
 
 
+def test_kafka_python_config(config: Config):
+    config.context_switch("context_5")
+    expected_config = {
+        "bootstrap_servers": ["kafka:9094", "kafka1:9094", "kafka2:9094", "kafka3:9094"],
+        "security_protocol": "SASL_SSL",
+        "sasl_mechanism": "PLAIN",
+        "sasl_plain_username": "alice",
+        "sasl_plain_password": "alice-secret",
+        "ssl_cafile": "/my/ca.crt",
+        "ssl_certfile": "/my/certificate.crt",
+        "ssl_keyfile": "/my/certificate.key",
+        "ssl_password": "mySecretPassword",
+    }
+
+    actual_config = config.create_kafka_python_config()
+    assert expected_config == actual_config
+
+
 def test_confluent_config(config: Config):
     config.context_switch("context_5")
     expected_config = {

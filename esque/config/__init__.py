@@ -201,6 +201,44 @@ class Config(metaclass=SingletonMeta):
         log.debug(f"Created pykafka config: {config}")
         return config
 
+    def create_kafka_python_config(self) -> Dict[str, Any]:
+        config = {"bootstrap_servers": self.bootstrap_servers, "security_protocol": self.security_protocol}
+        if self.ssl_enabled:
+            config.update(self._get_kafka_python_ssl_config())
+        if self.sasl_enabled:
+            config.update(self._get_kafka_python_sasl_config())
+        return config
+
+    def _get_kafka_python_ssl_config(self):
+        config = {}
+        if self.ssl_params.get("cafile"):
+            config["ssl_cafile"] = self.ssl_params["cafile"]
+        if self.ssl_params.get("certfile"):
+            config["ssl_certfile"] = self.ssl_params["certfile"]
+        if self.ssl_params.get("keyfile"):
+            config["ssl_keyfile"] = self.ssl_params["keyfile"]
+        if self.ssl_params.get("password"):
+            config["ssl_password"] = self.ssl_params["password"]
+        return config
+
+    def _get_kafka_python_sasl_config(self):
+        if self.sasl_mechanism in ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"):
+            try:
+                return {
+                    "sasl_mechanism": self.sasl_mechanism,
+                    "sasl_plain_username": self.sasl_params["user"],
+                    "sasl_plain_password": self.sasl_params["password"],
+                }
+            except KeyError as e:
+                msg = f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}.\n"
+                msg += f"Please run `esque config edit` and add it to section [{self.current_context}]."
+                raise MissingSaslParameter(msg)
+        else:
+            raise UnsupportedSaslMechanism(
+                f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
+                f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
+            )
+
     def create_confluent_config(self, *, debug: bool = False, include_schema_registry: bool = False) -> Dict[str, str]:
         config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": self.security_protocol}
         if debug:
@@ -235,8 +273,6 @@ class Config(metaclass=SingletonMeta):
             )
 
     def _get_confluent_ssl_config(self) -> Dict[str, str]:
-        if not self.ssl_enabled:
-            return {}
         rdk_conf = {}
         if self.ssl_params.get("cafile"):
             rdk_conf["ssl.ca.location"] = self.ssl_params["cafile"]

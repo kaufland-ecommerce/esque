@@ -33,3 +33,6 @@ pip-wheel-metadata
 # Esque specific
 esque.cfg
 !.env
+
+# cprofile snapshots
+*.pstat

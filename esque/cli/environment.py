@@ -7,3 +7,4 @@ import os
 
 ESQUE_CONF_PATH = os.environ.get("ESQUE_CONF_PATH")
 ESQUE_VERBOSE = os.environ.get("ESQUE_VERBOSE")
+ESQUE_PROFILE = os.environ.get("ESQUE_PROFILE", "")
