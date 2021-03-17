@@ -118,7 +118,7 @@ def test_kafka_python_config(config: Config):
         "ssl_password": "mySecretPassword",
     }
 
-    actual_config = config.create_confluent_config(include_schema_registry=True)
+    actual_config = config.create_kafka_python_config()
     assert expected_config == actual_config
 
 
