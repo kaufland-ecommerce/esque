@@ -41,7 +41,7 @@ def test_set_offsets_offset_to_absolute_value(
         set_offsets,
         args=[consumer_group, "--topic-name", topic, "--offset-to-value", "1"],
         input="y\n",
-        catch_exceptions=True,
+        catch_exceptions=False,
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
@@ -85,7 +85,7 @@ def test_set_offsets_offset_to_delta(
         set_offsets,
         args=[consumer_group, "--topic-name", topic, "--offset-by-delta", "-2"],
         input="y\n",
-        catch_exceptions=True,
+        catch_exceptions=False,
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
@@ -126,7 +126,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
@@ -168,7 +168,7 @@ def test_set_offsets_offset_from_group(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=True
+        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
     )
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
@@ -195,7 +195,7 @@ def test_set_offsets_offset_from_group(
         set_offsets,
         args=[target_consumer_group, "--offset-from-group", consumer_group],
         input="y\n",
-        catch_exceptions=True,
+        catch_exceptions=False,
     )
     consumergroup_desc_target = consumergroup_controller.get_consumer_group(
         consumer_id=target_consumer_group
@@ -247,7 +247,7 @@ def test_set_offsets_offset_to_timestamp_value(
         set_offsets,
         args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt.format("YYYY-MM-DDTHH:mm:ss")],
         input="y\n",
-        catch_exceptions=True,
+        catch_exceptions=False,
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
