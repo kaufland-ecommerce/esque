@@ -29,10 +29,12 @@ MANIFEST
 *.pyc
 *.pyo
 pip-wheel-metadata
+.coverage
 
 # Esque specific
 esque.cfg
 !.env
+messages/
 
 # cprofile snapshots
 *.pstat
