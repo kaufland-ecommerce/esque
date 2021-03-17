@@ -127,15 +127,13 @@ class TopicController:
     def get_offsets_closest_to_timestamp(
         self, group_id: str, topic_name: str, timestamp_limit: pendulum
     ) -> Dict[int, int]:
-        topic = self.get_cluster_topic(topic_name=topic_name)
         config = Config.get_instance().create_confluent_config()
         config.update({"group.id": group_id})
         consumer = confluent_kafka.Consumer(config)
+        topic_data = consumer.list_topics(topic=topic_name).topics[topic_name]
         topic_partitions_with_timestamp = [
-            TopicPartition(
-                topic=topic.name, partition=partition.partition_id, offset=timestamp_limit.int_timestamp * 1000
-            )
-            for partition in topic.partitions
+            TopicPartition(topic=topic_name, partition=partition_id, offset=timestamp_limit.int_timestamp * 1000)
+            for partition_id in topic_data.partitions.keys()
         ]
         topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
         return {
