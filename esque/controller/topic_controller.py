@@ -132,7 +132,9 @@ class TopicController:
         config.update({"group.id": group_id})
         consumer = confluent_kafka.Consumer(config)
         topic_partitions_with_timestamp = [
-            TopicPartition(topic.name, partition.partition_id, timestamp_limit.int_timestamp * 1000)
+            TopicPartition(
+                topic=topic.name, partition=partition.partition_id, offset=timestamp_limit.int_timestamp * 1000
+            )
             for partition in topic.partitions
         ]
         topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
