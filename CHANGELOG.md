@@ -1,3 +1,8 @@
+### Next Version
+* Bugfix for issue #175
+* Do not fail silently upon offset commit error
+* Update confluent_kafka dependency in order to fix timeout issues when committing offsets to an SSL secured Kafka 
+  endpoint
 ### Version 0.2.9
 * Added `--binary` flag to `produce` and `consume`
 ### Version 0.2.8
