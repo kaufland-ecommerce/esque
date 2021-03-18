@@ -104,23 +104,12 @@ class AvroFileReader(FileReader):
 
             key_schema, value_schema = get_schemata(self.directory, record["key_schema_id"], record["value_schema_id"])
             yield KafkaMessage(
-                json.dumps(record.get("key", None), default=AvroFileReader.deserializer),
-                json.dumps(record.get("value", None), default=AvroFileReader.deserializer),
+                json.dumps(record.get("key", None)),
+                json.dumps(record.get("value", None)),
                 record["partition"],
                 key_schema,
                 value_schema,
             )
-
-    @staticmethod
-    def deserializer(value):
-        if isinstance(value, (datetime, date)):
-            return value.isoformat()
-        elif isinstance(value, Decimal):
-            return str(value)
-        if isinstance(value, MappingProxyType):
-            return value.copy()
-        elif isinstance(value, bytes):
-            return base64.b64encode(value).decode("ascii")
 
 
 class AvroMessageDecoder:
