@@ -5,7 +5,9 @@ import pathlib
 import pickle
 import struct
 from datetime import date, datetime
+from decimal import Decimal
 from io import BytesIO
+from types import MappingProxyType
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import click
@@ -80,6 +82,10 @@ class StdOutAvroWriter(StdOutWriter):
     def deserializer(value):
         if isinstance(value, (datetime, date)):
             return value.isoformat()
+        elif isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, MappingProxyType):
+            return value.copy()
         elif isinstance(value, bytes):
             return base64.b64encode(value).decode("ascii")
 
@@ -98,12 +104,23 @@ class AvroFileReader(FileReader):
 
             key_schema, value_schema = get_schemata(self.directory, record["key_schema_id"], record["value_schema_id"])
             yield KafkaMessage(
-                json.dumps(record["key"]) if record["key"] is not None else None,
-                json.dumps(record["value"]) if record["value"] is not None else None,
+                json.dumps(record.get("key", None), default=AvroFileReader.deserializer),
+                json.dumps(record.get("value", None), default=AvroFileReader.deserializer),
                 record["partition"],
                 key_schema,
                 value_schema,
             )
+
+    @staticmethod
+    def deserializer(value):
+        if isinstance(value, (datetime, date)):
+            return value.isoformat()
+        elif isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, MappingProxyType):
+            return value.copy()
+        elif isinstance(value, bytes):
+            return base64.b64encode(value).decode("ascii")
 
 
 class AvroMessageDecoder:
