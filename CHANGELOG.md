@@ -5,6 +5,7 @@
   endpoint
 * Running esque now creates a cProfiler snapshot when the environment variable `ESQUE_PROFILE` is set to a non-empty 
   value
+* Fix issue with decimal values from avro not being properly displayed in stdout
 ### Version 0.2.9
 * Added `--binary` flag to `produce` and `consume`
 ### Version 0.2.8
