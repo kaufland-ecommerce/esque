@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 from contextlib import closing
 from itertools import islice
 from logging import Logger
@@ -11,7 +12,7 @@ from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
+from esque.helpers import ensure_kafka_future_done
 from esque.resources.topic import Partition, Topic, TopicDiff
 
 logger: Logger = logging.getLogger(__name__)
@@ -35,7 +36,6 @@ class TopicController:
         hide_internal: bool = False,
         get_topic_objects: bool = True,
     ) -> List[Topic]:
-        self.cluster.confluent_client.poll(timeout=1)
         topic_results = self.cluster.confluent_client.list_topics().topics.values()
         topic_names = [t.topic for t in topic_results]
         if search_string:
@@ -51,7 +51,6 @@ class TopicController:
             topics = list(map(self.get_local_topic, topic_names))
         return topics
 
-    @invalidate_cache_after
     def create_topics(self, topics: List[Topic]):
         for topic in topics:
             partitions = (
@@ -67,8 +66,14 @@ class TopicController:
             )
             future_list = self.cluster.confluent_client.create_topics([new_topic], operation_timeout=60)
             ensure_kafka_future_done(next(islice(future_list.values(), 1)))
+            for _ in range(80):
+                topic_data = self.cluster.confluent_client.list_topics(topic=topic.name).topics[topic.name]
+                if topic_data.error is None:
+                    break
+                time.sleep(0.125)
+            else:
+                raise RuntimeError(f"Couldn't create topic {topic}")
 
-    @invalidate_cache_after
     def alter_configs(self, topics: List[Topic]):
         for topic in topics:
             altered_config = self._get_altered_config(topic)
@@ -87,7 +92,6 @@ class TopicController:
             altered_config[name] = value
         return altered_config
 
-    @invalidate_cache_after
     def delete_topic(self, topic: Topic):
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_future_done(future)
@@ -128,7 +132,7 @@ class TopicController:
     def _get_partition_data(self, topic: Topic, retrieve_last_timestamp: bool) -> List[Partition]:
 
         config = Config.get_instance().create_confluent_config()
-        config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "10"})
+        config.update({"group.id": ESQUE_GROUP_ID})
         with closing(confluent_kafka.Consumer(config)) as consumer:
             # update consumers metadata about this topic to avoid UNKNOWN_PARTITION error when fetching watermarks
             confluent_topic = consumer.list_topics(topic=topic.name).topics[topic.name]

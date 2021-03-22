@@ -40,8 +40,6 @@ def test_create_topic_as_argument_with_verification_works(
 
     result = interactive_cli_runner.invoke(create_topic, args=topic_id, input="Y\n", catch_exceptions=False)
     assert result.exit_code == 0
-    # invalidate cache
-    confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
 
@@ -58,8 +56,6 @@ def test_create_topic_with_stdin_works(
         create_topic, args="--no-verify", input=topic_id, catch_exceptions=False
     )
     assert result.exit_code == 0
-    # invalidate cache
-    confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
 
@@ -75,8 +71,6 @@ def test_topic_creation_stops_in_non_interactive_mode_without_no_verify(
     assert result.exit_code != 0
     assert isinstance(result.exception, NoConfirmationPossibleException)
 
-    # Invalidate cache
-    confluent_admin_client.poll(timeout=1)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 

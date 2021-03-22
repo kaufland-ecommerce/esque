@@ -14,6 +14,7 @@ import yaml
 from _pytest.fixtures import FixtureRequest
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
+from confluent_kafka.cimpl import KafkaError, KafkaException
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
 from kafka.errors import NoBrokersAvailable
@@ -122,10 +123,7 @@ def unittest_config(request: FixtureRequest, load_config: config_loader) -> Conf
 
 @pytest.fixture()
 def topic_id(confluent_admin_client) -> Iterable[str]:
-    yield "".join(random.choices(ascii_letters, k=5))
-    topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
-    if topic_id in topics:
-        confluent_admin_client.delete_topics([topic_id]).popitem()
+    return "".join(random.choices(ascii_letters, k=5))
 
 
 @pytest.fixture()
@@ -159,31 +157,27 @@ def changed_topic_object(cluster: Cluster, topic: str):
 @pytest.fixture()
 def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
-    for topic, _ in topic_factory(1, topic_id):
-        yield topic
+    topic, _ = topic_factory(1, topic_id)
+    return topic
 
 
 @pytest.fixture()
 def topic_multiple_partitions(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
-    for topic, _ in topic_factory(10, topic_id):
-        yield topic
+    topic, _ = topic_factory(10, topic_id)
+    return topic
 
 
 @pytest.fixture()
-def source_topic(
-    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
-) -> Iterable[Tuple[str, int]]:
+def source_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Tuple[str, int]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
-    yield from topic_factory(num_partitions, topic_id)
+    return topic_factory(num_partitions, topic_id)
 
 
 @pytest.fixture()
-def target_topic(
-    num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]
-) -> Iterable[Tuple[str, int]]:
+def target_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Tuple[str, int]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
-    yield from topic_factory(num_partitions, topic_id)
+    return topic_factory(num_partitions, topic_id)
 
 
 @pytest.fixture(params=[1, 10], ids=["num_partitions=1", "num_partitions=10"])
@@ -192,21 +186,36 @@ def num_partitions(request) -> int:
 
 
 @pytest.fixture()
-def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Iterable[Tuple[str, int]]]:
-    def factory(partitions: int, topic_id: str) -> Iterable[Tuple[str, int]]:
+def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Tuple[str, int]]:
+    created_topics = []
+
+    def factory(partitions: int, topic_id: str) -> Tuple[str, int]:
         future: Future = confluent_admin_client.create_topics(
             [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
         )[topic_id]
         while not future.done() or future.cancelled():
             if future.result():
                 raise RuntimeError
-        confluent_admin_client.poll(timeout=1)
+        for _ in range(10):
+            topic_data = confluent_admin_client.list_topics(topic=topic_id).topics[topic_id]
+            if topic_data.error is None:
+                break
+            time.sleep(0.125)
+        else:
+            raise RuntimeError(f"Couldn't create topic {topic_id}")
+        created_topics.append(topic_id)
+        return topic_id, partitions
 
-        yield (topic_id, partitions)
+    yield factory
 
-        confluent_admin_client.delete_topics([topic_id]).popitem()
-
-    return factory
+    for topic, future in confluent_admin_client.delete_topics(created_topics).items():
+        while not future.done() or future.cancelled():
+            try:
+                future.result()
+            except KafkaException as e:
+                kafka_error: KafkaError = e.args[0]
+                if kafka_error.code() != KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    raise
 
 
 @pytest.fixture()
@@ -361,9 +370,8 @@ def produced_avro_messages_with_headers(messages_ordered_same_partition_with_hea
 
 @pytest.fixture()
 def confluent_admin_client(unittest_config) -> AdminClient:
-    admin = AdminClient(unittest_config.create_confluent_config())
-    admin.poll(timeout=5)
-    yield admin
+    admin = AdminClient({"topic.metadata.refresh.interval.ms": "250", **unittest_config.create_confluent_config()})
+    return admin
 
 
 @pytest.fixture()

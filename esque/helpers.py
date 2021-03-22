@@ -1,4 +1,3 @@
-import functools
 import logging
 from concurrent.futures import Future, wait
 from itertools import islice
@@ -29,25 +28,6 @@ class SingletonMeta(type):
 
     def set_instance(cls: Type[T], instance: T):
         cls.__instance = instance
-
-
-def invalidate_cache_before(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        self._client.poll(timeout=1)
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
-def invalidate_cache_after(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        self.cluster.confluent_client.poll(timeout=1)
-        return result
-
-    return wrapper
 
 
 def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:

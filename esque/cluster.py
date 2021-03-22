@@ -11,9 +11,10 @@ from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 class Cluster:
     def __init__(self):
         self._config = Config.get_instance()
-        self.confluent_client = AdminClient(self._config.create_confluent_config())
+        self.confluent_client = AdminClient(
+            {"topic.metadata.refresh.interval.ms": "250", **self._config.create_confluent_config()}
+        )
         self.kafka_python_client = kafka.KafkaAdminClient(**self._config.create_kafka_python_config())
-        self.confluent_client.poll(timeout=1)
         self.__topic_controller = None
 
     @property
