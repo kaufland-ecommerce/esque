@@ -4,12 +4,10 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import pendulum
 import yaml
-from pykafka.protocol.offset import OffsetPartitionResponse
 
 from esque.resources.resource import KafkaResource
 
 TopicDict = Dict[str, Union[int, str, Dict[str, str]]]
-PartitionInfo = Dict[int, OffsetPartitionResponse]
 
 Watermark = namedtuple("Watermark", ["high", "low"])
 

@@ -38,7 +38,6 @@ def test_get_topics_with_prefix(
     prefix_2 = "fx"
     new_topics = [prefix_1 + topic_base, prefix_2 + topic_base, prefix_1 + prefix_2 + topic_base]
     topic_controller.create_topics([Topic(new_topic, replication_factor=1) for new_topic in new_topics])
-    confluent_admin_client.poll(timeout=1)
 
     result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json"], catch_exceptions=False)
 

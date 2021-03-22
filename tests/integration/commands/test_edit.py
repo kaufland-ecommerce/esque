@@ -142,5 +142,5 @@ def test_edit_offsets(
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 1
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 1

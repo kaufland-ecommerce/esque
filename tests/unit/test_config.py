@@ -141,34 +141,6 @@ def test_confluent_config(config: Config):
     assert expected_config == actual_config
 
 
-def test_pykafka_config(mocker: mock, config: Config):
-    ssl_config_sentinel = mock.sentinel.ssl_config
-    ssl_config_mock = mocker.patch("esque.config.SslConfig", return_value=ssl_config_sentinel)
-    plain_authenticator_sentinel = mock.sentinel.plain_authenticator
-    plain_authenticator_mock = mocker.patch(
-        "pykafka.sasl_authenticators.PlainAuthenticator", return_value=plain_authenticator_sentinel
-    )
-
-    config.context_switch("context_5")
-    expected_config = {
-        "hosts": "kafka:9094,kafka1:9094,kafka2:9094,kafka3:9094",
-        "sasl_authenticator": plain_authenticator_sentinel,
-        "ssl_config": ssl_config_sentinel,
-        "exclude_internal_topics": False,
-    }
-    actual_config = config.create_pykafka_config()
-    assert expected_config == actual_config
-    ssl_config_mock.assert_called_with(
-        **{
-            "cafile": "/my/ca.crt",
-            "certfile": "/my/certificate.crt",
-            "keyfile": "/my/certificate.key",
-            "password": "mySecretPassword",
-        }
-    )
-    plain_authenticator_mock.assert_called_with(user="alice", password="alice-secret", security_protocol="SASL_SSL")
-
-
 def test_default_values(config: Config):
     config.context_switch("context_3")
     assert config.default_num_partitions == 2
