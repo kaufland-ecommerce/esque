@@ -12,6 +12,7 @@ from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
+from esque.errors import KafkaException
 from esque.helpers import ensure_kafka_future_done
 from esque.resources.topic import Partition, Topic, TopicDiff
 
@@ -132,13 +133,23 @@ class TopicController:
     def _get_partition_data(self, topic: Topic, retrieve_last_timestamp: bool) -> List[Partition]:
 
         config = Config.get_instance().create_confluent_config()
-        config.update({"group.id": ESQUE_GROUP_ID})
+        config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "250"})
         with closing(confluent_kafka.Consumer(config)) as consumer:
-            # update consumers metadata about this topic to avoid UNKNOWN_PARTITION error when fetching watermarks
             confluent_topic = consumer.list_topics(topic=topic.name).topics[topic.name]
             partitions: List[Partition] = []
             for partition_id, meta in confluent_topic.partitions.items():
-                low, high = consumer.get_watermark_offsets(TopicPartition(topic=topic.name, partition=partition_id))
+                try:
+                    low, high = consumer.get_watermark_offsets(
+                        TopicPartition(topic=topic.name, partition=partition_id)
+                    )
+                except KafkaException:
+                    # retry after metadata should be refreshed (also consider small network delays)
+                    # unfortunately we cannot explicitly cause and wait for a metadata refresh
+                    time.sleep(1)
+                    low, high = consumer.get_watermark_offsets(
+                        TopicPartition(topic=topic.name, partition=partition_id)
+                    )
+
                 latest_timestamp = None
                 if high > low and retrieve_last_timestamp:
                     assignment = [TopicPartition(topic=topic.name, partition=partition_id, offset=high - 1)]
