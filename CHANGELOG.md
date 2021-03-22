@@ -1,4 +1,7 @@
 ### Next Version
+* Remove pykafka dependency
+* Include a partial fix for #32 (topics are now displayed, output is still not optimal)
+### Version 0.2.10
 * Bugfix for issue #175
 * Do not fail silently upon offset commit error
 * Update confluent_kafka dependency in order to fix timeout issues when committing offsets to an SSL secured Kafka 
