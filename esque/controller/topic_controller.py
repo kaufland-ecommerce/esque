@@ -8,11 +8,9 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 import confluent_kafka
 import pendulum
 from confluent_kafka.admin import ConfigResource
-from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.errors import raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
 from esque.resources.topic import Partition, Topic, TopicDiff
 
@@ -28,13 +26,6 @@ class TopicController:
         if config is None:
             config = Config.get_instance()
         self.config = config
-
-    def _get_topic_data(self, topic_name: str) -> ConfluentTopic:
-        confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
-        # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
-        topic_metadata: ConfluentTopic = confluent_topics[topic_name]
-        raise_for_kafka_error(topic_metadata.error)
-        return confluent_topics[topic_name]
 
     def list_topics(
         self,
@@ -127,23 +118,20 @@ class TopicController:
     def update_from_cluster(self, topic: Topic, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
-        confluent_topic: ConfluentTopic = self._get_topic_data(topic.name)
-        topic.partition_data = self._get_partition_data(confluent_topic, topic, retrieve_last_timestamp)
+        topic.partition_data = self._get_partition_data(topic, retrieve_last_timestamp)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
 
         return topic
 
-    def _get_partition_data(
-        self, confluent_topic: ConfluentTopic, topic: Topic, retrieve_last_timestamp: bool
-    ) -> List[Partition]:
+    def _get_partition_data(self, topic: Topic, retrieve_last_timestamp: bool) -> List[Partition]:
 
         config = Config.get_instance().create_confluent_config()
-        config.update({"group.id": ESQUE_GROUP_ID})
+        config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "10"})
         with closing(confluent_kafka.Consumer(config)) as consumer:
             # update consumers metadata about this topic to avoid UNKNOWN_PARTITION error when fetching watermarks
-            consumer.list_topics(topic=topic.name)
+            confluent_topic = consumer.list_topics(topic=topic.name).topics[topic.name]
             partitions: List[Partition] = []
             for partition_id, meta in confluent_topic.partitions.items():
                 low, high = consumer.get_watermark_offsets(TopicPartition(topic=topic.name, partition=partition_id))
