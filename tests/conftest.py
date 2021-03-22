@@ -16,7 +16,7 @@ from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
-from pykafka.exceptions import NoBrokersAvailableError
+from kafka.errors import NoBrokersAvailable
 
 import esque.config
 from esque.cli.options import State
@@ -121,7 +121,7 @@ def unittest_config(request: FixtureRequest, load_config: config_loader) -> Conf
 
 
 @pytest.fixture()
-def topic_id(confluent_admin_client) -> str:
+def topic_id(confluent_admin_client) -> Iterable[str]:
     yield "".join(random.choices(ascii_letters, k=5))
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     if topic_id in topics:
@@ -131,19 +131,19 @@ def topic_id(confluent_admin_client) -> str:
 @pytest.fixture()
 def broker_id(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
-    yield str(brokers[0].broker_id)
+    return str(brokers[0].broker_id)
 
 
 @pytest.fixture()
 def broker_host(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
-    yield brokers[0].host
+    return brokers[0].host
 
 
 @pytest.fixture()
 def broker_host_and_port(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
-    yield "{}:{}".format(brokers[0].host, brokers[0].port)
+    return "{}:{}".format(brokers[0].host, brokers[0].port)
 
 
 @pytest.fixture()
@@ -430,7 +430,7 @@ def filled_topic(producer, topic_object):
 
 @pytest.fixture()
 def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
-    for i in range(5):
+    for _ in range(5):
         msg = consumer.consume(timeout=10)[0]
         consumer.commit(msg, asynchronous=False)
     yield consumer_group
@@ -440,7 +440,7 @@ def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic,
 def cluster(unittest_config) -> Iterable[Cluster]:
     try:
         cluster = Cluster()
-    except NoBrokersAvailableError as ex:
+    except NoBrokersAvailable as ex:
         print(unittest_config.bootstrap_servers)
         raise ex
 

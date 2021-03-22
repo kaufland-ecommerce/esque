@@ -1,23 +1,20 @@
 import logging
 import re
-from enum import Enum
+from contextlib import closing
 from itertools import islice
 from logging import Logger
-from typing import TYPE_CHECKING, Dict, List, Union
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import confluent_kafka
 import pendulum
-from click import BadParameter
 from confluent_kafka.admin import ConfigResource
 from confluent_kafka.admin import TopicMetadata as ConfluentTopic
 from confluent_kafka.cimpl import NewTopic, TopicPartition
-from pykafka.topic import Topic as PyKafkaTopic
 
-from esque.clients.consumer import MessageConsumer
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.errors import MessageEmptyException, raise_for_kafka_error
+from esque.errors import raise_for_kafka_error
 from esque.helpers import ensure_kafka_future_done, invalidate_cache_after
-from esque.resources.topic import Partition, PartitionInfo, Topic, TopicDiff
+from esque.resources.topic import Partition, Topic, TopicDiff
 
 logger: Logger = logging.getLogger(__name__)
 
@@ -25,32 +22,19 @@ if TYPE_CHECKING:
     from esque.cluster import Cluster
 
 
-class ClientTypes(Enum):
-    Confluent = "Confluent"
-    PyKafka = "PyKafka"
-
-
-ClientType = Union[ConfluentTopic, PyKafkaTopic]
-
-
 class TopicController:
-    def __init__(self, cluster: "Cluster", config: Config):
+    def __init__(self, cluster: "Cluster", config: Optional[Config] = None):
         self.cluster: "Cluster" = cluster
+        if config is None:
+            config = Config.get_instance()
         self.config = config
 
-    def _get_client_topic(self, topic_name: str, client_type: ClientTypes) -> ClientType:
+    def _get_topic_data(self, topic_name: str) -> ConfluentTopic:
         confluent_topics = self.cluster.confluent_client.list_topics(topic=topic_name, timeout=10).topics
         # Confluent returns a list of requested topics with an Error as result if the topic doesn't exist
         topic_metadata: ConfluentTopic = confluent_topics[topic_name]
         raise_for_kafka_error(topic_metadata.error)
-        if client_type == ClientTypes.Confluent:
-            return confluent_topics[topic_name]
-        elif client_type == ClientTypes.PyKafka:
-            # at least PyKafka does it's own caching, so we don't have to bother
-            pykafka_topics = self.cluster.pykafka_client.cluster.topics
-            return pykafka_topics[topic_name]
-        else:
-            raise BadParameter(f"TopicType needs to be part of {ClientTypes}", param=client_type)
+        return confluent_topics[topic_name]
 
     def list_topics(
         self,
@@ -129,13 +113,13 @@ class TopicController:
     ) -> Dict[int, int]:
         config = Config.get_instance().create_confluent_config()
         config.update({"group.id": group_id})
-        consumer = confluent_kafka.Consumer(config)
-        topic_data = consumer.list_topics(topic=topic_name).topics[topic_name]
-        topic_partitions_with_timestamp = [
-            TopicPartition(topic=topic_name, partition=partition_id, offset=timestamp_limit.int_timestamp * 1000)
-            for partition_id in topic_data.partitions.keys()
-        ]
-        topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
+        with closing(confluent_kafka.Consumer(config)) as consumer:
+            topic_data = consumer.list_topics(topic=topic_name).topics[topic_name]
+            topic_partitions_with_timestamp = [
+                TopicPartition(topic=topic_name, partition=partition_id, offset=timestamp_limit.int_timestamp * 1000)
+                for partition_id in topic_data.partitions.keys()
+            ]
+            topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
         return {
             topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
         }
@@ -143,14 +127,8 @@ class TopicController:
     def update_from_cluster(self, topic: Topic, *, retrieve_last_timestamp: bool = False) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
-        confluent_topic: ConfluentTopic = self._get_client_topic(topic.name, ClientTypes.Confluent)
-        pykafka_topic: PyKafkaTopic = self._get_client_topic(topic.name, ClientTypes.PyKafka)
-        low_watermarks = pykafka_topic.earliest_available_offsets()
-        high_watermarks = pykafka_topic.latest_available_offsets()
-
-        topic.partition_data = self._get_partition_data(
-            confluent_topic, low_watermarks, high_watermarks, topic, retrieve_last_timestamp
-        )
+        confluent_topic: ConfluentTopic = self._get_topic_data(topic.name)
+        topic.partition_data = self._get_partition_data(confluent_topic, topic, retrieve_last_timestamp)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
@@ -158,31 +136,31 @@ class TopicController:
         return topic
 
     def _get_partition_data(
-        self,
-        confluent_topic: ConfluentTopic,
-        low_watermarks: PartitionInfo,
-        high_watermarks: PartitionInfo,
-        topic: Topic,
-        retrieve_last_timestamp: bool,
+        self, confluent_topic: ConfluentTopic, topic: Topic, retrieve_last_timestamp: bool
     ) -> List[Partition]:
 
-        consumer = MessageConsumer(ESQUE_GROUP_ID, topic.name, True, enable_auto_commit=False)
-        partitions = []
-
-        for partition_id, meta in confluent_topic.partitions.items():
-            low = int(low_watermarks[partition_id].offset[0])
-            high = int(high_watermarks[partition_id].offset[0])
-            latest_timestamp = None
-            if high > low and retrieve_last_timestamp:
-                try:
-                    latest_timestamp = float(consumer.consume(high - 1, partition_id).timestamp()[1]) / 1000
-                except MessageEmptyException:
-                    logger.warning(
-                        f"Due to timeout latest timestamp for topic `{topic.name}` and partition `{partition_id}` is missing."
-                    )
-            partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
-            partitions.append(partition)
-
+        config = Config.get_instance().create_confluent_config()
+        config.update({"group.id": ESQUE_GROUP_ID})
+        with closing(confluent_kafka.Consumer(config)) as consumer:
+            # update consumers metadata about this topic to avoid UNKNOWN_PARTITION error when fetching watermarks
+            consumer.list_topics(topic=topic.name)
+            partitions: List[Partition] = []
+            for partition_id, meta in confluent_topic.partitions.items():
+                low, high = consumer.get_watermark_offsets(TopicPartition(topic=topic.name, partition=partition_id))
+                latest_timestamp = None
+                if high > low and retrieve_last_timestamp:
+                    assignment = [TopicPartition(topic=topic.name, partition=partition_id, offset=high - 1)]
+                    consumer.assign(assignment)
+                    msg = consumer.poll(timeout=10)
+                    if msg is None:
+                        logger.warning(
+                            f"Due to timeout latest timestamp for topic `{topic.name}` "
+                            f"and partition `{partition_id}` is missing."
+                        )
+                    else:
+                        latest_timestamp = float(msg.timestamp()[1]) / 1000
+                partition = Partition(partition_id, low, high, meta.isrs, meta.leader, meta.replicas, latest_timestamp)
+                partitions.append(partition)
         return partitions
 
     def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:

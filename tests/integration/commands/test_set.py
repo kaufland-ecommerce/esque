@@ -47,8 +47,8 @@ def test_set_offsets_offset_to_absolute_value(
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 1
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 1
 
 
 @pytest.mark.integration
@@ -91,8 +91,8 @@ def test_set_offsets_offset_to_delta(
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
 
 
 @pytest.mark.integration
@@ -132,8 +132,8 @@ def test_set_offsets_offset_to_delta_all_topics(
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
 
 
 @pytest.mark.integration
@@ -201,9 +201,9 @@ def test_set_offsets_offset_from_group(
         consumer_id=target_consumer_group
     ).describe(verbose=True)
 
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
-    assert consumergroup_desc_target["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 8
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
+    assert consumergroup_desc_target["offsets"][topic][0]["consumer_offset"] == 8
 
 
 @pytest.mark.integration
@@ -230,7 +230,7 @@ def test_set_offsets_offset_to_timestamp_value(
 
     vanilla_consumer.subscribe([topic])
     messages = []
-    for i in range(0, 10):
+    for _ in range(0, 10):
         messages.append(vanilla_consumer.consume_single_message())
     vanilla_consumer.close()
     del vanilla_consumer
@@ -253,5 +253,5 @@ def test_set_offsets_offset_to_timestamp_value(
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         verbose=True
     )
-    assert consumergroup_desc_before["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 10
-    assert consumergroup_desc_after["offsets"][topic.encode("UTF-8")][0]["consumer_offset"] == 4
+    assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
+    assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 4

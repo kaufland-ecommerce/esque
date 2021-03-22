@@ -3,13 +3,10 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import pendulum
-import pykafka
 from confluent_kafka.cimpl import TopicPartition
-from kafka import KafkaAdminClient
 
 from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
-from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.resources.consumergroup import ConsumerGroup
 
@@ -41,19 +38,14 @@ class ConsumerGroupController:
         self.cluster = cluster
         self._logger = logging.getLogger(__name__)
 
-    def get_consumer_group(self, consumer_id) -> ConsumerGroup:
+    def get_consumer_group(self, consumer_id: str) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 
     def list_consumer_groups(self) -> List[str]:
-        brokers: Dict[int, pykafka.broker.Broker] = self.cluster.pykafka_client.cluster.brokers
-        return list(
-            set(group.decode("UTF-8") for _, broker in brokers.items() for group in broker.list_groups().groups)
-        )
+        return [group for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()]
 
     def delete_consumer_groups(self, consumer_ids: List[str]):
-        config = Config.get_instance().create_kafka_python_config()
-        admin_client: KafkaAdminClient = KafkaAdminClient(**config)
-        admin_client.delete_consumer_groups(group_ids=consumer_ids)
+        self.cluster.kafka_python_client.delete_consumer_groups(group_ids=consumer_ids)
 
     def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
         """
@@ -90,57 +82,63 @@ class ConsumerGroupController:
         offset_by_delta: Optional[int],
         offset_to_timestamp: Optional[str],
         offset_from_group: Optional[str],
-    ) -> List[ConsumerGroupOffsetPlan]:
+    ) -> Optional[List[ConsumerGroupOffsetPlan]]:
 
         consumer_group_state, offset_plans = self.read_current_consumer_group_offsets(
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
-            self._logger.error("The consumer group {} does not exist.".format(consumer_id))
+            self._logger.error("The consumer group {consumer_id} does not exist.")
             return None
-        elif consumer_group_state == "Empty":
-            if offset_to_value is not None:
-                for plan_element in offset_plans.values():
-                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
-                        offset_to_value, plan_element
-                    )
-                    plan_element.proposed_offset = allowed_offset
-                    if error:
-                        self._logger.error(message)
-            elif offset_by_delta is not None:
-                for plan_element in offset_plans.values():
-                    requested_offset = plan_element.current_offset + offset_by_delta
-                    (allowed_offset, error, message) = self.select_new_offset_for_consumer(
-                        requested_offset, plan_element
-                    )
-                    plan_element.proposed_offset = allowed_offset
-                    if error:
-                        self._logger.error(message)
-            elif offset_to_timestamp is not None:
-                timestamp_limit = pendulum.parse(offset_to_timestamp)
-                proposed_offset_dict = TopicController(self.cluster, None).get_offsets_closest_to_timestamp(
-                    group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
-                )
-                for plan_element in offset_plans.values():
-                    plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
-            elif offset_from_group is not None:
-                _, mirror_consumer_group = self.read_current_consumer_group_offsets(
-                    consumer_id=offset_from_group, topic_name_expression=topic_name
-                )
-                for key, value in mirror_consumer_group.items():
-                    if key in offset_plans.keys():
-                        offset_plans[key].proposed_offset = value.current_offset
-                    else:
-                        value.current_offset = 0
-                        offset_plans[key] = value
-            return list(offset_plans.values())
-        else:
+        if consumer_group_state != "Empty":
             self._logger.error(
-                "Consumergroup {} is not empty. Setting offsets is only allowed for empty consumer groups.".format(
-                    consumer_id
-                )
+                f"Consumergroup {consumer_id} is not empty. Setting offsets is only allowed for empty consumer groups."
             )
             return list(offset_plans.values())
+
+        if offset_to_value is not None:
+            self._set_offset_to_value(offset_plans, offset_to_value)
+        elif offset_by_delta is not None:
+            self._set_offset_by_delta(offset_by_delta, offset_plans)
+        elif offset_to_timestamp is not None:
+            self._set_offset_to_timestamp(consumer_id, offset_plans, offset_to_timestamp, topic_name)
+        elif offset_from_group is not None:
+            self._set_offset_from_group(offset_from_group, offset_plans, topic_name)
+        return list(offset_plans.values())
+
+    def _set_offset_from_group(self, offset_from_group, offset_plans, topic_name):
+        _, mirror_consumer_group = self.read_current_consumer_group_offsets(
+            consumer_id=offset_from_group, topic_name_expression=topic_name
+        )
+        for key, value in mirror_consumer_group.items():
+            if key in offset_plans.keys():
+                offset_plans[key].proposed_offset = value.current_offset
+            else:
+                value.current_offset = 0
+                offset_plans[key] = value
+
+    def _set_offset_to_timestamp(self, consumer_id, offset_plans, offset_to_timestamp, topic_name):
+        timestamp_limit = pendulum.parse(offset_to_timestamp)
+        proposed_offset_dict = TopicController(self.cluster).get_offsets_closest_to_timestamp(
+            group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
+        )
+        for plan_element in offset_plans.values():
+            plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
+
+    def _set_offset_by_delta(self, offset_by_delta, offset_plans):
+        for plan_element in offset_plans.values():
+            requested_offset = plan_element.current_offset + offset_by_delta
+            (allowed_offset, error, message) = self.select_new_offset_for_consumer(requested_offset, plan_element)
+            plan_element.proposed_offset = allowed_offset
+            if error:
+                self._logger.error(message)
+
+    def _set_offset_to_value(self, offset_plans, offset_to_value):
+        for plan_element in offset_plans.values():
+            (allowed_offset, error, message) = self.select_new_offset_for_consumer(offset_to_value, plan_element)
+            plan_element.proposed_offset = allowed_offset
+            if error:
+                self._logger.error(message)
 
     @staticmethod
     def select_new_offset_for_consumer(
@@ -182,9 +180,9 @@ class ConsumerGroupController:
         try:
             consumer_group = self.get_consumer_group(consumer_id)
             consumer_group_desc = consumer_group.describe(verbose=True)
-            consumer_group_state = consumer_group_desc["meta"]["state"].decode("UTF-8")
+            consumer_group_state = consumer_group_desc["meta"]["state"]
             for subscribed_topic_name in consumer_group_desc["offsets"]:
-                decoded_topic_name = subscribed_topic_name.decode("UTF-8")
+                decoded_topic_name = subscribed_topic_name
                 if topic_name_pattern.match(decoded_topic_name):
                     for partition_id, partition_info in consumer_group_desc["offsets"][subscribed_topic_name].items():
                         consumer_offset_plan = ConsumerGroupOffsetPlan(
