@@ -193,29 +193,30 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], T
         future: Future = confluent_admin_client.create_topics(
             [NewTopic(topic_id, num_partitions=partitions, replication_factor=1)]
         )[topic_id]
+        created_topics.append(topic_id)
         while not future.done() or future.cancelled():
             if future.result():
                 raise RuntimeError
-        for _ in range(10):
+        for _ in range(80):
             topic_data = confluent_admin_client.list_topics(topic=topic_id).topics[topic_id]
             if topic_data.error is None:
                 break
             time.sleep(0.125)
         else:
             raise RuntimeError(f"Couldn't create topic {topic_id}")
-        created_topics.append(topic_id)
         return topic_id, partitions
 
     yield factory
 
-    for topic, future in confluent_admin_client.delete_topics(created_topics).items():
-        while not future.done() or future.cancelled():
-            try:
-                future.result()
-            except KafkaException as e:
-                kafka_error: KafkaError = e.args[0]
-                if kafka_error.code() != KafkaError.UNKNOWN_TOPIC_OR_PART:
-                    raise
+    if created_topics:
+        for topic, future in confluent_admin_client.delete_topics(created_topics).items():
+            while not future.done() or future.cancelled():
+                try:
+                    future.result()
+                except KafkaException as e:
+                    kafka_error: KafkaError = e.args[0]
+                    if kafka_error.code() != KafkaError.UNKNOWN_TOPIC_OR_PART:
+                        raise
 
 
 @pytest.fixture()
