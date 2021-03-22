@@ -9,10 +9,9 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 import confluent_kafka
 import pendulum
 from confluent_kafka.admin import ConfigResource
-from confluent_kafka.cimpl import NewTopic, TopicPartition
+from confluent_kafka.cimpl import KafkaException, NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.errors import KafkaException
 from esque.helpers import ensure_kafka_future_done
 from esque.resources.topic import Partition, Topic, TopicDiff
 
