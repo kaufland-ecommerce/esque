@@ -153,7 +153,6 @@ To setup your development environment, make sure you have at least Python 3.6 & 
 
 ```bash
 poetry install
-poetry run pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
 poetry shell
 ```
 
