@@ -1,4 +1,4 @@
-### Next Version
+### Version 0.3.0
 * Remove pykafka dependency
 * Include a partial fix for #32 (topics are now displayed, output is still not optimal)
 * Minor performance improvements
