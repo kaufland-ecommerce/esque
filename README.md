@@ -84,17 +84,13 @@ Commands:
 
 `esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
 
-#### SASL Support
+#### Installation on Alpine Linux
 
-When your cluster is secured with SASL authentication, you'll need to install our fork of pykafka since pykafka itself
-doesn't support it. We've opened a pull request https://github.com/Parsely/pykafka/pull/972 but at the time of
-writing it hasn't been merged yet.
+There are no wheels for Alpine Linux, so `esque` requires a few extra dependencies to build them during installation.
 
 ```bash
-pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
+apk add python3-dev py3-pip librdkafka librdkafka-dev g++
 ```
-
-`esque` will also prompt you with the above command as soon as you need it in case you're not sure if you actually do.
 
 ### Autocompletion
 
@@ -165,7 +161,6 @@ To setup your development environment, make sure you have at least Python 3.6 & 
 
 ```bash
 poetry install
-poetry run pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
 poetry shell
 ```
 
