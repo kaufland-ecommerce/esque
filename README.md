@@ -88,7 +88,7 @@ Commands:
 
 There are no wheels for Alpine Linux, so `esque` requires a few extra dependencies to build them during installation.
 
-```
+```bash
 apk add python3-dev py3-pip librdkafka librdkafka-dev g++
 ```
 
