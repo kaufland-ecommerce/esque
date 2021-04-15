@@ -1,6 +1,4 @@
-FROM python:3.9
-
-
+FROM python:3.6
 
 RUN git clone --branch "v1.0.0" --depth 1 https://github.com/edenhill/librdkafka.git \
  && cd librdkafka \
@@ -22,17 +20,14 @@ WORKDIR /esque
 RUN pip install -U pip
 RUN pip install --pre poetry
 
-COPY . /esque
+COPY ./pyproject.toml /esque/pyproject.toml
+COPY ./poetry.lock /esque/poetry.lock
 RUN poetry config "virtualenvs.create" "false"
 RUN poetry install
 
-# Create user
-RUN useradd -ms /bin/bash esque
-USER esque
+COPY ./scripts /esque/scripts
+COPY ./tests /esque/tests
+COPY ./esque /esque/esque
+ENTRYPOINT ["/bin/bash"]
 
-ENV PATH="/home/esque/.local/bin:$PATH"
-
-RUN mkdir -p /home/esque/work
-WORKDIR /home/esque/work
-
-ENTRYPOINT ["esque"]
+CMD ["", "pytest", "tests/"]
