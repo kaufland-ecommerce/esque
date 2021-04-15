@@ -2,7 +2,6 @@ import logging
 import re
 import time
 from contextlib import closing
-from functools import partial
 from itertools import islice
 from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Optional
@@ -48,10 +47,7 @@ class TopicController:
             topic_names = sorted(topic_names)
 
         if get_topic_objects:
-            if get_partitions:
-                topics = list(map(self.get_cluster_topic, topic_names))
-            else:
-                topics = list(map(partial(self.get_cluster_topic, retrieve_partition_data=False), topic_names))
+            topics = [self.get_cluster_topic(topic_name, retrieve_partition_data=False) for topic_name in topic_names]
         else:
             topics = list(map(self.get_local_topic, topic_names))
         return topics
@@ -135,10 +131,7 @@ class TopicController:
     ) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
-        if retrieve_partition_data:
-            topic.partition_data = self._get_partitions(topic, retrieve_last_timestamp)
-        else:
-            topic.partition_data = self._get_partitions(topic, retrieve_last_timestamp, get_partition_data=False)
+        topic.partition_data = self._get_partitions(topic, retrieve_last_timestamp, get_partition_data=retrieve_partition_data)
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
@@ -159,7 +152,7 @@ class TopicController:
             partitions: List[Partition] = []
             if not get_partition_data:
                 return [
-                    Partition(partition_id, 0, 0, meta.isrs, meta.leader, meta.replicas, None)
+                    Partition(partition_id, -1, -1, meta.isrs, meta.leader, meta.replicas, None)
                     for partition_id, meta in confluent_topic.partitions.items()
                 ]
             for partition_id, meta in confluent_topic.partitions.items():
