@@ -148,6 +148,10 @@ class TopicController:
     def _get_partitions(
         self, topic: Topic, retrieve_last_timestamp: bool, get_partition_data: bool = True
     ) -> List[Partition]:
+        assert not (
+            retrieve_last_timestamp and not get_partition_data
+        ), "Can not retrieve timestamp without partition data"
+
         config = Config.get_instance().create_confluent_config()
         config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "250"})
         with closing(confluent_kafka.Consumer(config)) as consumer:
