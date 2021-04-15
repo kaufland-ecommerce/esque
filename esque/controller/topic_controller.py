@@ -131,7 +131,9 @@ class TopicController:
     ) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
-        topic.partition_data = self._get_partitions(topic, retrieve_last_timestamp, get_partition_data=retrieve_partition_data)
+        topic.partition_data = self._get_partitions(
+            topic, retrieve_last_timestamp, get_partition_data=retrieve_partition_data
+        )
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
         topic.is_only_local = False
