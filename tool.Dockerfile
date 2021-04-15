@@ -13,8 +13,6 @@ RUN git clone --branch "1.4.0" --depth 1 https://github.com/edenhill/kafkacat.gi
  && cd .. \
  && rm -rf kafkacat/
 
-RUN mkdir -p /esque
-
 WORKDIR /esque
 
 RUN pip install -U pip
