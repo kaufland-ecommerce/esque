@@ -502,7 +502,7 @@ def apply(state: State, file: str):
 
     # Get topic data based on the cluster state
     topic_controller = state.cluster.topic_controller
-    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names))
+    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names), get_partitions=False)
     cluster_topic_names = [t.name for t in cluster_topics]
 
     # Calculate changes
