@@ -101,9 +101,15 @@ class TopicController:
         future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
         ensure_kafka_future_done(future)
 
-    def get_cluster_topic(self, topic_name: str, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True) -> Topic:
+    def get_cluster_topic(
+        self, topic_name: str, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True
+    ) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
-        return self.update_from_cluster(Topic(topic_name), retrieve_last_timestamp=retrieve_last_timestamp, retrieve_partition_data=retrieve_partition_data)
+        return self.update_from_cluster(
+            Topic(topic_name),
+            retrieve_last_timestamp=retrieve_last_timestamp,
+            retrieve_partition_data=retrieve_partition_data,
+        )
 
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
@@ -124,7 +130,9 @@ class TopicController:
             topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
         }
 
-    def update_from_cluster(self, topic: Topic, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True) -> Topic:
+    def update_from_cluster(
+        self, topic: Topic, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True
+    ) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         if retrieve_partition_data:
@@ -137,14 +145,19 @@ class TopicController:
 
         return topic
 
-    def _get_partitions(self, topic: Topic, retrieve_last_timestamp: bool, get_partition_data: bool = True) -> List[Partition]:
+    def _get_partitions(
+        self, topic: Topic, retrieve_last_timestamp: bool, get_partition_data: bool = True
+    ) -> List[Partition]:
         config = Config.get_instance().create_confluent_config()
         config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "250"})
         with closing(confluent_kafka.Consumer(config)) as consumer:
             confluent_topic = consumer.list_topics(topic=topic.name).topics[topic.name]
             partitions: List[Partition] = []
             if not get_partition_data:
-                return [Partition(partition_id, 0, 0, meta.isrs, meta.leader, meta.replicas, None) for partition_id, meta in confluent_topic.partitions.items()]
+                return [
+                    Partition(partition_id, 0, 0, meta.isrs, meta.leader, meta.replicas, None)
+                    for partition_id, meta in confluent_topic.partitions.items()
+                ]
             for partition_id, meta in confluent_topic.partitions.items():
                 try:
                     low, high = consumer.get_watermark_offsets(
