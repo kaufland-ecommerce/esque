@@ -2,7 +2,6 @@ import logging
 import re
 import time
 from contextlib import closing
-from functools import partial
 from itertools import islice
 from logging import Logger
 from typing import TYPE_CHECKING, Dict, List, Optional
