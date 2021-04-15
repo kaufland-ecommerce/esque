@@ -10,12 +10,10 @@ RUN apt-get update \
         /var/cache/debconf \
         /tmp/* \
     && apt-get clean \
-    && pip install -U pip
+    && pip install -U pip \
+    && pip install --pre poetry
 
 WORKDIR /esque
-
-RUN pip install -U pip
-RUN pip install --pre poetry
 
 COPY . /esque
 RUN poetry config "virtualenvs.create" "false"
