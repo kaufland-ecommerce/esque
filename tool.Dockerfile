@@ -9,7 +9,6 @@ RUN apt-get update \
         /var/lib/apt/lists/* \
         /var/cache/debconf \
         /tmp/* \
-    && apt-get clean \
     && pip install -U pip \
     && pip install --pre poetry
 
