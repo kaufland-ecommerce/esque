@@ -40,6 +40,9 @@ publish:
 wheel:
 	@poetry build -v
 
+build-tool-image:
+	@docker build -t esque -f tool.Dockerfile .
+
 linux_release:
 	docker pull quay.io/pypa/manylinux2010_x86_64
 	docker run --rm -t -i -v `pwd`:/io quay.io/pypa/manylinux2010_x86_64 /io/make-linux-release.sh

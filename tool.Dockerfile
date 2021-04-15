@@ -1,17 +1,16 @@
 FROM python:3.9
 
-RUN git clone --branch "v1.0.0" --depth 1 https://github.com/edenhill/librdkafka.git \
- && cd librdkafka \
- && ./configure --prefix /usr \
- && make \
- && make install
-
-RUN git clone --branch "1.4.0" --depth 1 https://github.com/edenhill/kafkacat.git \
- && cd kafkacat \
- && ./bootstrap.sh \
- && cp kafkacat /usr/bin/ \
- && cd .. \
- && rm -rf kafkacat/
+RUN apt-get update \
+    && apt-get upgrade \
+    && apt-get install --yes --no-install-recommends \
+        kafkacat \
+        vim \
+    && rm -rf \
+        /var/lib/apt/lists/* \
+        /var/cache/debconf \
+        /tmp/* \
+    && apt-get clean \
+    && pip install -U pip
 
 WORKDIR /esque
 
@@ -25,8 +24,6 @@ RUN poetry install
 # Create user
 RUN useradd -ms /bin/bash esque
 USER esque
-
-ENV PATH="/home/esque/.local/bin:$PATH"
 
 WORKDIR /home/esque/work
 
