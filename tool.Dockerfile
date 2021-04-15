@@ -28,7 +28,6 @@ USER esque
 
 ENV PATH="/home/esque/.local/bin:$PATH"
 
-RUN mkdir -p /home/esque/work
 WORKDIR /home/esque/work
 
 ENTRYPOINT ["esque"]
