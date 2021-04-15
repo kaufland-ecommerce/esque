@@ -13,12 +13,10 @@ RUN apt-get update \
     && pip install --pre poetry
 
 WORKDIR /esque
-
 COPY . /esque
 RUN poetry config "virtualenvs.create" "false"
 RUN poetry install
 
-# Create user
 RUN useradd -ms /bin/bash esque
 USER esque
 
