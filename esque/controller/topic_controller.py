@@ -47,7 +47,7 @@ class TopicController:
             topic_names = sorted(topic_names)
 
         if get_topic_objects:
-            topics = [self.get_cluster_topic(topic_name, retrieve_partition_data=False) for topic_name in topic_names]
+            topics = [self.get_cluster_topic(topic_name, retrieve_partition_data=get_partitions) for topic_name in topic_names]
         else:
             topics = list(map(self.get_local_topic, topic_names))
         return topics
