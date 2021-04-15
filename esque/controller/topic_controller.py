@@ -155,7 +155,7 @@ class TopicController:
             partitions: List[Partition] = []
             if not get_partition_data:
                 return [
-                    Partition(partition_id, 0, 0, meta.isrs, meta.leader, meta.replicas, None)
+                    Partition(partition_id, -1, -1, meta.isrs, meta.leader, meta.replicas, None)
                     for partition_id, meta in confluent_topic.partitions.items()
                 ]
             for partition_id, meta in confluent_topic.partitions.items():
