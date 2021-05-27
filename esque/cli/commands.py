@@ -465,7 +465,7 @@ def delete_topic(state: State, topic_name: str):
     topic_controller = state.cluster.topic_controller
     current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
     if topic_name not in current_topics:
-        click.echo(click.style("The provided topic doesn't exist on the cluster.", fg="red"))
+        click.echo(click.style(f"Topic [{topic_name}] doesn't exist on the cluster.", fg="red"))
     else:
         click.echo(f"Deleting {click.style(topic_name, fg='green')}")
         if ensure_approval("Are you sure?", no_verify=state.no_verify):

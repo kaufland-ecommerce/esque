@@ -36,21 +36,19 @@ def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:
 
 def ensure_kafka_futures_done(futures: List[Future], timeout: int = 60 * 5) -> List[Future]:
     # Clients, such as confluents AdminClient, may return a done future with an exception
-    succeeded: List[Future] = []
-    for future in futures:
-        done, not_done = wait({future}, timeout=timeout)
+    done, not_done = wait(futures, timeout=timeout)
 
-        if not_done:
-            raise FutureTimeoutException("Future timed out after {} seconds".format(timeout))
-        result = next(islice(done, 1))
+    if not_done:
+        raise FutureTimeoutException("{} future(s) timed out after {} seconds".format(len(not_done), timeout))
+    while True:
+        result = next(islice(done, 1), None)
+        if result is None:
+            return done
         exception = result.exception()
-        if exception is None:
-            succeeded.append(result)
-        elif isinstance(exception, confluent_kafka.KafkaException):
+        if isinstance(exception, confluent_kafka.KafkaException):
             raise_for_kafka_error(exception.args[0])
         else:
             raise exception
-    return succeeded
 
 
 def unpack_confluent_config(config):
