@@ -12,7 +12,7 @@ from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import KafkaException, NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.helpers import ensure_kafka_future_done
+from esque.helpers import ensure_kafka_future_done, ensure_kafka_futures_done
 from esque.resources.topic import Partition, Topic, TopicDiff
 
 logger: Logger = logging.getLogger(__name__)
@@ -96,9 +96,23 @@ class TopicController:
             altered_config[name] = value
         return altered_config
 
-    def delete_topic(self, topic: Topic):
-        future = self.cluster.confluent_client.delete_topics([topic.name])[topic.name]
-        ensure_kafka_future_done(future)
+    def delete_topic(self, topic: Topic) -> bool:
+        return self.delete_topics([topic])
+
+    def delete_topics(self, topics: List[Topic]) -> bool:
+        futures = self.cluster.confluent_client.delete_topics([topic.name for topic in topics])
+        ensure_kafka_futures_done(list(futures.values()))
+        topics_after_deletion: List[str] = [topic.name for topic in self.list_topics(get_topic_objects=False)]
+        retry_count = 1
+        while True:
+            try:
+                assert all(topic.name not in topics_after_deletion for topic in topics)
+                return True
+            except AssertionError:
+                if retry_count == 3:
+                    return False
+                time.sleep(2)
+                retry_count += 1
 
     def get_cluster_topic(
         self, topic_name: str, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True

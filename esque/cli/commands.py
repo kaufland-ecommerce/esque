@@ -455,16 +455,33 @@ def delete_consumer_group(state: State, consumergroup_id: Tuple[str]):
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics, nargs=-1
-)
+@click.argument("topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
-    """Delete a topic
+    """Delete a single topic
 
     WARNING: This command cannot be undone, and all data in the topic will be lost.
     """
-    topic_names = list(topic_name) + get_piped_stdin_arguments()
+    topic_controller = state.cluster.topic_controller
+    current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
+    if topic_name not in current_topics:
+        click.echo(click.style("The provided topic doesn't exist on the cluster.", fg="red"))
+    else:
+        click.echo(f"Deleting {click.style(topic_name, fg='green')}")
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            topic_controller.delete_topics([Topic(topic_name)])
+            click.echo(click.style(f"Topic '{topic_name}' successfully deleted.", fg="green"))
+
+
+@delete.command("topics")
+@click.argument("topic-list", metavar="TOPIC_LIST", required=False, autocompletion=list_topics, nargs=-1)
+@default_options
+def delete_topics(state: State, topic_list: Tuple[str]):
+    """Delete multiple topics
+
+    WARNING: This command cannot be undone, and all data in the topics will be lost.
+    """
+    topic_names = list(topic_list) + get_piped_stdin_arguments()
     topic_controller = state.cluster.topic_controller
     current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
     existing_topics: List[str] = []
@@ -478,9 +495,7 @@ def delete_topic(state: State, topic_name: str):
         click.echo(click.style("The provided list contains no existing topics.", fg="red"))
     else:
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
-            for topic_name in existing_topics:
-                topic_controller.delete_topic(Topic(topic_name))
-                assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
+            topic_controller.delete_topics([Topic(topic_name) for topic_name in existing_topics])
             click.echo(click.style(f"Topics '{existing_topics}' successfully deleted.", fg="green"))
 
 

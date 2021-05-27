@@ -1,7 +1,7 @@
 import logging
 from concurrent.futures import Future, wait
 from itertools import islice
-from typing import Type, TypeVar
+from typing import List, Type, TypeVar
 
 import confluent_kafka
 import pendulum
@@ -31,22 +31,26 @@ class SingletonMeta(type):
 
 
 def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:
+    return ensure_kafka_futures_done(futures=[future], timeout=timeout)[0]
+
+
+def ensure_kafka_futures_done(futures: List[Future], timeout: int = 60 * 5) -> List[Future]:
     # Clients, such as confluents AdminClient, may return a done future with an exception
-    done, not_done = wait({future}, timeout=timeout)
+    succeeded: List[Future] = []
+    for future in futures:
+        done, not_done = wait({future}, timeout=timeout)
 
-    if not_done:
-        raise FutureTimeoutException("Future timed out after {} seconds".format(timeout))
-
-    result = next(islice(done, 1))
-
-    exception = result.exception()
-
-    if exception is None:
-        return result
-    elif isinstance(exception, confluent_kafka.KafkaException):
-        raise_for_kafka_error(exception.args[0])
-    else:
-        raise exception
+        if not_done:
+            raise FutureTimeoutException("Future timed out after {} seconds".format(timeout))
+        result = next(islice(done, 1))
+        exception = result.exception()
+        if exception is None:
+            succeeded.append(done)
+        elif isinstance(exception, confluent_kafka.KafkaException):
+            raise_for_kafka_error(exception.args[0])
+        else:
+            raise exception
+    return succeeded
 
 
 def unpack_confluent_config(config):
