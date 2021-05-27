@@ -45,7 +45,7 @@ def ensure_kafka_futures_done(futures: List[Future], timeout: int = 60 * 5) -> L
         result = next(islice(done, 1))
         exception = result.exception()
         if exception is None:
-            succeeded.append(done)
+            succeeded.append(result)
         elif isinstance(exception, confluent_kafka.KafkaException):
             raise_for_kafka_error(exception.args[0])
         else:
