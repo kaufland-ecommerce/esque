@@ -1,6 +1,5 @@
 import logging
 from concurrent.futures import Future, wait
-from itertools import islice
 from typing import List, Type, TypeVar
 
 import confluent_kafka
@@ -40,15 +39,15 @@ def ensure_kafka_futures_done(futures: List[Future], timeout: int = 60 * 5) -> L
 
     if not_done:
         raise FutureTimeoutException("{} future(s) timed out after {} seconds".format(len(not_done), timeout))
-    while True:
-        result = next(islice(done, 1), None)
-        if result is None:
-            return done
+    for result in list(done):
         exception = result.exception()
+        if exception is None:
+            continue
         if isinstance(exception, confluent_kafka.KafkaException):
             raise_for_kafka_error(exception.args[0])
-        elif isinstance(exception, Exception):
+        elif isinstance(exception, BaseException):
             raise exception
+    return list(done)
 
 
 def unpack_confluent_config(config):
