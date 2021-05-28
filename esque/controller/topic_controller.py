@@ -107,9 +107,9 @@ class TopicController:
             try:
                 future.result()
             except KafkaException as e:
-                errors.append(f"[{topic_name}]: {e.args[0]}")
+                errors.append(f"[{topic_name}]: {e.args[0].str()}")
         if errors:
-            raise TopicDeletionException(f"The following exceptions occurred: {','.join(errors)}")
+            raise TopicDeletionException("The following exceptions occurred:\n " + "\n ".join(sorted(errors)))
         return True
 
     def get_cluster_topic(
