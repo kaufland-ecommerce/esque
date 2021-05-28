@@ -8,7 +8,7 @@ from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
-from esque.cli.commands import delete_consumer_group, delete_topic, get_consumergroups, get_topics
+from esque.cli.commands import delete_consumer_group, delete_topics, get_consumergroups, get_topics
 from esque.config import Config
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.consumergroup import ConsumerGroup
@@ -55,7 +55,7 @@ def test_topic_deletions_multiple_cli(
     assert "not_in_the_list_of_topics" not in topics_pre_deletion
 
     result = interactive_cli_runner.invoke(
-        delete_topic, topics_to_delete + ["not_in_the_list_of_topics"], input="Y\n", catch_exceptions=False
+        delete_topics, topics_to_delete + ["not_in_the_list_of_topics"], input="Y\n", catch_exceptions=False
     )
     assert result.exit_code == 0
 
@@ -77,7 +77,7 @@ def test_topic_deletions_piped(
     assert "not_in_the_list_of_topics" not in topics_pre_deletion
 
     result = non_interactive_cli_runner.invoke(
-        delete_topic,
+        delete_topics,
         "--no-verify",
         input="\n".join(topics_to_delete + ["not_in_the_list_of_topics"]),
         catch_exceptions=False,
@@ -151,7 +151,7 @@ def test_topic_list_output_compatibility_for_piping(
 ):
     all_topics = non_interactive_cli_runner.invoke(get_topics, args="--hide-internal").stdout
     assert topic in all_topics
-    result = non_interactive_cli_runner.invoke(delete_topic, "--no-verify", input=all_topics, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(delete_topics, "--no-verify", input=all_topics, catch_exceptions=False)
     assert result.exit_code == 0
     all_topics = sorted(list(confluent_admin_client.list_topics(timeout=5).topics.keys()))
     assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]

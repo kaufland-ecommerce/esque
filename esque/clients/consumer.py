@@ -55,6 +55,7 @@ class AbstractConsumer(ABC):
             {
                 "group.id": self._group_id,
                 "error_cb": log_error,
+                "session.timeout.ms": 10_000,
                 # We need to commit offsets manually once we"re sure it got saved
                 # to the sink
                 "enable.auto.commit": self._enable_auto_commit,
