@@ -122,6 +122,10 @@ class InvalidReplicationFactorException(KafkaException):
     pass
 
 
+class TopicDeletionException(ExceptionWithMessage):
+    pass
+
+
 class ValidationException(ExceptionWithMessage):
     pass
 
