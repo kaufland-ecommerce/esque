@@ -1,3 +1,7 @@
+### Version 0.3.1
+* Added the `delete topics` command that enables deleting more than one topic
+* Modified the existing `delete topic` command to accept only a single topic entry
+* Refactored the topic deletion logic to improve performance
 ### Version 0.3.0
 * Remove pykafka dependency
 * Include a partial fix for #32 (topics are now displayed, output is still not optimal)

@@ -42,8 +42,8 @@ jobs:
         if: success()
         run: |
           pip install "poetry>=1.0.2" devpi-server devpi "pluggy<1,>=0.12.0"
-          devpi-server --serverdir=/tmp/devpi --init
-          devpi-server --serverdir=/tmp/devpi --start
+          devpi-init --serverdir=/tmp/devpi
+          devpi-server --serverdir=/tmp/devpi >> /tmp/devpi.log 2>&1 &
           scripts/wait-for-it.sh localhost:3141 -t 60
           devpi use http://localhost:3141
           devpi login root --password=
@@ -53,6 +53,10 @@ jobs:
           poetry config repositories.devpi http://localhost:3141/root/stable/
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
+      - name: Output logs on failure
+        if: failure()
+        run: |
+          cat /tmp/devpi.log
       - name: Publish to devpi
         if: success()
         run: |
