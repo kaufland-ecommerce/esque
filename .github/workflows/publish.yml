@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Setup python and install packages
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: '3.6'
           architecture: x64
@@ -20,5 +20,6 @@ jobs:
         if: success()
         run: |
           pip install "poetry>=1.0.2"
+          poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
           poetry build
-          poetry publish --username "${{ secrets.PYPI_USER }}" --password "${{ secrets.PYPI_PASSWORD }}"
+          poetry publish

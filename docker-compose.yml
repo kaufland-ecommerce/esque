@@ -44,7 +44,7 @@ services:
       # We can do nothing about the former case but we can trick kafka with a custom protocol in the latter case.
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'LOCAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
       KAFKA_LISTENERS: 'LOCAL://:9092,PLAINTEXT://kafka:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'LOCAL://localhost:9092,PLAINTEXT://kafka:9093'
+      KAFKA_ADVERTISED_LISTENERS: 'LOCAL://127.0.0.1:9092,PLAINTEXT://kafka:9093'
 
   schema_registry:
     build:

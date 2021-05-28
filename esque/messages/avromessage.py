@@ -5,7 +5,9 @@ import pathlib
 import pickle
 import struct
 from datetime import date, datetime
+from decimal import Decimal
 from io import BytesIO
+from types import MappingProxyType
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import click
@@ -80,6 +82,10 @@ class StdOutAvroWriter(StdOutWriter):
     def deserializer(value):
         if isinstance(value, (datetime, date)):
             return value.isoformat()
+        elif isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, MappingProxyType):
+            return value.copy()
         elif isinstance(value, bytes):
             return base64.b64encode(value).decode("ascii")
 

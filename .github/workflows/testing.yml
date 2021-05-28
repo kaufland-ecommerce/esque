@@ -16,9 +16,9 @@ jobs:
         python: ['3.6']
         os: ['ubuntu-latest']
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Setup python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -37,7 +37,7 @@ jobs:
         python: ['3.6', '3.7', '3.8' ]
         librdkafka: ['1.1.0']
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v2
       - name: Fetch virtualenv cache
         uses: actions/cache@v1
         id: venv-cache
@@ -52,7 +52,7 @@ jobs:
           path: librdkafka
           key: librdkafka-${{ matrix.librdkafka }}
       - name: Setup python and install packages
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
@@ -78,7 +78,6 @@ jobs:
       - name: Install esque requirements
         run: |
           poetry install -vvv
-          poetry run pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support
       - name: Run kafka stack
         run: |
           docker-compose up -d

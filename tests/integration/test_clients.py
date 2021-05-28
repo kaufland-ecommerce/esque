@@ -27,7 +27,7 @@ def test_plain_text_consume_to_file(
         producer, source_topic
     )
     file_consumer = ConsumerFactory().create_consumer(
-        consumer_group, source_topic_id, output_directory, False, avro=False
+        consumer_group, source_topic_id, output_directory, last=False, avro=False
     )
     number_of_consumer_messages = file_consumer.consume(12)
 

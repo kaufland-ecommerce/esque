@@ -1,4 +1,13 @@
 build/
 dist/
 *.egg-info/
-docker-compose.yml
+.env
+.flake8
+.gitignore
+.pre-commit-config.yaml
+CHANGELOG.md
+docker-compose*
+docker_binding.sh
+*Dockerfile
+LICENSE
+Makefile

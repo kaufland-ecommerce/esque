@@ -2,12 +2,11 @@ import logging
 import random
 import string
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import click
 import yaml
 from confluent_kafka.admin import ConfigResource
-from pykafka import SslConfig
 
 import esque.validation
 from esque.cli import environment
@@ -16,20 +15,10 @@ from esque.errors import (
     ConfigException,
     ConfigNotExistsException,
     ContextNotDefinedException,
-    ExceptionWithMessage,
     MissingSaslParameter,
     UnsupportedSaslMechanism,
 )
 from esque.helpers import SingletonMeta
-
-if TYPE_CHECKING:
-    try:
-        from pykafka.sasl_authenticators import BaseAuthenticator
-    except ImportError:
-        raise ImportError(
-            "Please install our pykafka fork:\n"
-            "pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support"
-        )
 
 RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
 PING_TOPIC = f"ping-{RANDOM}"
@@ -192,14 +181,43 @@ class Config(metaclass=SingletonMeta):
         with config_path().open("w") as f:
             yaml.dump(self._cfg, f, default_flow_style=False, sort_keys=False, Dumper=yaml.SafeDumper)
 
-    def create_pykafka_config(self) -> Dict[str, Any]:
-        config = {"hosts": ",".join(self.bootstrap_servers), "exclude_internal_topics": False}
-        if self.sasl_enabled:
-            config["sasl_authenticator"] = self._get_pykafka_authenticator()
+    def create_kafka_python_config(self) -> Dict[str, Any]:
+        config = {"bootstrap_servers": self.bootstrap_servers, "security_protocol": self.security_protocol}
         if self.ssl_enabled:
-            config["ssl_config"] = self._get_pykafka_ssl_conf()
-        log.debug(f"Created pykafka config: {config}")
+            config.update(self._get_kafka_python_ssl_config())
+        if self.sasl_enabled:
+            config.update(self._get_kafka_python_sasl_config())
         return config
+
+    def _get_kafka_python_ssl_config(self):
+        config = {}
+        if self.ssl_params.get("cafile"):
+            config["ssl_cafile"] = self.ssl_params["cafile"]
+        if self.ssl_params.get("certfile"):
+            config["ssl_certfile"] = self.ssl_params["certfile"]
+        if self.ssl_params.get("keyfile"):
+            config["ssl_keyfile"] = self.ssl_params["keyfile"]
+        if self.ssl_params.get("password"):
+            config["ssl_password"] = self.ssl_params["password"]
+        return config
+
+    def _get_kafka_python_sasl_config(self):
+        if self.sasl_mechanism in ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512"):
+            try:
+                return {
+                    "sasl_mechanism": self.sasl_mechanism,
+                    "sasl_plain_username": self.sasl_params["user"],
+                    "sasl_plain_password": self.sasl_params["password"],
+                }
+            except KeyError as e:
+                msg = f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}.\n"
+                msg += f"Please run `esque config edit` and add it to section [{self.current_context}]."
+                raise MissingSaslParameter(msg)
+        else:
+            raise UnsupportedSaslMechanism(
+                f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
+                f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
+            )
 
     def create_confluent_config(self, *, debug: bool = False, include_schema_registry: bool = False) -> Dict[str, str]:
         config = {"bootstrap.servers": ",".join(self.bootstrap_servers), "security.protocol": self.security_protocol}
@@ -235,8 +253,6 @@ class Config(metaclass=SingletonMeta):
             )
 
     def _get_confluent_ssl_config(self) -> Dict[str, str]:
-        if not self.ssl_enabled:
-            return {}
         rdk_conf = {}
         if self.ssl_params.get("cafile"):
             rdk_conf["ssl.ca.location"] = self.ssl_params["cafile"]
@@ -247,49 +263,3 @@ class Config(metaclass=SingletonMeta):
         if self.ssl_params.get("password"):
             rdk_conf["ssl.key.password"] = self.ssl_params["password"]
         return rdk_conf
-
-    def _get_pykafka_ssl_conf(self) -> Optional[SslConfig]:
-        if not self.ssl_enabled:
-            return None
-        ssl_params = {"cafile": self.ssl_params.get("cafile", None)}
-        if self.ssl_params.get("certfile"):
-            ssl_params["certfile"] = self.ssl_params["certfile"]
-        if self.ssl_params.get("keyfile"):
-            ssl_params["keyfile"] = self.ssl_params["keyfile"]
-        if self.ssl_params.get("password"):
-            ssl_params["password"] = self.ssl_params["password"]
-        return SslConfig(**ssl_params)
-
-    def _get_pykafka_authenticator(self) -> "BaseAuthenticator":
-        try:
-            from pykafka.sasl_authenticators import PlainAuthenticator, ScramAuthenticator
-        except ImportError:
-            raise ExceptionWithMessage(
-                "In order to support SASL you'll need to install our fork of pykafka.\n"
-                "Please run:\n"
-                "    pip install -U git+https://github.com/real-digital/pykafka.git@feature/sasl-scram-support"
-            )
-
-        try:
-            if self.sasl_mechanism == "PLAIN":
-                return PlainAuthenticator(
-                    user=self.sasl_params["user"],
-                    password=self.sasl_params["password"],
-                    security_protocol=self.security_protocol,
-                )
-            elif self.sasl_mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
-                return ScramAuthenticator(
-                    self.sasl_mechanism,
-                    user=self.sasl_params["user"],
-                    password=self.sasl_params["password"],
-                    security_protocol=self.security_protocol,
-                )
-            else:
-                raise UnsupportedSaslMechanism(
-                    f"SASL mechanism {self.sasl_mechanism} is currently not supported by esque. "
-                    f"Supported meachnisms are {SUPPORTED_SASL_MECHANISMS}."
-                )
-        except KeyError as e:
-            msg = f"SASL mechanism {self.sasl_mechanism} requires parameter {e.args[0]}.\n"
-            msg += f"Please run `esque config edit` and add it to section [{self.current_context}]."
-            raise MissingSaslParameter(msg)

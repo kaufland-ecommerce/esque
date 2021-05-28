@@ -13,6 +13,7 @@ import yaml
 from click import MissingParameter, version_option
 
 from esque import __version__, validation
+from esque.cli import environment
 from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, get_piped_stdin_arguments, isatty
 from esque.cli.options import State, default_options, output_format_option
 from esque.cli.output import (
@@ -44,7 +45,21 @@ def esque(state: State):
 
     In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
     """
-    pass
+    if environment.ESQUE_PROFILE:
+        import cProfile
+        import pstats
+        import atexit
+
+        print("Profiling...")
+        pr = cProfile.Profile()
+        pr.enable()
+
+        def stop_profiling():
+            pr.disable()
+            pstats.Stats(pr).dump_stats("./esque.pstat")
+            print("profiling completed, data dumped to esque.pstat")
+
+        atexit.register(stop_profiling)
 
 
 @esque.group(help="Get a quick overview of different resources.", no_args_is_help=True)
@@ -418,8 +433,7 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 @click.argument("consumergroup-id", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
 @default_options
 def delete_consumer_group(state: State, consumergroup_id: Tuple[str]):
-    """Delete consumer groups
-    """
+    """Delete consumer groups"""
     consumer_groups = list(consumergroup_id) + get_piped_stdin_arguments()
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     current_consumergroups = consumergroup_controller.list_consumer_groups()
@@ -441,16 +455,33 @@ def delete_consumer_group(state: State, consumergroup_id: Tuple[str]):
 
 
 @delete.command("topic")
-@click.argument(
-    "topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics, nargs=-1
-)
+@click.argument("topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
-    """Delete a topic
+    """Delete a single topic
 
     WARNING: This command cannot be undone, and all data in the topic will be lost.
     """
-    topic_names = list(topic_name) + get_piped_stdin_arguments()
+    topic_controller = state.cluster.topic_controller
+    current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
+    if topic_name not in current_topics:
+        click.echo(click.style(f"Topic [{topic_name}] doesn't exist on the cluster.", fg="red"))
+    else:
+        click.echo(f"Deleting {click.style(topic_name, fg='green')}")
+        if ensure_approval("Are you sure?", no_verify=state.no_verify):
+            topic_controller.delete_topics([Topic(topic_name)])
+            click.echo(click.style(f"Topic '{topic_name}' successfully deleted.", fg="green"))
+
+
+@delete.command("topics")
+@click.argument("topic-list", metavar="TOPIC_LIST", required=False, autocompletion=list_topics, nargs=-1)
+@default_options
+def delete_topics(state: State, topic_list: Tuple[str]):
+    """Delete multiple topics
+
+    WARNING: This command cannot be undone, and all data in the topics will be lost.
+    """
+    topic_names = list(topic_list) + get_piped_stdin_arguments()
     topic_controller = state.cluster.topic_controller
     current_topics = [topic.name for topic in topic_controller.list_topics(get_topic_objects=False)]
     existing_topics: List[str] = []
@@ -464,9 +495,7 @@ def delete_topic(state: State, topic_name: str):
         click.echo(click.style("The provided list contains no existing topics.", fg="red"))
     else:
         if ensure_approval("Are you sure?", no_verify=state.no_verify):
-            for topic_name in existing_topics:
-                topic_controller.delete_topic(Topic(topic_name))
-                assert topic_name not in (t.name for t in topic_controller.list_topics(get_topic_objects=False))
+            topic_controller.delete_topics([Topic(topic_name) for topic_name in existing_topics])
             click.echo(click.style(f"Topics '{existing_topics}' successfully deleted.", fg="green"))
 
 
@@ -488,7 +517,7 @@ def apply(state: State, file: str):
 
     # Get topic data based on the cluster state
     topic_controller = state.cluster.topic_controller
-    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names))
+    cluster_topics = topic_controller.list_topics(search_string="|".join(yaml_topic_names), get_partitions=False)
     cluster_topic_names = [t.name for t in cluster_topics]
 
     # Calculate changes
@@ -723,7 +752,21 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
     required=False,
 )
 @click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
+@click.option(
+    "-a",
+    "--avro",
+    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary flag",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "-b",
+    "--binary",
+    help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
+    "This flag is mutually exclusive with the --avro flag",
+    default=False,
+    is_flag=True,
+)
 @click.option(
     "-c",
     "--consumergroup",
@@ -750,6 +793,7 @@ def consume(
     match: str,
     last: bool,
     avro: bool,
+    binary: bool,
     directory: str,
     consumergroup: str,
     preserve_order: bool,
@@ -774,6 +818,9 @@ def consume(
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
     current_timestamp_milliseconds = int(round(time.time() * 1000))
+
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
 
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -809,6 +856,7 @@ def consume(
             match=match,
             last=last,
             write_to_stdout=write_to_stdout,
+            binary=binary,
         )
     else:
         total_number_of_consumed_messages = consume_to_files(
@@ -820,6 +868,7 @@ def consume(
             match=match,
             last=last,
             write_to_stdout=write_to_stdout,
+            binary=binary,
         )
 
     if not write_to_stdout:
@@ -864,7 +913,21 @@ def consume(
     type=click.STRING,
     required=False,
 )
-@click.option("-a", "--avro", help="Set this flag if the topic contains avro data.", default=False, is_flag=True)
+@click.option(
+    "-a",
+    "--avro",
+    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary flag",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "-b",
+    "--binary",
+    help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
+    "This flag is mutually exclusive with the --avro flag",
+    default=False,
+    is_flag=True,
+)
 @click.option(
     "--stdin", "read_from_stdin", help="Read messages from STDIN instead of a directory.", default=False, is_flag=True
 )
@@ -884,6 +947,7 @@ def produce(
     to_context: str,
     directory: str,
     avro: bool,
+    binary: bool,
     match: str = None,
     read_from_stdin: bool = False,
     ignore_stdin_errors: bool = False,
@@ -906,6 +970,9 @@ def produce(
     # Copy source_topic to destination_topic.
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+
     if directory is None and not read_from_stdin:
         raise ValueError("You have to provide a directory or use the --stdin flag.")
 
@@ -949,6 +1016,7 @@ def produce(
         avro=avro,
         match=match,
         ignore_stdin_errors=ignore_stdin_errors,
+        binary=binary,
     )
     total_number_of_messages_produced = producer.produce()
     click.echo(

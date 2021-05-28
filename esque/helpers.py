@@ -1,8 +1,6 @@
-import functools
 import logging
 from concurrent.futures import Future, wait
-from itertools import islice
-from typing import Type, TypeVar
+from typing import List, Type, TypeVar
 
 import confluent_kafka
 import pendulum
@@ -31,42 +29,25 @@ class SingletonMeta(type):
         cls.__instance = instance
 
 
-def invalidate_cache_before(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        self._client.poll(timeout=1)
-        return func(self, *args, **kwargs)
-
-    return wrapper
-
-
-def invalidate_cache_after(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        self.cluster.confluent_client.poll(timeout=1)
-        return result
-
-    return wrapper
-
-
 def ensure_kafka_future_done(future: Future, timeout: int = 60 * 5) -> Future:
+    return ensure_kafka_futures_done(futures=[future], timeout=timeout)[0]
+
+
+def ensure_kafka_futures_done(futures: List[Future], timeout: int = 60 * 5) -> List[Future]:
     # Clients, such as confluents AdminClient, may return a done future with an exception
-    done, not_done = wait({future}, timeout=timeout)
+    done, not_done = wait(futures, timeout=timeout)
 
     if not_done:
-        raise FutureTimeoutException("Future timed out after {} seconds".format(timeout))
-
-    result = next(islice(done, 1))
-
-    exception = result.exception()
-
-    if exception is None:
-        return result
-    elif isinstance(exception, confluent_kafka.KafkaException):
-        raise_for_kafka_error(exception.args[0])
-    else:
-        raise exception
+        raise FutureTimeoutException("{} future(s) timed out after {} seconds".format(len(not_done), timeout))
+    for result in list(done):
+        exception = result.exception()
+        if exception is None:
+            continue
+        if isinstance(exception, confluent_kafka.KafkaException):
+            raise_for_kafka_error(exception.args[0])
+        elif isinstance(exception, BaseException):
+            raise exception
+    return list(done)
 
 
 def unpack_confluent_config(config):

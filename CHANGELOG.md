@@ -1,3 +1,17 @@
+### Version 0.3.0
+* Remove pykafka dependency
+* Include a partial fix for #32 (topics are now displayed, output is still not optimal)
+* Minor performance improvements
+### Version 0.2.10
+* Bugfix for issue #175
+* Do not fail silently upon offset commit error
+* Update confluent_kafka dependency in order to fix timeout issues when committing offsets to an SSL secured Kafka 
+  endpoint
+* Running esque now creates a cProfiler snapshot when the environment variable `ESQUE_PROFILE` is set to a non-empty 
+  value
+* Fix issue with decimal values from avro not being properly displayed in stdout
+### Version 0.2.9
+* Added `--binary` flag to `produce` and `consume`
 ### Version 0.2.8
 * Updated avro-python3 to version 1.10.0
 ### Version 0.2.7

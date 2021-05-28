@@ -1,6 +1,5 @@
 from typing import Dict, Optional, Type
 
-import pykafka.exceptions
 from confluent_kafka import KafkaError, Message
 
 
@@ -123,15 +122,8 @@ class InvalidReplicationFactorException(KafkaException):
     pass
 
 
-class ConnectionFailedException(ExceptionWithMessage):
-    def __init__(self, pykafka_exception: pykafka.exceptions.KafkaException):
-        self.pykafka_exception = pykafka_exception
-
-        if isinstance(self.pykafka_exception.args, str):
-            msg = self.pykafka_exception.args
-        else:
-            msg = "Connection to brokers failed."
-        super().__init__(msg)
+class TopicDeletionException(ExceptionWithMessage):
+    pass
 
 
 class ValidationException(ExceptionWithMessage):
