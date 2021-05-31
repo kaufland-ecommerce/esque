@@ -4,8 +4,8 @@ from esque.io.serializers.base import BaseSerializer
 
 
 class AvroSerializer(BaseSerializer):
-    def serialize(self, message: Any) -> bytes:
+    def serialize(self, data: Any) -> bytes:
         pass
 
-    def deserialize(self, binary_message: bytes) -> Any:
+    def deserialize(self, raw_data: bytes) -> Any:
         pass
