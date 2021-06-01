@@ -1,39 +1,97 @@
+import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
 
 from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
 from esque.io.messages import BinaryMessage
 
+H = TypeVar("H", bound="BaseHandler")
+HS = TypeVar("HS", bound="HandlerSettings")
+
+
+@dataclasses.dataclass
+class HandlerSettings:
+    host: str
+    path: str
+
+    def copy(self: HS) -> HS:
+        return dataclasses.replace(self)
+
+    def validate(self):
+        problems = []
+        if self.host is None:
+            problems.append("host cannot be None")
+        if self.path is None:
+            problems.append("path cannot be None")
+
+        if problems:
+            raise EsqueIOHandlerConfigException(
+                "One or more mandatory settings don't have a value: \n" + "\n".join(problems)
+            )
+
 
 class BaseHandler(ABC):
-    def __init__(self, settings: Dict[str, Any]):
+
+    settings_cls: ClassVar[Type[HandlerSettings]] = HandlerSettings
+
+    def __init__(self, settings: HandlerSettings):
+        """
+        Base class for all Esque IO handlers. A handler is responsible for writing and reading messages
+        to and from a source. The handler is unaware of the underlying message's format and treats all
+        sources as binary. It may support persisting the serializer settings for easier data retrieval.
+
+        :param settings:
+        """
         self._settings = settings.copy()
         self._validate_settings()
 
+    @classmethod
+    @abstractmethod
+    def from_url(cls: Type[H], url: str) -> H:
+        """
+        Generates a handler instance from a URL which contains the settings
+        :param url:
+
+        :return: Instance of BaseHandler
+        """
+        raise NotImplementedError
+
     def _validate_settings(self) -> None:
-        problems = []
-        for key, type_ in self._get_required_field_specs():
-            if key not in self._settings:
-                problems.append(f"Missing required setting: {key!r}.")
-                continue
-            value = self._settings[key]
-            if not isinstance(value, type_):
-                problems.append(f"Setting {key!r} should be {type_.__name__}, not {type(value).__name__}.")
-
-        if len(problems) > 0:
+        """
+        Check if the provided information is sufficient for the operation of the handler.
+        The default version checks if any of the required settings (:meth:`_get_required_field_specs`)
+        are missing and if the field types match.
+        """
+        if not isinstance(self._settings, self.settings_cls):
             raise EsqueIOHandlerConfigException(
-                f"Invalid handler config for {type(self).__name__}:\n" + "\n  ".join(problems)
+                f"Invalid type for the handler settings. "
+                f"Expected: {self.settings_cls.__name__}, "
+                f"provided: {type(self._settings).__name__}"
             )
-
-    def _get_required_field_specs(self) -> List[Tuple[str, type]]:
-        return []
+        self._settings.validate()
 
     @abstractmethod
     def get_serializer_settings(self) -> Dict[str, Any]:
+        """
+        Retrieves the serializer settings from this handler's source, if possible.
+        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
+        if this operation is not supported for a particular
+        handler.
+
+        :return: Dictionary of settings.
+        """
         raise NotImplementedError
 
     @abstractmethod
     def put_serializer_settings(self, settings: Dict[str, Any]) -> None:
+        """
+        Persists the serializer settings in this handler's source, if possible.
+        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
+        if this operation is not supported for a particular
+        handler.
+
+        :param settings: Dictionary of serializer settings.
+        """
         raise NotImplementedError
 
     @abstractmethod

@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import List
 
 from esque.io.messages import BinaryMessage, Message
 from esque.io.serializers.base import MessageSerializer

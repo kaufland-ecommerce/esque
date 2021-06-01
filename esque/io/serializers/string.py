@@ -1,5 +1,3 @@
-from typing import Any, Optional
-
 from esque.io.serializers.base import BaseSerializer
 
 
