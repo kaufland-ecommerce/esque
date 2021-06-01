@@ -9,7 +9,7 @@ H = TypeVar("H", bound="BaseHandler")
 HS = TypeVar("HS", bound="HandlerSettings")
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class HandlerSettings:
     host: str
     path: str
@@ -32,9 +32,10 @@ class HandlerSettings:
 
 class BaseHandler(ABC):
 
-    settings_cls: ClassVar[Type[HandlerSettings]] = HandlerSettings
+    settings_cls: ClassVar[Type[HS]] = HandlerSettings
+    settings: HS
 
-    def __init__(self, settings: HandlerSettings):
+    def __init__(self, settings: HS):
         """
         Base class for all Esque IO handlers. A handler is responsible for writing and reading messages
         to and from a source. The handler is unaware of the underlying message's format and treats all
@@ -42,7 +43,7 @@ class BaseHandler(ABC):
 
         :param settings:
         """
-        self._settings = settings.copy()
+        self.settings = settings.copy()
         self._validate_settings()
 
     def _validate_settings(self) -> None:
@@ -51,13 +52,13 @@ class BaseHandler(ABC):
         The default version checks if any of the required settings (:meth:`_get_required_field_specs`)
         are missing and if the field types match.
         """
-        if not isinstance(self._settings, self.settings_cls):
+        if not isinstance(self.settings, self.settings_cls):
             raise EsqueIOHandlerConfigException(
                 f"Invalid type for the handler settings. "
                 f"Expected: {self.settings_cls.__name__}, "
-                f"provided: {type(self._settings).__name__}"
+                f"provided: {type(self.settings).__name__}"
             )
-        self._settings.validate()
+        self.settings.validate()
 
     @abstractmethod
     def get_serializer_settings(self) -> Dict[str, Any]:

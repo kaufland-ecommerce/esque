@@ -17,6 +17,14 @@ class EsqueIONoMessageLeft(EsqueIOException):
     pass
 
 
+class EsqueIOHandlerReadException(EsqueIOException):
+    """
+    Exception raised when the handler encounters issues while reading from its source
+    """
+
+    pass
+
+
 class EsqueIOConfigException(EsqueIOException):
     """
     General configuration-related exception
