@@ -1,8 +1,8 @@
 import dataclasses
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional
 
 from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
-from esque.io.handlers.base import BaseHandler, H, HandlerSettings
+from esque.io.handlers.base import BaseHandler, HandlerSettings
 from esque.io.messages import BinaryMessage
 
 
@@ -18,10 +18,6 @@ class DummyHandler(BaseHandler):
         super().__init__(settings=settings)
         self._messages: List[BinaryMessage] = []
         self._serializer_settings: Optional[Dict[str, Any]] = None
-
-    @classmethod
-    def from_url(cls: Type[H], url: str) -> H:
-        return DummyHandler(settings=DummyHandlerSettings(host="hostval", path="pathval"))
 
     def get_serializer_settings(self) -> Dict[str, Any]:
         return self._serializer_settings

@@ -1,6 +1,6 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple, Type, TypeVar
+from typing import Any, ClassVar, Dict, Iterable, Optional, Type, TypeVar
 
 from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
 from esque.io.messages import BinaryMessage
@@ -44,17 +44,6 @@ class BaseHandler(ABC):
         """
         self._settings = settings.copy()
         self._validate_settings()
-
-    @classmethod
-    @abstractmethod
-    def from_url(cls: Type[H], url: str) -> H:
-        """
-        Generates a handler instance from a URL which contains the settings
-        :param url:
-
-        :return: Instance of BaseHandler
-        """
-        raise NotImplementedError
 
     def _validate_settings(self) -> None:
         """
