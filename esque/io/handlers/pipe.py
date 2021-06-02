@@ -10,7 +10,7 @@ from esque.io.exceptions import (
     EsqueIONoMessageLeft,
     EsqueIOSerializerSettingsNotSupported,
 )
-from esque.io.handlers.base import BaseHandler, HandlerSettings
+from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage
 
 MARKER = "__esque_msg_marker__\n"
@@ -22,28 +22,28 @@ class ByteEncoding(Enum):
     HEX = "hex"
 
 
-class PipeHandlerSettings(HandlerSettings):
+class PipeHandlerConfig(HandlerConfig):
     key_encoding: ByteEncoding = ByteEncoding.UTF_8
     value_encoding: ByteEncoding = ByteEncoding.UTF_8
 
 
 class PipeHandler(BaseHandler):
-    settings_cls = PipeHandlerSettings
+    config_cls = PipeHandlerConfig
 
-    def __init__(self, settings: PipeHandlerSettings):
-        super().__init__(settings)
+    def __init__(self, config: PipeHandlerConfig):
+        super().__init__(config)
         self._stream = self._get_stream()
 
     def _get_stream(self) -> TextIO:
         # pipe://stdout
-        if self.settings.host == "stdin":
+        if self.config.host == "stdin":
             return sys.stdin
-        elif self.settings.host == "stdout":
+        elif self.config.host == "stdout":
             return sys.stdout
-        elif self.settings.host == "stderr":
+        elif self.config.host == "stderr":
             return sys.stderr
         else:
-            raise EsqueIOHandlerConfigException(f"Unknown stream {self.settings.host}")
+            raise EsqueIOHandlerConfigException(f"Unknown stream {self.config.host}")
 
     def get_serializer_settings(self) -> NoReturn:
         raise EsqueIOSerializerSettingsNotSupported
@@ -54,12 +54,12 @@ class PipeHandler(BaseHandler):
     def write_message(self, binary_message: BinaryMessage) -> None:
         json.dump(
             {
-                "key": embed(binary_message.key, self.settings.key_encoding),
-                "value": embed(binary_message.value, self.settings.value_encoding),
+                "key": embed(binary_message.key, self.config.key_encoding),
+                "value": embed(binary_message.value, self.config.value_encoding),
                 "partition": binary_message.partition,
                 "offset": binary_message.offset,
-                "keyenc": self.settings.key_encoding.value,
-                "valueenc": self.settings.value_encoding.value,
+                "keyenc": self.config.key_encoding.value,
+                "valueenc": self.config.value_encoding.value,
             },
             self._stream,
         )

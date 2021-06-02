@@ -1,10 +1,38 @@
+import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, ClassVar, List, Optional, Type, TypeVar
 
+from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Message
+
+SC = TypeVar("SC", bound="SerializerConfig")
+
+
+@dataclasses.dataclass(frozen=True)
+class SerializerConfig:
+    scheme: str
+
+    def copy(self: SC) -> SC:
+        return dataclasses.replace(self)
+
+    def validate(self):
+        problems = []
+        if not self.scheme:
+            problems.append("scheme cannot be None")
+
+        if problems:
+            raise EsqueIOSerializerConfigException(
+                "One or more mandatory settings don't have a value: \n" + "\n".join(problems)
+            )
 
 
 class BaseSerializer(ABC):
+    config_cls: ClassVar[Type[SC]] = SerializerConfig
+    config: SC
+
+    def __init__(self, config: SC):
+        self._config = config
+
     @abstractmethod
     def serialize(self, data: Any) -> bytes:
         raise NotImplementedError

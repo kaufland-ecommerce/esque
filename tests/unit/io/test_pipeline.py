@@ -1,6 +1,7 @@
 from esque.config import Config
 from esque.io.handlers.pipe import PipeHandler
 from esque.io.messages import Message
+from esque.io.pipeline import MessageFilter, MessageReader, MessageWriter, Pipeline
 from esque.io.serializers.string import StringSerializer
 
 
@@ -56,3 +57,11 @@ def test_read_first():
 
 def test_read_last():
     pass
+
+
+def test_serializer_scheme_present_in_settings(dummy_writer):
+    dummy_writer.write_serializer_settings()
+
+    key_serializer_settings, value_serializer_settings = dummy_writer.handler.get_serializer_settings()
+    assert "scheme" in key_serializer_settings
+    assert "scheme" in value_serializer_settings

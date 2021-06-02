@@ -1,20 +1,21 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple, Type, TypeVar
 
 from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
 from esque.io.messages import BinaryMessage
 
 H = TypeVar("H", bound="BaseHandler")
-HS = TypeVar("HS", bound="HandlerSettings")
+HC = TypeVar("HC", bound="HandlerConfig")
 
 
 @dataclasses.dataclass(frozen=True)
-class HandlerSettings:
+class HandlerConfig:
     host: str
     path: str
+    scheme: str
 
-    def copy(self: HS) -> HS:
+    def copy(self: HC) -> HC:
         return dataclasses.replace(self)
 
     def validate(self):
@@ -32,18 +33,18 @@ class HandlerSettings:
 
 class BaseHandler(ABC):
 
-    settings_cls: ClassVar[Type[HS]] = HandlerSettings
-    settings: HS
+    config_cls: ClassVar[Type[HC]] = HandlerConfig
+    config: HC
 
-    def __init__(self, settings: HS):
+    def __init__(self, config: HC):
         """
         Base class for all Esque IO handlers. A handler is responsible for writing and reading messages
         to and from a source. The handler is unaware of the underlying message's format and treats all
         sources as binary. It may support persisting the serializer settings for easier data retrieval.
 
-        :param settings:
+        :param config:
         """
-        self.settings = settings.copy()
+        self.config = config.copy()
         self._validate_settings()
 
     def _validate_settings(self) -> None:
@@ -52,35 +53,35 @@ class BaseHandler(ABC):
         The default version checks if any of the required settings (:meth:`_get_required_field_specs`)
         are missing and if the field types match.
         """
-        if not isinstance(self.settings, self.settings_cls):
+        if not isinstance(self.config, self.config_cls):
             raise EsqueIOHandlerConfigException(
                 f"Invalid type for the handler settings. "
-                f"Expected: {self.settings_cls.__name__}, "
-                f"provided: {type(self.settings).__name__}"
+                f"Expected: {self.config_cls.__name__}, "
+                f"provided: {type(self.config).__name__}"
             )
-        self.settings.validate()
+        self.config.validate()
 
     @abstractmethod
-    def get_serializer_settings(self) -> Dict[str, Any]:
+    def get_serializer_settings(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Retrieves the serializer settings from this handler's source, if possible.
         Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
         if this operation is not supported for a particular
         handler.
 
-        :return: Dictionary of settings.
+        :return: Tuple of dictionaries containing the settings for the key and value serializer
         """
         raise NotImplementedError
 
     @abstractmethod
-    def put_serializer_settings(self, settings: Dict[str, Any]) -> None:
+    def put_serializer_settings(self, settings: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
         """
         Persists the serializer settings in this handler's source, if possible.
         Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
         if this operation is not supported for a particular
         handler.
 
-        :param settings: Dictionary of serializer settings.
+        :param settings: Tuple of dictionaries containing the settings for the key and value serializer
         """
         raise NotImplementedError
 

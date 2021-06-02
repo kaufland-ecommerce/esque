@@ -1,11 +1,11 @@
 from esque.io.exceptions import EsqueIOHandlerConfigException
-from esque.io.handlers.base import HandlerSettings
-from tests.unit.io.conftest import DummyHandler, DummyHandlerSettings
+from esque.io.handlers.base import HandlerConfig
+from tests.unit.io.conftest import DummyHandler, DummyHandlerConfig
 
 
 def test_validation_all_fields_missing():
     try:
-        DummyHandler(settings=DummyHandlerSettings(host=None, path=None))
+        DummyHandler(config=DummyHandlerConfig(host=None, path=None))
     except EsqueIOHandlerConfigException as e:
         actual_exception = e
 
@@ -16,7 +16,7 @@ def test_validation_all_fields_missing():
 
 def test_validation_one_field_missing():
     try:
-        DummyHandler(settings=DummyHandlerSettings(host=None, path="pathval"))
+        DummyHandler(config=DummyHandlerConfig(host=None, path="pathval"))
     except EsqueIOHandlerConfigException as e:
         actual_exception = e
 
@@ -27,7 +27,7 @@ def test_validation_one_field_missing():
 
 def test_validation_wrong_settings_class_type():
     try:
-        DummyHandler(settings=HandlerSettings(host="hostval", path="pathval"))
+        DummyHandler(config=HandlerConfig(host="hostval", path="pathval"))
     except EsqueIOHandlerConfigException as e:
         actual_exception = e
 

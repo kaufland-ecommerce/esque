@@ -4,22 +4,23 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 from esque.io.exceptions import EsqueIONoMessageLeft
-from esque.io.handlers.base import BaseHandler, HandlerSettings
+from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage
+from esque.io.pipeline import MessageReader, MessageWriter
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer
 
 
-@dataclasses.dataclass
-class DummyHandlerSettings(HandlerSettings):
+@dataclasses.dataclass(frozen=True)
+class DummyHandlerConfig(HandlerConfig):
     pass
 
 
 class DummyHandler(BaseHandler):
-    settings_cls = DummyHandlerSettings
+    config_cls = DummyHandlerConfig
 
-    def __init__(self, settings: DummyHandlerSettings):
-        super().__init__(settings=settings)
+    def __init__(self, config: DummyHandlerConfig):
+        super().__init__(config=config)
         self._messages: List[BinaryMessage] = []
         self._serializer_settings: Optional[Dict[str, Any]] = None
 
@@ -47,7 +48,7 @@ class DummyHandler(BaseHandler):
 
 @pytest.fixture
 def dummy_handler() -> DummyHandler:
-    return DummyHandler(settings=DummyHandlerSettings(host="", path=""))
+    return DummyHandler(config=DummyHandlerConfig(host="", path=""))
 
 
 @pytest.fixture()
@@ -69,8 +70,7 @@ def string_message_serializer() -> MessageSerializer:
 class DummyReader(MessageReader):
     def __init__(self):
         super().__init__(
-            handler=DummyHandler(settings=DummyHandlerSettings(host="", path="")),
-            message_serializer=StringSerializer(),
+            handler=DummyHandler(config=DummyHandlerConfig(host="", path="")), message_serializer=StringSerializer()
         )
 
     def set_messages(self, messages: List[BinaryMessage]) -> None:
@@ -80,8 +80,7 @@ class DummyReader(MessageReader):
 class DummyWriter(MessageWriter):
     def __init__(self):
         super().__init__(
-            handler=DummyHandler(settings=DummyHandlerSettings(host="", path="")),
-            message_serializer=StringSerializer(),
+            handler=DummyHandler(config=DummyHandlerConfig(host="", path="")), message_serializer=StringSerializer()
         )
 
     def get_written_messages(self, messages: List[BinaryMessage]) -> None:

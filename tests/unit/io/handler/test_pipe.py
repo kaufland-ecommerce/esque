@@ -4,12 +4,12 @@ from typing import List
 import pytest
 
 from esque.io.exceptions import EsqueIOHandlerReadException
-from esque.io.handlers.pipe import PipeHandler, PipeHandlerSettings
+from esque.io.handlers.pipe import PipeHandler, PipeHandlerConfig
 from esque.io.messages import BinaryMessage
 
 
 def mk_pipe_handler(stream: StringIO) -> PipeHandler:
-    handler = PipeHandler(PipeHandlerSettings(host="stdin", path=""))
+    handler = PipeHandler(PipeHandlerConfig(host="stdin", path=""))
     handler._stream = stream
     return handler
 
