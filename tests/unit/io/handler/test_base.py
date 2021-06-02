@@ -1,38 +1,6 @@
-import dataclasses
-from typing import Any, Dict, List, Optional
-
-from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
-from esque.io.handlers.base import BaseHandler, HandlerSettings
-from esque.io.messages import BinaryMessage
-
-
-@dataclasses.dataclass
-class DummyHandlerSettings(HandlerSettings):
-    pass
-
-
-class DummyHandler(BaseHandler):
-    settings_cls = DummyHandlerSettings
-
-    def __init__(self, settings: DummyHandlerSettings):
-        super().__init__(settings=settings)
-        self._messages: List[BinaryMessage] = []
-        self._serializer_settings: Optional[Dict[str, Any]] = None
-
-    def get_serializer_settings(self) -> Dict[str, Any]:
-        return self._serializer_settings
-
-    def put_serializer_settings(self, settings: Dict[str, Any]) -> None:
-        self._serializer_settings = settings
-
-    def write_message(self, binary_message: BinaryMessage) -> None:
-        self._messages.append(binary_message)
-
-    def read_message(self) -> Optional[BinaryMessage]:
-        if self._messages:
-            return self._messages.pop(0)
-        else:
-            raise EsqueIONoMessageLeft("No messages left in memory")
+from esque.io.exceptions import EsqueIOHandlerConfigException
+from esque.io.handlers.base import HandlerSettings
+from tests.unit.io.conftest import DummyHandler, DummyHandlerSettings
 
 
 def test_validation_all_fields_missing():
