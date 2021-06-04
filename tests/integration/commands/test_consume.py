@@ -56,6 +56,27 @@ def test_offset_not_committed(
 
 
 @pytest.mark.integration
+def test_offset_committed(
+    avro_producer: AvroProducer,
+    source_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+    consumergroup_controller: ConsumerGroupController,
+):
+    source_topic_id, _ = source_topic
+    produce_test_messages_with_avro(avro_producer, source_topic)
+
+    non_interactive_cli_runner.invoke(
+        consume, args=["--stdout", "--commit", "--numbers", "10", "--avro", source_topic_id], catch_exceptions=False
+    )
+
+    # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
+    # for this group
+    data = consumergroup_controller.get_consumer_group(config.ESQUE_GROUP_ID).describe(verbose=True)
+    assert source_topic_id.encode() in data["offsets"]
+    assert data["offsets"][source_topic_id.encode()] == 10
+
+
+@pytest.mark.integration
 def test_binary_consume_to_stdout(
     producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
