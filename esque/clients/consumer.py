@@ -358,10 +358,11 @@ def consume_to_file_ordered(
     last: bool,
     write_to_stdout: bool = False,
     binary: bool = False,
+    commit: bool = False,
 ) -> int:
 
     consumers = _create_consumers(
-        output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout, binary
+        output_directory, topic, group_id, partitions, avro, match, last, write_to_stdout, binary, commit
     )
     message_heap = _initialize_heap_one_message_per_partition(consumers)
     number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
@@ -382,6 +383,7 @@ def _create_consumers(
     last: bool,
     write_to_stdout: bool = False,
     binary: bool = False,
+    commit: bool = False,
 ) -> List[AbstractConsumer]:
     consumers = []
     factory = ConsumerFactory()
@@ -394,8 +396,8 @@ def _create_consumers(
             match=match,
             last=last,
             initialize_default_output_directory=True,
-            enable_auto_commit=False,
             binary=binary,
+            enable_auto_commit=commit,
         )
         consumer.assign_specific_partitions(topic, [partition])
         consumers.append(consumer)
@@ -466,6 +468,7 @@ def consume_to_files(
     last: bool,
     write_to_stdout: bool = False,
     binary: bool = False,
+    commit: bool = False,
 ) -> int:
     consumer = ConsumerFactory().create_consumer(
         group_id=group_id,
@@ -475,8 +478,8 @@ def consume_to_files(
         avro=avro,
         match=match,
         initialize_default_output_directory=False,
-        enable_auto_commit=False,
         binary=binary,
+        enable_auto_commit=commit,
     )
     number_consumed_messages = consumer.consume(int(desired_message_count))
     consumer.close_all_writers()
