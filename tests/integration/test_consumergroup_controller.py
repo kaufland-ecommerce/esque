@@ -1,7 +1,8 @@
 import pytest
 
-from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.controller.consumergroup_controller import ConsumerGroupController, ConsumerGroupOffsetPlan
 from esque.resources.consumergroup import ConsumerGroup
+from esque.resources.topic import Topic
 
 
 @pytest.mark.integration
@@ -31,3 +32,17 @@ def test_delete_nonexistent_consumer_groups(
     consumergroup_controller.delete_consumer_groups(consumer_ids=["definitely_nonexistent"])
     groups_after = consumergroup_controller.list_consumer_groups()
     assert groups_before == groups_after
+
+
+def test_consumer_groupt_offsets(consumergroup_controller: ConsumerGroupController, filled_topic: Topic):
+    custom_plan = ConsumerGroupOffsetPlan(
+        topic_name=filled_topic.name,
+        current_offset=0,
+        proposed_offset=5,
+        low_watermark=0,
+        high_watermark=5,
+        partition_id=0,
+    )
+    consumer_group = "non_existing"
+    consumergroup_controller.edit_consumer_group_offsets(consumer_group, [custom_plan])
+    assert consumer_group in consumergroup_controller.list_consumer_groups()
