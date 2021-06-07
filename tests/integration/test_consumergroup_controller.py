@@ -35,16 +35,9 @@ def test_delete_nonexistent_consumer_groups(
 
 
 def test_consumer_group_offset_set(consumergroup_controller: ConsumerGroupController, filled_topic: Topic):
-    custom_plan = ConsumerGroupOffsetPlan(
-        topic_name=filled_topic.name,
-        current_offset=0,
-        proposed_offset=5,
-        low_watermark=0,
-        high_watermark=5,
-        partition_id=0,
-    )
+    custom_plan = ConsumerGroupOffsetPlan(topic_name=filled_topic.name, proposed_offset=5, partition_id=0)
     consumer_group = "non_existing"
     consumergroup_controller.edit_consumer_group_offsets(consumer_group, [custom_plan])
-    cg: ConsumerGroup = consumergroup_controller.get_consumer_groups(consumer_group)
+    cg: ConsumerGroup = consumergroup_controller.get_consumer_group(consumer_group)
     offsets = cg.get_offsets()
     assert offsets[filled_topic.name][0] == 5
