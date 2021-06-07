@@ -45,4 +45,6 @@ def test_consumer_groupt_offsets(consumergroup_controller: ConsumerGroupControll
     )
     consumer_group = "non_existing"
     consumergroup_controller.edit_consumer_group_offsets(consumer_group, [custom_plan])
-    assert consumer_group in consumergroup_controller.list_consumer_groups()
+    cg: ConsumerGroup = consumergroup_controller.get_consumer_groups(consumer_group)
+    offsets = cg.get_offsets()
+    assert offsets[filled_topic.name][0] == 5
