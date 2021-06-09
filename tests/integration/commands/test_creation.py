@@ -116,8 +116,8 @@ def test_consumer_group_creation(
     topic: str,
 ):
     result = interactive_cli_runner.invoke(
-        create_consumer_group, consumer_group, topic, input="Y\n", catch_exceptions=False
+        create_consumer_group, args=[consumer_group, topic], input="Y\n", catch_exceptions=False
     )
 
     assert result.exit_code == 0
-    assert consumer_group in confluent_admin_client.list_groups()
+    assert consumer_group in [gm.id for gm in confluent_admin_client.list_groups(timeout=5)]
