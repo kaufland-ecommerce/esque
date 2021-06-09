@@ -2,7 +2,7 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import create_topic
+from esque.cli.commands import create_consumer_group, create_topic
 from esque.cli.options import State
 from esque.errors import NoConfirmationPossibleException
 from esque.resources.topic import Topic
@@ -107,3 +107,17 @@ def test_topic_creation_with_template_works(
     assert config_from_template.num_partitions == num_partitions
     for config_key, value in config.items():
         assert config_from_template.config[config_key] == value
+
+
+def test_consumer_group_creation(
+    interactive_cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    consumer_group: str,
+    topic: str,
+):
+    result = interactive_cli_runner.invoke(
+        create_consumer_group, consumer_group, topic, input="Y\n", catch_exceptions=False
+    )
+
+    assert result.exit_code == 0
+    assert consumer_group in confluent_admin_client.list_groups()

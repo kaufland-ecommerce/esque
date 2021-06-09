@@ -11,6 +11,7 @@ from typing import List, Tuple
 import click
 import yaml
 from click import MissingParameter, version_option
+from confluent_kafka import TopicPartition
 
 from esque import __version__, validation
 from esque.cli import environment
@@ -34,6 +35,7 @@ from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
+from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
 
 
@@ -427,6 +429,30 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
     else:
         logger.info("No changes proposed.")
         return
+
+
+@create.command("consumergroup")
+@click.argument("consumergroup-id", callback=fallback_to_stdin, required=True, type=click.STRING)
+@click.argument("topic", callback=fallback_to_stdin, required=True, type=click.STRING)
+@click.option("-o", "--offset", required=False, type=click.INT, help="Set offset(default to 0)")
+@click.option("-p", "--partition", required=False, type=click.INT, help="Set partition(default to 0)")
+@default_options
+def create_consumer_group(state: State, consumergroup_id: str, topic: str, offset: int, partition: int):
+    """Create consumer group for topic"""
+    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
+        click.echo("Aborted!")
+        return
+
+    if not offset:
+        offset = 0
+    if not partition:
+        partition = 0
+    topic_offset: TopicPartition = TopicPartition(topic=topic, partition=partition, offset=offset)
+    consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
+    created_consumergroup: ConsumerGroup = consumergroup_controller.create_consumer_group(
+        consumergroup_id, offsets=[topic_offset]
+    )
+    click.echo(click.style(f"Consumer group '{created_consumergroup.id}' was successfully created", fg="green"))
 
 
 @delete.command("consumergroup")

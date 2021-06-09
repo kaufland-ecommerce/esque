@@ -1,4 +1,5 @@
 import pytest
+from confluent_kafka import TopicPartition
 
 from esque.controller.consumergroup_controller import ConsumerGroupController, ConsumerGroupOffsetPlan
 from esque.resources.consumergroup import ConsumerGroup
@@ -35,16 +36,9 @@ def test_delete_nonexistent_consumer_groups(
 
 
 def test_consumer_group_offset_set(consumergroup_controller: ConsumerGroupController, filled_topic: Topic):
-    custom_plan = ConsumerGroupOffsetPlan(
-        topic_name=filled_topic.name,
-        current_offset=0,
-        proposed_offset=5,
-        low_watermark=0,
-        high_watermark=5,
-        partition_id=0,
-    )
-    consumer_group = "non_existing"
-    consumergroup_controller.edit_consumer_group_offsets(consumer_group, [custom_plan])
-    cg: ConsumerGroup = consumergroup_controller.get_consumer_group(consumer_group)
-    offsets = cg.get_offsets()
+    topic = TopicPartition(topic=filled_topic.name, offset=5, partition=0)
+    consumer_group_name = "non_existing"
+    consumergroup_controller.commit_offsets(consumer_group_name, [topic])
+    consumer_group: ConsumerGroup = consumergroup_controller.get_consumer_group(consumer_group_name)
+    offsets = consumer_group.get_offsets()
     assert offsets[filled_topic.name][0] == 5
