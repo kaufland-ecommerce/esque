@@ -1,7 +1,7 @@
 import pytest
 from confluent_kafka import TopicPartition
 
-from esque.controller.consumergroup_controller import ConsumerGroupController, ConsumerGroupOffsetPlan
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic
 
