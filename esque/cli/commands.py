@@ -1,6 +1,7 @@
 import getpass
 import logging
 import pwd
+import re
 import sys
 import time
 from pathlib import Path
@@ -48,9 +49,9 @@ def esque(state: State):
     In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
     """
     if environment.ESQUE_PROFILE:
+        import atexit
         import cProfile
         import pstats
-        import atexit
 
         print("Profiling...")
         pr = cProfile.Profile()
@@ -269,7 +270,7 @@ def create_topic(state: State, topic_name: str, like: str):
     from which all the configuration options will be copied.
     """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo("Aborted!")
+        click.echo(click.style("Aborted!", bg="red"))
         return
 
     topic_controller = state.cluster.topic_controller
@@ -432,25 +433,41 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 
 
 @create.command("consumergroup")
-@click.argument("consumergroup-id", callback=fallback_to_stdin, required=True, type=click.STRING)
-@click.argument("topic", callback=fallback_to_stdin, required=True, type=click.STRING)
-@click.option("-o", "--offset", required=False, type=click.INT, help="Set offset(default to 0)")
-@click.option("-p", "--partition", required=False, type=click.INT, help="Set partition(default to 0)")
+@click.argument("consumergroup-id", callback=fallback_to_stdin, required=True, type=click.STRING, nargs=1)
+@click.argument("topics", callback=fallback_to_stdin, required=True, type=click.STRING, nargs=-1)
 @default_options
-def create_consumer_group(state: State, consumergroup_id: str, topic: str, offset: int, partition: int):
-    """Create consumer group for topic"""
-    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo("Aborted!")
+def create_consumer_group(state: State, consumergroup_id: str, topics: str):
+    """Create consumer group for several topics using format <topic_name>[partition]=offset"""
+    offset_pattern = re.compile(r".+=(?P<offset>\d+)$")
+    main_pattern = re.compile(r"^(?P<topic_name>.+)\[(?P<partition>\d+)\].*")
+    clean_topics: List[TopicPartition] = []
+    msg_list = []
+    for t in topics:
+        partition = 0
+        offset = 0
+        offset_match = offset_pattern.match(t)
+        if offset_match:
+            offset = int(offset_match.group("offset"))
+        main_match = main_pattern.match(t)
+        if main_match:
+            t = main_match.group("topic_name")
+            partition = int(main_match.group("partition"))
+        click.echo(f"t: {t}, [ {partition} ]: offset {offset}")
+        clean_topics.append(TopicPartition(topic=t, partition=partition, offset=offset))
+        msg_list.append(f"{t}[{partition}]={offset}")
+    msg = "\n".join(msg_list)
+    if not ensure_approval(
+        f"""This will create the consumer group '{consumergroup_id}' with initial offsets:
+{msg}
+Are you sure?""",
+        no_verify=state.no_verify,
+    ):
+        click.echo(click.style("Aborted!", bg="red"))
         return
 
-    if not offset:
-        offset = 0
-    if not partition:
-        partition = 0
-    topic_offset: TopicPartition = TopicPartition(topic=topic, partition=partition, offset=offset)
     consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
     created_consumergroup: ConsumerGroup = consumergroup_controller.create_consumer_group(
-        consumergroup_id, offsets=[topic_offset]
+        consumergroup_id, offsets=clean_topics
     )
     click.echo(click.style(f"Consumer group '{created_consumergroup.id}' was successfully created", fg="green"))
 
@@ -584,7 +601,7 @@ def apply(state: State, file: str):
 
     # Get approval
     if not ensure_approval("Apply changes?", no_verify=state.no_verify):
-        click.echo("Cancelling changes")
+        click.echo(click.style("Cancelling changes", bg="red"))
         return
 
     # apply changes

@@ -109,15 +109,65 @@ def test_topic_creation_with_template_works(
         assert config_from_template.config[config_key] == value
 
 
-def test_consumer_group_creation(
+def test_consumer_group_correct_creation(
     interactive_cli_runner: CliRunner,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     consumer_group: str,
     topic: str,
 ):
-    result = interactive_cli_runner.invoke(
-        create_consumer_group, args=[consumer_group, topic], input="Y\n", catch_exceptions=False
+    first_topic = f"{topic}"
+    first_cg = consumer_group + "1"
+    result1 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[first_cg, first_topic], input="Y\n", catch_exceptions=False
     )
+    assert result1.exit_code == 0
 
-    assert result.exit_code == 0
-    assert consumer_group in [gm.id for gm in confluent_admin_client.list_groups(timeout=5)]
+    second_topic = f"{topic}[0]"
+    second_cg = consumer_group + "1"
+    result2 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[second_cg, second_topic], input="Y\n", catch_exceptions=False
+    )
+    assert result2.exit_code == 0
+
+    third_topic = f"{topic}[0]=3"
+    third_cg = consumer_group + "1"
+    result3 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[third_cg, third_topic], input="Y\n", catch_exceptions=False
+    )
+    assert result3.exit_code == 0
+    cg_list = [gm.id for gm in confluent_admin_client.list_groups(timeout=5)]
+    assert first_cg in cg_list
+    assert second_cg in cg_list
+    assert third_cg in cg_list
+
+
+def test_broken_consumer_group_creation(
+    interactive_cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    consumer_group: str,
+    topic: str,
+):
+    first_topic = f"{topic}["
+    first_cg = consumer_group + "1"
+    result1 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[first_cg, first_topic], input="Y\n", catch_exceptions=False
+    )
+    assert result1.exit_code != 0
+
+    second_topic = f"{topic}[]"
+    second_cg = consumer_group + "1"
+    result2 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[second_cg, second_topic], input="Y\n", catch_exceptions=False
+    )
+    assert result2.exit_code != 0
+
+    third_topic = f"{topic}[aaa]=aaa"
+    third_cg = consumer_group + "1"
+    result3 = interactive_cli_runner.invoke(
+        create_consumer_group, args=[third_cg, third_topic], input="Y\n", catch_exceptions=False
+    )
+    assert result3.exit_code != 0
+    cg_list = [gm.id for gm in confluent_admin_client.list_groups(timeout=5)]
+    assert first_cg not in cg_list
+    assert second_cg not in cg_list
+    assert third_cg not in cg_list
