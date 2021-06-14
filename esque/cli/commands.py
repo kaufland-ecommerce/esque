@@ -437,21 +437,35 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 @click.argument("topics", callback=fallback_to_stdin, required=True, type=click.STRING, nargs=-1)
 @default_options
 def create_consumer_group(state: State, consumergroup_id: str, topics: str):
-    """Create consumer group for several topics using format <topic_name>[partition]=offset"""
+    """
+    Create consumer group for several topics using format <topic_name>[partition]=offset.
+    [partition] and offset are optional.
+    Default value for offset is 0.
+    If there is no partition, consumer group will be assigned to all topic partitions.
+    """
     pattern = re.compile(r"(?P<topic_name>[\w.-]+)(?:\[(?P<partition>\d+)\])?(?:=(?P<offset>\d+))?")
+    topic_controller = state.cluster.topic_controller
     clean_topics: List[TopicPartition] = []
     msg = ""
-    for t in topics:
-        match = pattern.match(t)
+    for topic in topics:
+        match = pattern.match(topic)
         if not match:
             raise ValidationException("Topic name should be present")
-        t = match.group("topic_name")
+        topic = match.group("topic_name")
         partition_match = match.group("partition")
-        partition = int(partition_match) if partition_match else 0
         offset_match = match.group("offset")
         offset = int(offset_match) if offset_match else 0
-        clean_topics.append(TopicPartition(topic=t, partition=partition, offset=offset))
-        msg += f"{t}[{partition}]={offset}\n"
+        if not partition_match:
+            topic_config = topic_controller.get_cluster_topic(topic)
+            watermarks = topic_config.watermarks
+            for part, wm in watermarks.items():
+                offset = offset if wm.high >= offset else 0
+                clean_topics.append(TopicPartition(topic=topic, partition=part, offset=offset))
+                msg += f"{topic}[{part}]={offset}\n"
+        else:
+            partition = int(partition_match)
+            clean_topics.append(TopicPartition(topic=topic, partition=partition, offset=offset))
+            msg += f"{topic}[{partition}]={offset}\n"
     if not ensure_approval(
         f"""This will create the consumer group '{consumergroup_id}' with initial offsets:
 {msg}
