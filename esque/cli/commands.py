@@ -438,24 +438,20 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
 @default_options
 def create_consumer_group(state: State, consumergroup_id: str, topics: str):
     """Create consumer group for several topics using format <topic_name>[partition]=offset"""
-    offset_pattern = re.compile(r".+=(?P<offset>\d+)$")
-    main_pattern = re.compile(r"^(?P<topic_name>.+)\[(?P<partition>\d+)\].*")
+    pattern = re.compile(r"(?P<topic_name>[\w.-]+)(?:\[(?P<partition>\d+)\])?(?:=(?P<offset>\d+))?")
     clean_topics: List[TopicPartition] = []
-    msg_list = []
+    msg = ""
     for t in topics:
-        partition = 0
-        offset = 0
-        offset_match = offset_pattern.match(t)
-        if offset_match:
-            offset = int(offset_match.group("offset"))
-        main_match = main_pattern.match(t)
-        if main_match:
-            t = main_match.group("topic_name")
-            partition = int(main_match.group("partition"))
-        click.echo(f"t: {t}, [ {partition} ]: offset {offset}")
+        match = pattern.match(t)
+        if not match:
+            raise ValidationException("Topic name should be present")
+        t = match.group("topic_name")
+        partition_match = match.group("partition")
+        partition = int(partition_match) if partition_match else 0
+        offset_match = match.group("offset")
+        offset = int(offset_match) if offset_match else 0
         clean_topics.append(TopicPartition(topic=t, partition=partition, offset=offset))
-        msg_list.append(f"{t}[{partition}]={offset}")
-    msg = "\n".join(msg_list)
+        msg += f"{t}[{partition}]={offset}\n"
     if not ensure_approval(
         f"""This will create the consumer group '{consumergroup_id}' with initial offsets:
 {msg}
