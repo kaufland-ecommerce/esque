@@ -67,7 +67,7 @@ target_version = ['py36']
 include = '\.pyi?$'
 
 [tool.isort]
-line_Length = 119
+line_length = 119
 multi_line_output = 3
 include_trailing_comma = true
 default_section = "THIRDPARTY"
