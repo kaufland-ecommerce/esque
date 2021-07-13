@@ -485,5 +485,7 @@ def consume_to_files(
         enable_auto_commit=commit,
     )
     number_consumed_messages = consumer.consume(int(desired_message_count))
+    if commit:
+        time.sleep(5)
     consumer.close_all_writers()
     return number_consumed_messages

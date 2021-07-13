@@ -67,12 +67,14 @@ def test_offset_committed(
     produce_test_messages_with_avro(avro_producer, source_topic)
 
     non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--commit", "--numbers", "10000", "--avro", source_topic_id], catch_exceptions=False
+        consume,
+        args=["-c", "consumer_group_name", "--stdout", "--commit", "--numbers", "10000", "--avro", source_topic_id],
+        catch_exceptions=False,
     )
     time.sleep(20)
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
     # for this group
-    data = consumergroup_controller.get_consumer_group(config.ESQUE_GROUP_ID).describe(verbose=True)
+    data = consumergroup_controller.get_consumer_group("consumer_group_name").describe(verbose=True)
     assert source_topic_id.encode() in data["offsets"]
     assert data["offsets"][source_topic_id.encode()] == 10
 
