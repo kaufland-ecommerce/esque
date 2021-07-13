@@ -368,7 +368,6 @@ def consume_to_file_ordered(
     number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
 
     for c in consumers:
-        c.commit()
         c.close_all_writers()
 
     return number_of_messages_returned

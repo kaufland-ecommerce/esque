@@ -1,5 +1,6 @@
 import base64
 import json
+import time
 from typing import Tuple
 
 import pytest
@@ -66,9 +67,9 @@ def test_offset_committed(
     produce_test_messages_with_avro(avro_producer, source_topic)
 
     non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--commit", "--numbers", "1000", "--avro", source_topic_id], catch_exceptions=False
+        consume, args=["--stdout", "--commit", "--numbers", "10000", "--avro", source_topic_id], catch_exceptions=False
     )
-
+    time.sleep(20)
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
     # for this group
     data = consumergroup_controller.get_consumer_group(config.ESQUE_GROUP_ID).describe(verbose=True)
