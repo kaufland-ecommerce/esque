@@ -1,5 +1,6 @@
 import logging
 import pathlib
+import time
 from abc import ABC, abstractmethod
 from heapq import heappop, heappush
 from typing import Dict, List, Optional, Tuple
@@ -367,6 +368,8 @@ def consume_to_file_ordered(
     message_heap = _initialize_heap_one_message_per_partition(consumers)
     number_of_messages_returned = _iterate_and_return_messages(message_heap, consumers, desired_message_count)
 
+    if commit:
+        time.sleep(5)
     for c in consumers:
         c.close_all_writers()
 
