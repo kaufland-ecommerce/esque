@@ -99,7 +99,7 @@ class ConsumerGroupController:
             return None
         if consumer_group_state != "Empty":
             self._logger.error(
-                f"Consumergroup {consumer_id} has active consumers. Please scale your consumers down and try again."
+                f"Consumergroup {consumer_id} has active consumers. Please turn off all consumers in this group and try again."
             )
             return None
 
