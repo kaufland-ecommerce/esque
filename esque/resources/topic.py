@@ -205,6 +205,12 @@ class Topic(KafkaResource):
         for attr, value in new_values.items():
             setattr(self, attr, value)
 
+    def get_partition_data(self, partition_id):
+        if self.partition_data:
+            for p in self.partition_data:
+                if partition_id == p.partition_id:
+                    return p
+
     # object behaviour
     def __lt__(self, other: "Topic"):
         return self.name < other.name
