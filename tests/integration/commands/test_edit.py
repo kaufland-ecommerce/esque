@@ -124,7 +124,7 @@ def test_edit_offsets(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     offset_config = {"offsets": [{"topic": topic, "partition": 0, "offset": 1}]}
@@ -140,7 +140,7 @@ def test_edit_offsets(
 
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 1
