@@ -4,7 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from esque import config
-from esque.cli.commands import describe_broker, describe_topic
+from esque.cli.commands import describe_broker, describe_consumergroup, describe_topic
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.topic import Topic
@@ -179,3 +179,44 @@ def test_describe_topic_consumergroup_in_output(
     output_dict = loader(result.output)
 
     assert partly_read_consumer_group in output_dict.get("consumergroups", None)
+
+
+@pytest.mark.integration
+@parameterized_output_formats
+def test_describe_consumergroup_in_output(
+    non_interactive_cli_runner: CliRunner,
+    filled_topic: Topic,
+    partly_read_consumer_group: str,
+    output_format: str,
+    loader: Callable,
+):
+    result = non_interactive_cli_runner.invoke(
+        describe_consumergroup, ["-o", output_format, partly_read_consumer_group], catch_exceptions=False
+    )
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+
+    assert partly_read_consumer_group in output_dict.get("group_id", None)
+
+    result = non_interactive_cli_runner.invoke(
+        describe_consumergroup,
+        ["-o", output_format, "--all-partitions", partly_read_consumer_group],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+
+    assert 1 == len(output_dict.get("offsets", {}).get(filled_topic.name, {}).keys())
+
+    result = non_interactive_cli_runner.invoke(
+        describe_consumergroup,
+        ["-o", output_format, "--all-partitions", "--timestamps", partly_read_consumer_group],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+    output_dict = loader(result.output)
+    print(output_dict)
+
+    partitions = output_dict.get("offsets", {}).get(filled_topic.name, {})
+    for partition in partitions.values():
+        assert "latest_timestamp" in partition
