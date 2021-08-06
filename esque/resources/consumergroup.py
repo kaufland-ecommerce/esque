@@ -1,13 +1,12 @@
 import logging
 from collections import defaultdict
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException, ExceptionWithMessage
 from esque.resources.topic import Topic
 
-# TODO: Refactor this shit hole
-
+N = Union[int, float]  # N for number
 log = logging.getLogger(__name__)
 
 
@@ -68,6 +67,10 @@ class ConsumerGroup:
             },
         }
 
+    def _update_minmax(self, minmax: Tuple[N, N], value: N) -> Tuple[N, N]:
+        prev_min, prev_max = minmax
+        return (min(prev_min, value), max(prev_max, value))
+
     def _prepare_offsets(self, topic: Topic, partition_data: Dict[int, int], timestamps: bool = False):
         extended_partition_data = topic.partition_data
         topic_watermarks = topic.watermarks
@@ -79,34 +82,25 @@ class ConsumerGroup:
         }
         for partition_id, consumer_offset in partition_data.items():
             current_offset = consumer_offset
-            old_min, old_max = new_consumer_offsets["consumer_offset"]
-            new_consumer_offsets["consumer_offset"] = (min(old_min, current_offset), max(old_max, current_offset))
-
-            old_min, old_max = new_consumer_offsets["topic_low_watermark"]
-            new_consumer_offsets["topic_low_watermark"] = (
-                min(old_min, topic_watermarks[partition_id].low),
-                max(old_max, topic_watermarks[partition_id].low),
+            new_consumer_offsets["consumer_offset"] = self._update_minmax(
+                new_consumer_offsets["consumer_offset"], current_offset
+            )
+            new_consumer_offsets["topic_low_watermark"] = self._update_minmax(
+                new_consumer_offsets["topic_low_watermark"], topic_watermarks[partition_id].low
+            )
+            new_consumer_offsets["topic_high_watermark"] = self._update_minmax(
+                new_consumer_offsets["topic_high_watermark"], topic_watermarks[partition_id].high
+            )
+            new_consumer_offsets["consumer_lag"] = self._update_minmax(
+                new_consumer_offsets["consumer_lag"], topic_watermarks[partition_id].high - current_offset
             )
 
-            old_min, old_max = new_consumer_offsets["topic_high_watermark"]
-            new_consumer_offsets["topic_high_watermark"] = (
-                min(old_min, topic_watermarks[partition_id].high),
-                max(old_max, topic_watermarks[partition_id].high),
-            )
-
-            old_min, old_max = new_consumer_offsets["consumer_lag"]
-            new_consumer_offsets["consumer_lag"] = (
-                min(old_min, topic_watermarks[partition_id].high - current_offset),
-                max(old_max, topic_watermarks[partition_id].high - current_offset),
-            )
             if timestamps:
                 extended_partition_data = topic.get_partition_data(partition_id)
                 if extended_partition_data and extended_partition_data.latest_message_timestamp:
                     if "latest_timestamp" in new_consumer_offsets:
-                        old_min, old_max = new_consumer_offsets["latest_timestamp"]
-                        new_consumer_offsets["latest_timestamp"] = (
-                            min(old_min, extended_partition_data.latest_message_timestamp),
-                            max(old_max, extended_partition_data.latest_message_timestamp),
+                        new_consumer_offsets["latest_timestamp"] = self._update_minmax(
+                            new_consumer_offsets["latest_timestamp"], extended_partition_data.latest_message_timestamp
                         )
                     else:
                         new_consumer_offsets["latest_timestamp"] = (
