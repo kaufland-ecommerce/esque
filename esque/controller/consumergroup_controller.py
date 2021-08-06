@@ -95,13 +95,13 @@ class ConsumerGroupController:
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
-            self._logger.error("The consumer group {consumer_id} does not exist.")
+            self._logger.error(f"The consumer group {consumer_id} does not exist.")
             return None
         if consumer_group_state != "Empty":
             self._logger.error(
-                f"Consumergroup {consumer_id} is not empty. Setting offsets is only allowed for empty consumer groups."
+                f"Consumergroup {consumer_id} has active consumers. Please turn off all consumers in this group and try again."
             )
-            return list(offset_plans.values())
+            return None
 
         if offset_to_value is not None:
             self._set_offset_to_value(offset_plans, offset_to_value)
