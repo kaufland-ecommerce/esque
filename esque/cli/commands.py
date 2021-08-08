@@ -836,6 +836,7 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
     default=False,
     is_flag=True,
 )
+@click.option("--commit", help="Commit consumer group offset.", default=False, is_flag=True)
 @click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
 @default_options
 def consume(
@@ -851,6 +852,7 @@ def consume(
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
+    commit: bool,
 ):
     """Consume messages from a topic.
 
@@ -910,6 +912,7 @@ def consume(
             last=last,
             write_to_stdout=write_to_stdout,
             binary=binary,
+            commit=commit,
         )
     else:
         total_number_of_consumed_messages = consume_to_files(
@@ -922,6 +925,7 @@ def consume(
             last=last,
             write_to_stdout=write_to_stdout,
             binary=binary,
+            commit=commit,
         )
 
     if not write_to_stdout:

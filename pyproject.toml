@@ -41,7 +41,7 @@ python = "^3.6"
 avro-python3 = "^1.9"
 click = "^7.0"
 confluent-kafka = {version = "^1.6", extras = ["avro"]}
-fastavro = "^1.0"
+fastavro = "= 1.3.3"
 pendulum = "^2.0"
 kafka-python = "^2.0.2"
 pyyaml = "^5.1"

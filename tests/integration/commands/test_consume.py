@@ -1,5 +1,6 @@
 import base64
 import json
+import time
 from typing import Tuple
 
 import pytest
@@ -53,6 +54,29 @@ def test_offset_not_committed(
         assert source_topic_id.encode() not in data["offsets"]
     except ConsumerGroupDoesNotExistException:
         pass
+
+
+@pytest.mark.integration
+def test_offset_committed(
+    avro_producer: AvroProducer,
+    source_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+    consumergroup_controller: ConsumerGroupController,
+):
+    source_topic_id, _ = source_topic
+    produce_test_messages_with_avro(avro_producer, source_topic)
+
+    non_interactive_cli_runner.invoke(
+        consume,
+        args=["-c", "consumer_group_name", "--stdout", "--commit", "--numbers", "10000", "--avro", source_topic_id],
+        catch_exceptions=False,
+    )
+    time.sleep(20)
+    # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
+    # for this group
+    data = consumergroup_controller.get_consumer_group("consumer_group_name").describe(verbose=True)
+    assert source_topic_id.encode() in data["offsets"]
+    assert data["offsets"][source_topic_id.encode()] == 10
 
 
 @pytest.mark.integration
