@@ -34,7 +34,7 @@ def test_set_offsets_offset_to_absolute_value(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     interactive_cli_runner.invoke(
@@ -45,7 +45,7 @@ def test_set_offsets_offset_to_absolute_value(
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 1
@@ -78,7 +78,7 @@ def test_set_offsets_offset_to_delta(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     interactive_cli_runner.invoke(
@@ -89,7 +89,7 @@ def test_set_offsets_offset_to_delta(
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
@@ -122,7 +122,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     interactive_cli_runner.invoke(
@@ -130,7 +130,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
@@ -164,14 +164,14 @@ def test_set_offsets_offset_from_group(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     interactive_cli_runner.invoke(
         set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
     )
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     # create a new consumer in a separate group and consume just one message
@@ -199,7 +199,7 @@ def test_set_offsets_offset_from_group(
     )
     consumergroup_desc_target = consumergroup_controller.get_consumer_group(
         consumer_id=target_consumer_group
-    ).describe(verbose=True)
+    ).describe(partitions=True)
 
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 8
@@ -236,7 +236,7 @@ def test_set_offsets_offset_to_timestamp_value(
     del vanilla_consumer
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     fifth_message = messages[4]
@@ -251,7 +251,7 @@ def test_set_offsets_offset_to_timestamp_value(
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 4

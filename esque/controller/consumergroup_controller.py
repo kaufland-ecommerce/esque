@@ -186,7 +186,7 @@ class ConsumerGroupController:
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:
             consumer_group = self.get_consumer_group(consumer_id)
-            consumer_group_desc = consumer_group.describe(verbose=True)
+            consumer_group_desc = consumer_group.describe(partitions=True)
             consumer_group_state = consumer_group_desc["meta"]["state"]
             for subscribed_topic_name in consumer_group_desc["offsets"]:
                 decoded_topic_name = subscribed_topic_name
