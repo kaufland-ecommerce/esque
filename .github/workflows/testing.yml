@@ -2,9 +2,9 @@ name: Style, Unit And Integration Tests
 on:
   push:
     branches:
-      - "*"
-    ignore-tags:
-      - "*"
+      - "**"
+    tags-ignore:
+      - "**"
 
 jobs:
   test-style:
