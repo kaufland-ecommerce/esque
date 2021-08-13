@@ -46,7 +46,7 @@ pendulum = "^2.0"
 kafka-python = "^2.0.2"
 pyyaml = "^5.1"
 requests = "^2.22"
-yamale = "^2.0"
+yamale = ">=2,<4"
 toml = "^0.10.0"
 
 # Dev Dependencies
