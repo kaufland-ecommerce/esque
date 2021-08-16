@@ -31,7 +31,7 @@ class BaseSerializer(ABC):
     config: SC
 
     def __init__(self, config: SC):
-        self._config = config
+        self.config = config
 
     @abstractmethod
     def serialize(self, data: Any) -> bytes:

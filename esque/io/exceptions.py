@@ -55,3 +55,11 @@ class EsqueIOSerializerConfigNotSupported(EsqueIOConfigException):
     """
 
     pass
+
+
+class EsqueIONoSuchSchemaException(EsqueIOException):
+    """
+    Exception raised when :class:`SchemaRegistryClient` doesn't find the requested schema
+    """
+
+    pass
