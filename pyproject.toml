@@ -46,7 +46,7 @@ pendulum = "^2.0"
 kafka-python = "^2.0.2"
 pyyaml = "^5.1"
 requests = "^2.22"
-yamale = "^2.0"
+yamale = ">=2,<4"
 toml = "^0.10.0"
 
 # Dev Dependencies
@@ -67,7 +67,7 @@ target_version = ['py36']
 include = '\.pyi?$'
 
 [tool.isort]
-line_Length = 119
+line_length = 119
 multi_line_output = 3
 include_trailing_comma = true
 default_section = "THIRDPARTY"

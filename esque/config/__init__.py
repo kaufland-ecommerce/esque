@@ -95,7 +95,7 @@ class Config(metaclass=SingletonMeta):
         if "num_partitions" in self.default_values:
             return self.default_values["num_partitions"]
 
-        from esque.cli.output import bold, blue_bold
+        from esque.cli.output import blue_bold, bold
 
         try:
             log.warning("Fetching default number of partitions from broker.")
@@ -122,7 +122,7 @@ class Config(metaclass=SingletonMeta):
         if "replication_factor" in self.default_values:
             return self.default_values["replication_factor"]
 
-        from esque.cli.output import bold, blue_bold
+        from esque.cli.output import blue_bold, bold
 
         try:
             log.warning("Fetching default replication factor from broker.")

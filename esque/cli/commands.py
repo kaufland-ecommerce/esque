@@ -1,6 +1,7 @@
 import getpass
 import logging
 import pwd
+import re
 import sys
 import time
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import List, Tuple
 import click
 import yaml
 from click import MissingParameter, version_option
+from confluent_kafka import TopicPartition
 
 from esque import __version__, validation
 from esque.cli import environment
@@ -34,6 +36,7 @@ from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.resources.broker import Broker
+from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
 
 
@@ -46,9 +49,9 @@ def esque(state: State):
     In the Kafka world nothing is easy, but esque (pronounced esk) is an attempt at it.
     """
     if environment.ESQUE_PROFILE:
+        import atexit
         import cProfile
         import pstats
-        import atexit
 
         print("Profiling...")
         pr = cProfile.Profile()
@@ -267,7 +270,7 @@ def create_topic(state: State, topic_name: str, like: str):
     from which all the configuration options will be copied.
     """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo("Aborted!")
+        click.echo(click.style("Aborted!", bg="red"))
         return
 
     topic_controller = state.cluster.topic_controller
@@ -429,6 +432,56 @@ def edit_offsets(state: State, consumer_id: str, topic_name: str):
         return
 
 
+@create.command("consumergroup")
+@click.argument("consumergroup-id", callback=fallback_to_stdin, required=True, type=click.STRING, nargs=1)
+@click.argument("topics", callback=fallback_to_stdin, required=True, type=click.STRING, nargs=-1)
+@default_options
+def create_consumer_group(state: State, consumergroup_id: str, topics: str):
+    """
+    Create consumer group for several topics using format <topic_name>[partition]=offset.
+    [partition] and offset are optional.
+    Default value for offset is 0.
+    If there is no partition, consumer group will be assigned to all topic partitions.
+    """
+    pattern = re.compile(r"(?P<topic_name>[\w.-]+)(?:\[(?P<partition>\d+)\])?(?:=(?P<offset>\d+))?")
+    topic_controller = state.cluster.topic_controller
+    clean_topics: List[TopicPartition] = []
+    msg = ""
+    for topic in topics:
+        match = pattern.match(topic)
+        if not match:
+            raise ValidationException("Topic name should be present")
+        topic = match.group("topic_name")
+        partition_match = match.group("partition")
+        offset_match = match.group("offset")
+        offset = int(offset_match) if offset_match else 0
+        if not partition_match:
+            topic_config = topic_controller.get_cluster_topic(topic)
+            watermarks = topic_config.watermarks
+            for part, wm in watermarks.items():
+                offset = offset if wm.high >= offset else 0
+                clean_topics.append(TopicPartition(topic=topic, partition=part, offset=offset))
+                msg += f"{topic}[{part}]={offset}\n"
+        else:
+            partition = int(partition_match)
+            clean_topics.append(TopicPartition(topic=topic, partition=partition, offset=offset))
+            msg += f"{topic}[{partition}]={offset}\n"
+    if not ensure_approval(
+        f"""This will create the consumer group '{consumergroup_id}' with initial offsets:
+{msg}
+Are you sure?""",
+        no_verify=state.no_verify,
+    ):
+        click.echo(click.style("Aborted!", bg="red"))
+        return
+
+    consumergroup_controller: ConsumerGroupController = ConsumerGroupController(state.cluster)
+    created_consumergroup: ConsumerGroup = consumergroup_controller.create_consumer_group(
+        consumergroup_id, offsets=clean_topics
+    )
+    click.echo(click.style(f"Consumer group '{created_consumergroup.id}' was successfully created", fg="green"))
+
+
 @delete.command("consumergroup")
 @click.argument("consumergroup-id", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
 @default_options
@@ -558,7 +611,7 @@ def apply(state: State, file: str):
 
     # Get approval
     if not ensure_approval("Apply changes?", no_verify=state.no_verify):
-        click.echo("Cancelling changes")
+        click.echo(click.style("Cancelling changes", bg="red"))
         return
 
     # apply changes
@@ -671,13 +724,16 @@ def describe_broker(state: State, broker: str, output_format: str):
     default=False,
     is_flag=True,
 )
+@click.option("--timestamps", help="Include timestamps for all topic partitions.", default=False, is_flag=True)
 @output_format_option
 @default_options
-def describe_consumergroup(state: State, consumergroup_id: str, all_partitions: bool, output_format: str):
+def describe_consumergroup(
+    state: State, consumergroup_id: str, all_partitions: bool, timestamps: bool, output_format: str
+):
     """Return information on group coordinator, offsets, watermarks, lag, and various metadata
     for consumer group CONSUMER_GROUP."""
     consumer_group = ConsumerGroupController(state.cluster).get_consumer_group(consumergroup_id)
-    consumer_group_desc = consumer_group.describe(verbose=all_partitions)
+    consumer_group_desc = consumer_group.describe(partitions=all_partitions, timestamps=timestamps)
 
     click.echo(format_output(consumer_group_desc, output_format))
 

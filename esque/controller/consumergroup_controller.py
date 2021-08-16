@@ -41,19 +41,17 @@ class ConsumerGroupController:
     def get_consumer_group(self, consumer_id: str) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 
+    def create_consumer_group(self, consumer_id: str, offsets: List[TopicPartition]) -> ConsumerGroup:
+        self.commit_offsets(consumer_id, offsets)
+        return ConsumerGroup(consumer_id, self.cluster)
+
     def list_consumer_groups(self) -> List[str]:
         return [group for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()]
 
     def delete_consumer_groups(self, consumer_ids: List[str]):
         self.cluster.kafka_python_client.delete_consumer_groups(group_ids=consumer_ids)
 
-    def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
-        """
-        Commit consumergroup offsets to specific values
-        :param consumer_id: ID of the consumer group
-        :param offset_plan: List of ConsumerGroupOffsetPlan objects denoting the offsets for each partition in different topics
-        :return:
-        """
+    def commit_offsets(self, consumer_id: str, offsets: List[TopicPartition]):
         consumer = ConsumerFactory().create_consumer(
             group_id=consumer_id,
             topic_name=None,
@@ -64,6 +62,15 @@ class ConsumerGroupController:
             match=None,
             enable_auto_commit=False,
         )
+        consumer.commit(offsets=offsets)
+
+    def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
+        """
+        Commit consumergroup offsets to specific values
+        :param consumer_id: ID of the consumer group
+        :param offset_plan: List of ConsumerGroupOffsetPlan objects denoting the offsets for each partition in different topics
+        :return:
+        """
 
         offsets = [
             TopicPartition(
@@ -72,7 +79,7 @@ class ConsumerGroupController:
             for plan_element in offset_plan
             if not plan_element.offset_equal
         ]
-        consumer.commit(offsets=offsets)
+        self.commit_offsets(consumer_id, offsets)
 
     def create_consumer_group_offset_change_plan(
         self,
@@ -88,13 +95,13 @@ class ConsumerGroupController:
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
-            self._logger.error("The consumer group {consumer_id} does not exist.")
+            self._logger.error(f"The consumer group {consumer_id} does not exist.")
             return None
         if consumer_group_state != "Empty":
             self._logger.error(
-                f"Consumergroup {consumer_id} is not empty. Setting offsets is only allowed for empty consumer groups."
+                f"Consumergroup {consumer_id} has active consumers. Please turn off all consumers in this group and try again."
             )
-            return list(offset_plans.values())
+            return None
 
         if offset_to_value is not None:
             self._set_offset_to_value(offset_plans, offset_to_value)
@@ -179,7 +186,7 @@ class ConsumerGroupController:
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:
             consumer_group = self.get_consumer_group(consumer_id)
-            consumer_group_desc = consumer_group.describe(verbose=True)
+            consumer_group_desc = consumer_group.describe(partitions=True)
             consumer_group_state = consumer_group_desc["meta"]["state"]
             for subscribed_topic_name in consumer_group_desc["offsets"]:
                 decoded_topic_name = subscribed_topic_name
