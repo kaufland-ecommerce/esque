@@ -3,7 +3,7 @@ from abc import ABC
 from typing import Any, Dict, List, Type, TypeVar
 from urllib.parse import ParseResult
 
-from esque.io.exceptions import EsqueIOSerializerSettingsNotSupported
+from esque.io.exceptions import EsqueIOSerializerConfigNotSupported
 from esque.io.handlers import BaseHandler, create_handler
 from esque.io.helpers import extract_parameters
 from esque.io.serializers import create_serializer
@@ -28,23 +28,23 @@ class PipelineElement(ABC):
         handler_config_dict.update(extract_parameters("handler", params))
         handler: BaseHandler = create_handler(handler_config_dict)
         if len(url_schemes) == 1:
-            key_serializer_settings, value_serializer_settings = handler.get_serializer_settings()
+            key_serializer_config, value_serializer_config = handler.get_serializer_configs()
         else:
             try:
-                key_serializer_settings, value_serializer_settings = handler.get_serializer_settings()
-            except EsqueIOSerializerSettingsNotSupported:
-                key_serializer_settings = {}
-                value_serializer_settings = {}
+                key_serializer_config, value_serializer_config = handler.get_serializer_configs()
+            except EsqueIOSerializerConfigNotSupported:
+                key_serializer_config = {}
+                value_serializer_config = {}
             if len(url_schemes) == 2:
-                key_serializer_settings["scheme"] = url_schemes[1]
-                value_serializer_settings["scheme"] = url_schemes[1]
+                key_serializer_config["scheme"] = url_schemes[1]
+                value_serializer_config["scheme"] = url_schemes[1]
             else:
-                key_serializer_settings["scheme"] = url_schemes[1]
-                value_serializer_settings["scheme"] = url_schemes[2]
-        key_serializer_settings.update(extract_parameters("key", params))
-        value_serializer_settings.update(extract_parameters("value", params))
-        key_serializer = create_serializer(key_serializer_settings)
-        value_serializer = create_serializer(value_serializer_settings)
+                key_serializer_config["scheme"] = url_schemes[1]
+                value_serializer_config["scheme"] = url_schemes[2]
+        key_serializer_config.update(extract_parameters("key", params))
+        value_serializer_config.update(extract_parameters("value", params))
+        key_serializer = create_serializer(key_serializer_config)
+        value_serializer = create_serializer(value_serializer_config)
         message_serializer: MessageSerializer = MessageSerializer(
             key_serializer=key_serializer, value_serializer=value_serializer
         )

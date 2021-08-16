@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
@@ -22,13 +22,13 @@ class DummyHandler(BaseHandler):
     def __init__(self, config: DummyHandlerConfig):
         super().__init__(config=config)
         self._messages: List[BinaryMessage] = []
-        self._serializer_settings: Optional[Dict[str, Any]] = None
+        self._serializer_configs: Tuple[Dict[str, Any], Dict[str, Any]] = ({}, {})
 
-    def get_serializer_settings(self) -> Dict[str, Any]:
-        return self._serializer_settings
+    def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        return self._serializer_configs
 
-    def put_serializer_settings(self, settings: Dict[str, Any]) -> None:
-        self._serializer_settings = settings
+    def put_serializer_configs(self, configs: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
+        self._serializer_configs = configs
 
     def write_message(self, binary_message: BinaryMessage) -> None:
         self._messages.append(binary_message)
@@ -70,7 +70,8 @@ def string_message_serializer() -> MessageSerializer:
 class DummyReader(MessageReader):
     def __init__(self):
         super().__init__(
-            handler=DummyHandler(config=DummyHandlerConfig(host="", path="")), message_serializer=StringSerializer()
+            handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
+            message_serializer=StringSerializer(),
         )
 
     def set_messages(self, messages: List[BinaryMessage]) -> None:
@@ -80,7 +81,8 @@ class DummyReader(MessageReader):
 class DummyWriter(MessageWriter):
     def __init__(self):
         super().__init__(
-            handler=DummyHandler(config=DummyHandlerConfig(host="", path="")), message_serializer=StringSerializer()
+            handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
+            message_serializer=StringSerializer(),
         )
 
     def get_written_messages(self, messages: List[BinaryMessage]) -> None:

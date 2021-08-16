@@ -59,9 +59,9 @@ def test_read_last():
     pass
 
 
-def test_serializer_scheme_present_in_settings(dummy_writer):
-    dummy_writer.write_serializer_settings()
+def test_serializer_scheme_present_in_config(dummy_writer):
+    dummy_writer.write_serializer_configs()
 
-    key_serializer_settings, value_serializer_settings = dummy_writer.handler.get_serializer_settings()
-    assert "scheme" in key_serializer_settings
-    assert "scheme" in value_serializer_settings
+    key_serializer_config, value_serializer_config = dummy_writer.handler.get_serializer_configs()
+    assert "scheme" in key_serializer_config
+    assert "scheme" in value_serializer_config

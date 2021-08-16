@@ -24,10 +24,12 @@ class HandlerConfig:
             problems.append("host cannot be None")
         if self.path is None:
             problems.append("path cannot be None")
+        if self.scheme is None:
+            problems.append("scheme cannot be None")
 
         if problems:
             raise EsqueIOHandlerConfigException(
-                "One or more mandatory settings don't have a value: \n" + "\n".join(problems)
+                "One or more mandatory configs don't have a value: \n" + "\n".join(problems)
             )
 
 
@@ -40,48 +42,48 @@ class BaseHandler(ABC):
         """
         Base class for all Esque IO handlers. A handler is responsible for writing and reading messages
         to and from a source. The handler is unaware of the underlying message's format and treats all
-        sources as binary. It may support persisting the serializer settings for easier data retrieval.
+        sources as binary. It may support persisting the serializer config for easier data retrieval.
 
         :param config:
         """
         self.config = config.copy()
-        self._validate_settings()
+        self._validate_config()
 
-    def _validate_settings(self) -> None:
+    def _validate_config(self) -> None:
         """
         Check if the provided information is sufficient for the operation of the handler.
-        The default version checks if any of the required settings (:meth:`_get_required_field_specs`)
+        The default version checks if any of the required config fields (:meth:`_get_required_field_specs`)
         are missing and if the field types match.
         """
         if not isinstance(self.config, self.config_cls):
             raise EsqueIOHandlerConfigException(
-                f"Invalid type for the handler settings. "
+                f"Invalid type for the handler config. "
                 f"Expected: {self.config_cls.__name__}, "
                 f"provided: {type(self.config).__name__}"
             )
         self.config.validate()
 
     @abstractmethod
-    def get_serializer_settings(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Retrieves the serializer settings from this handler's source, if possible.
-        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
+        Retrieves the serializer config from this handler's source, if possible.
+        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerConfigNotSupported`
         if this operation is not supported for a particular
         handler.
 
-        :return: Tuple of dictionaries containing the settings for the key and value serializer
+        :return: Tuple of dictionaries containing the configs for the key and value serializer
         """
         raise NotImplementedError
 
     @abstractmethod
-    def put_serializer_settings(self, settings: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
+    def put_serializer_configs(self, config: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
         """
-        Persists the serializer settings in this handler's source, if possible.
-        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerSettingsNotSupported`
+        Persists the serializer config in this handler's source, if possible.
+        Implementations should raise an :class:`esque.io.exceptions.EsqueIOSerializerConfigNotSupported`
         if this operation is not supported for a particular
         handler.
 
-        :param settings: Tuple of dictionaries containing the settings for the key and value serializer
+        :param config: Tuple of dictionaries containing the configs for the key and value serializer
         """
         raise NotImplementedError
 

@@ -22,7 +22,7 @@ class SerializerConfig:
 
         if problems:
             raise EsqueIOSerializerConfigException(
-                "One or more mandatory settings don't have a value: \n" + "\n".join(problems)
+                "One or more mandatory config fields don't have a value: \n" + "\n".join(problems)
             )
 
 

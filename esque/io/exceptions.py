@@ -49,9 +49,9 @@ class EsqueIOSerializerConfigException(EsqueIOConfigException):
     pass
 
 
-class EsqueIOSerializerSettingsNotSupported(EsqueIOConfigException):
+class EsqueIOSerializerConfigNotSupported(EsqueIOConfigException):
     """
-    Exception raised when handler doesn't support persisting serializer settings
+    Exception raised when handler doesn't support persisting the serializer config
     """
 
     pass

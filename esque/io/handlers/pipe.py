@@ -8,7 +8,7 @@ from esque.io.exceptions import (
     EsqueIOHandlerConfigException,
     EsqueIOHandlerReadException,
     EsqueIONoMessageLeft,
-    EsqueIOSerializerSettingsNotSupported,
+    EsqueIOSerializerConfigNotSupported,
 )
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage
@@ -45,11 +45,11 @@ class PipeHandler(BaseHandler):
         else:
             raise EsqueIOHandlerConfigException(f"Unknown stream {self.config.host}")
 
-    def get_serializer_settings(self) -> NoReturn:
-        raise EsqueIOSerializerSettingsNotSupported
+    def get_serializer_configs(self) -> NoReturn:
+        raise EsqueIOSerializerConfigNotSupported
 
-    def put_serializer_settings(self, settings: Dict[str, Any]) -> NoReturn:
-        raise EsqueIOSerializerSettingsNotSupported
+    def put_serializer_configs(self, config: Dict[str, Any]) -> NoReturn:
+        raise EsqueIOSerializerConfigNotSupported
 
     def write_message(self, binary_message: BinaryMessage) -> None:
         json.dump(
