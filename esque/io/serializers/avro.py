@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator
 
 from esque.io.exceptions import EsqueIONoSuchSchemaException
-from esque.io.serializers.base import BaseSerializer, SerializerConfig
+from esque.io.serializers.base import DataSerializer, SerializerConfig
 
 
 class SchemaRegistryClient(ABC):
@@ -45,7 +45,7 @@ class AvroSerializerConfig(SerializerConfig):
     pass
 
 
-class AvroSerializer(BaseSerializer):
+class AvroSerializer(DataSerializer):
     config_cls = AvroSerializerConfig
 
     def serialize(self, data: Any) -> bytes:

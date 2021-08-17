@@ -1,6 +1,6 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, List, Optional, Type, TypeVar
+from typing import Any, ClassVar, Iterable, List, Optional, Type, TypeVar
 
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Message
@@ -26,7 +26,7 @@ class SerializerConfig:
             )
 
 
-class BaseSerializer(ABC):
+class DataSerializer(ABC):
     config_cls: ClassVar[Type[SC]] = SerializerConfig
     config: SC
 
@@ -37,19 +37,19 @@ class BaseSerializer(ABC):
     def serialize(self, data: Any) -> bytes:
         raise NotImplementedError
 
-    def serialize_many(self, data_list: List[Any]) -> List[bytes]:
-        return [self.serialize(message) for message in data_list]
+    def serialize_many(self, data_list: Iterable[Any]) -> Iterable[bytes]:
+        return (self.serialize(message) for message in data_list)
 
     @abstractmethod
     def deserialize(self, raw_data: bytes) -> Any:
         raise NotImplementedError
 
-    def deserialize_many(self, raw_data_list: List[bytes]) -> List[Any]:
-        return [self.deserialize(raw_data) for raw_data in raw_data_list]
+    def deserialize_many(self, raw_data_stream: Iterable[bytes]) -> Iterable[Any]:
+        return (self.deserialize(raw_data) for raw_data in raw_data_stream)
 
 
 class MessageSerializer:
-    def __init__(self, key_serializer: BaseSerializer, value_serializer: Optional[BaseSerializer] = None):
+    def __init__(self, key_serializer: DataSerializer, value_serializer: Optional[DataSerializer] = None):
         self._key_serializer = key_serializer
         self._value_serializer = value_serializer if value_serializer else key_serializer
 
@@ -58,8 +58,8 @@ class MessageSerializer:
         value_data = self._value_serializer.serialize(message.value)
         return BinaryMessage(key=key_data, value=value_data, offset=message.offset, partition=message.partition)
 
-    def serialize_many(self, messages: List[Message]) -> List[BinaryMessage]:
-        return [self.serialize(message) for message in messages]
+    def serialize_many(self, messages: Iterable[Message]) -> Iterable[BinaryMessage]:
+        return (self.serialize(message) for message in messages)
 
     def deserialize(self, binary_message: BinaryMessage) -> Message:
         key_data = self._key_serializer.deserialize(binary_message.key)
@@ -68,7 +68,7 @@ class MessageSerializer:
             key=key_data, value=value_data, offset=binary_message.offset, partition=binary_message.partition
         )
 
-    def deserialize_many(self, binary_messages: List[BinaryMessage]) -> List[Message]:
-        return [self.deserialize(binary_message) for binary_message in binary_messages]
+    def deserialize_many(self, binary_messages: Iterable[BinaryMessage]) -> Iterable[Message]:
+        return (self.deserialize(binary_message) for binary_message in binary_messages)
 
     # TODO: consider creating a no-op serializer

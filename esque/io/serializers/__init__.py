@@ -2,19 +2,19 @@ from typing import Any, Dict, Type
 
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.serializers.avro import AvroSerializer
-from esque.io.serializers.base import BaseSerializer, SerializerConfig
+from esque.io.serializers.base import DataSerializer, SerializerConfig
 from esque.io.serializers.json import JsonSerializer
 from esque.io.serializers.string import StringSerializer
 
-SERIALIZER_LOOKUP: Dict[str, Type[BaseSerializer]] = {
+SERIALIZER_LOOKUP: Dict[str, Type[DataSerializer]] = {
     "str": StringSerializer,
     "avro": AvroSerializer,
     "json": JsonSerializer,
 }
 
 
-def create_serializer(serializer_config_dict: Dict[str, Any]) -> BaseSerializer:
-    serializer_cls: Type[BaseSerializer] = SERIALIZER_LOOKUP.get(serializer_config_dict.get("scheme"))
+def create_serializer(serializer_config_dict: Dict[str, Any]) -> DataSerializer:
+    serializer_cls: Type[DataSerializer] = SERIALIZER_LOOKUP.get(serializer_config_dict.get("scheme"))
     if serializer_cls is None:
         raise EsqueIOSerializerConfigException(
             f"Unrecognized serializer identifier: {serializer_config_dict.get('scheme')}. "

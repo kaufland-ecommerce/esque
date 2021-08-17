@@ -63,3 +63,11 @@ class EsqueIONoSuchSchemaException(EsqueIOException):
     """
 
     pass
+
+
+class EsqueIOInvalidPipelineBuilderState(EsqueIOException):
+    """
+    Exception raised when the pipeline builder configuration is incomplete or invalid when building a pipeline
+    """
+
+    pass

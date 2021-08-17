@@ -1,7 +1,7 @@
-from esque.io.serializers.base import BaseSerializer
+from esque.io.serializers.base import DataSerializer
 
 
-class StringSerializer(BaseSerializer):
+class StringSerializer(DataSerializer):
     def __init__(self, encoding: str = "UTF-8"):
         self._encoding = encoding
 
