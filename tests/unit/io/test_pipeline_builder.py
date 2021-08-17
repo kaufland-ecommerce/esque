@@ -1,7 +1,7 @@
+import pytest
+
 from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState
 from esque.io.pipeline import PipelineBuilder
-
-import pytest
 
 
 def test_create_empty_builder():
