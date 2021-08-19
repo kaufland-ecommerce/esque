@@ -17,7 +17,7 @@ class EsqueIOEndOfSourceReached(EsqueIOException):
     pass
 
 
-class EsqueIOSoftEndReached(EsqueIOEndOfSourceReached):
+class EsqueIOTemporaryEndReached(EsqueIOEndOfSourceReached):
     """
     Exception raised when the handler's source is at a temporary end which means it could
     receive further messages at some point.
@@ -29,7 +29,7 @@ class EsqueIOSoftEndReached(EsqueIOEndOfSourceReached):
     pass
 
 
-class EsqueIOHardEndReached(EsqueIOEndOfSourceReached):
+class EsqueIOPermanentEndReached(EsqueIOEndOfSourceReached):
     """
     Exception raised when the handler's source is at a permanent end which means it cannot
     receive further messages.

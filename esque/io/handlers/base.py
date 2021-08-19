@@ -2,7 +2,7 @@ import dataclasses
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple, Type, TypeVar
 
-from esque.io.exceptions import EsqueIOHandlerConfigException, EsqueIONoMessageLeft
+from esque.io.exceptions import EsqueIOHandlerConfigException
 from esque.io.messages import BinaryMessage
 
 H = TypeVar("H", bound="BaseHandler")
@@ -111,10 +111,10 @@ class BaseHandler(ABC):
         Read the next message from this handler's source.
         Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because the
         source has reached its end.
-        If the current end is a hard end (e.g. the end of a file or a closed stream) then the exception will be
-        :class:`EsqueIOHardEndReached`.
-        If the current end is a soft end (e.g. the end of a topic was reached but new messages might come in at some
-        point) then the exception will be :class:`EsqueIOSoftEndReached`.
+        If the current end is a permanent end (e.g. the end of a file or a closed stream) then the exception will be
+        :class:`EsqueIOPermanentEndReached`.
+        If the current end is a temporary end (e.g. the end of a topic was reached but new messages might come in at some
+        point) then the exception will be :class:`EsqueIOTemporaryEndReached`.
         Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
 
         :return: The next message from this handler's source.
@@ -128,10 +128,10 @@ class BaseHandler(ABC):
         Read messages from this handler's source until the source's current end is reached.
         Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because
         the source has reached its end.
-        If the current end is a hard end (e.g. the end of a file or a closed stream) then the exception will be
-        :class:`EsqueIOHardEndReached`.
-        If the current end is a soft end (e.g. the end of a topic was reached but new messages might come in at some
-        point) then the exception will be :class:`EsqueIOSoftEndReached`.
+        If the current end is a permanent end (e.g. the end of a file or a closed stream) then the exception will be
+        :class:`EsqueIOPermanentEndReached`.
+        If the current end is a temporary end (e.g. the end of a topic was reached but new messages might come in at some
+        point) then the exception will be :class:`EsqueIOTemporaryEndReached`.
         Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
 
         :return: The next message from this handler's source.

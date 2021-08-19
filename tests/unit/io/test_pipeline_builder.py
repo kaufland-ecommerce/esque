@@ -26,7 +26,7 @@ def test_create_pipeline_with_handler_and_serializer_input(
     pipeline = builder.build()
 
     dummy_handler.set_messages(binary_messages)
-    #TODO continue here
+
     assert list(stop_at_end_of_stream(pipeline.message_stream())) == string_messages
 
 

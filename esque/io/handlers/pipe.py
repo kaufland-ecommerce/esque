@@ -7,7 +7,7 @@ from typing import Any, Dict, NoReturn, Optional, TextIO
 from esque.io.exceptions import (
     EsqueIOHandlerConfigException,
     EsqueIOHandlerReadException,
-    EsqueIOHardEndReached,
+    EsqueIOPermanentEndReached,
     EsqueIOSerializerConfigNotSupported,
 )
 from esque.io.handlers.base import BaseHandler, HandlerConfig
@@ -73,7 +73,7 @@ class PipeHandler(BaseHandler):
                 if lines:
                     raise EsqueIOHandlerReadException("Premature end of stream, last message incomplete")
                 else:
-                    raise EsqueIOHardEndReached("End of pipe reached")
+                    raise EsqueIOPermanentEndReached("End of pipe reached")
             if line == MARKER:
                 break
             lines.append(line)
