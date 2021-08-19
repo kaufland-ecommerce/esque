@@ -34,32 +34,32 @@ class MessageWriter(ABC):
 
 class HandlerSerializerMessageReader(MessageReader):
     _handler: BaseHandler
-    _serializer: MessageSerializer
+    _message_serializer: MessageSerializer
 
-    def __init__(self, handler: BaseHandler, serializer: MessageSerializer):
+    def __init__(self, handler: BaseHandler, message_serializer: MessageSerializer):
         self._handler = handler
-        self._serializer = serializer
+        self._message_serializer = message_serializer
 
     def read_message(self) -> Message:
-        return self._serializer.deserialize(binary_message=self._handler.read_message())
+        return self._message_serializer.deserialize(binary_message=self._handler.read_message())
 
     def read_many_messages(self) -> Iterable[Message]:
-        return self._serializer.deserialize_many(binary_messages=self._handler.read_many_messages())
+        return self._message_serializer.deserialize_many(binary_messages=self._handler.message_stream())
 
 
 class HandlerSerializerMessageWriter(MessageWriter):
     _handler: BaseHandler
-    _serializer: MessageSerializer
+    _message_serializer: MessageSerializer
 
-    def __init__(self, handler: BaseHandler, serializer: MessageSerializer):
+    def __init__(self, handler: BaseHandler, message_serializer: MessageSerializer):
         self._handler = handler
-        self._serializer = serializer
+        self._message_serializer = message_serializer
 
     def write_message(self, message: Message):
-        self._handler.write_message(binary_message=self._serializer.serialize(message=message))
+        self._handler.write_message(binary_message=self._message_serializer.serialize(message=message))
 
     def write_many_messages(self, messages: Iterable[Message]):
-        self._handler.write_many_messages(binary_messages=self._serializer.serialize_many(messages=messages))
+        self._handler.write_many_messages(binary_messages=self._message_serializer.serialize_many(messages=messages))
 
 
 class Pipeline:

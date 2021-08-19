@@ -106,23 +106,37 @@ class BaseHandler(ABC):
             self.write_message(binary_message)
 
     @abstractmethod
-    def read_message(self) -> Optional[BinaryMessage]:
+    def read_message(self) -> BinaryMessage:
         """
-        Read the next message from this handler's source. If there is no next message raise an exception.
+        Read the next message from this handler's source.
+        Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because the
+        source has reached its end.
+        If the current end is a hard end (e.g. the end of a file or a closed stream) then the exception will be
+        :class:`EsqueIOHardEndReached`.
+        If the current end is a soft end (e.g. the end of a topic was reached but new messages might come in at some
+        point) then the exception will be :class:`EsqueIOSoftEndReached`.
+        Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
 
         :return: The next message from this handler's source.
-        :raises EsqueIONoMessageLeft: When there is no message left.
+        :raises EsqueIOEndOfSourceReached: When all currently available messages have been read.
+        :raises EsqueIOHandlerReadException: When there was a failure accessing the source. Like a broken pipe.
         """
         raise NotImplementedError
 
-    def read_many_messages(self) -> Iterable[BinaryMessage]:
+    def message_stream(self) -> Iterable[BinaryMessage]:
         """
-        Read messages from this handler's source until there are no more left.
+        Read messages from this handler's source until the source's current end is reached.
+        Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because
+        the source has reached its end.
+        If the current end is a hard end (e.g. the end of a file or a closed stream) then the exception will be
+        :class:`EsqueIOHardEndReached`.
+        If the current end is a soft end (e.g. the end of a topic was reached but new messages might come in at some
+        point) then the exception will be :class:`EsqueIOSoftEndReached`.
+        Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
 
-        :returns: Iterable yielding all messages that are left on this handler's source.
+        :return: The next message from this handler's source.
+        :raises EsqueIOEndOfSourceReached: When all currently available messages have been read.
+        :returns: Iterable yielding all messages from this handler's source.
         """
         while True:
-            try:
-                yield self.read_message()
-            except EsqueIONoMessageLeft:
-                break
+            yield self.read_message()

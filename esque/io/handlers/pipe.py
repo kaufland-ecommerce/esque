@@ -7,7 +7,7 @@ from typing import Any, Dict, NoReturn, Optional, TextIO
 from esque.io.exceptions import (
     EsqueIOHandlerConfigException,
     EsqueIOHandlerReadException,
-    EsqueIONoMessageLeft,
+    EsqueIOHardEndReached,
     EsqueIOSerializerConfigNotSupported,
 )
 from esque.io.handlers.base import BaseHandler, HandlerConfig
@@ -65,7 +65,7 @@ class PipeHandler(BaseHandler):
         )
         self._stream.write(f"\n{MARKER}")
 
-    def read_message(self) -> Optional[BinaryMessage]:
+    def read_message(self) -> BinaryMessage:
         lines = []
         while True:
             line = self._stream.readline()
@@ -73,7 +73,7 @@ class PipeHandler(BaseHandler):
                 if lines:
                     raise EsqueIOHandlerReadException("Premature end of stream, last message incomplete")
                 else:
-                    raise EsqueIONoMessageLeft("End of pipe reached")
+                    raise EsqueIOHardEndReached("End of pipe reached")
             if line == MARKER:
                 break
             lines.append(line)

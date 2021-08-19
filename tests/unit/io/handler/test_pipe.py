@@ -35,7 +35,7 @@ def test_write_read_many_messages(binary_messages: List[BinaryMessage]):
 
     stream.seek(0)
     input_handler = mk_pipe_handler(stream)
-    actual_messages = list(input_handler.read_many_messages())
+    actual_messages = list(input_handler.message_stream())
 
     assert binary_messages == actual_messages
 

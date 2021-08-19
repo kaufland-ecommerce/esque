@@ -9,9 +9,31 @@ class EsqueIOException(ExceptionWithMessage):
     pass
 
 
-class EsqueIONoMessageLeft(EsqueIOException):
+class EsqueIOEndOfSourceReached(EsqueIOException):
     """
-    Exception raised when the handler reaches the end of message source
+    Exception raised when the handler reaches the current end of its message source.
+    """
+
+    pass
+
+
+class EsqueIOSoftEndReached(EsqueIOEndOfSourceReached):
+    """
+    Exception raised when the handler's source is at a temporary end which means it could
+    receive further messages at some point.
+    For example the source is a Kafka topic with 10 messages and the source has reached the 10th message.
+    At that point it has only reached a temporary end because it could be that after a while some producer puts more
+    messages into the topic.
+    """
+
+    pass
+
+
+class EsqueIOHardEndReached(EsqueIOEndOfSourceReached):
+    """
+    Exception raised when the handler's source is at a permanent end which means it cannot
+    receive further messages.
+    For example the source is a local file and the last record from the file has been read.
     """
 
     pass
@@ -19,7 +41,8 @@ class EsqueIONoMessageLeft(EsqueIOException):
 
 class EsqueIOHandlerReadException(EsqueIOException):
     """
-    Exception raised when the handler encounters issues while reading from its source
+    Exception raised when the handler encounters issues while reading from its source.
+    For example when it was reading from a pipe that broke or got closed prematurely.
     """
 
     pass

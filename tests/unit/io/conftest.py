@@ -5,8 +5,8 @@ import pytest
 
 from esque.io.exceptions import EsqueIONoMessageLeft
 from esque.io.handlers.base import BaseHandler, HandlerConfig
-from esque.io.messages import BinaryMessage
-from esque.io.pipeline import MessageReader, MessageWriter
+from esque.io.messages import BinaryMessage, Message
+from esque.io.pipeline import HandlerSerializerMessageReader, MessageReader, MessageWriter
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer
 
@@ -62,28 +62,49 @@ def binary_messages() -> List[BinaryMessage]:
 
 
 @pytest.fixture()
+def string_messages(
+    binary_messages: List[BinaryMessage], string_message_serializer: MessageSerializer
+) -> List[Message]:
+    return list(string_message_serializer.deserialize_many(binary_messages))
+
+
+@pytest.fixture()
 def string_message_serializer() -> MessageSerializer:
     string_serializer = StringSerializer()
     return MessageSerializer(string_serializer)
 
 
-class DummyReader(MessageReader):
+class DummyMessageReader(HandlerSerializerMessageReader):
+    _handler: DummyHandler
+
     def __init__(self):
         super().__init__(
             handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
-            message_serializer=StringSerializer(),
+            message_serializer=MessageSerializer(StringSerializer()),
         )
 
     def set_messages(self, messages: List[BinaryMessage]) -> None:
         self._handler.set_messages(messages)
 
 
-class DummyWriter(MessageWriter):
+@pytest.fixture
+def dummy_message_reader() -> DummyMessageReader:
+    return DummyMessageReader()
+
+
+class DummyMessageWriter(HandlerSerializerMessageReader):
+    _handler: DummyHandler
+
     def __init__(self):
         super().__init__(
             handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
-            message_serializer=StringSerializer(),
+            message_serializer=MessageSerializer(StringSerializer()),
         )
 
-    def get_written_messages(self, messages: List[BinaryMessage]) -> None:
-        return self._handler.get_messages(messages)
+    def get_written_messages(self) -> List[BinaryMessage]:
+        return self._handler.get_messages()
+
+
+@pytest.fixture
+def dummy_message_writer() -> DummyMessageWriter:
+    return DummyMessageWriter()
