@@ -1,48 +1,45 @@
-from abc import abstractmethod
-from threading import Event, Thread
-from typing import Iterable, Iterator, TypeVar
+from typing import Iterable, Iterator, TypeVar, Union
 
-from esque.io.exceptions import EsqueIOEndOfSourceReached, EsqueIOPermanentEndReached, EsqueIOTemporaryEndReached
+from esque.io.stream_events import EndOfStream, NthMessageRead, StreamEvent
 
 T = TypeVar("T")
 
 
-def stop_at_permanent_end_of_stream(iterable: Iterable[T]) -> Iterable[T]:
-    """
-    Enables an iterator to be consumed until the permanent end of stream is reached. Meant to be used with :meth:`BaseHandler.message_stream()`.
-    Check the docstring for :meth:`BaseHandler.message_stream()` for a more thorough definition of the permanent end of stream.
-    The decorator ignores any temporary end of stream. To respond to temporary ends, use the :func:`stop_at_stop_at_temporary_end_of_stream()` decorator instead.
-    :param iterable: The iterable to be decorated
-    :return: The iterable that stops when the underlying Iterator raises :class:`EsqueIOPermanentEndReached`
-    """
-    iterator: Iterator[T] = iter(iterable)
-    while True:
-        try:
-            yield next(iterator)
-        except (StopIteration, EsqueIOPermanentEndReached):
-            return
-        except EsqueIOTemporaryEndReached:
-            pass
+def skip_stream_events(iterable: Iterable[Union[T, StreamEvent]]) -> Iterable[T]:
+    for elem in iterable:
+        if isinstance(elem, StreamEvent):
+            continue
+        yield elem
 
 
-def stop_at_temporary_end_of_stream(iterable: Iterable[T]) -> Iterable[T]:
+def stop_at_temporary_end_of_stream(iterable: Iterable[Union[T, StreamEvent]]) -> Iterable[Union[T, StreamEvent]]:
     """
     Enables an iterator to be consumed until an end of stream is reached. Meant to be used with :meth:`BaseHandler.message_stream()`.
     Check the docstring for :meth:`BaseHandler.message_stream()` for a more thorough definition of a temporary end of stream.
-    Since the permanent end of stream cannot be followed by a temporary end, this function also stops at the permanent end of stream. If you need to
-    respond only to the permanent end of stream, use :func:`stop_at_stop_at_permanent_end_of_stream()`
+    Since the permanent end of stream cannot be followed by a temporary end, this function also stops at the permanent end of stream.
+    The :class:`EndOfStream` object will still be yielded as final element of the iterable.
+
     :param iterable: The iterable to be decorated
-    :return: The iterable that stops when the underlying Iterator raises :class:`EsqueIOEndOfSourceReached`
+    :return: The iterable that stops _after_ the underlying Iterator yielded :class:`EndOfStream`
     """
-    iterator: Iterator[T] = iter(iterable)
-    while True:
-        try:
-            yield next(iterator)
-        except (StopIteration, EsqueIOEndOfSourceReached):
-            return
+    for elem in iterable:
+        yield elem
+        if isinstance(elem, EndOfStream):
+            break
 
 
-# def stop_at_message_timeout(iterable: Iterable[T], message_timeout: int) -> Iterable[T]:
+def stop_after_nth_message(iterable: Iterable[Union[T, StreamEvent]], n: int) -> Iterable[Union[T, StreamEvent]]:
+    i = 0
+    for elem in iterable:
+        yield elem
+        if not isinstance(elem, StreamEvent):
+            i += 1
+        if i == n:
+            yield NthMessageRead(f"{n} messages have been read.")
+            break
+
+
+# def stop_at_message_timeout(iterable: Iterable[Union[T, StreamEvent]], message_timeout: int) -> Iterable[Union[T, StreamEvent]]:
 #     iterator: Iterator[T] = iter(iterable)
 #     while True:
 #         try:
@@ -51,7 +48,7 @@ def stop_at_temporary_end_of_stream(iterable: Iterable[T]) -> Iterable[T]:
 #             return
 #
 #
-# def read_for_n_seconds(iterable: Iterable[T], max_read_time: int) -> Iterable[T]:
+# def read_for_n_seconds(iterable: Iterable[Union[T, StreamEvent]], max_read_time: int) -> Iterable[Union[T, StreamEvent]]:
 #     iterator: Iterator[T] = iter(iterable)
 #
 #     while True:
@@ -64,7 +61,7 @@ def stop_at_temporary_end_of_stream(iterable: Iterable[T]) -> Iterable[T]:
 # class MessageReaderThread(Thread):
 #     _last_elem: T
 #
-#     def __init__(self, iterable: Iterable[T]):
+#     def __init__(self, iterable: Iterable[Union[T, StreamEvent]]):
 #         super(MessageReaderThread, self).__init__(daemon=True)
 #         self._iterable = iterable
 #         self._elem_received: Event = Event()

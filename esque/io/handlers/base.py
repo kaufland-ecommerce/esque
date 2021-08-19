@@ -1,9 +1,10 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple, Type, TypeVar
+from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple, Type, TypeVar, Union
 
 from esque.io.exceptions import EsqueIOHandlerConfigException
 from esque.io.messages import BinaryMessage
+from esque.io.stream_events import PermanentEndOfStream, StreamEvent
 
 H = TypeVar("H", bound="BaseHandler")
 HC = TypeVar("HC", bound="HandlerConfig")
@@ -106,37 +107,40 @@ class BaseHandler(ABC):
             self.write_message(binary_message)
 
     @abstractmethod
-    def read_message(self) -> BinaryMessage:
+    def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         """
-        Read the next message from this handler's source.
-        Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because the
-        source has reached its end.
-        If the current end is a permanent end (e.g. the end of a file or a closed stream) then the exception will be
-        :class:`EsqueIOPermanentEndReached`.
-        If the current end is a temporary end (e.g. the end of a topic was reached but new messages might come in at some
-        point) then the exception will be :class:`EsqueIOTemporaryEndReached`.
-        Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
+        Read the next :class:`BinaryMessage` from this handler's source.
+        Returns an object of :class:`StreamEvent` to indicate certain events that may happen while reading from the
+        source.
+        For example if the handler has reached a permanent end, like the end of a file or a closed stream, then
+        it will return a :class:`PermanentEndOfStream` object.
+        If the handler has reached a temporary end (e.g. the end of a topic was reached but new messages might come in
+        at some point) then it will return an object of :class:`TemporaryEndOfStream`.
+        Both of these classes are subclasses of :class:`EndOfStream`.
 
-        :return: The next message from this handler's source.
-        :raises EsqueIOEndOfSourceReached: When all currently available messages have been read.
+        :return: The next message from this handler's source, or a stream event.
         :raises EsqueIOHandlerReadException: When there was a failure accessing the source. Like a broken pipe.
         """
         raise NotImplementedError
 
-    def message_stream(self) -> Iterable[BinaryMessage]:
+    def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         """
-        Read messages from this handler's source until the source's current end is reached.
-        Raises an :class:`EsqueIOEndOfSourceReached` exception if there is (currently) no next message because
-        the source has reached its end.
-        If the current end is a permanent end (e.g. the end of a file or a closed stream) then the exception will be
-        :class:`EsqueIOPermanentEndReached`.
-        If the current end is a temporary end (e.g. the end of a topic was reached but new messages might come in at some
-        point) then the exception will be :class:`EsqueIOTemporaryEndReached`.
-        Both of these classes are subclasses of :class:`EsqueIOEndOfSourceReached`.
+        Read :class:`BinaryMessage`s from this handler's source until the source's permanent end is reached.
+        Yields an object of :class:`StreamEvent` to indicate certain events that may happen while reading from the
+        source.
+        For example if the handler has reached a permanent end, like the end of a file or a closed stream, then
+        it will return a :class:`PermanentEndOfStream` object.
+        If the handler has reached a temporary end (e.g. the end of a topic was reached but new messages might come in
+        at some point) then it will return an object of :class:`TemporaryEndOfStream`.
+        Both of these classes are subclasses of :class:`EndOfStream`.
 
-        :return: The next message from this handler's source.
-        :raises EsqueIOEndOfSourceReached: When all currently available messages have been read.
-        :returns: Iterable yielding all messages from this handler's source.
+        The last object returned before the iterable ends is always an instance of :class:`PermanentEndOfStream`.
+
+        :raises EsqueIOHandlerReadException: When there was a failure accessing the source. Like a broken pipe.
+        :returns: Iterable yielding all messages from this handler's source until a permanent end was reached.
         """
         while True:
-            yield self.read_message()
+            msg = self.read_message()
+            yield msg
+            if isinstance(msg, PermanentEndOfStream):
+                break

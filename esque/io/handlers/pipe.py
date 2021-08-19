@@ -2,16 +2,16 @@ import base64
 import json
 import sys
 from enum import Enum
-from typing import Any, Dict, NoReturn, Optional, TextIO
+from typing import Any, Dict, NoReturn, Optional, TextIO, Union
 
 from esque.io.exceptions import (
     EsqueIOHandlerConfigException,
     EsqueIOHandlerReadException,
-    EsqueIOPermanentEndReached,
     EsqueIOSerializerConfigNotSupported,
 )
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage
+from esque.io.stream_events import PermanentEndOfStream, StreamEvent
 
 MARKER = "__esque_msg_marker__\n"
 
@@ -65,7 +65,7 @@ class PipeHandler(BaseHandler):
         )
         self._stream.write(f"\n{MARKER}")
 
-    def read_message(self) -> BinaryMessage:
+    def read_message(self) -> Union[StreamEvent, BinaryMessage]:
         lines = []
         while True:
             line = self._stream.readline()
@@ -73,7 +73,7 @@ class PipeHandler(BaseHandler):
                 if lines:
                     raise EsqueIOHandlerReadException("Premature end of stream, last message incomplete")
                 else:
-                    raise EsqueIOPermanentEndReached("End of pipe reached")
+                    return PermanentEndOfStream("End of pipe reached")
             if line == MARKER:
                 break
             lines.append(line)

@@ -1,14 +1,14 @@
 import dataclasses
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import pytest
 
-from esque.io.exceptions import EsqueIOPermanentEndReached, EsqueIOTemporaryEndReached
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, Message
 from esque.io.pipeline import HandlerSerializerMessageReader
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer
+from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfStream
 
 
 @dataclasses.dataclass(frozen=True)
@@ -33,14 +33,14 @@ class DummyHandler(BaseHandler):
     def write_message(self, binary_message: BinaryMessage) -> None:
         self._messages.append(binary_message)
 
-    def read_message(self) -> BinaryMessage:
+    def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         if self._messages:
             elem = self._messages.pop(0)
             if elem is None:
-                raise EsqueIOTemporaryEndReached("Temporary end of stream")
+                return TemporaryEndOfStream("Temporary end of stream")
             return elem
         else:
-            raise EsqueIOPermanentEndReached("No messages left in memory")
+            return PermanentEndOfStream("No messages left in memory")
 
     def get_messages(self) -> List[BinaryMessage]:
         return self._messages.copy()

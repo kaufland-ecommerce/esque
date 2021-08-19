@@ -1,15 +1,11 @@
-import urllib.parse
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List
-from urllib.parse import ParseResult
+from typing import Iterable, Union
 
-from esque.config import Config
-from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState, EsqueIOSerializerConfigNotSupported
-from esque.io.handlers import BaseHandler, create_handler
-from esque.io.helpers import extract_parameters
+from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState
+from esque.io.handlers import BaseHandler
 from esque.io.messages import Message
-from esque.io.serializers import create_serializer
 from esque.io.serializers.base import MessageSerializer
+from esque.io.stream_events import StreamEvent
 
 
 class MessageReader(ABC):
@@ -40,8 +36,11 @@ class HandlerSerializerMessageReader(MessageReader):
         self._handler = handler
         self._message_serializer = message_serializer
 
-    def read_message(self) -> Message:
-        return self._message_serializer.deserialize(binary_message=self._handler.read_message())
+    def read_message(self) -> Union[Message, StreamEvent]:
+        msg = self._handler.read_message()
+        if isinstance(msg, StreamEvent):
+            return msg
+        return self._message_serializer.deserialize(binary_message=msg)
 
     def read_many_messages(self) -> Iterable[Message]:
         return self._message_serializer.deserialize_many(binary_messages=self._handler.message_stream())
