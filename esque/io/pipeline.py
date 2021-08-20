@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Iterable, Union
 
-from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState
-from esque.io.handlers import BaseHandler
+from esque.io.handlers import BaseHandler, PipeHandler
+from esque.io.handlers.pipe import PipeHandlerConfig
 from esque.io.messages import Message
+from esque.io.serializers import StringSerializer
 from esque.io.serializers.base import MessageSerializer
 from esque.io.stream_events import StreamEvent
 
@@ -65,6 +66,13 @@ class Pipeline:
     _input_element: MessageReader
     _output_element: MessageWriter
 
+    def __init__(self, input_element: MessageReader, output_element: MessageWriter):
+        self._input_element = input_element
+        self._output_element = output_element
+
+    def execute(self):
+        self._output_element.write_many_messages(self._input_element.read_many_messages())
+
     # def do_the_work:
     # handle input
     # deserialize input
@@ -75,22 +83,38 @@ class Pipeline:
 
 
 class PipelineBuilder:
-    _pipeline: "Pipeline" = Pipeline()
+    _pipeline: "Pipeline"
+    _input_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdin", path="", scheme="pipe"))
+    _input_serializer: MessageSerializer = MessageSerializer(StringSerializer())
+    _output_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdout", path="", scheme="pipe"))
+    _output_serializer: MessageSerializer = MessageSerializer(StringSerializer())
 
     def __init__(self):
+        """
+        Creates a new PipelineBuilder. In case no methods are called other than :meth:`PipelineBuilder.build()`, the created pipeline
+        will have a pair of console handlers (stdin and stdout) and UTF-8 string message serializers.
+        """
         pass
 
     def with_input_handler(self, handler: BaseHandler) -> "PipelineBuilder":
-        raise NotImplementedError
+        if handler is not None:
+            self._input_handler = handler
+        return self
 
     def with_input_message_serializer(self, serializer: MessageSerializer) -> "PipelineBuilder":
-        raise NotImplementedError
+        if serializer is not None:
+            self._input_serializer = serializer
+        return self
 
     def with_output_handler(self, handler: BaseHandler) -> "PipelineBuilder":
-        raise NotImplementedError
+        if handler is not None:
+            self._output_handler = handler
+        return self
 
     def with_output_message_serializer(self, serializer: MessageSerializer) -> "PipelineBuilder":
-        raise NotImplementedError
+        if serializer is not None:
+            self._output_serializer = serializer
+        return self
 
     def with_input_from_uri(self, uri: str) -> "PipelineBuilder":
 
@@ -130,4 +154,11 @@ class PipelineBuilder:
         raise NotImplementedError
 
     def build(self) -> Pipeline:
-        raise EsqueIOInvalidPipelineBuilderState("Pipeline builder is missing one or more components")
+        if not self._pipeline:
+            self._pipeline = Pipeline(
+                HandlerSerializerMessageReader(handler=self._input_handler, message_serializer=self._input_serializer),
+                HandlerSerializerMessageWriter(
+                    handler=self._output_handler, message_serializer=self._output_serializer
+                ),
+            )
+        return self._pipeline

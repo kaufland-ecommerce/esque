@@ -29,6 +29,13 @@ def stop_at_temporary_end_of_stream(iterable: Iterable[Union[T, StreamEvent]]) -
 
 
 def stop_after_nth_message(iterable: Iterable[Union[T, StreamEvent]], n: int) -> Iterable[Union[T, StreamEvent]]:
+    """
+    Enables an iterator to be consumed until n messages have been read. Meant to be used with :meth:`BaseHandler.message_stream()`.
+    The method ignores any :class:StreamEvent objects that it encounters and only counts proper messages.
+    :param iterable: The iterable to be decorated
+    :param n: The number of messages to consume before stopping
+    :return: The iterable that stops after the nth consumed message
+    """
     i = 0
     for elem in iterable:
         yield elem

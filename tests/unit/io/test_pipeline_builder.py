@@ -28,7 +28,7 @@ def test_create_pipeline_with_handler_and_serializer_input(
 
     dummy_handler.set_messages(binary_messages)
 
-    assert list(skip_stream_events(pipeline.message_stream())) == string_messages
+    assert list(skip_stream_events(pipeline.execute())) == string_messages
 
 
 def test_create_pipeline_with_handler_and_serializer_output(
