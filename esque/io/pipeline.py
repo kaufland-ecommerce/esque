@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Iterable, Union
+from typing import Callable, Iterable, List, Union
 
 from esque.io.handlers import BaseHandler, PipeHandler
 from esque.io.handlers.pipe import PipeHandlerConfig
-from esque.io.messages import Message
+from esque.io.messages import BinaryMessage, Message
 from esque.io.serializers import StringSerializer
 from esque.io.serializers.base import MessageSerializer
 from esque.io.stream_events import StreamEvent
@@ -63,15 +63,37 @@ class HandlerSerializerMessageWriter(MessageWriter):
 
 
 class Pipeline:
-    _input_element: MessageReader
-    _output_element: MessageWriter
+    _input_element: HandlerSerializerMessageReader
+    _output_element: HandlerSerializerMessageWriter
+    _stream_decorators: List[Callable[[Iterable], Iterable]]
 
-    def __init__(self, input_element: MessageReader, output_element: MessageWriter):
+    def __init__(
+        self,
+        input_element: HandlerSerializerMessageReader,
+        output_element: HandlerSerializerMessageWriter,
+        stream_decorators: List[Callable[[Iterable], Iterable]],
+    ):
         self._input_element = input_element
         self._output_element = output_element
+        self._stream_decorators = stream_decorators
 
-    def execute(self):
-        self._output_element.write_many_messages(self._input_element.read_many_messages())
+    def message_stream(self) -> Iterable:
+        return self._input_element._handler.message_stream()
+
+    def decorated_message_stream(self) -> Iterable:
+        stream = self.message_stream()
+        for decorator in self._stream_decorators:
+            stream = decorator(stream)
+        return stream
+
+    def run_pipeline(self):
+        self._output_element.write_many_messages(self.decorated_message_stream())
+
+    def write_message(self, message: Message):
+        self._output_element.write_message(message=message)
+
+    def write_many_messages(self, messages: Iterable[Message]):
+        self._output_element.write_many_messages(messages=messages)
 
     # def do_the_work:
     # handle input
@@ -83,11 +105,12 @@ class Pipeline:
 
 
 class PipelineBuilder:
-    _pipeline: "Pipeline"
+    _pipeline: "Pipeline" = None
     _input_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdin", path="", scheme="pipe"))
     _input_serializer: MessageSerializer = MessageSerializer(StringSerializer())
     _output_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdout", path="", scheme="pipe"))
     _output_serializer: MessageSerializer = MessageSerializer(StringSerializer())
+    _stream_decorators: List[Callable[[Iterable], Iterable]] = []
 
     def __init__(self):
         """
@@ -114,6 +137,11 @@ class PipelineBuilder:
     def with_output_message_serializer(self, serializer: MessageSerializer) -> "PipelineBuilder":
         if serializer is not None:
             self._output_serializer = serializer
+        return self
+
+    def with_stream_decorator(self, decorator: Callable[[Iterable], Iterable]) -> "PipelineBuilder":
+        if decorator is not None:
+            self._stream_decorators.append(decorator)
         return self
 
     def with_input_from_uri(self, uri: str) -> "PipelineBuilder":
@@ -154,11 +182,12 @@ class PipelineBuilder:
         raise NotImplementedError
 
     def build(self) -> Pipeline:
-        if not self._pipeline:
+        if self._pipeline is None:
             self._pipeline = Pipeline(
                 HandlerSerializerMessageReader(handler=self._input_handler, message_serializer=self._input_serializer),
                 HandlerSerializerMessageWriter(
                     handler=self._output_handler, message_serializer=self._output_serializer
                 ),
+                self._stream_decorators,
             )
         return self._pipeline
