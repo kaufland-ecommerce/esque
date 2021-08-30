@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import random
 import string
@@ -171,6 +172,13 @@ class Config(metaclass=SingletonMeta):
             )
             raise ConfigException(msg)
         return protocol
+
+    @contextlib.contextmanager
+    def temporary_context(self, context: str):
+        old_context = self.current_context
+        self.context_switch(context=context)
+        yield
+        self.context_switch(context=old_context)
 
     def context_switch(self, context: str):
         if context not in self.available_contexts:

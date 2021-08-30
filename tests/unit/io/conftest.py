@@ -8,7 +8,7 @@ from esque.io.messages import BinaryMessage, Message
 from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer
-from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfStream
+from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
 @dataclasses.dataclass(frozen=True)
@@ -37,7 +37,7 @@ class DummyHandler(BaseHandler):
         if self._messages:
             elem = self._messages.pop(0)
             if elem is None:
-                return TemporaryEndOfStream("Temporary end of stream")
+                return TemporaryEndOfPartition("Temporary end of stream")
             return elem
         else:
             return PermanentEndOfStream("No messages left in memory")

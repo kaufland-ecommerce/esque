@@ -27,7 +27,7 @@ class PipeHandlerConfig(HandlerConfig):
     value_encoding: ByteEncoding = ByteEncoding.UTF_8
 
 
-class PipeHandler(BaseHandler):
+class PipeHandler(BaseHandler[PipeHandlerConfig]):
     config_cls = PipeHandlerConfig
 
     def __init__(self, config: PipeHandlerConfig):

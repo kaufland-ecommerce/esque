@@ -15,7 +15,16 @@ class NthMessageRead(StreamEvent):
 class EndOfStream(StreamEvent):
     """
     Stream Event indicating that the handler reached a (possibly temporary) end of its message source.
+    It contains an additional attribute that shows the ID of the partition that generated the event,
+    or the value of :attr:`EndOfStream.ALL_PARTITIONS`, if the event occurred for all partitions
+    (or no partition ID is applicable for a specific message source).
     """
+
+    ALL_PARTITIONS: int = -1
+
+    def __init__(self, msg: str, partition_id: int = ALL_PARTITIONS):
+        super().__init__(msg)
+        self.partition_id = partition_id
 
 
 class PermanentEndOfStream(EndOfStream):
@@ -27,7 +36,7 @@ class PermanentEndOfStream(EndOfStream):
     """
 
 
-class TemporaryEndOfStream(EndOfStream):
+class TemporaryEndOfPartition(EndOfStream):
     """
     Stream event indicating that the handler's source is at a temporary end which means it could
     receive further messages at some point.
