@@ -1,11 +1,11 @@
 import dataclasses
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytest
 
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, Message
-from esque.io.pipeline import HandlerSerializerMessageReader
+from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfStream
@@ -51,10 +51,14 @@ class DummyHandler(BaseHandler):
     def insert_temporary_end_of_stream(self, position: int):
         self._messages.insert(position, None)
 
+    @classmethod
+    def create_default(cls) -> "DummyHandler":
+        return cls(config=DummyHandlerConfig(host="", path="", scheme="dummy"))
+
 
 @pytest.fixture
 def dummy_handler() -> DummyHandler:
-    return DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="dummy"))
+    return DummyHandler.create_default()
 
 
 @pytest.fixture()
@@ -98,7 +102,7 @@ def dummy_message_reader() -> DummyMessageReader:
     return DummyMessageReader()
 
 
-class DummyMessageWriter(HandlerSerializerMessageReader):
+class DummyMessageWriter(HandlerSerializerMessageWriter):
     _handler: DummyHandler
 
     def __init__(self):

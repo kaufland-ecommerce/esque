@@ -1,9 +1,11 @@
+import functools
 from abc import ABC, abstractmethod
-from typing import Callable, Iterable, List, Union
+from typing import Callable, Iterable, List, Optional, Union
 
+from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState
 from esque.io.handlers import BaseHandler, PipeHandler
 from esque.io.handlers.pipe import PipeHandlerConfig
-from esque.io.messages import BinaryMessage, Message
+from esque.io.messages import Message
 from esque.io.serializers import StringSerializer
 from esque.io.serializers.base import MessageSerializer
 from esque.io.stream_events import StreamEvent
@@ -15,7 +17,7 @@ class MessageReader(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def read_many_messages(self) -> Iterable[Message]:
+    def message_stream(self) -> Iterable[Message]:
         raise NotImplementedError
 
 
@@ -43,8 +45,8 @@ class HandlerSerializerMessageReader(MessageReader):
             return msg
         return self._message_serializer.deserialize(binary_message=msg)
 
-    def read_many_messages(self) -> Iterable[Message]:
-        return self._message_serializer.deserialize_many(binary_messages=self._handler.message_stream())
+    def message_stream(self) -> Iterable[Message]:
+        return self._message_serializer.deserialize_many(binary_message_stream=self._handler.message_stream())
 
 
 class HandlerSerializerMessageWriter(MessageWriter):
@@ -63,14 +65,14 @@ class HandlerSerializerMessageWriter(MessageWriter):
 
 
 class Pipeline:
-    _input_element: HandlerSerializerMessageReader
-    _output_element: HandlerSerializerMessageWriter
+    _input_element: MessageReader
+    _output_element: MessageWriter
     _stream_decorators: List[Callable[[Iterable], Iterable]]
 
     def __init__(
         self,
-        input_element: HandlerSerializerMessageReader,
-        output_element: HandlerSerializerMessageWriter,
+        input_element: MessageReader,
+        output_element: MessageWriter,
         stream_decorators: List[Callable[[Iterable], Iterable]],
     ):
         self._input_element = input_element
@@ -78,7 +80,7 @@ class Pipeline:
         self._stream_decorators = stream_decorators
 
     def message_stream(self) -> Iterable:
-        return self._input_element._handler.message_stream()
+        return self._input_element.message_stream()
 
     def decorated_message_stream(self) -> Iterable:
         stream = self.message_stream()
@@ -105,19 +107,24 @@ class Pipeline:
 
 
 class PipelineBuilder:
-    _pipeline: "Pipeline" = None
-    _input_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdin", path="", scheme="pipe"))
-    _input_serializer: MessageSerializer = MessageSerializer(StringSerializer())
-    _output_handler: BaseHandler = PipeHandler(PipeHandlerConfig(host="stdout", path="", scheme="pipe"))
-    _output_serializer: MessageSerializer = MessageSerializer(StringSerializer())
-    _stream_decorators: List[Callable[[Iterable], Iterable]] = []
+    _input_handler: Optional[BaseHandler] = None
+    _input_serializer: Optional[MessageSerializer] = None
+    _message_reader: Optional[MessageReader] = None
+
+    _output_handler: Optional[BaseHandler] = None
+    _output_serializer: Optional[MessageSerializer] = None
+    _message_writer: Optional[MessageWriter] = None
+
+    _stream_decorators: List[Callable[[Iterable], Iterable]]
+    _errors: List[str]
 
     def __init__(self):
         """
         Creates a new PipelineBuilder. In case no methods are called other than :meth:`PipelineBuilder.build()`, the created pipeline
         will have a pair of console handlers (stdin and stdout) and UTF-8 string message serializers.
         """
-        pass
+        self._stream_decorators = []
+        self._errors = []
 
     def with_input_handler(self, handler: BaseHandler) -> "PipelineBuilder":
         if handler is not None:
@@ -129,6 +136,11 @@ class PipelineBuilder:
             self._input_serializer = serializer
         return self
 
+    def with_message_reader(self, message_reader: MessageReader) -> "PipelineBuilder":
+        if message_reader is not None:
+            self._message_reader = message_reader
+        return self
+
     def with_output_handler(self, handler: BaseHandler) -> "PipelineBuilder":
         if handler is not None:
             self._output_handler = handler
@@ -137,6 +149,11 @@ class PipelineBuilder:
     def with_output_message_serializer(self, serializer: MessageSerializer) -> "PipelineBuilder":
         if serializer is not None:
             self._output_serializer = serializer
+        return self
+
+    def with_message_writer(self, message_writer: MessageWriter) -> "PipelineBuilder":
+        if message_writer is not None:
+            self._message_writer = message_writer
         return self
 
     def with_stream_decorator(self, decorator: Callable[[Iterable], Iterable]) -> "PipelineBuilder":
@@ -181,13 +198,75 @@ class PipelineBuilder:
     def add_transformation(self, transformation) -> "PipelineBuilder":
         raise NotImplementedError
 
-    def build(self) -> Pipeline:
-        if self._pipeline is None:
-            self._pipeline = Pipeline(
-                HandlerSerializerMessageReader(handler=self._input_handler, message_serializer=self._input_serializer),
-                HandlerSerializerMessageWriter(
-                    handler=self._output_handler, message_serializer=self._output_serializer
-                ),
-                self._stream_decorators,
+    @functools.cached_property
+    def _pipeline(self) -> Pipeline:
+        message_reader = self._build_message_reader()
+        message_writer = self._build_message_writer()
+
+        if self._errors:
+            raise EsqueIOInvalidPipelineBuilderState(
+                "Errors while building pipeline object:\n" + "\n".join(self._errors)
             )
+
+        return Pipeline(message_reader, message_writer, self._stream_decorators)
+
+    def _build_message_reader(self) -> Optional[MessageReader]:
+        if self._message_reader is not None:
+            if self._input_handler is not None or self._input_serializer is not None:
+                self._errors.append(
+                    "Cannot supply a MessageReader instance while also "
+                    "providing an input handler and/or input serializer."
+                )
+                return None
+            return self._message_reader
+
+        if (self._input_handler is None) ^ (self._input_serializer is None):
+            self._errors.append(
+                "Need to supply both an input handler and an input serializer if there is not MessageReader instance."
+            )
+            return None
+
+        if self._input_handler is None and self._input_serializer is None:
+            return HandlerSerializerMessageReader(
+                self._create_default_input_handler(), self._create_default_input_serializer()
+            )
+        else:
+            return HandlerSerializerMessageReader(self._input_handler, self._input_serializer)
+
+    def _create_default_input_handler(self) -> BaseHandler:
+        return PipeHandler(PipeHandlerConfig(host="stdin", path="", scheme="pipe"))
+
+    def _create_default_input_serializer(self) -> MessageSerializer:
+        return MessageSerializer(StringSerializer(), StringSerializer())
+
+    def _build_message_writer(self) -> Optional[MessageWriter]:
+        if self._message_writer is not None:
+            if self._output_handler is not None or self._output_serializer is not None:
+                self._errors.append(
+                    "Cannot supply a MessageWriter instance while also "
+                    "providing an output handler and/or output serializer."
+                )
+                return None
+            return self._message_writer
+
+        if (self._output_handler is None) ^ (self._output_serializer is None):
+            self._errors.append(
+                "Need to supply both an output handler and an output serializer if there is not MessageWriter instance."
+            )
+            return None
+
+        if self._output_handler is None and self._output_serializer is None:
+            return HandlerSerializerMessageWriter(
+                self._create_default_output_handler(), self._create_default_output_serializer()
+            )
+        else:
+            return HandlerSerializerMessageWriter(self._output_handler, self._output_serializer)
+
+    def _create_default_output_handler(self) -> BaseHandler:
+        return PipeHandler(PipeHandlerConfig(host="stdout", path="", scheme="pipe"))
+
+    def _create_default_output_serializer(self) -> MessageSerializer:
+        return MessageSerializer(StringSerializer(), StringSerializer())
+
+    def build(self) -> Pipeline:
         return self._pipeline

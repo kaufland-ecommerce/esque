@@ -1,9 +1,10 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Iterable, List, Optional, Type, TypeVar
+from typing import Any, ClassVar, Iterable, Optional, Type, TypeVar, Union
 
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Message
+from esque.io.stream_events import StreamEvent
 
 SC = TypeVar("SC", bound="SerializerConfig")
 
@@ -61,14 +62,19 @@ class MessageSerializer:
     def serialize_many(self, messages: Iterable[Message]) -> Iterable[BinaryMessage]:
         return (self.serialize(message) for message in messages)
 
-    def deserialize(self, binary_message: BinaryMessage) -> Message:
+    def deserialize(self, binary_message: Union[BinaryMessage, StreamEvent]) -> Union[Message, StreamEvent]:
+        if isinstance(binary_message, StreamEvent):
+            return binary_message
+
         key_data = self._key_serializer.deserialize(binary_message.key)
         value_data = self._value_serializer.deserialize(binary_message.value)
         return Message(
             key=key_data, value=value_data, offset=binary_message.offset, partition=binary_message.partition
         )
 
-    def deserialize_many(self, binary_messages: Iterable[BinaryMessage]) -> Iterable[Message]:
-        return (self.deserialize(binary_message) for binary_message in binary_messages)
+    def deserialize_many(
+        self, binary_message_stream: Iterable[Union[BinaryMessage, StreamEvent]]
+    ) -> Iterable[Union[Message, StreamEvent]]:
+        return (self.deserialize(binary_message) for binary_message in binary_message_stream)
 
     # TODO: consider creating a no-op serializer
