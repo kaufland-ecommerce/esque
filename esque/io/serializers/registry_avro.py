@@ -1,15 +1,25 @@
 import dataclasses
+import io
 import itertools
 import json
 import urllib.parse
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator, Type
+from typing import ClassVar, Dict, Iterator, Type
 from urllib.parse import ParseResult
 
+import fastavro
+
+from esque.io.data_types import CustomDataType, DataType
 from esque.io.exceptions import EsqueIONoSuchSchemaException
+from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
 
 SCHEMA_REGISTRY_CLIENT_SCHEME_MAP: Dict[str, Type["SchemaRegistryClient"]] = {}
+MAGIC_BYTE = b"\x00"
+
+
+def create_schema_id_prefix(schema_id: int) -> bytes:
+    return MAGIC_BYTE + schema_id.to_bytes(length=4, byteorder="big")
 
 
 class SchemaRegistryClient(ABC):
@@ -22,7 +32,7 @@ class SchemaRegistryClient(ABC):
         raise NotImplementedError
 
     @classmethod
-    def from_config(cls, config: "AvroSerializerConfig") -> "SchemaRegistryClient":
+    def from_config(cls, config: "RegistryAvroSerializerConfig") -> "SchemaRegistryClient":
         scheme: str = config.parsed_uri().scheme
         schema_registry_client_cls = SCHEMA_REGISTRY_CLIENT_SCHEME_MAP[scheme]
         assert cls == SchemaRegistryClient, f"Make sure you implement from_config on {cls.__name__}"
@@ -30,6 +40,8 @@ class SchemaRegistryClient(ABC):
 
 
 class InMemorySchemaRegistryClient(SchemaRegistryClient):
+    _IN_MEMORY_REGISTRIES: ClassVar[Dict[str, "SchemaRegistryClient"]] = {}
+
     def __init__(self):
         self._schemas_by_id: Dict[int, Dict] = {}
         self._ids_by_schema: Dict[str, int] = {}
@@ -51,12 +63,19 @@ class InMemorySchemaRegistryClient(SchemaRegistryClient):
             self._schemas_by_id[schema_id] = json.loads(schema_str)
             return schema_id
 
+    @classmethod
+    def from_config(cls, config: "RegistryAvroSerializerConfig") -> "InMemorySchemaRegistryClient":
+        hostname = config.parsed_uri().hostname
+        if hostname not in cls._IN_MEMORY_REGISTRIES:
+            cls._IN_MEMORY_REGISTRIES[hostname] = cls()
+        return cls._IN_MEMORY_REGISTRIES[hostname]
+
 
 SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["memory"] = InMemorySchemaRegistryClient
 
 
 @dataclasses.dataclass(frozen=True)
-class AvroSerializerConfig(SerializerConfig):
+class RegistryAvroSerializerConfig(SerializerConfig):
     schema_registry_uri: str
 
     def parsed_uri(self) -> ParseResult:
@@ -80,11 +99,38 @@ class AvroSerializerConfig(SerializerConfig):
         return problems
 
 
-class AvroSerializer(DataSerializer):
-    config_cls = AvroSerializerConfig
+class RegistryAvroSerializer(DataSerializer):
+    config_cls = RegistryAvroSerializerConfig
 
-    def serialize(self, data: Any) -> bytes:
+    def __init__(self, config: RegistryAvroSerializerConfig):
+        super().__init__(config)
+        self._registry_client = SchemaRegistryClient.from_config(config)
+
+    def serialize(self, data: Data) -> bytes:
+        # TODO continue here
+        schema = ensure_avro_schema(data.data_type)
+        schema_id = self._registry_client.get_or_create_id_for_schema(schema)
+        buffer = io.BytesIO()
+        fastavro.schemaless_writer(buffer, schema, data.payload)
+        return create_schema_id_prefix(schema_id) + buffer.getvalue()
+
+    def deserialize(self, raw_data: bytes) -> Data:
         pass
 
-    def deserialize(self, raw_data: bytes) -> Any:
-        pass
+
+class AvroSchema(CustomDataType):
+    pass
+
+
+def ensure_avro_schema(data_type: DataType) -> AvroSchema:
+    if isinstance(data_type, AvroSchema):
+        # everything fine, return as is
+        return data_type
+
+    if isinstance(data_type, CustomDataType):
+        # It's another custom data type, we'll have to do lossy conversion
+        # by converting it to a general esque data type first
+        # TODO cache this somehow?
+        data_type = data_type.to_esque_data_type()
+
+    return AvroSchema.from_esque_data_type(data_type)
