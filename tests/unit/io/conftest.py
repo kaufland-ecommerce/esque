@@ -1,4 +1,6 @@
 import dataclasses
+import random
+from string import ascii_letters
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pytest
@@ -54,6 +56,11 @@ class DummyHandler(BaseHandler):
     @classmethod
     def create_default(cls) -> "DummyHandler":
         return cls(config=DummyHandlerConfig(host="", path="", scheme="dummy"))
+
+
+@pytest.fixture
+def topic_id() -> str:
+    return "".join(random.choices(ascii_letters, k=5))
 
 
 @pytest.fixture
