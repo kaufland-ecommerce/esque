@@ -1,6 +1,6 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Iterable, Optional, Type, TypeVar, Union
+from typing import Any, ClassVar, Iterable, List, Optional, Type, TypeVar, Union
 
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Message
@@ -13,18 +13,25 @@ SC = TypeVar("SC", bound="SerializerConfig")
 class SerializerConfig:
     scheme: str
 
+    def __post_init__(self):
+        self._validate()
+
     def copy(self: SC) -> SC:
         return dataclasses.replace(self)
 
-    def validate(self):
-        problems = []
-        if not self.scheme:
-            problems.append("scheme cannot be None")
-
+    def _validate(self):
+        problems: List[str] = self._validate_fields()
         if problems:
             raise EsqueIOSerializerConfigException(
                 "One or more mandatory config fields don't have a value: \n" + "\n".join(problems)
             )
+
+    def _validate_fields(self) -> List[str]:
+        problems = []
+        if not self.scheme:
+            problems.append("scheme cannot be None")
+
+        return problems
 
 
 class DataSerializer(ABC):

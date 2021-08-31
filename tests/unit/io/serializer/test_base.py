@@ -27,7 +27,7 @@ def test_message_serializer_many():
         Message(key="key", value="value", offset=5, partition=3),
         Message(key="key2", value="value2", offset=6, partition=4),
     ]
-    deserialized_messages: List[Message] = serializer.deserialize_many(raw_messages)
+    deserialized_messages: List[Message] = list(serializer.deserialize_many(raw_messages))
     assert deserialized_messages == expected_deserialized_messages
-    serializer_messages: List[BinaryMessage] = serializer.serialize_many(deserialized_messages)
+    serializer_messages: List[BinaryMessage] = list(serializer.serialize_many(deserialized_messages))
     assert serializer_messages == raw_messages

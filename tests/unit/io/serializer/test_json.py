@@ -1,7 +1,9 @@
 import datetime
 from typing import Any, List
 
-from esque.io.serializers.json import JsonSerializer
+import pytest
+
+from esque.io.serializers.json import JsonSerializer, JsonSerializerConfig
 
 CET = datetime.timezone(datetime.timedelta(seconds=3600), "CET")
 EXPECTED_DATA = {
@@ -32,8 +34,12 @@ EXPECTED_DESERIALIZED_DATA = {
 }
 
 
-def test_json_serializer():
-    serializer: JsonSerializer = JsonSerializer()
+@pytest.fixture
+def serializer() -> JsonSerializer:
+    return JsonSerializer(JsonSerializerConfig(scheme="json", indent=None))
+
+
+def test_json_serializer(serializer):
     actual_serialized_data: bytes = serializer.serialize(EXPECTED_DATA)
     assert actual_serialized_data == EXPECTED_SERIALIZED_DATA
 
@@ -41,10 +47,9 @@ def test_json_serializer():
     assert actual_deserialized_data == EXPECTED_DESERIALIZED_DATA
 
 
-def test_json_serializer_many():
-    serializer: JsonSerializer = JsonSerializer()
-    actual_serialized_data: List[bytes] = serializer.serialize_many([EXPECTED_DATA, {"a": "b"}])
+def test_json_serializer_many(serializer):
+    actual_serialized_data: List[bytes] = list(serializer.serialize_many([EXPECTED_DATA, {"a": "b"}]))
     assert actual_serialized_data == [EXPECTED_SERIALIZED_DATA, b'{"a": "b"}']
 
-    actual_deserialized_data: Any = serializer.deserialize_many(actual_serialized_data)
+    actual_deserialized_data: Any = list(serializer.deserialize_many(actual_serialized_data))
     assert actual_deserialized_data == [EXPECTED_DESERIALIZED_DATA, {"a": "b"}]

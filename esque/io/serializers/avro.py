@@ -1,10 +1,15 @@
+import dataclasses
 import itertools
 import json
+import urllib.parse
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, Type
+from urllib.parse import ParseResult
 
 from esque.io.exceptions import EsqueIONoSuchSchemaException
 from esque.io.serializers.base import DataSerializer, SerializerConfig
+
+SCHEMA_REGISTRY_CLIENT_SCHEME_MAP: Dict[str, Type["SchemaRegistryClient"]] = {}
 
 
 class SchemaRegistryClient(ABC):
@@ -15,6 +20,13 @@ class SchemaRegistryClient(ABC):
     @abstractmethod
     def get_or_create_id_for_schema(self, schema: Dict) -> int:
         raise NotImplementedError
+
+    @classmethod
+    def from_config(cls, config: "AvroSerializerConfig") -> "SchemaRegistryClient":
+        scheme: str = config.parsed_uri().scheme
+        schema_registry_client_cls = SCHEMA_REGISTRY_CLIENT_SCHEME_MAP[scheme]
+        assert cls == SchemaRegistryClient, f"Make sure you implement from_config on {cls.__name__}"
+        return schema_registry_client_cls.from_config(config)
 
 
 class InMemorySchemaRegistryClient(SchemaRegistryClient):
@@ -40,9 +52,32 @@ class InMemorySchemaRegistryClient(SchemaRegistryClient):
             return schema_id
 
 
+SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["memory"] = InMemorySchemaRegistryClient
+
+
+@dataclasses.dataclass(frozen=True)
 class AvroSerializerConfig(SerializerConfig):
-    # TODO continue here
-    pass
+    schema_registry_uri: str
+
+    def parsed_uri(self) -> ParseResult:
+        return urllib.parse.urlparse(url=self.schema_registry_uri)
+
+    def _validate_fields(self):
+        problems = super()._validate_fields()
+        if not self.schema_registry_uri:
+            problems.append("uri cannot be None")
+        try:
+            parsed_uri_result: ParseResult = self.parsed_uri()
+        except Exception as e:  # noqa
+            problems.append(f"exception of type {type(e).__name__} occurred during uri parsing: {e.args}")
+        else:
+            if parsed_uri_result.scheme not in SCHEMA_REGISTRY_CLIENT_SCHEME_MAP:
+                problems.append(
+                    f"unknown scheme for schema registry client: {parsed_uri_result.scheme}. "
+                    f"Supported client schemes: {','.join(SCHEMA_REGISTRY_CLIENT_SCHEME_MAP.keys())}"
+                )
+
+        return problems
 
 
 class AvroSerializer(DataSerializer):

@@ -23,7 +23,7 @@ class JsonSerializerConfig(SerializerConfig):
 
 class JsonSerializer(DataSerializer):
     def serialize(self, data: Any) -> bytes:
-        return json.dumps(data, indent=self._config.indent, default=field_serializer).encode(encoding="UTF-8")
+        return json.dumps(data, indent=self.config.indent, default=field_serializer).encode(encoding="UTF-8")
 
     def deserialize(self, raw_data: bytes) -> Any:
         return json.loads(raw_data.decode("UTF-8"))

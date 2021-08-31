@@ -14,7 +14,7 @@ def test_validation_all_fields_missing():
     assert "host" in actual_exception.message
     assert "path" in actual_exception.message
     assert "scheme" in actual_exception.message
-    assert len(actual_exception.message.splitlines()) == 3
+    assert len(actual_exception.message.splitlines()) == 4
 
 
 @pytest.mark.parametrize(

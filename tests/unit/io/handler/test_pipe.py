@@ -10,10 +10,11 @@ from esque.io.messages import BinaryMessage
 # TODO create tests for these additional scenarios:
 # - broken pipe
 # - the stream is still open, but no new data is coming in (temporary end)
+from esque.io.stream_decorators import skip_stream_events
 
 
 def mk_pipe_handler(stream: StringIO) -> PipeHandler:
-    handler = PipeHandler(PipeHandlerConfig(host="stdin", path=""))
+    handler = PipeHandler(PipeHandlerConfig(scheme="pipe", host="stdin", path=""))
     handler._stream = stream
     return handler
 
@@ -39,7 +40,7 @@ def test_write_read_many_messages(binary_messages: List[BinaryMessage]):
 
     stream.seek(0)
     input_handler = mk_pipe_handler(stream)
-    actual_messages = list(input_handler.message_stream())
+    actual_messages = list(skip_stream_events(input_handler.message_stream()))
 
     assert binary_messages == actual_messages
 

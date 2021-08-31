@@ -91,7 +91,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
                     f"Reached end of all partitions", partition_id=EndOfStream.ALL_PARTITIONS
                 )
         # TODO: process other error cases (connection issues etc.)
-        if consumed_message.error().code() == KafkaError._PARTITION_EOF:
+        if consumed_message.error() is not None and consumed_message.error().code() == KafkaError._PARTITION_EOF:
             self._eof_reached[consumed_message.partition()] = True
             return TemporaryEndOfPartition(f"Reached end of partition", partition_id=consumed_message.partition())
         else:
