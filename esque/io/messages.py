@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Any
+from typing import Any, Optional
 
 from esque.io.data_types import DataType
 
@@ -10,6 +10,7 @@ class Data:
     data_type: DataType
 
 
+# TODO introduce headers
 @dataclasses.dataclass
 class Message:
     key: Data
@@ -18,9 +19,10 @@ class Message:
     offset: int
 
 
+# TODO introduce headers
 @dataclasses.dataclass
 class BinaryMessage:
-    key: bytes
-    value: bytes
+    key: Optional[bytes]
+    value: Optional[bytes]
     partition: int
     offset: int

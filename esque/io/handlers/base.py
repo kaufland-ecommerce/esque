@@ -1,6 +1,6 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Generic, Iterable, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, Generic, Iterable, Tuple, Type, TypeVar, Union
 
 from esque.io.exceptions import EsqueIOHandlerConfigException
 from esque.io.messages import BinaryMessage

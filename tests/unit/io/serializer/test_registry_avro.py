@@ -5,8 +5,10 @@ from unittest import mock
 
 import pytest
 
+from esque.io.messages import Data
 from esque.io.serializers.registry_avro import (
     SCHEMA_REGISTRY_CLIENT_SCHEME_MAP,
+    AvroType,
     InMemorySchemaRegistryClient,
     RegistryAvroSerializer,
     RegistryAvroSerializerConfig,
@@ -32,23 +34,25 @@ def schema_registry_client(registry_avro_config: RegistryAvroSerializerConfig) -
 
 
 @pytest.fixture
-def schema_id(avro_schema: Dict, schema_registry_client: SchemaRegistryClient) -> int:
-    return schema_registry_client.get_or_create_id_for_schema(avro_schema)
+def schema_id(avro_type: AvroType, schema_registry_client: SchemaRegistryClient) -> int:
+    return schema_registry_client.get_or_create_id_for_avro_type(avro_type)
 
 
 @pytest.fixture
-def avro_schema() -> Dict:
-    return {
-        "type": "record",
-        "namespace": "com.example",
-        "name": "Identifier",
-        "fields": [{"name": "id", "type": "string"}],
-    }
+def avro_type() -> AvroType:
+    return AvroType(
+        {
+            "type": "record",
+            "namespace": "com.example",
+            "name": "Identifier",
+            "fields": [{"name": "id", "type": "string"}],
+        }
+    )
 
 
 @pytest.fixture
-def deserialized_data() -> Dict:
-    return {"id": "asdf"}
+def deserialized_data(avro_type) -> Data:
+    return Data(payload={"id": "asdf"}, data_type=avro_type)
 
 
 @pytest.fixture
@@ -76,14 +80,14 @@ def test_avro_serialize(
 
 
 def test_from_config_not_implemented():
-    class SchemaRegistryClientSubclass(SchemaRegistryClient):
-        def get_schema_by_id(self, id: int) -> Dict:
-            return {}
+    class SchemaRegistryClientSubclassA(SchemaRegistryClient):
+        def get_avro_type_by_id(self, id: int) -> "AvroType":
+            return AvroType({})
 
-        def get_or_create_id_for_schema(self, schema: Dict) -> int:
+        def get_or_create_id_for_avro_type(self, avro_type: "AvroType") -> int:
             return 42
 
-    with mock.patch.dict(SCHEMA_REGISTRY_CLIENT_SCHEME_MAP, {"dummy": SchemaRegistryClientSubclass}):
+    with mock.patch.dict(SCHEMA_REGISTRY_CLIENT_SCHEME_MAP, {"dummy": SchemaRegistryClientSubclassA}):
         with pytest.raises(AssertionError):
             config: RegistryAvroSerializerConfig = RegistryAvroSerializerConfig(
                 scheme="avro", schema_registry_uri="dummy://local.test"
@@ -93,10 +97,10 @@ def test_from_config_not_implemented():
 
 def test_from_config_implemented():
     class SchemaRegistryClientSubclass(SchemaRegistryClient):
-        def get_schema_by_id(self, id: int) -> Dict:
-            return {}
+        def get_avro_type_by_id(self, id: int) -> "AvroType":
+            return AvroType({})
 
-        def get_or_create_id_for_schema(self, schema: Dict) -> int:
+        def get_or_create_id_for_avro_type(self, avro_type: "AvroType") -> int:
             return 42
 
         @classmethod
