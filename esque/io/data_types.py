@@ -10,7 +10,26 @@ class EsqueDataType(DataType):
     pass
 
 
+class UnknownDataType(DataType):
+    """
+    Used when the data type is unknown or irrelevant
+    """
+
+
 CDT = TypeVar("CDT", bound="CustomDataType")
+
+# TODO: create a method that looks up a data type in the internal cache based on some internal representation
+#  (hash of the normalized string that represents the type or something similar) and returns a cached instance (if available)
+#  or caches the one that was instantiated by the serializer (if it is not available in the cache).
+#  Consider two objects with the same fields declared in a different order to be of DIFFERENT types.
+#  Examples:
+#  type=String()
+#  cached_type=type.internalize()
+#  assert cached_type is type
+#  second_type=String()
+#  second_cached_type=second_type.internalize()
+#  assert second_cached_type is not second_type and second_cached_type == second_type
+#  assert second_cached_type is cached_type
 
 
 class CustomDataType(DataType):

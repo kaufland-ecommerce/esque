@@ -11,8 +11,10 @@ class StringSerializerConfig(SerializerConfig):
 
 
 class StringSerializer(DataSerializer[StringSerializerConfig]):
+    data_type: String = String()
+
     def serialize(self, data: Data) -> bytes:
         return data.payload.encode(encoding=self.config.encoding)
 
     def deserialize(self, raw_data: bytes) -> Data:
-        return Data(raw_data.decode(encoding=self.config.encoding), String())
+        return Data(raw_data.decode(encoding=self.config.encoding), self.data_type)

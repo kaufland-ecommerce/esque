@@ -16,7 +16,7 @@ def test_get_unknown_schema(schema_registry_client: SchemaRegistryClient):
 
 def test_schema_persistence(schema_registry_client: SchemaRegistryClient):
     schema = {"type": "string"}
-    schema_id = schema_registry_client.get_or_create_id_for_schema(schema)
+    schema_id = schema_registry_client.get_or_create_id_for_avro_type(schema)
     assert isinstance(schema_id, int)
 
     recovered_schema = schema_registry_client.get_schema_by_id(schema_id)
@@ -27,8 +27,8 @@ def test_posting_existing_schema(schema_registry_client: SchemaRegistryClient):
     schema1 = {"type": "record", "name": "myrecord", "fields": [{"name": "f1", "type": "string"}]}
     schema2 = {"name": "myrecord", "type": "record", "fields": [{"name": "f1", "type": "string"}]}
 
-    schema_id1 = schema_registry_client.get_or_create_id_for_schema(schema1)
-    schema_id2 = schema_registry_client.get_or_create_id_for_schema(schema2)
+    schema_id1 = schema_registry_client.get_or_create_id_for_avro_type(schema1)
+    schema_id2 = schema_registry_client.get_or_create_id_for_avro_type(schema2)
 
     assert isinstance(schema_id1, int)
     assert isinstance(schema_id2, int)

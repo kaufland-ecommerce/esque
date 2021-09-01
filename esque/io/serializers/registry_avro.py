@@ -1,10 +1,11 @@
 import dataclasses
+import functools
 import io
 import itertools
 import json
 import urllib.parse
 from abc import ABC, abstractmethod
-from typing import ClassVar, Dict, Iterator, Type
+from typing import Any, ClassVar, Dict, Iterator, Type
 from urllib.parse import ParseResult
 
 import fastavro
@@ -24,11 +25,11 @@ def create_schema_id_prefix(schema_id: int) -> bytes:
 
 class SchemaRegistryClient(ABC):
     @abstractmethod
-    def get_schema_by_id(self, id: int) -> Dict:
+    def get_avro_type_by_id(self, id: int) -> "AvroType":
         raise NotImplementedError
 
     @abstractmethod
-    def get_or_create_id_for_schema(self, schema: Dict) -> int:
+    def get_or_create_id_for_avro_type(self, avro_type: "AvroType") -> int:
         raise NotImplementedError
 
     @classmethod
@@ -43,24 +44,23 @@ class InMemorySchemaRegistryClient(SchemaRegistryClient):
     _IN_MEMORY_REGISTRIES: ClassVar[Dict[str, "SchemaRegistryClient"]] = {}
 
     def __init__(self):
-        self._schemas_by_id: Dict[int, Dict] = {}
-        self._ids_by_schema: Dict[str, int] = {}
+        self._avro_types_by_id: Dict[int, AvroType] = {}
+        self._ids_by_avro_type: Dict[AvroType, int] = {}
         self._id_counter: Iterator[int] = itertools.count()
 
-    def get_schema_by_id(self, id: int) -> Dict:
-        if id not in self._schemas_by_id:
+    def get_avro_type_by_id(self, id: int) -> "AvroType":
+        if id not in self._avro_types_by_id:
             raise EsqueIONoSuchSchemaException(f"Unknown schema ID {id}")
 
-        return self._schemas_by_id[id]
+        return self._avro_types_by_id[id]
 
-    def get_or_create_id_for_schema(self, schema: Dict) -> int:
-        schema_str = json.dumps(schema, sort_keys=True)
-        if schema_str in self._ids_by_schema:
-            return self._ids_by_schema[schema_str]
+    def get_or_create_id_for_avro_type(self, avro_type: "AvroType") -> int:
+        if avro_type in self._ids_by_avro_type:
+            return self._ids_by_avro_type[avro_type]
         else:
             schema_id = next(self._id_counter)
-            self._ids_by_schema[schema_str] = schema_id
-            self._schemas_by_id[schema_id] = json.loads(schema_str)
+            self._ids_by_avro_type[avro_type] = schema_id
+            self._avro_types_by_id[schema_id] = avro_type
             return schema_id
 
     @classmethod
@@ -108,7 +108,7 @@ class RegistryAvroSerializer(DataSerializer):
 
     def serialize(self, data: Data) -> bytes:
         # TODO continue here
-        schema = ensure_avro_schema(data.data_type)
+        schema = ensure_avro_type(data.data_type)
         schema_id = self._registry_client.get_or_create_id_for_schema(schema)
         buffer = io.BytesIO()
         fastavro.schemaless_writer(buffer, schema, data.payload)
@@ -118,12 +118,19 @@ class RegistryAvroSerializer(DataSerializer):
         pass
 
 
-class AvroSchema(CustomDataType):
-    pass
+class AvroType(CustomDataType):
+    avro_schema: Dict
+
+    def __hash__(self):
+        return hash(json.dumps(self.avro_schema, sort_keys=True))
+
+    @functools.cached_property
+    def fastavro_schema(self) -> Any:
+        return fastavro.parse_schema(schema=self.avro_schema)
 
 
-def ensure_avro_schema(data_type: DataType) -> AvroSchema:
-    if isinstance(data_type, AvroSchema):
+def ensure_avro_type(data_type: DataType) -> AvroType:
+    if isinstance(data_type, AvroType):
         # everything fine, return as is
         return data_type
 
@@ -133,4 +140,4 @@ def ensure_avro_schema(data_type: DataType) -> AvroSchema:
         # TODO cache this somehow?
         data_type = data_type.to_esque_data_type()
 
-    return AvroSchema.from_esque_data_type(data_type)
+    return AvroType.from_esque_data_type(data_type)
