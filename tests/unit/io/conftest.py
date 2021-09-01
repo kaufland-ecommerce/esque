@@ -9,7 +9,7 @@ from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, Message
 from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter
 from esque.io.serializers.base import MessageSerializer
-from esque.io.serializers.string import StringSerializer
+from esque.io.serializers.string import StringSerializer, StringSerializerConfig
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
@@ -86,8 +86,12 @@ def string_messages(
 
 
 @pytest.fixture()
-def string_message_serializer() -> MessageSerializer:
-    string_serializer = StringSerializer()
+def string_serializer() -> StringSerializer:
+    return StringSerializer(StringSerializerConfig(scheme="str"))
+
+
+@pytest.fixture()
+def string_message_serializer(string_serializer: StringSerializer) -> MessageSerializer:
     return MessageSerializer(string_serializer)
 
 
@@ -97,7 +101,7 @@ class DummyMessageReader(HandlerSerializerMessageReader):
     def __init__(self):
         super().__init__(
             handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
-            message_serializer=MessageSerializer(StringSerializer()),
+            message_serializer=MessageSerializer(StringSerializer(StringSerializerConfig(scheme="str"))),
         )
 
     def set_messages(self, messages: List[BinaryMessage]) -> None:
@@ -115,7 +119,7 @@ class DummyMessageWriter(HandlerSerializerMessageWriter):
     def __init__(self):
         super().__init__(
             handler=DummyHandler(config=DummyHandlerConfig(host="", path="", scheme="")),
-            message_serializer=MessageSerializer(StringSerializer()),
+            message_serializer=MessageSerializer(StringSerializer(StringSerializerConfig(scheme="str"))),
         )
 
     def get_written_messages(self) -> List[BinaryMessage]:

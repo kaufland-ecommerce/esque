@@ -21,7 +21,7 @@ class JsonSerializer(DataSerializer[JsonSerializerConfig]):
     unknown_data_type: UnknownDataType = UnknownDataType()
 
     def serialize(self, data: Data) -> bytes:
-        return json.dumps(data, indent=self.config.indent, default=self.field_serializer).encode(
+        return json.dumps(data.payload, indent=self.config.indent, default=self.field_serializer).encode(
             encoding=self.config.encoding
         )
 

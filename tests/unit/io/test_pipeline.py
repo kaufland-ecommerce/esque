@@ -1,8 +1,8 @@
 from esque.config import Config
 from esque.io.handlers.pipe import PipeHandler
-from esque.io.messages import Message
-from esque.io.pipeline import MessageReader, MessageWriter, Pipeline, PipelineBuilder
+from esque.io.pipeline import MessageReader, MessageWriter, Pipeline
 from esque.io.serializers.string import StringSerializer
+from tests.unit.io.conftest import DummyMessageWriter
 
 
 def test_create_reader_from_uri(unittest_config):
@@ -42,7 +42,7 @@ def test_read_last():
     pass
 
 
-def test_serializer_scheme_present_in_config(dummy_writer):
+def test_serializer_scheme_present_in_config(dummy_writer: DummyMessageWriter):
     dummy_writer.write_serializer_configs()
 
     key_serializer_config, value_serializer_config = dummy_writer.handler.get_serializer_configs()

@@ -10,6 +10,16 @@ from esque.io.stream_decorators import skip_stream_events
 from tests.unit.io.conftest import DummyHandler, DummyMessageReader, DummyMessageWriter
 
 
+@pytest.fixture
+def output_uri() -> str:
+    return "str+pipe://stdout"
+
+
+@pytest.fixture
+def input_uri() -> str:
+    return "str+pipe://stdin"
+
+
 def test_create_empty_builder():
     pipeline_builder: PipelineBuilder = PipelineBuilder()
     pipeline_builder.build()
@@ -121,6 +131,20 @@ def test_build_fails_with_message_reader_serializer_and_handler(
         builder.build()
 
 
+def test_build_fails_with_message_reader_and_uri(
+    dummy_message_reader: DummyMessageReader,
+    string_message_serializer: MessageSerializer,
+    dummy_handler: DummyHandler,
+    input_uri: str,
+):
+    builder = PipelineBuilder()
+    builder.with_message_reader(dummy_message_reader)
+    builder.with_input_from_uri(input_uri)
+
+    with pytest.raises(EsqueIOInvalidPipelineBuilderState):
+        builder.build()
+
+
 def test_build_fails_with_message_writer_and_serializer(
     dummy_message_writer: DummyMessageWriter, string_message_serializer: MessageSerializer
 ):
@@ -149,7 +173,21 @@ def test_build_fails_with_message_writer_serializer_and_handler(
     builder = PipelineBuilder()
     builder.with_message_writer(dummy_message_writer)
     builder.with_output_message_serializer(string_message_serializer)
-    builder.with_input_handler(dummy_handler)
+    builder.with_output_handler(dummy_handler)
+
+    with pytest.raises(EsqueIOInvalidPipelineBuilderState):
+        builder.build()
+
+
+def test_build_fails_with_message_writer_and_uri(
+    dummy_message_writer: DummyMessageWriter,
+    string_message_serializer: MessageSerializer,
+    dummy_handler: DummyHandler,
+    output_uri: str,
+):
+    builder = PipelineBuilder()
+    builder.with_message_writer(dummy_message_writer)
+    builder.with_output_from_uri(output_uri)
 
     with pytest.raises(EsqueIOInvalidPipelineBuilderState):
         builder.build()
