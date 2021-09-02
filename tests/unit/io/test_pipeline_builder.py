@@ -12,12 +12,12 @@ from tests.unit.io.conftest import DummyHandler, DummyMessageReader, DummyMessag
 
 @pytest.fixture
 def output_uri() -> str:
-    return "str+pipe://stdout"
+    return "pipe+str://stdout"
 
 
 @pytest.fixture
 def input_uri() -> str:
-    return "str+pipe://stdin"
+    return "pipe+str://stdin"
 
 
 def test_create_empty_builder():

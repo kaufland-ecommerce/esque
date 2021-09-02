@@ -2,7 +2,7 @@ import base64
 import json
 import sys
 from enum import Enum
-from typing import Any, Dict, NoReturn, Optional, TextIO, Union
+from typing import Any, Dict, List, NoReturn, Optional, TextIO, Union
 
 from esque.io.exceptions import (
     EsqueIOHandlerConfigException,
@@ -23,8 +23,27 @@ class ByteEncoding(Enum):
 
 
 class PipeHandlerConfig(HandlerConfig):
-    key_encoding: ByteEncoding = ByteEncoding.UTF_8
-    value_encoding: ByteEncoding = ByteEncoding.UTF_8
+    key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
+    value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
+    skip_marker: bool = False
+
+    def _validate_fields(self) -> List[str]:
+        problems = super()._validate_fields()
+        try:
+            ByteEncoding(self.key_encoding)
+        except ValueError:
+            problems.append(
+                f"Invalid value for key_encoding: {self.key_encoding!r}. Valid values are: {', '.join(ByteEncoding)}"
+            )
+
+        try:
+            ByteEncoding(self.value_encoding)
+        except ValueError:
+            problems.append(
+                f"Invalid value for value_encoding: {self.value_encoding!r}. Valid values are: {', '.join(ByteEncoding)}"
+            )
+
+        return problems
 
 
 class PipeHandler(BaseHandler[PipeHandlerConfig]):
@@ -51,19 +70,23 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
     def put_serializer_configs(self, config: Dict[str, Any]) -> NoReturn:
         raise EsqueIOSerializerConfigNotSupported
 
-    def write_message(self, binary_message: BinaryMessage) -> None:
+    def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
+        if isinstance(binary_message, StreamEvent):
+            return
         json.dump(
             {
                 "key": embed(binary_message.key, self.config.key_encoding),
                 "value": embed(binary_message.value, self.config.value_encoding),
                 "partition": binary_message.partition,
                 "offset": binary_message.offset,
-                "keyenc": self.config.key_encoding.value,
-                "valueenc": self.config.value_encoding.value,
+                "keyenc": str(self.config.key_encoding),
+                "valueenc": str(self.config.value_encoding),
             },
             self._stream,
         )
-        self._stream.write(f"\n{MARKER}")
+        self._stream.write("\n")
+        if not self.config.skip_marker:
+            self._stream.write(MARKER)
 
     def read_message(self) -> Union[StreamEvent, BinaryMessage]:
         lines = []
@@ -78,8 +101,8 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 break
             lines.append(line)
         deserialized_object: Dict[str, Any] = json.loads("".join(lines))
-        key_encoding = ByteEncoding(deserialized_object.get("keyenc", ByteEncoding.UTF_8))
-        value_encoding = ByteEncoding(deserialized_object.get("valueenc", ByteEncoding.UTF_8))
+        key_encoding = deserialized_object.get("keyenc", ByteEncoding.UTF_8)
+        value_encoding = deserialized_object.get("valueenc", ByteEncoding.UTF_8)
         return BinaryMessage(
             key=extract(deserialized_object.get("key"), key_encoding),
             value=extract(deserialized_object.get("value"), value_encoding),
@@ -88,7 +111,9 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
         )
 
 
-def embed(input_value: Optional[bytes], encoding: ByteEncoding) -> Optional[str]:
+def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> Optional[str]:
+    encoding = ByteEncoding(encoding)
+
     if input_value is None:
         return None
     if encoding == ByteEncoding.UTF_8:
@@ -99,7 +124,9 @@ def embed(input_value: Optional[bytes], encoding: ByteEncoding) -> Optional[str]
         input_value.hex()
 
 
-def extract(input_value: Optional[str], encoding: ByteEncoding) -> Optional[bytes]:
+def extract(input_value: Optional[str], encoding: Union[str, ByteEncoding]) -> Optional[bytes]:
+    encoding = ByteEncoding(encoding)
+
     if input_value is None:
         return None
     if encoding == ByteEncoding.UTF_8:

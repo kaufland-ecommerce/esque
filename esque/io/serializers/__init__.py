@@ -17,7 +17,7 @@ def create_serializer(serializer_config_dict: Dict[str, Any]) -> DataSerializer:
     serializer_cls: Type[DataSerializer] = SERIALIZER_LOOKUP.get(serializer_config_dict.get("scheme"))
     if serializer_cls is None:
         raise EsqueIOSerializerConfigException(
-            f"Unrecognized serializer identifier: {serializer_config_dict.get('scheme')}. "
+            f"Unrecognized serializer scheme: {serializer_config_dict.get('scheme')}. "
             f"Possible values {', '.join(SERIALIZER_LOOKUP.keys())}"
         )
     serializer_config: SerializerConfig = serializer_cls.config_cls(**serializer_config_dict)

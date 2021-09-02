@@ -1,6 +1,6 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Generic, Iterable, Tuple, Type, TypeVar, Union
+from typing import Any, ClassVar, Dict, Generic, Iterable, List, Tuple, Type, TypeVar, Union
 
 from esque.io.exceptions import EsqueIOHandlerConfigException
 from esque.io.messages import BinaryMessage
@@ -16,10 +16,15 @@ class HandlerConfig:
     path: str
     scheme: str
 
-    def copy(self: HC) -> HC:
-        return dataclasses.replace(self)
+    def __post_init__(self):
+        self._validate()
 
-    def validate(self):
+    def _validate(self):
+        problems: List[str] = self._validate_fields()
+        if problems:
+            raise EsqueIOHandlerConfigException("Handler config validation failed: \n" + "\n".join(problems))
+
+    def _validate_fields(self) -> List[str]:
         problems = []
         if self.host is None:
             problems.append("host cannot be None")
@@ -27,11 +32,7 @@ class HandlerConfig:
             problems.append("path cannot be None")
         if self.scheme is None:
             problems.append("scheme cannot be None")
-
-        if problems:
-            raise EsqueIOHandlerConfigException(
-                "One or more mandatory configs don't have a value: \n" + "\n".join(problems)
-            )
+        return problems
 
 
 class BaseHandler(ABC, Generic[HC]):
@@ -47,22 +48,16 @@ class BaseHandler(ABC, Generic[HC]):
 
         :param config:
         """
-        self.config = config.copy()
-        self._validate_config()
+        self.config = config
+        self._assert_correct_config_type()
 
-    def _validate_config(self) -> None:
-        """
-        Check if the provided information is sufficient for the operation of the handler.
-        The default version checks if any of the required config fields (:meth:`_get_required_field_specs`)
-        are missing and if the field types match.
-        """
+    def _assert_correct_config_type(self):
         if not isinstance(self.config, self.config_cls):
             raise EsqueIOHandlerConfigException(
                 f"Invalid type for the handler config. "
                 f"Expected: {self.config_cls.__name__}, "
                 f"provided: {type(self.config).__name__}"
             )
-        self.config.validate()
 
     @abstractmethod
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -89,21 +84,25 @@ class BaseHandler(ABC, Generic[HC]):
         raise NotImplementedError
 
     @abstractmethod
-    def write_message(self, binary_message: BinaryMessage) -> None:
+    def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
         """
         Write the message from `binary_message` to this handler's source.
+        The handler may choose which action to take upon receiving any :class:`StreamEvent`
+        instances but mostly the appropriate action is to just ignore them.
 
         :param binary_message: The message that is supposed to be written.
         """
         raise NotImplementedError
 
-    def write_many_messages(self, binary_messages: Iterable[BinaryMessage]) -> None:
+    def write_many_messages(self, message_stream: Iterable[Union[BinaryMessage, StreamEvent]]) -> None:
         """
-        Write all messages from the iterable `binary_messages` to this handler's source.
+        Write all messages from the iterable `message_stream` to this handler's source.
+        The handler may choose which action to take upon receiving any :class:`StreamEvent`
+        instances but mostly the appropriate action is to just ignore them.
 
-        :param binary_messages: The messages that are supposed to be written.
+        :param message_stream: The messages that are supposed to be written.
         """
-        for binary_message in binary_messages:
+        for binary_message in message_stream:
             self.write_message(binary_message)
 
     @abstractmethod
@@ -123,7 +122,7 @@ class BaseHandler(ABC, Generic[HC]):
         """
         raise NotImplementedError
 
-    def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
+    def binary_message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         """
         Read :class:`BinaryMessage`s from this handler's source until the source's permanent end is reached.
         Yields an object of :class:`StreamEvent` to indicate certain events that may happen while reading from the

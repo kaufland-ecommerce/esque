@@ -7,7 +7,7 @@ import pytest
 
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, Message
-from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter
+from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter, PipelineBuilder
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer, StringSerializerConfig
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfPartition
@@ -25,6 +25,7 @@ class DummyHandler(BaseHandler):
         super().__init__(config=config)
         self._messages: List[Optional[BinaryMessage]] = []
         self._serializer_configs: Tuple[Dict[str, Any], Dict[str, Any]] = ({}, {})
+        self._peof_counter = 0
 
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         return self._serializer_configs
@@ -32,7 +33,9 @@ class DummyHandler(BaseHandler):
     def put_serializer_configs(self, configs: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
         self._serializer_configs = configs
 
-    def write_message(self, binary_message: BinaryMessage) -> None:
+    def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
+        if isinstance(binary_message, StreamEvent):
+            return
         self._messages.append(binary_message)
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
@@ -42,6 +45,11 @@ class DummyHandler(BaseHandler):
                 return TemporaryEndOfPartition("Temporary end of stream")
             return elem
         else:
+            if self._peof_counter == 10:
+                raise RuntimeError(
+                    "This is the tenth time a permanent end of stream is returned. Do you have an endless loop?"
+                )
+            self._peof_counter += 1
             return PermanentEndOfStream("No messages left in memory")
 
     def get_messages(self) -> List[BinaryMessage]:
@@ -129,3 +137,17 @@ class DummyMessageWriter(HandlerSerializerMessageWriter):
 @pytest.fixture
 def dummy_message_writer() -> DummyMessageWriter:
     return DummyMessageWriter()
+
+
+@pytest.fixture
+def prepared_builder(
+    dummy_message_reader: DummyMessageReader,
+    dummy_message_writer: DummyMessageWriter,
+    binary_messages: List[BinaryMessage],
+) -> PipelineBuilder:
+    builder = PipelineBuilder()
+    builder.with_message_reader(dummy_message_reader)
+    builder.with_message_writer(dummy_message_writer)
+    dummy_message_reader.set_messages(binary_messages)
+
+    return builder

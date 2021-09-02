@@ -65,12 +65,14 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def put_serializer_configs(self, config: Tuple[Dict[str, Any], Dict[str, Any]]) -> None:
         raise EsqueIOSerializerConfigNotSupported
 
-    def write_message(self, binary_message: BinaryMessage) -> None:
+    def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
+        if isinstance(binary_message, StreamEvent):
+            return
         self._produce_single_message(binary_message=binary_message)
         self._producer.flush()
 
-    def write_many_messages(self, binary_messages: Iterable[BinaryMessage]) -> None:
-        for binary_message in binary_messages:
+    def write_many_messages(self, message_stream: Iterable[Union[BinaryMessage, StreamEvent]]) -> None:
+        for binary_message in message_stream:
             self._produce_single_message(binary_message=binary_message)
         self._producer.flush()
 
@@ -88,12 +90,12 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             consumed_message = self._consumer.poll(timeout=0.1)
             if consumed_message is None and all(self._eof_reached.values()):
                 return TemporaryEndOfPartition(
-                    f"Reached end of all partitions", partition_id=EndOfStream.ALL_PARTITIONS
+                    "Reached end of all partitions", partition_id=EndOfStream.ALL_PARTITIONS
                 )
         # TODO: process other error cases (connection issues etc.)
         if consumed_message.error() is not None and consumed_message.error().code() == KafkaError._PARTITION_EOF:
             self._eof_reached[consumed_message.partition()] = True
-            return TemporaryEndOfPartition(f"Reached end of partition", partition_id=consumed_message.partition())
+            return TemporaryEndOfPartition("Reached end of partition", partition_id=consumed_message.partition())
         else:
             self._eof_reached[consumed_message.partition()] = False
             return BinaryMessage(

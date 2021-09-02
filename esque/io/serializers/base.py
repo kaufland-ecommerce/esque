@@ -22,9 +22,7 @@ class SerializerConfig:
     def _validate(self):
         problems: List[str] = self._validate_fields()
         if problems:
-            raise EsqueIOSerializerConfigException(
-                "One or more mandatory config fields don't have a value: \n" + "\n".join(problems)
-            )
+            raise EsqueIOSerializerConfigException("Serializer config validation failed: \n" + "\n".join(problems))
 
     def _validate_fields(self) -> List[str]:
         problems = []
@@ -61,12 +59,16 @@ class MessageSerializer:
         self._key_serializer = key_serializer
         self._value_serializer = value_serializer if value_serializer else key_serializer
 
-    def serialize(self, message: Message) -> BinaryMessage:
+    def serialize(self, message: Union[Message, StreamEvent]) -> Union[BinaryMessage, StreamEvent]:
+        if isinstance(message, StreamEvent):
+            return message
         key_data = self._key_serializer.serialize(message.key)
         value_data = self._value_serializer.serialize(message.value)
         return BinaryMessage(key=key_data, value=value_data, offset=message.offset, partition=message.partition)
 
-    def serialize_many(self, messages: Iterable[Message]) -> Iterable[BinaryMessage]:
+    def serialize_many(
+        self, messages: Iterable[Union[Message, StreamEvent]]
+    ) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         return (self.serialize(message) for message in messages)
 
     def deserialize(self, binary_message: Union[BinaryMessage, StreamEvent]) -> Union[Message, StreamEvent]:
@@ -83,5 +85,3 @@ class MessageSerializer:
         self, binary_message_stream: Iterable[Union[BinaryMessage, StreamEvent]]
     ) -> Iterable[Union[Message, StreamEvent]]:
         return (self.deserialize(binary_message) for binary_message in binary_message_stream)
-
-    # TODO: consider creating a no-op serializer
