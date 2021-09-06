@@ -16,7 +16,7 @@ from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfParti
 @dataclasses.dataclass(frozen=True)
 class KafkaHandlerConfig(HandlerConfig):
 
-    consumer_group_id: Optional[str] = None
+    consumer_group_id: str = ESQUE_GROUP_ID
 
     @property
     def topic_name(self) -> str:
@@ -24,6 +24,8 @@ class KafkaHandlerConfig(HandlerConfig):
 
     @property
     def esque_context(self) -> str:
+        if not self.host:
+            return esque_config.Config.get_instance().current_context
         return self.host
 
 
@@ -41,7 +43,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def _consumer(self) -> Consumer:
         config_instance = esque_config.Config.get_instance()
         with config_instance.temporary_context(self.config.esque_context):
-            group_id = self.config.consumer_group_id if self.config.consumer_group_id else ESQUE_GROUP_ID
+            group_id = self.config.consumer_group_id
             consumer = Consumer(
                 {
                     "group.id": group_id,
