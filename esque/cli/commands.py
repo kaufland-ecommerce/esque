@@ -1132,7 +1132,7 @@ def ping(state: State, times: int, wait: int):
     default="pipe+json://stdout?kv__indent=2&h__skip_marker=1",
 )
 def io(input_uri: str, output_uri: str):
-    """Run a message pipeline
+    """Run a message pipeline.
 
     Read all messages from the input configured by <input_uri> and write them to the output configured by <output_uri>.
 
@@ -1241,7 +1241,7 @@ def io(input_uri: str, output_uri: str):
 @esque.command("urlencode")
 @click.argument("value", metavar="<value>")
 def urlencode(value: str):
-    """Url-encode the given value
+    """Url-encode the given value.
 
     Can be used to make any query parameters safe to use in the input or output uri.
     See also `esque io --help`.
