@@ -1140,9 +1140,10 @@ def io(input_uri: str, output_uri: str):
     URI Format:
     <handler scheme>+<key serializer scheme>[+<value serializer scheme>]://<host>/<path>[?<param 1>(&<param 2>)]
 
+    \b
     <handler scheme>    - Scheme that defines which handler should be used.
                           (See "Available Handlers" below)
-    <serializer scheme> - Define data serialization format for key and value in message (e.g json or avro).
+    <serializer scheme> - Define data serialization format for key and value in message (e.g json or avro).\b
                           If no value serializer scheme defined key scheme will be used for both.
                           (See "Available Serializers" below)
     <host> and <path>   - Depends on handler and defines the exact source or target of the data pipeline.
@@ -1158,9 +1159,9 @@ def io(input_uri: str, output_uri: str):
                           with uri parsing safe to use as query parameters.
                           (For supported parameters, see "Available Handlers" and "Available Serializers" below)
 
-    \b
     Available Handlers:
 
+    \b
     - kafka
       <host> -> Used for esque context. If empty, use active context.
       <path> -> Used as topic name.
@@ -1168,6 +1169,7 @@ def io(input_uri: str, output_uri: str):
         * consumer_group_id
           Use this consumer group id, when reading from a topic. (Default is "esque-client")
 
+    \b
     - pipe
       <host> -> Valid values are "stdin", "stdout" or "stderr".
       <path> -> No meaning, should stay empty.
@@ -1180,7 +1182,7 @@ def io(input_uri: str, output_uri: str):
           Same as `key_encoding` but for the values. (Default is "utf-8")
         * skip_marker
           Use any value (preferably 1) if you don't want any marker lines to be written between json objects.
-          The marker line "__esque_msg_marker__\n" is required for esque to be able to **read** from a pipe.
+          The marker line "__esque_msg_marker__\\n" is required for esque to be able to **read** from a pipe.
           Therefore, you can skip the markers in the output when you're not intending to read the piped data back in.
           You'll even **need** to skip the marker if you want to further process the messages with tools like `jq`.
 
@@ -1195,11 +1197,13 @@ def io(input_uri: str, output_uri: str):
           Use this character encoding when transforming the json string into bytes for the message key or value.
           (Default is "utf-8")
 
+    \b
     - string
       Supported Parameters:
         * encoding
           Use this character encoding to serialize or deserialize the string to/from the message key or value.
 
+    \b
     - reg-avro
       Schema registry based AVRO serializer.
       Supported Parameters:
