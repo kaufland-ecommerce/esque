@@ -20,7 +20,7 @@ class KafkaHandlerConfig(HandlerConfig):
 
     @property
     def topic_name(self) -> str:
-        return self.path
+        return self.path[1:]
 
     @property
     def esque_context(self) -> str:
@@ -35,24 +35,25 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def _producer(self) -> Producer:
         config_instance = esque_config.Config.get_instance()
         with config_instance.temporary_context(self.config.esque_context):
-            return Producer(config=config_instance.create_confluent_config(include_schema_registry=False))
+            return Producer(config_instance.create_confluent_config(include_schema_registry=False))
 
     @functools.cached_property
     def _consumer(self) -> Consumer:
         config_instance = esque_config.Config.get_instance()
         with config_instance.temporary_context(self.config.esque_context):
+            group_id = self.config.consumer_group_id if self.config.consumer_group_id else ESQUE_GROUP_ID
             consumer = Consumer(
-                config={
-                    **config_instance.create_confluent_config(include_schema_registry=False),
-                    "group.id": self.config.consumer_group_id if self.config.consumer_group_id else ESQUE_GROUP_ID,
+                {
+                    "group.id": group_id,
                     "enable.partition.eof": True,
+                    **config_instance.create_confluent_config(include_schema_registry=False),
                 }
             )
 
         topic_metadata: TopicMetadata = consumer.list_topics(self.config.topic_name).topics[self.config.topic_name]
         self._eof_reached = {partition_id: False for partition_id in topic_metadata.partitions.keys()}
         consumer.assign(
-            partitions=[
+            [
                 TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=OFFSET_BEGINNING)
                 for partition_id in topic_metadata.partitions.keys()
             ]

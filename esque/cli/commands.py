@@ -4,6 +4,7 @@ import pwd
 import re
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
@@ -35,6 +36,7 @@ from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
+from esque.io.pipeline import PipelineBuilder
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
@@ -1118,3 +1120,22 @@ def ping(state: State, times: int, wait: int):
     click.echo("--- statistics ---")
     click.echo(f"{len(deltas)} messages sent/received.")
     click.echo(f"min/avg/max = {min(deltas):.2f}/{(sum(deltas) / len(deltas)):.2f}/{max(deltas):.2f} ms")
+
+
+@esque.command("io")
+@click.option("-i", "--input-uri", help="Input URI", required=True)
+@click.option("-o", "--output-uri", help="Output URI", default="pipe+json://stdout")
+def io(input_uri: str, output_uri: str):
+    builder = PipelineBuilder()
+    builder.with_input_from_uri(input_uri)
+    builder.with_output_from_uri(output_uri)
+
+    pipeline = builder.build()
+
+    pipeline.run_pipeline()
+
+
+@esque.command("urlencode")
+@click.argument("value")
+def urlencode(value: str):
+    click.echo(urllib.parse.quote_plus(value))

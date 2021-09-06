@@ -9,7 +9,7 @@ from esque.io.handlers import BaseHandler, PipeHandler, create_handler
 from esque.io.handlers.pipe import PipeHandlerConfig
 from esque.io.messages import Message
 from esque.io.serializers import StringSerializer, create_serializer
-from esque.io.serializers.base import DataSerializer, MessageSerializer
+from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializerConfig
 from esque.io.stream_events import StreamEvent
 
@@ -22,13 +22,6 @@ class MessageReader(ABC):
     @abstractmethod
     def message_stream(self) -> Iterable[Message]:
         raise NotImplementedError
-
-    @classmethod
-    def from_uri(cls, uri: str) -> "MessageReader":
-        uri_config = UriConfig(uri)
-        return HandlerSerializerMessageReader(
-            handler=uri_config.create_handler(), message_serializer=uri_config.create_message_serializer()
-        )
 
 
 class _Schemes(NamedTuple):
@@ -126,20 +119,6 @@ class UriConfig:
             self.key_serializer_config[key] = value
             self.value_serializer_config[key] = value
 
-    def create_handler(self) -> BaseHandler:
-        return create_handler(self.handler_config)
-
-    def create_key_serializer(self) -> DataSerializer:
-        return create_serializer(self.key_serializer_config)
-
-    def create_value_serializer(self) -> DataSerializer:
-        return create_serializer(self.value_serializer_config)
-
-    def create_message_serializer(self) -> MessageSerializer:
-        return MessageSerializer(
-            key_serializer=self.create_key_serializer(), value_serializer=self.create_value_serializer()
-        )
-
 
 class MessageWriter(ABC):
     @abstractmethod
@@ -149,13 +128,6 @@ class MessageWriter(ABC):
     @abstractmethod
     def write_many_messages(self, message_stream: Iterable[Union[Message, StreamEvent]]):
         raise NotImplementedError
-
-    @classmethod
-    def from_uri(cls, uri: str) -> "MessageWriter":
-        uri_config = UriConfig(uri)
-        return HandlerSerializerMessageWriter(
-            handler=uri_config.create_handler(), message_serializer=uri_config.create_message_serializer()
-        )
 
 
 class HandlerSerializerMessageReader(MessageReader):
@@ -351,11 +323,21 @@ class PipelineBuilder:
             return HandlerSerializerMessageReader(self._input_handler, self._input_serializer)
 
         if self._input_state == _BuilderComponentState.URI_DEFINED:
-            return MessageReader.from_uri(self._input_uri)
+            return self._build_message_reader_from_uri()
 
     def _build_default_message_reader(self) -> MessageReader:
         return HandlerSerializerMessageReader(
             self._create_default_input_handler(), self._create_default_input_serializer()
+        )
+
+    def _build_message_reader_from_uri(self) -> MessageReader:
+        uri_config = UriConfig(self._input_uri)
+        return HandlerSerializerMessageReader(
+            handler=create_handler(uri_config.handler_config),
+            message_serializer=MessageSerializer(
+                key_serializer=create_serializer(uri_config.key_serializer_config),
+                value_serializer=create_serializer(uri_config.value_serializer_config),
+            ),
         )
 
     def _handle_invalid_input_state(self) -> None:
@@ -396,11 +378,21 @@ class PipelineBuilder:
             return HandlerSerializerMessageWriter(self._output_handler, self._output_serializer)
 
         if self._output_state == _BuilderComponentState.URI_DEFINED:
-            return MessageWriter.from_uri(self._output_uri)
+            return self._build_message_writer_from_uri()
 
     def _build_default_message_writer(self) -> MessageWriter:
         return HandlerSerializerMessageWriter(
             self._create_default_output_handler(), self._create_default_output_serializer()
+        )
+
+    def _build_message_writer_from_uri(self) -> MessageWriter:
+        uri_config = UriConfig(self._output_uri)
+        return HandlerSerializerMessageWriter(
+            handler=create_handler(uri_config.handler_config),
+            message_serializer=MessageSerializer(
+                key_serializer=create_serializer(uri_config.key_serializer_config),
+                value_serializer=create_serializer(uri_config.value_serializer_config),
+            ),
         )
 
     def _handle_invalid_output_state(self) -> None:

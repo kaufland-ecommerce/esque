@@ -87,6 +87,7 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
         self._stream.write("\n")
         if not self.config.skip_marker:
             self._stream.write(MARKER)
+        self._stream.flush()
 
     def read_message(self) -> Union[StreamEvent, BinaryMessage]:
         lines = []

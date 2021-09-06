@@ -131,6 +131,10 @@ class RestSchemaRegistryClient(SchemaRegistryClient):
         return cls(registry_url=config.schema_registry_uri, subject=config.schema_subject)
 
 
+SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["http"] = RestSchemaRegistryClient
+SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["https"] = RestSchemaRegistryClient
+
+
 @dataclasses.dataclass(frozen=True)
 class RegistryAvroSerializerConfig(SerializerConfig):
     schema_registry_uri: str

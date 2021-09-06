@@ -6,9 +6,11 @@ from esque.io.serializers.json import JsonSerializer
 from esque.io.serializers.registry_avro import RegistryAvroSerializer
 from esque.io.serializers.string import StringSerializer
 
+# Make sure you only use valid characters here.
+# Valid characters are a-z, A-Z, 0-9 and +-.
 SERIALIZER_LOOKUP: Dict[str, Type[DataSerializer]] = {
     "str": StringSerializer,
-    "registry_avro": RegistryAvroSerializer,
+    "reg-avro": RegistryAvroSerializer,
     "json": JsonSerializer,
 }
 
