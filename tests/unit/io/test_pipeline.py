@@ -14,16 +14,7 @@ from esque.io.pipeline import (
     PipelineBuilder,
     UriConfig,
 )
-from esque.io.serializers.string import StringSerializer
 from tests.unit.io.conftest import DummyMessageWriter
-
-
-def test_uri_config_create_objects():
-    uri_config = UriConfig("pipe+str://stdin")
-
-    assert isinstance(uri_config.create_key_serializer(), StringSerializer)
-    assert isinstance(uri_config.create_value_serializer(), StringSerializer)
-    assert isinstance(uri_config.create_handler(), PipeHandler)
 
 
 def test_uri_config_correct_configs_extracted_without_parameters():
@@ -40,7 +31,7 @@ def test_uri_config_correct_configs_extracted_with_parameters():
             "k__keyparam=keyparamvalue",
             "v__valueparam=valueparamvalue",
             "kv__keyvalueparam=keyvalueparamvalue",
-            "handlerparam=handlerparamvalue",
+            "h__handlerparam=handlerparamvalue",
         ]
     )
     uri_config = UriConfig(f"pipe+str://stdin/somepath?{query_str}")
@@ -48,7 +39,7 @@ def test_uri_config_correct_configs_extracted_with_parameters():
     assert uri_config.handler_config == {
         "scheme": "pipe",
         "host": "stdin",
-        "path": "/somepath",
+        "path": "somepath",
         "handlerparam": "handlerparamvalue",
     }
     assert uri_config.key_serializer_config == {
@@ -78,7 +69,7 @@ def test_uri_config_throws_exception_without_serializer_scheme():
 
 def test_uri_config_throws_exception_for_duplicate_parameters():
     with pytest.raises(ExqueIOInvalidURIException):
-        UriConfig("pipe+str://stdin?param=value&param=value")
+        UriConfig("pipe+str://stdin?h__param=value&h__param=value")
 
     with pytest.raises(ExqueIOInvalidURIException):
         UriConfig("pipe+str://stdin?k__param=value&k__param=value")
@@ -88,16 +79,6 @@ def test_uri_config_throws_exception_for_duplicate_parameters():
 
     with pytest.raises(ExqueIOInvalidURIException):
         UriConfig("pipe+str://stdin?kv__param=value&kv__param=value")
-
-
-def test_create_writer_from_url():
-    writer = MessageWriter.from_uri("pipe+str://stdout")
-    assert isinstance(writer, HandlerSerializerMessageWriter)
-
-
-def test_create_reader_from_url():
-    reader = MessageReader.from_uri("pipe+str://stdin")
-    assert isinstance(reader, HandlerSerializerMessageReader)
 
 
 def test_pipeline_without_special_decorators_runs_successfully(

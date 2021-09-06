@@ -40,9 +40,8 @@ class UriConfig:
     KEY_PARAM_PREFIX: ClassVar[str] = "k__"
     VALUE_PARAM_PREFIX: ClassVar[str] = "v__"
     KEYVALUE_PARAM_PREFIX: ClassVar[str] = "kv__"
-    HANDLER_PARAM_PREFIX: ClassVar[str] = ""
+    HANDLER_PARAM_PREFIX: ClassVar[str] = "h__"
 
-    # Note: HANDLER_PARAM_PREFIX has to come last, otherwise it will match before all the others because it's empty.
     ALL_PREFIXES: ClassVar[List[str]] = [
         KEY_PARAM_PREFIX,
         VALUE_PARAM_PREFIX,
@@ -86,7 +85,7 @@ class UriConfig:
 
     def _assign_handler_host_and_path(self):
         host: str = self._parsed_uri.netloc
-        path: str = self._parsed_uri.path
+        path: str = self._parsed_uri.path[1:]
         self.handler_config.update({"host": host, "path": path})
 
     def _evaluate_query_params(self):

@@ -1124,8 +1124,30 @@ def ping(state: State, times: int, wait: int):
 
 @esque.command("io")
 @click.option("-i", "--input-uri", help="Input URI", required=True)
-@click.option("-o", "--output-uri", help="Output URI", default="pipe+json://stdout")
+@click.option("-o", "--output-uri", help="Output URI", default="pipe+json://stdout?kv__indent=2&h__skip_marker=1")
 def io(input_uri: str, output_uri: str):
+    """Run message pipeline
+
+    \b
+    URI Format:
+    <handler scheme>+<key serializer scheme>[+<value serializer scheme>]://<host>/<path>[?<param 1>(&<param 2>)]
+
+    <handler scheme>    - Scheme that defines which handler should be used. (See table below)
+    <serializer scheme> - Define data serialization format for key and value in message (e.g json or avro).
+                          If no value serializer scheme defined key scheme will be used for both.
+    <host> and <path>   - Depends on handler and defines source or target of the data pipeline.
+    <param>             - Define parameters for handler and/or serializer.
+                          if prefixed with k__  use as key serializer parameter,
+                          if prefixed with v__  use as value serializer parameter,
+                          if prefixed with kv__ use as key and value serializer parameter,
+                          if prefixed with h__  use as handler parameter
+
+
+    \b
+    EXAMPLES:
+    # Extract message and format json output using jq.
+    esque io -i "<input uri>" -o "pipe+json://stdout?skip_marker=1" | jq '.value | fromjson'
+    """
     builder = PipelineBuilder()
     builder.with_input_from_uri(input_uri)
     builder.with_output_from_uri(output_uri)

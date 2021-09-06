@@ -20,7 +20,7 @@ class KafkaHandlerConfig(HandlerConfig):
 
     @property
     def topic_name(self) -> str:
-        return self.path[1:]
+        return self.path
 
     @property
     def esque_context(self) -> str:

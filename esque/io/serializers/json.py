@@ -12,16 +12,20 @@ from esque.io.serializers.base import DataSerializer
 
 @dataclasses.dataclass(frozen=True)
 class JsonSerializerConfig(SerializerConfig):
-    indent: Optional[int]
+    indent: Optional[str] = None
     encoding: str = "UTF-8"
 
 
 # TODO: implement solution to handle data types when they are known
 class JsonSerializer(DataSerializer[JsonSerializerConfig]):
+    config_cls = JsonSerializerConfig
     unknown_data_type: UnknownDataType = UnknownDataType()
 
     def serialize(self, data: Data) -> bytes:
-        return json.dumps(data.payload, indent=self.config.indent, default=self.field_serializer).encode(
+        indent = None
+        if self.config.indent is not None:
+            indent = int(self.config.indent)
+        return json.dumps(data.payload, indent=indent, default=self.field_serializer).encode(
             encoding=self.config.encoding
         )
 

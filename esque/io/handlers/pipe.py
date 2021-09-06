@@ -1,6 +1,7 @@
 import base64
 import json
 import sys
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, NoReturn, Optional, TextIO, Union
 
@@ -22,6 +23,7 @@ class ByteEncoding(Enum):
     HEX = "hex"
 
 
+@dataclass(frozen=True)
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
