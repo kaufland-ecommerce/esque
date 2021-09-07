@@ -7,6 +7,7 @@ from esque.io.messages import Data
 from esque.io.serializers.json import JsonSerializer, JsonSerializerConfig
 
 CET = datetime.timezone(datetime.timedelta(seconds=3600), "CET")
+
 ORIGINAL_TEST_DATA = [
     Data(
         {
@@ -15,7 +16,7 @@ ORIGINAL_TEST_DATA = [
             "float_field": 1.337,
             "date_field": datetime.date(2020, 1, 1),
             "datetime_field": datetime.datetime(2020, 1, 1, 2, 3, 4),
-            "timestamp_field": datetime.datetime(2020, 1, 1, 2, 3, 4).astimezone(CET),
+            "timestamp_field": datetime.datetime(2020, 1, 1, 2, 3, 4, tzinfo=CET),
             "bytes_field": b"\x00\x01\x02",
         },
         JsonSerializer.unknown_data_type,
