@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.8', '3.9', '3.10' ]
+        python: ['3.8', '3.9', '3.10.0-rc.1' ]
         librdkafka: ['1.7.0']
     steps:
       - uses: actions/checkout@v2
@@ -45,7 +45,7 @@ jobs:
           path: .venv
           key: venv-${{ matrix.python }}-${{ hashFiles('poetry.lock') }}
       - name: Fetch cache for librdkafka
-        if: matrix.python != '3.10'
+        if: matrix.python == '3.10.0-rc.1'
         uses: actions/cache@v1
         id: rdkafka-cache
         with:
@@ -57,7 +57,7 @@ jobs:
           python-version: ${{ matrix.python }}
           architecture: x64
       - name: Download and compile librdkafka
-        if: matrix.python != '3.10' && steps.rdkafka-cache.outputs.cache-hit != 'true'
+        if: matrix.python == '3.10.0-rc.1' && steps.rdkafka-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get install libsasl2-dev libsasl2-modules libssl-dev
           git clone --branch "v${{ matrix.librdkafka }}" --depth 1 https://github.com/edenhill/librdkafka.git
@@ -66,7 +66,7 @@ jobs:
           sudo make
           popd
       - name: Install librdkafka
-        if: matrix.python != '3.10'
+        if: matrix.python == '3.10.0-rc.1'
         run: |
           pushd librdkafka
           sudo make install
