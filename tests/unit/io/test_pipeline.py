@@ -3,17 +3,8 @@ from typing import List
 import pytest
 
 from esque.io.exceptions import ExqueIOInvalidURIException
-from esque.io.handlers.pipe import PipeHandler
 from esque.io.messages import BinaryMessage
-from esque.io.pipeline import (
-    HandlerSerializerMessageReader,
-    HandlerSerializerMessageWriter,
-    MessageReader,
-    MessageWriter,
-    Pipeline,
-    PipelineBuilder,
-    UriConfig,
-)
+from esque.io.pipeline import Pipeline, PipelineBuilder, UriConfig
 from tests.unit.io.conftest import DummyMessageWriter
 
 

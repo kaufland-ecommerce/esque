@@ -1,4 +1,4 @@
-from typing import Iterable, Iterator, TypeVar, Union
+from typing import Iterable, TypeVar, Union
 
 from esque.io.stream_events import EndOfStream, NthMessageRead, StreamEvent
 

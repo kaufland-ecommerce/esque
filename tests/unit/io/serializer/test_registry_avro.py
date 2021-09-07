@@ -1,6 +1,6 @@
 import random
 from string import ascii_lowercase
-from typing import Any, Dict
+from typing import Any
 from unittest import mock
 
 import pytest
