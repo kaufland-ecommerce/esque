@@ -1143,18 +1143,21 @@ def io(input_uri: str, output_uri: str):
     \b
     <handler scheme>    - Scheme that defines which handler should be used.
                           (See "Available Handlers" below)
-    <serializer scheme> - Define data serialization format for key and value in message (e.g json or avro).\b
+    <serializer scheme> - Define data serialization format for key and value in message (e.g json or avro).
                           If no value serializer scheme defined key scheme will be used for both.
                           (See "Available Serializers" below)
     <host> and <path>   - Depends on handler and defines the exact source or target of the data pipeline.
                           (See "Available Handlers" below)
     <param>             - Define parameters for handler and/or serializer. Use the following prefixes to define
-                          which component a parameter should be used for:
-                            k__  use as key serializer parameter
-                            v__  use as value serializer parameter
-                            kv__ use as key and value serializer parameter
-                            h__  use as handler parameter
+                          which component(s) to forward a parameter to:
+                            k__  forward to key serializer
+                            v__  forward to value serializer
+                            kv__ forward to both a key and a value serializer
+                            h__  forward to handler
                           E.g. `k__indent=1` will pass the parameter `indent` with a value of `1` to the key serializer.
+                          Use the kv__ prefix if you want to supply the same setting for both serializers in order to
+                          avoid typing it twice. It's equivalent to having the same parameter and value once with k__
+                          and once with v__ as prefix.
                           Use `esque urlencode some&string:with;special_characters` to make values that would interfere
                           with uri parsing safe to use as query parameters.
                           (For supported parameters, see "Available Handlers" and "Available Serializers" below)
@@ -1192,7 +1195,7 @@ def io(input_uri: str, output_uri: str):
       Supported Parameters:
         * indent
           When serializing data into json, use this many spaces to indent (pretty format) the output.
-          By default the serializer uses no indentation and puts everything into one line.
+          By default the serializer uses no line breaks or indentation and puts everything into one line.
         * encoding
           Use this character encoding when transforming the json string into bytes for the message key or value.
           (Default is "utf-8")
@@ -1222,7 +1225,7 @@ def io(input_uri: str, output_uri: str):
     esque io -i "kafka+reg-avro:///mytopic?kv__schema_registry_uri=$(esque urlencode https://schema-registry.example.com)"
 
     \b
-    # Extract and format message value using jq.
+    # Extract and format message value using jq
     esque io -i "kafka+json:///mytopic" -o "pipe+json://stdout?skip_marker=1" | jq '.value | fromjson'
 
     \b
@@ -1231,7 +1234,7 @@ def io(input_uri: str, output_uri: str):
 
     \b
     # Restore messages from a file
-    cat mytopic_dump.json > esque io -i "pipe+json://stdout" -o "kafka+raw://dev/mytopic"
+    cat mytopic_dump.json > esque io -i "pipe+json://stdin" -o "kafka+raw://dev/mytopic"
     """
     builder = PipelineBuilder()
     builder.with_input_from_uri(input_uri)
