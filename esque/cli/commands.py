@@ -1152,7 +1152,7 @@ def io(input_uri: str, output_uri: str):
                           which component(s) to forward a parameter to:
                             k__  forward to key serializer
                             v__  forward to value serializer
-                            kv__ forward to both a key and a value serializer
+                            kv__ forward to both key and value serializer
                             h__  forward to handler
                           E.g. `k__indent=1` will pass the parameter `indent` with a value of `1` to the key serializer.
                           Use the kv__ prefix if you want to supply the same setting for both serializers in order to
