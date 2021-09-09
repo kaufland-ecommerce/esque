@@ -1,4 +1,5 @@
 import dataclasses
+import warnings
 from typing import List, Type, TypeVar
 
 
@@ -14,6 +15,15 @@ class UnknownDataType(DataType):
     """
     Used when the data type is unknown or irrelevant
     """
+
+    def __eq__(self, other):
+        if not isinstance(other, DataType):
+            return NotImplemented
+        warnings.warn(
+            f"Comparing UnknownDatatype to {type(other).__name__}. "
+            "Unknown types don't have a proper value and therefore can never be considered equal to anything."
+        )
+        return False
 
 
 CDT = TypeVar("CDT", bound="CustomDataType")

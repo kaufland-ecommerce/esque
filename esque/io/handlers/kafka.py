@@ -35,13 +35,13 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
 
     @functools.cached_property
     def _producer(self) -> Producer:
-        config_instance = esque_config.Config.get_instance()
+        config_instance = esque_config.Config()
         with config_instance.temporary_context(self.config.esque_context):
             return Producer(config_instance.create_confluent_config(include_schema_registry=False))
 
     @functools.cached_property
     def _consumer(self) -> Consumer:
-        config_instance = esque_config.Config.get_instance()
+        config_instance = esque_config.Config()
         with config_instance.temporary_context(self.config.esque_context):
             group_id = self.config.consumer_group_id
             consumer = Consumer(

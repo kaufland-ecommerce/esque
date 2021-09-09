@@ -1191,6 +1191,21 @@ def io(input_uri: str, output_uri: str):
 
     \b
     Available Serializers:
+    - raw
+      Doesn't deserialize the message payload and ignores the schema. Basically transfers messages 1:1.
+      Useful if you don't need to do any transformations and just want to get data from A to B without the overhead of
+      serialization, deserialization and schema handling.
+      WARNING: Be careful with data that has a schema which was or has to be registered by a schema registry!
+               This binary data is usually prefixed with a schema id that is valid only for one specific registry
+               instance. Transferring it to a different cluster 1:1 most likely makes it unable to be deserialized
+               because of two reasons:
+                 1. The schema id is from another schema registry instance and either doesn't exist on the target or
+                    refers to the wrong schema.
+                 2. The schema was not registered for the target subject in the target schema registry.
+      Supported Parameters:
+       none
+
+    \b
     - json
       Supported Parameters:
         * indent
