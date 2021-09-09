@@ -47,7 +47,6 @@ We feel that the goal of `esque` embodies the principle: “**keep easy things e
 
 ```bash
 $ esque
-
 Usage: esque [OPTIONS] COMMAND [ARGS]...
 
   esque - an operational kafka tool.
@@ -56,26 +55,26 @@ Usage: esque [OPTIONS] COMMAND [ARGS]...
   attempt at it.
 
 Options:
-  --recreate-config  Overwrites the config with the sample config.
-  --version          Show the version and exit.
-  -v, --verbose      Return stack trace on error.
-  --no-verify        Skip all verification dialogs and answer them with yes.
-  --help             Show this message and exit.
+  --version      Show the version and exit.
+  -v, --verbose  Return stack trace on error.
+  --no-verify    Skip all verification dialogs and answer them with yes.
+  --help         Show this message and exit.
 
 Commands:
-  apply     Apply a set of topic configurations.
-  config    Configuration-related options.
-  consume   Consume messages from a topic.
-  create    Create a new instance of a resource.
-  ctx       List contexts and switch between them.
-  delete    Delete a resource.
-  describe  Get detailed information about a resource.
-  edit      Edit a resource.
-  get       Get a quick overview of different resources.
-  ping      Test the connection to the kafka cluster.
-  produce   Produce messages to a topic.
-  set       Set resource attributes.
-
+  apply      Apply a set of topic configurations.
+  config     Configuration-related options.
+  consume    Consume messages from a topic.
+  create     Create a new instance of a resource.
+  ctx        List contexts and switch between them.
+  delete     Delete a resource.
+  describe   Get detailed information about a resource.
+  edit       Edit a resource.
+  get        Get a quick overview of different resources.
+  io         Run a message pipeline.
+  ping       Test the connection to the kafka cluster.
+  produce    Produce messages to a topic.
+  set        Set resource attributes.
+  urlencode  Url-encode the given value.
 ```
 
 ## Installation and Usage

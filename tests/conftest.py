@@ -122,7 +122,7 @@ def unittest_config(request: FixtureRequest, load_config: config_loader) -> Conf
 
 
 @pytest.fixture()
-def topic_id(confluent_admin_client) -> Iterable[str]:
+def topic_id(confluent_admin_client) -> str:
     return "".join(random.choices(ascii_letters, k=5))
 
 
