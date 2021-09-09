@@ -1,18 +1,20 @@
 from typing import Callable, Iterable, TypeVar, Union
 
+from esque.io.messages import BinaryMessage, Message
 from esque.io.stream_events import EndOfStream, NthMessageRead, StreamEvent
 
-T = TypeVar("T")
+M = TypeVar("M", bound=Union[Message, BinaryMessage])
+MessageStream = Iterable[Union[M, StreamEvent]]
 
 
-def skip_stream_events(iterable: Iterable[Union[T, StreamEvent]]) -> Iterable[T]:
+def skip_stream_events(iterable: MessageStream) -> Iterable[M]:
     for elem in iterable:
         if isinstance(elem, StreamEvent):
             continue
         yield elem
 
 
-def stop_at_temporary_end_of_stream(iterable: Iterable[Union[T, StreamEvent]]) -> Iterable[Union[T, StreamEvent]]:
+def stop_at_temporary_end_of_stream(iterable: MessageStream) -> MessageStream:
     """
     Enables an iterator to be consumed until an end of stream is reached. Meant to be used with :meth:`BaseHandler.message_stream()`.
     Check the docstring for :meth:`BaseHandler.message_stream()` for a more thorough definition of a temporary end of stream.
@@ -28,7 +30,7 @@ def stop_at_temporary_end_of_stream(iterable: Iterable[Union[T, StreamEvent]]) -
             break
 
 
-def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]], Iterable[Union[T, StreamEvent]]]:
+def stop_after_nth_message(n: int) -> Callable[[MessageStream], MessageStream]:
     """
     Creates a decorator that enables an iterator to be consumed until n messages have been read.
     Meant to be used with :meth:`BaseHandler.message_stream()`.
@@ -37,7 +39,7 @@ def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]]
     :return: The iterable decorator which stops after the nth consumed message
     """
 
-    def _stop_after_nth_message(iterable: Iterable[Union[T, StreamEvent]]):
+    def _stop_after_nth_message(iterable: MessageStream):
         i = 0
         for elem in iterable:
             yield elem
@@ -50,7 +52,25 @@ def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]]
     return _stop_after_nth_message
 
 
-# def stop_at_message_timeout(iterable: Iterable[Union[T, StreamEvent]], message_timeout: int) -> Iterable[Union[T, StreamEvent]]:
+def skip_messages_with_offset_below(lbound: int) -> Callable[[MessageStream], MessageStream]:
+    """
+    Creates a decorator that enables an iterator to jump over messages until their offset is greater or equal to
+    `lbound`.
+    Meant to be used with :meth:`BaseHandler.message_stream()`.
+    The decorator won't skip any :class:StreamEvent objects that it encounters.
+    :param lbound: The offset boundary below which messages should be skipped.
+    :return: The iterable decorator which skips over messages with offset below `lbound`
+    """
+
+    def _skip_messages_with_offset_below(iterable: MessageStream):
+        for elem in iterable:
+            if isinstance(elem, StreamEvent) or elem.offset >= lbound:
+                yield elem
+
+    return _skip_messages_with_offset_below
+
+
+# def stop_at_message_timeout(iterable: EventStream, message_timeout: int) -> EventStream:
 #     iterator: Iterator[T] = iter(iterable)
 #     while True:
 #         try:
@@ -59,7 +79,7 @@ def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]]
 #             return
 #
 #
-# def read_for_n_seconds(iterable: Iterable[Union[T, StreamEvent]], max_read_time: int) -> Iterable[Union[T, StreamEvent]]:
+# def read_for_n_seconds(iterable: EventStream, max_read_time: int) -> EventStream:
 #     iterator: Iterator[T] = iter(iterable)
 #
 #     while True:
@@ -72,7 +92,7 @@ def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]]
 # class MessageReaderThread(Thread):
 #     _last_elem: T
 #
-#     def __init__(self, iterable: Iterable[Union[T, StreamEvent]]):
+#     def __init__(self, iterable: EventStream):
 #         super(MessageReaderThread, self).__init__(daemon=True)
 #         self._iterable = iterable
 #         self._elem_received: Event = Event()

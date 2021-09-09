@@ -37,7 +37,6 @@ from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.io.pipeline import PipelineBuilder
-from esque.io.stream_decorators import stop_after_nth_message
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
@@ -1135,13 +1134,22 @@ def ping(state: State, times: int, wait: int):
 @click.option(
     "-l",
     "--limit",
-    help="Run until <limit> messages have been read. Will continue reading if the end of topic was reached."
-    "Stop with Ctrl-C. If not given, will read forever.",
+    help="Run until <limit> messages have been read in total over all partitions. There's no guarantee in which order"
+    "multiple partitions are being read from. Will continue reading if the end of topic was reached.Stop with Ctrl-C. "
+    "If not given, will read forever.",
     metavar="<limit>",
     default=None,
     type=int,
 )
-def io(input_uri: str, output_uri: str, limit: Optional[int]):
+@click.option(
+    "-s",
+    "--start",
+    help="Start reading at offset <start> for each partition. If not given, will start at beginning.",
+    metavar="<start>",
+    default=None,
+    type=int,
+)
+def io(input_uri: str, output_uri: str, limit: Optional[int], start: Optional[int]):
     """Run a message pipeline.
 
     Read all messages from the input configured by <input_uri> and write them to the output configured by <output_uri>.
@@ -1265,8 +1273,7 @@ def io(input_uri: str, output_uri: str, limit: Optional[int]):
     builder.with_input_from_uri(input_uri)
     builder.with_output_from_uri(output_uri)
 
-    if limit is not None:
-        builder.with_stream_decorator(stop_after_nth_message(limit))
+    builder.with_range(start, limit)
 
     pipeline = builder.build()
 

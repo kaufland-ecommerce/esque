@@ -60,6 +60,16 @@ class BaseHandler(ABC, Generic[HC]):
             )
 
     @abstractmethod
+    def seek(self, position: int):
+        """
+        Seek the handler's reading position to the given offset for all partitions. The next message that is read will
+        be at this offset if it is still available and after this offset if and only if it is not available anymore.
+
+        :param position: The offset to seek to
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Retrieves the serializer config from this handler's source, if possible.

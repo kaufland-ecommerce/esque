@@ -26,6 +26,7 @@ class DummyHandler(BaseHandler):
         self._messages: List[Optional[BinaryMessage]] = []
         self._serializer_configs: Tuple[Dict[str, Any], Dict[str, Any]] = ({}, {})
         self._peof_counter = 0
+        self._lbound = 0
 
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         return self._serializer_configs
@@ -39,6 +40,12 @@ class DummyHandler(BaseHandler):
         self._messages.append(binary_message)
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
+        while True:
+            msg = self._next_message()
+            if isinstance(msg, StreamEvent) or msg.offset >= self._lbound:
+                return msg
+
+    def _next_message(self) -> Union[StreamEvent, BinaryMessage]:
         if self._messages:
             elem = self._messages.pop(0)
             if elem is None:
@@ -64,6 +71,9 @@ class DummyHandler(BaseHandler):
     @classmethod
     def create_default(cls) -> "DummyHandler":
         return cls(config=DummyHandlerConfig(host="", path="", scheme="dummy"))
+
+    def seek(self, position: int):
+        self._lbound = position
 
 
 @pytest.fixture

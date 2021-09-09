@@ -1,6 +1,6 @@
 import dataclasses
 import functools
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, Consumer, KafkaError, Message, Producer, TopicPartition
 from confluent_kafka.admin import TopicMetadata
@@ -111,3 +111,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         while True:
             yield self.read_message()
+
+    def seek(self, position: int):
+        current_assignment: List[TopicPartition] = self._consumer.assignment()
+        self._consumer.assign([TopicPartition(tp.topic, tp.partition, position) for tp in current_assignment])

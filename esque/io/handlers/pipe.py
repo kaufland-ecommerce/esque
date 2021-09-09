@@ -54,6 +54,7 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
     def __init__(self, config: PipeHandlerConfig):
         super().__init__(config)
         self._stream = self._get_stream()
+        self._lbound = 0
 
     def _get_stream(self) -> TextIO:
         # pipe://stdout
@@ -92,6 +93,12 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
         self._stream.flush()
 
     def read_message(self) -> Union[StreamEvent, BinaryMessage]:
+        while True:
+            msg = self._next_message()
+            if isinstance(msg, StreamEvent) or msg.offset >= self._lbound:
+                return msg
+
+    def _next_message(self) -> Union[StreamEvent, BinaryMessage]:
         lines = []
         while True:
             line = self._stream.readline()
@@ -112,6 +119,9 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
             offset=deserialized_object.get("offset"),
             partition=deserialized_object.get("partition"),
         )
+
+    def seek(self, position: int):
+        self._lbound = position
 
 
 def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> Optional[str]:
