@@ -1,4 +1,4 @@
-from typing import Iterable, TypeVar, Union
+from typing import Callable, Iterable, TypeVar, Union
 
 from esque.io.stream_events import EndOfStream, NthMessageRead, StreamEvent
 
@@ -28,22 +28,26 @@ def stop_at_temporary_end_of_stream(iterable: Iterable[Union[T, StreamEvent]]) -
             break
 
 
-def stop_after_nth_message(iterable: Iterable[Union[T, StreamEvent]], n: int) -> Iterable[Union[T, StreamEvent]]:
+def stop_after_nth_message(n: int) -> Callable[[Iterable[Union[T, StreamEvent]]], Iterable[Union[T, StreamEvent]]]:
     """
-    Enables an iterator to be consumed until n messages have been read. Meant to be used with :meth:`BaseHandler.message_stream()`.
-    The method ignores any :class:StreamEvent objects that it encounters and only counts proper messages.
-    :param iterable: The iterable to be decorated
+    Creates a decorator that enables an iterator to be consumed until n messages have been read.
+    Meant to be used with :meth:`BaseHandler.message_stream()`.
+    The decorator ignores any :class:StreamEvent objects that it encounters and only counts proper messages.
     :param n: The number of messages to consume before stopping
-    :return: The iterable that stops after the nth consumed message
+    :return: The iterable decorator which stops after the nth consumed message
     """
-    i = 0
-    for elem in iterable:
-        yield elem
-        if not isinstance(elem, StreamEvent):
-            i += 1
-        if i == n:
-            yield NthMessageRead(f"{n} messages have been read.")
-            break
+
+    def _stop_after_nth_message(iterable: Iterable[Union[T, StreamEvent]]):
+        i = 0
+        for elem in iterable:
+            yield elem
+            if not isinstance(elem, StreamEvent):
+                i += 1
+            if i == n:
+                yield NthMessageRead(f"{n} messages have been read.")
+                break
+
+    return _stop_after_nth_message
 
 
 # def stop_at_message_timeout(iterable: Iterable[Union[T, StreamEvent]], message_timeout: int) -> Iterable[Union[T, StreamEvent]]:
