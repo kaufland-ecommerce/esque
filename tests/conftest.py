@@ -68,7 +68,7 @@ def load_config(mocker: mock, tmp_path: Path) -> config_loader:
     """
     Loads config of the given version or key into a temporary directory and set this directory as esque config
     directory.
-    Available keys are `LOAD_INTEGRATION_TEST_CONFIG` and `LOAD_SMAPLE_CONFIG`.
+    Available keys are `LOAD_INTEGRATION_TEST_CONFIG` and `LOAD_SAMPLE_CONFIG`.
     It will delete all other configs found in that directory.
 
     :param config_version: version or config key to load
