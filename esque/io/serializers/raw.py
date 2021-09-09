@@ -11,6 +11,7 @@ class RawSerializerConfig(SerializerConfig):
 
 
 class RawSerializer(DataSerializer):
+    config_cls = RawSerializerConfig
     unknown_data_type: UnknownDataType = UnknownDataType()
 
     def deserialize(self, raw_data: bytes) -> Data:
