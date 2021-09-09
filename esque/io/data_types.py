@@ -21,7 +21,7 @@ class UnknownDataType(DataType):
             return NotImplemented
         warnings.warn(
             f"Comparing UnknownDatatype to {type(other).__name__}. "
-            "Unknown types don't have a proper value and therefore can never be considered equal."
+            "Unknown types don't have a proper value and therefore can never be considered equal to anything."
         )
         return False
 
