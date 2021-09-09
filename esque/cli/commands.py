@@ -8,7 +8,7 @@ import urllib.parse
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import click
 import yaml
@@ -37,6 +37,7 @@ from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.io.pipeline import PipelineBuilder
+from esque.io.stream_decorators import stop_after_nth_message
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
@@ -1131,7 +1132,16 @@ def ping(state: State, times: int, wait: int):
     metavar="<output_uri>",
     default="pipe+json://stdout?kv__indent=2&h__skip_marker=1",
 )
-def io(input_uri: str, output_uri: str):
+@click.option(
+    "-l",
+    "--limit",
+    help="Run until <limit> messages have been read. Will continue reading if the end of topic was reached."
+    "Stop with Ctrl-C. If not given, will read forever.",
+    metavar="<limit>",
+    default=None,
+    type=int,
+)
+def io(input_uri: str, output_uri: str, limit: Optional[int]):
     """Run a message pipeline.
 
     Read all messages from the input configured by <input_uri> and write them to the output configured by <output_uri>.
@@ -1254,6 +1264,9 @@ def io(input_uri: str, output_uri: str):
     builder = PipelineBuilder()
     builder.with_input_from_uri(input_uri)
     builder.with_output_from_uri(output_uri)
+
+    if limit is not None:
+        builder.with_stream_decorator(stop_after_nth_message(limit))
 
     pipeline = builder.build()
 
