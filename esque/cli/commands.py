@@ -1136,7 +1136,7 @@ def ping(state: State, times: int, wait: int):
     "-l",
     "--limit",
     help="Run until <limit> messages have been read. Will continue reading if the end of topic was reached."
-    "Stop with Ctrl-C. If not given, will read all messages until end of topic.",
+    "Stop with Ctrl-C. If not given, will read forever.",
     metavar="<limit>",
     default=None,
     type=int,
