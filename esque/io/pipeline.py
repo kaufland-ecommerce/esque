@@ -11,6 +11,7 @@ from esque.io.messages import Message
 from esque.io.serializers import StringSerializer, create_serializer
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializerConfig
+from esque.io.stream_decorators import stop_after_nth_message
 from esque.io.stream_events import StreamEvent
 
 
@@ -21,6 +22,10 @@ class MessageReader(ABC):
 
     @abstractmethod
     def message_stream(self) -> Iterable[Message]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def seek(self, position: int):
         raise NotImplementedError
 
 
@@ -146,6 +151,9 @@ class HandlerSerializerMessageReader(MessageReader):
     def message_stream(self) -> Iterable[Message]:
         return self._message_serializer.deserialize_many(binary_message_stream=self._handler.binary_message_stream())
 
+    def seek(self, position: int):
+        self._handler.seek(position)
+
 
 class HandlerSerializerMessageWriter(MessageWriter):
     _handler: BaseHandler
@@ -229,6 +237,7 @@ class PipelineBuilder:
     _output_state: _BuilderComponentState = _BuilderComponentState.NOTHING_DEFINED
 
     _stream_decorators: List[Callable[[Iterable], Iterable]]
+    _start: Optional[int] = None
     _errors: List[str]
 
     def __init__(self):
@@ -313,16 +322,25 @@ class PipelineBuilder:
             return
 
         if self._input_state == _BuilderComponentState.NOTHING_DEFINED:
-            return self._build_default_message_reader()
+            message_reader = self._build_default_message_reader()
 
-        if self._input_state == _BuilderComponentState.READER_WRITER_DEFINED:
-            return self._message_reader
+        elif self._input_state == _BuilderComponentState.READER_WRITER_DEFINED:
+            message_reader = self._message_reader
 
-        if self._input_state == _BuilderComponentState.HANDLER_SERIALIZER_DEFINED:
-            return HandlerSerializerMessageReader(self._input_handler, self._input_serializer)
+        elif self._input_state == _BuilderComponentState.HANDLER_SERIALIZER_DEFINED:
+            message_reader = HandlerSerializerMessageReader(self._input_handler, self._input_serializer)
 
-        if self._input_state == _BuilderComponentState.URI_DEFINED:
-            return self._build_message_reader_from_uri()
+        elif self._input_state == _BuilderComponentState.URI_DEFINED:
+            message_reader = self._build_message_reader_from_uri()
+
+        else:
+            raise RuntimeError(
+                "This shouldn't happen. We have a valid input state but no way of creating the message reader for it."
+            )
+
+        if self._start is not None:
+            message_reader.seek(self._start)
+        return message_reader
 
     def _build_default_message_reader(self) -> MessageReader:
         return HandlerSerializerMessageReader(
@@ -414,6 +432,12 @@ class PipelineBuilder:
         return PipeHandler(PipeHandlerConfig(host="stdout", path="", scheme="pipe"))
 
     _create_default_output_serializer = _create_default_input_serializer
+
+    def with_range(self, start: Optional[int] = None, limit: Optional[int] = None):
+        if limit:
+            self.with_stream_decorator(stop_after_nth_message(limit))
+        if start:
+            self._start = start
 
     def build(self) -> Pipeline:
         return self._pipeline
