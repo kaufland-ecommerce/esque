@@ -81,35 +81,50 @@ def test_get_brokers_with_output_format(non_interactive_cli_runner: CliRunner, o
 
 @pytest.mark.integration
 @parameterized_output_formats
+@pytest.mark.parametrize(
+    argnames="offset", argvalues=["first", "5", "last"], ids=["offset_first", "offset_5", "offset_last"]
+)
 def test_get_timestamps_with_output_format(
     non_interactive_cli_runner: CliRunner,
     producer: Producer,
     target_topic: Tuple[str, int],
     output_format: str,
     loader: Callable,
+    offset: str,
 ):
     topic_name, partitions = target_topic
     partition_center = 5
 
     for target_partition in range(partitions):
-        for offset in range(10):
+        for msg_offset in range(10):
             # make sure we don't have any message after offset 'partition_center' for the 10th partition
             # so we can test the case where the offset is after the last available message
-            if target_partition == 9 and offset >= partition_center:
+            if target_partition == 9 and msg_offset >= partition_center:
                 continue
 
             producer.produce(
-                topic_name, value=b"", timestamp=target_partition * 10 + offset, partition=target_partition
+                topic_name, value=b"", timestamp=1 + target_partition * 10 + msg_offset, partition=target_partition
             )
     producer.flush()
 
-    result = non_interactive_cli_runner.invoke(get_timestamp, [topic_name, str(partition_center), "-o", output_format])
+    result = non_interactive_cli_runner.invoke(get_timestamp, [topic_name, offset, "-o", output_format])
     result_data = loader(result.output)
     assert len(result_data) == partitions
+
     for target_partition in range(partitions):
-        if target_partition == 9:
+        if target_partition == 9 and offset == "5":
             assert result_data[target_partition]["timestamp_ms"] is None
             assert result_data[target_partition]["offset"] is None
         else:
-            assert result_data[target_partition]["timestamp_ms"] == target_partition * 10 + partition_center
-            assert result_data[target_partition]["offset"] == partition_center
+            offset_found = result_data[target_partition]["offset"]
+            assert result_data[target_partition]["timestamp_ms"] == 1 + target_partition * 10 + offset_found
+
+            if offset == "5":
+                expected_offset = 5
+            elif offset == "first":
+                expected_offset = 0
+            elif offset == "last" and target_partition == 9:
+                expected_offset = 4
+            else:
+                expected_offset = 9
+            assert expected_offset == offset_found

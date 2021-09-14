@@ -4,7 +4,7 @@ import functools
 import warnings
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
-from confluent_kafka import OFFSET_BEGINNING, Consumer, KafkaError, Message, Producer, TopicPartition
+from confluent_kafka import OFFSET_BEGINNING, OFFSET_END, Consumer, KafkaError, Message, Producer, TopicPartition
 from confluent_kafka.admin import TopicMetadata
 
 from esque import config as esque_config
@@ -35,11 +35,17 @@ class KafkaHandlerConfig(HandlerConfig):
 class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     config_cls = KafkaHandlerConfig
     _eof_reached: Dict[int, bool]
+    OFFSET_AT_FIRST_MESSAGE = OFFSET_BEGINNING
+    OFFSET_AFTER_LAST_MESSAGE = OFFSET_END
+
+    # hopefully this number won't get assigned any semantics by the Kafka Devs any time soon
+    OFFSET_AT_LAST_MESSAGE = -101
 
     def __init__(self, config: KafkaHandlerConfig):
         super().__init__(config)
         self._assignment_created = False
         self._seek = OFFSET_BEGINNING
+        self._high_watermarks: Dict[int, int] = {}
 
     @property
     def partition_count(self) -> int:
@@ -70,6 +76,10 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             raise EsqueIOHandlerReadException(f"Topic {self.config.topic_name!r} not found.")
 
         self._eof_reached = {partition_id: False for partition_id in topic_metadata.partitions.keys()}
+        for partition_id in topic_metadata.partitions.keys():
+            self._high_watermarks[partition_id] = consumer.get_watermark_offsets(
+                TopicPartition(topic=self.config.topic_name, partition=partition_id)
+            )[1]
         return consumer
 
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -145,9 +155,17 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             warnings.warn("Already assigned, some messages from the previous assignment might still be received.")
 
         self._assignment_created = True
-        self._consumer.assign(
-            [
-                TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=self._seek)
-                for partition_id in self._eof_reached.keys()
-            ]
-        )
+        if self._seek == self.OFFSET_AT_LAST_MESSAGE:
+            self._consumer.assign(
+                [
+                    TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=high_watermark - 1)
+                    for partition_id, high_watermark in self._high_watermarks.items()
+                ]
+            )
+        else:
+            self._consumer.assign(
+                [
+                    TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=self._seek)
+                    for partition_id in self._eof_reached.keys()
+                ]
+            )

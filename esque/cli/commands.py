@@ -791,19 +791,28 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
 @click.argument(
     "topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, type=click.STRING, autocompletion=list_topics
 )
-@click.argument("offset", metavar="OFFSET", type=int)
+@click.argument("offset", metavar="OFFSET")
 @output_format_option
 @default_options
-def get_timestamp(state: State, topic_name: str, offset: int, output_format: str):
+def get_timestamp(state: State, topic_name: str, offset: str, output_format: str):
     """Get Timestamps for given offset.
 
     Gets the timestamp for the message(s) at OFFSET in topic TOPIC_NAME.
     If the topic as multiple partitions, the OFFSET wil be used for every partition.
     If there is no message at OFFSET, the next available offset will be used.
     If there is no message after OFFSET, both offset and timestamp will be `none` in the output.
+
+    OFFSET may additionally be "first" or "last" in order to read the first or last message from the partitions.
     """
     handler = KafkaHandler(KafkaHandlerConfig(host=state.config.current_context, path=topic_name, scheme="kafka"))
-    handler.seek(offset)
+
+    if offset.lower() == "first":
+        handler.seek(KafkaHandler.OFFSET_AT_FIRST_MESSAGE)
+    elif offset.lower() == "last":
+        handler.seek(KafkaHandler.OFFSET_AT_LAST_MESSAGE)
+    else:
+        handler.seek(int(offset))
+
     messages_received: Dict[int, Optional[BinaryMessage]] = {}
 
     for message in handler.message_stream():
