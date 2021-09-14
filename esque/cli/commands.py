@@ -8,7 +8,7 @@ import urllib.parse
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import click
 import yaml
@@ -36,7 +36,11 @@ from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
+from esque.io.handlers import KafkaHandler
+from esque.io.handlers.kafka import KafkaHandlerConfig
+from esque.io.messages import BinaryMessage
 from esque.io.pipeline import PipelineBuilder
+from esque.io.stream_events import StreamEvent, TemporaryEndOfPartition
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
@@ -783,6 +787,62 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
     click.echo(format_output(topic_names, output_format))
 
 
+@get.command("timestamp")
+@click.argument(
+    "topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, type=click.STRING, autocompletion=list_topics
+)
+@click.argument("offset", metavar="OFFSET", type=int)
+@output_format_option
+@default_options
+def get_timestamp(state: State, topic_name: str, offset: int, output_format: str):
+    """Get Timestamps for given offset.
+
+    Gets the time stamp for the message at OFFSET in topic TOPIC_NAME.
+    If the topic as multiple partitions, the OFFSET wil be used for every partition.
+    If there is no message at OFFSET, the next available offset will be used.
+    If there is no message after OFFSET, both offset and timestamp will be `none` in the output.
+    """
+    handler = KafkaHandler(KafkaHandlerConfig(host=state.config.current_context, path=topic_name, scheme="kafka"))
+    handler.seek(offset)
+    messages_received: Dict[int, Optional[BinaryMessage]] = {}
+
+    for message in handler.message_stream():
+        if isinstance(message, StreamEvent):
+            if isinstance(message, TemporaryEndOfPartition) and message.partition_id not in messages_received:
+                # we reached the end of the partition and we haven't received any message for that partition
+                # so there is none
+                messages_received[message.partition_id] = None
+        else:
+            if message.partition in messages_received:
+                # we already found a message for this partition
+                continue
+            if message.offset < offset:
+                print(message)
+                # we already found a message for this partition
+                continue
+            messages_received[message.partition] = message
+
+        if len(messages_received) == handler.partition_count:
+            # we have one record for every partition, so we're done.
+            break
+
+    data: List[Dict] = []
+    sorted_messages: List[Tuple[int, Optional[BinaryMessage]]] = sorted(messages_received.items(), key=lambda x: x[0])
+    for partition_id, msg in sorted_messages:
+        record = {"partition": partition_id}
+        if msg is None:
+            record["offset"] = None
+            record["timestamp_str"] = None
+            record["timestamp_ms"] = None
+        else:
+            record["offset"] = msg.offset
+            record["timestamp_str"] = msg.timestamp.isoformat()
+            record["timestamp_ms"] = int(msg.timestamp.timestamp() * 1000)
+        data.append(record)
+
+    click.echo(format_output(data, output_format))
+
+
 @esque.command("consume")
 @click.argument("topic", autocompletion=list_topics)
 @click.option(
@@ -1149,7 +1209,7 @@ def ping(state: State, times: int, wait: int):
     default=None,
     type=int,
 )
-def io(input_uri: str, output_uri: str, limit: Optional[int], start: Optional[int]):
+def io_cmd(input_uri: str, output_uri: str, limit: Optional[int], start: Optional[int]):
     """Run a message pipeline.
 
     Read all messages from the input configured by <input_uri> and write them to the output configured by <output_uri>.
@@ -1189,6 +1249,11 @@ def io(input_uri: str, output_uri: str, limit: Optional[int], start: Optional[in
       Supported Parameters:
         * consumer_group_id
           Use this consumer group id, when reading from a topic. (Default is "esque-client")
+        * send_timestamp
+          Use any value (preferably 1) to indicate whether the original message timestamp shall be sent along with the
+          message.
+          If not given, esque won't send it and the Kafka broker will set the timestamp based on the time when it
+          receives the message.
 
     \b
     - pipe

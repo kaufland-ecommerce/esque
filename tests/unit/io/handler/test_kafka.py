@@ -35,10 +35,16 @@ def producer_cls_mock():
         yield mocked_cls
 
 
-@pytest.fixture()
-def kafka_handler(unittest_config, topic_id: str):
+@pytest.fixture(params=[True, False], ids=["SEND_TIMESTAMP", "NO_SEND_TIMESTAMP"])
+def kafka_handler(unittest_config, topic_id: str, request):
     return KafkaHandler(
-        KafkaHandlerConfig(host="docker", path=topic_id, scheme="kafka", consumer_group_id="test_consumer")
+        KafkaHandlerConfig(
+            host="docker",
+            path=topic_id,
+            scheme="kafka",
+            consumer_group_id="test_consumer",
+            send_timestamp=request.param,
+        )
     )
 
 
@@ -50,7 +56,12 @@ def test_write_single_message(
 
     producer_mock: Producer = producer_cls_mock(config={})
     producer_mock.produce.assert_called_once_with(
-        key=message.key, value=message.value, topic=topic_id, partition=message.partition
+        key=message.key,
+        value=message.value,
+        topic=topic_id,
+        partition=message.partition,
+        timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else None,
+        headers=[(h.key, h.value) for h in message.headers],
     )
     producer_mock.flush.assert_called_once()
 
@@ -63,7 +74,12 @@ def test_write_many_messages(
     producer_mock: Producer = producer_cls_mock(config={})
     for message in binary_messages:
         producer_mock.produce.assert_any_call(
-            key=message.key, value=message.value, topic=topic_id, partition=message.partition
+            key=message.key,
+            value=message.value,
+            topic=topic_id,
+            partition=message.partition,
+            timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else None,
+            headers=[(h.key, h.value) for h in message.headers],
         )
     producer_mock.flush.assert_called_once()
 
@@ -145,6 +161,8 @@ def confluent_eof_message(topic_id: str, partition: int, offset: int):
     confluent_message.topic.return_value = topic_id
     confluent_message.partition.return_value = partition
     confluent_message.offset.return_value = offset
+    confluent_message.headers.return_value = None
+    confluent_message.timestamp.return_value = None
 
     error_mock = Mock()
     error_mock.code.return_value = KafkaError._PARTITION_EOF
@@ -160,4 +178,11 @@ def binary_message_to_confluent_message(message: BinaryMessage, topic_id: str):
     confluent_message.partition.return_value = message.partition
     confluent_message.offset.return_value = message.offset
     confluent_message.error.return_value = None
+
+    if not message.headers:
+        confluent_message.headers.return_value = None
+    else:
+        confluent_message.headers.return_value = [(h.key, h.value) for h in message.headers]
+
+    confluent_message.timestamp.return_value = (0, int(message.timestamp.timestamp() * 1000))
     return confluent_message

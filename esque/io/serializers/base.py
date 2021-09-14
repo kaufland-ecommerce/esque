@@ -64,7 +64,14 @@ class MessageSerializer:
             return message
         key_data = self._key_serializer.serialize(message.key)
         value_data = self._value_serializer.serialize(message.value)
-        return BinaryMessage(key=key_data, value=value_data, offset=message.offset, partition=message.partition)
+        return BinaryMessage(
+            key=key_data,
+            value=value_data,
+            offset=message.offset,
+            partition=message.partition,
+            timestamp=message.timestamp,
+            headers=message.headers.copy(),
+        )
 
     def serialize_many(
         self, messages: Iterable[Union[Message, StreamEvent]]
@@ -78,7 +85,12 @@ class MessageSerializer:
         key_data = self._key_serializer.deserialize(binary_message.key)
         value_data = self._value_serializer.deserialize(binary_message.value)
         return Message(
-            key=key_data, value=value_data, offset=binary_message.offset, partition=binary_message.partition
+            key=key_data,
+            value=value_data,
+            offset=binary_message.offset,
+            partition=binary_message.partition,
+            timestamp=binary_message.timestamp,
+            headers=binary_message.headers.copy(),
         )
 
     def deserialize_many(

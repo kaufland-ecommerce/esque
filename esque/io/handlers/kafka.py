@@ -1,15 +1,17 @@
 import dataclasses
+import datetime
 import functools
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+import warnings
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, Consumer, KafkaError, Message, Producer, TopicPartition
 from confluent_kafka.admin import TopicMetadata
 
 from esque import config as esque_config
 from esque.config import ESQUE_GROUP_ID
-from esque.io.exceptions import EsqueIOSerializerConfigNotSupported
+from esque.io.exceptions import EsqueIOHandlerReadException, EsqueIOSerializerConfigNotSupported
 from esque.io.handlers import BaseHandler, HandlerConfig
-from esque.io.messages import BinaryMessage
+from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
@@ -17,6 +19,7 @@ from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfParti
 class KafkaHandlerConfig(HandlerConfig):
 
     consumer_group_id: str = ESQUE_GROUP_ID
+    send_timestamp: str = ""
 
     @property
     def topic_name(self) -> str:
@@ -33,6 +36,15 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     config_cls = KafkaHandlerConfig
     _eof_reached: Dict[int, bool]
 
+    def __init__(self, config: KafkaHandlerConfig):
+        super().__init__(config)
+        self._assignment_created = False
+        self._seek = OFFSET_BEGINNING
+
+    @property
+    def partition_count(self) -> int:
+        return len(self._eof_reached)
+
     @functools.cached_property
     def _producer(self) -> Producer:
         config_instance = esque_config.Config()
@@ -48,18 +60,16 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
                 {
                     "group.id": group_id,
                     "enable.partition.eof": True,
+                    "enable.auto.commit": False,
                     **config_instance.create_confluent_config(include_schema_registry=False),
                 }
             )
 
         topic_metadata: TopicMetadata = consumer.list_topics(self.config.topic_name).topics[self.config.topic_name]
+        if topic_metadata.error is not None:
+            raise EsqueIOHandlerReadException(f"Topic {self.config.topic_name!r} not found.")
+
         self._eof_reached = {partition_id: False for partition_id in topic_metadata.partitions.keys()}
-        consumer.assign(
-            [
-                TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=OFFSET_BEGINNING)
-                for partition_id in topic_metadata.partitions.keys()
-            ]
-        )
         return consumer
 
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -85,9 +95,14 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             value=binary_message.value,
             key=binary_message.key,
             partition=binary_message.partition,
+            headers=[(h.key, h.value) for h in binary_message.headers],
+            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else None,
         )
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
+        if not self._assignment_created:
+            self.assign()
+
         consumed_message: Optional[Message] = None
         while consumed_message is None:
             consumed_message = self._consumer.poll(timeout=0.1)
@@ -101,17 +116,38 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             return TemporaryEndOfPartition("Reached end of partition", partition_id=consumed_message.partition())
         else:
             self._eof_reached[consumed_message.partition()] = False
+
+            if consumed_message.headers() is None:
+                headers = []
+            else:
+                headers = [MessageHeader(k, v) for k, v in consumed_message.headers()]
+
             return BinaryMessage(
                 key=consumed_message.key(),
                 value=consumed_message.value(),
                 partition=consumed_message.partition(),
                 offset=consumed_message.offset(),
+                timestamp=datetime.datetime.fromtimestamp(
+                    consumed_message.timestamp()[1] / 1000, tz=datetime.timezone.utc
+                ),
+                headers=headers,
             )
 
     def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         while True:
             yield self.read_message()
 
-    def seek(self, position: int):
-        current_assignment: List[TopicPartition] = self._consumer.assignment()
-        self._consumer.assign([TopicPartition(tp.topic, tp.partition, position) for tp in current_assignment])
+    def seek(self, position: int) -> None:
+        self._seek = position
+
+    def assign(self) -> None:
+        if self._assignment_created:
+            warnings.warn("Already assigned, some messages from the previous assignment might still be received.")
+
+        self._assignment_created = True
+        self._consumer.assign(
+            [
+                TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=self._seek)
+                for partition_id in self._eof_reached.keys()
+            ]
+        )
