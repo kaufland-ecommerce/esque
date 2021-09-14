@@ -816,10 +816,6 @@ def get_timestamp(state: State, topic_name: str, offset: int, output_format: str
             if message.partition in messages_received:
                 # we already found a message for this partition
                 continue
-            if message.offset < offset:
-                print(message)
-                # we already found a message for this partition
-                continue
             messages_received[message.partition] = message
 
         if len(messages_received) == handler.partition_count:
