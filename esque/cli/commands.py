@@ -797,7 +797,7 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
 def get_timestamp(state: State, topic_name: str, offset: int, output_format: str):
     """Get Timestamps for given offset.
 
-    Gets the time stamp for the message at OFFSET in topic TOPIC_NAME.
+    Gets the timestamp for the message(s) at OFFSET in topic TOPIC_NAME.
     If the topic as multiple partitions, the OFFSET wil be used for every partition.
     If there is no message at OFFSET, the next available offset will be used.
     If there is no message after OFFSET, both offset and timestamp will be `none` in the output.
