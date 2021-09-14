@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import random
 from string import ascii_letters
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -6,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import pytest
 
 from esque.io.handlers.base import BaseHandler, HandlerConfig
-from esque.io.messages import BinaryMessage, Message
+from esque.io.messages import BinaryMessage, Message, MessageHeader
 from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter, PipelineBuilder
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer, StringSerializerConfig
@@ -89,10 +90,38 @@ def dummy_handler() -> DummyHandler:
 @pytest.fixture()
 def binary_messages() -> List[BinaryMessage]:
     return [
-        BinaryMessage(key=b"foo1", value=b"bar1", partition=0, offset=0),
-        BinaryMessage(key=b"foo2", value=b"bar2", partition=0, offset=1),
-        BinaryMessage(key=b"foo3", value=b"bar3", partition=1, offset=2),
-        BinaryMessage(key=b"foo4", value=b"bar4", partition=1, offset=3),
+        BinaryMessage(
+            key=b"foo1",
+            value=b"bar1",
+            partition=0,
+            offset=0,
+            timestamp=datetime.datetime.fromtimestamp(1609459200, tz=datetime.timezone.utc),
+            headers=[MessageHeader("a", "b")],
+        ),
+        BinaryMessage(
+            key=b"foo2",
+            value=b"bar2",
+            partition=0,
+            offset=1,
+            timestamp=datetime.datetime.fromtimestamp(1609459260, tz=datetime.timezone.utc),
+            headers=[MessageHeader("c", "d")],
+        ),
+        BinaryMessage(
+            key=b"foo3",
+            value=b"bar3",
+            partition=1,
+            offset=2,
+            timestamp=datetime.datetime.fromtimestamp(1609459320, tz=datetime.timezone.utc),
+            headers=[],
+        ),
+        BinaryMessage(
+            key=b"foo4",
+            value=b"bar4",
+            partition=1,
+            offset=3,
+            timestamp=datetime.datetime.fromtimestamp(1609459380, tz=datetime.timezone.utc),
+            headers=[],
+        ),
     ]
 
 

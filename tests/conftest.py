@@ -180,7 +180,7 @@ def target_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[
     return topic_factory(num_partitions, topic_id)
 
 
-@pytest.fixture(params=[1, 10], ids=["num_partitions=1", "num_partitions=10"])
+@pytest.fixture(params=[1, 10], ids=["1_partition", "10_partitions"])
 def num_partitions(request) -> int:
     return request.param
 
@@ -470,5 +470,5 @@ def check_and_load_yaml(output: str) -> Dict:
 FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
 
 parameterized_output_formats = pytest.mark.parametrize(
-    "output_format,loader", FORMATS_AND_LOADERS, ids=["yaml", "json"]
+    "output_format,loader", FORMATS_AND_LOADERS, ids=["yaml_output", "json_output"]
 )

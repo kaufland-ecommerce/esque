@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import sys
 from dataclasses import dataclass
@@ -11,7 +12,7 @@ from esque.io.exceptions import (
     EsqueIOSerializerConfigNotSupported,
 )
 from esque.io.handlers.base import BaseHandler, HandlerConfig
-from esque.io.messages import BinaryMessage
+from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent
 
 MARKER = "__esque_msg_marker__\n"
@@ -82,6 +83,8 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 "value": embed(binary_message.value, self.config.value_encoding),
                 "partition": binary_message.partition,
                 "offset": binary_message.offset,
+                "timestamp": binary_message.timestamp.timestamp(),
+                "headers": [{"key": h.key, "value": h.value} for h in binary_message.headers],
                 "keyenc": str(self.config.key_encoding),
                 "valueenc": str(self.config.value_encoding),
             },
@@ -116,8 +119,12 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
         return BinaryMessage(
             key=extract(deserialized_object.get("key"), key_encoding),
             value=extract(deserialized_object.get("value"), value_encoding),
-            offset=deserialized_object.get("offset"),
-            partition=deserialized_object.get("partition"),
+            offset=deserialized_object.get("offset", -1),
+            partition=deserialized_object.get("partition", -1),
+            timestamp=datetime.datetime.fromtimestamp(
+                deserialized_object.get("timestamp", 0), tz=datetime.timezone.utc
+            ),
+            headers=[MessageHeader(h["key"], h["value"]) for h in deserialized_object.get("headers", [])],
         )
 
     def seek(self, position: int):
