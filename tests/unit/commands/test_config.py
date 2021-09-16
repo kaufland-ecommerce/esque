@@ -5,7 +5,9 @@ import click
 import yaml
 from click.testing import CliRunner
 
-from esque.cli.commands import config_edit, config_fix, config_migrate
+from esque.cli.commands.config.edit import config_edit
+from esque.cli.commands.config.fix import config_fix
+from esque.cli.commands.config.migrate import config_migrate
 from esque.config import Config, migration
 from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
 from tests.conftest import LOAD_BROKEN_CONFIG, config_loader

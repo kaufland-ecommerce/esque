@@ -6,7 +6,8 @@ from confluent_kafka.cimpl import Consumer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
 
-from esque.cli.commands import consume, produce
+from esque.cli.commands.consume import consume
+from esque.cli.commands.produce import produce
 from esque.config import Config
 from esque.messages.message import MessageHeader
 from tests.integration.commands.conftest import (

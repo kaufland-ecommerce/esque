@@ -2,7 +2,7 @@ import pendulum
 import pytest
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import set_offsets
+from esque.cli.commands.set_.offsets import set_offsets
 from esque.clients.consumer import ConsumerFactory
 
 

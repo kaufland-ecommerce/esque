@@ -9,7 +9,11 @@ import pytest
 from click.testing import CliRunner
 from confluent_kafka import OFFSET_END, Producer
 
-from esque.cli.commands import get_brokers, get_consumergroups, get_offset, get_timestamp, get_topics
+from esque.cli.commands.get.brokers import get_brokers
+from esque.cli.commands.get.consumergroups import get_consumergroups
+from esque.cli.commands.get.offset import get_offset
+from esque.cli.commands.get.timestamp import get_timestamp
+from esque.cli.commands.get.topics import get_topics
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats

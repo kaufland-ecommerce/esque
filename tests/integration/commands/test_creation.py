@@ -2,7 +2,8 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import create_consumer_group, create_topic
+from esque.cli.commands.create.consumergroup import create_consumergroup
+from esque.cli.commands.create.topic import create_topic
 from esque.cli.options import State
 from esque.errors import NoConfirmationPossibleException
 from esque.resources.topic import Topic
@@ -118,35 +119,35 @@ def test_consumer_group_correct_creation(
     first_topic = f"{topic}"
     first_cg = consumer_group + "1"
     result1 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[first_cg, first_topic], input="Y\n", catch_exceptions=False
+        create_consumergroup, args=[first_cg, first_topic], input="Y\n", catch_exceptions=False
     )
     assert result1.exit_code == 0
 
     second_topic = f"{topic}[0]"
     second_cg = consumer_group + "2"
     result2 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[second_cg, second_topic], input="Y\n", catch_exceptions=False
+        create_consumergroup, args=[second_cg, second_topic], input="Y\n", catch_exceptions=False
     )
     assert result2.exit_code == 0
 
     third_topic = f"{topic}[0]=3"
     third_cg = consumer_group + "3"
     result3 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[third_cg, third_topic], input="Y\n", catch_exceptions=False
+        create_consumergroup, args=[third_cg, third_topic], input="Y\n", catch_exceptions=False
     )
     assert result3.exit_code == 0
 
     fourth_topic = f"{topic}[]"
     fourth_cg = consumer_group + "4"
     result4 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[fourth_cg, fourth_topic], input="Y\n", catch_exceptions=False
+        create_consumergroup, args=[fourth_cg, fourth_topic], input="Y\n", catch_exceptions=False
     )
     assert result4.exit_code == 0
 
     fifth_topic = f"{topic}[]="
     fifth_cg = consumer_group + "5"
     result5 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[fifth_cg, fifth_topic], input="Y\n", catch_exceptions=False
+        create_consumergroup, args=[fifth_cg, fifth_topic], input="Y\n", catch_exceptions=False
     )
     assert result5.exit_code == 0
 

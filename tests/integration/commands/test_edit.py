@@ -8,7 +8,8 @@ from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import edit_offsets, edit_topic
+from esque.cli.commands.edit.offsets import edit_offsets
+from esque.cli.commands.edit.topic import edit_topic
 from esque.clients.consumer import ConsumerFactory
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled

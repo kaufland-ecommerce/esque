@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
+from click import MissingParameter
 from yaml.scanner import ScannerError
 
 from esque.errors import EditCanceled, NoConfirmationPossibleException, ValidationException
@@ -91,3 +92,15 @@ def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
     click.echo(str(e))
     if not ensure_approval("Continue Editing?", default_answer=True):
         raise EditCanceled()
+
+
+def fallback_to_stdin(ctx, args, value):
+    stdin = click.get_text_stream("stdin")
+    if not value and not isatty(stdin):
+        stdin_arg = stdin.readline().strip()
+    else:
+        stdin_arg = value
+    if not stdin_arg:
+        raise MissingParameter("No value specified!")
+
+    return stdin_arg

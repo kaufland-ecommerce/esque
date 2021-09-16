@@ -8,7 +8,10 @@ from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
-from esque.cli.commands import delete_consumer_group, delete_topics, get_consumergroups, get_topics
+from esque.cli.commands.delete.consumergroup import delete_consumergroup
+from esque.cli.commands.delete.topics import delete_topics
+from esque.cli.commands.get.consumergroups import get_consumergroups
+from esque.cli.commands.get.topics import get_topics
 from esque.config import Config
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.consumergroup import ConsumerGroup
@@ -104,7 +107,7 @@ def test_consumer_group_deletions_multiple_cli(
     assert "not_in_the_list_of_consumers" not in consumer_groups_pre_deletion
 
     result = interactive_cli_runner.invoke(
-        delete_consumer_group,
+        delete_consumergroup,
         consumer_groups_to_delete + ["not_in_the_list_of_consumers"],
         input="Y\n",
         catch_exceptions=False,
@@ -132,7 +135,7 @@ def test_consumer_group_deletions_piped(
     assert "not_in_the_list_of_consumers" not in consumer_groups_pre_deletion
 
     result = non_interactive_cli_runner.invoke(
-        delete_consumer_group,
+        delete_consumergroup,
         "--no-verify",
         input="\n".join(consumer_groups_to_delete + ["not_in_the_list_of_consumers"]),
         catch_exceptions=False,
@@ -166,7 +169,7 @@ def test_consumergroup_list_output_compatibility_for_piping(
     all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout
     assert consumergroup_instance.id in all_consumergroups
     result = non_interactive_cli_runner.invoke(
-        delete_consumer_group, "--no-verify", input=all_consumergroups, catch_exceptions=False
+        delete_consumergroup, "--no-verify", input=all_consumergroups, catch_exceptions=False
     )
     assert result.exit_code == 0
     all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout.replace("\n", "")

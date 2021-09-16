@@ -4,7 +4,9 @@ import pytest
 from click.testing import CliRunner
 
 from esque import config
-from esque.cli.commands import describe_broker, describe_consumergroup, describe_topic
+from esque.cli.commands.describe.broker import describe_broker
+from esque.cli.commands.describe.consumergroup import describe_consumergroup
+from esque.cli.commands.describe.topic import describe_topic
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.topic import Topic

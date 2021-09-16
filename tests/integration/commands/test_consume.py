@@ -8,7 +8,7 @@ from confluent_kafka.avro import AvroProducer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 
 from esque import config
-from esque.cli.commands import consume
+from esque.cli.commands.consume import consume
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 from tests.integration.commands.conftest import produce_binary_test_messages

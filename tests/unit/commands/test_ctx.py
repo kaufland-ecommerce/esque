@@ -1,7 +1,7 @@
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import ctx
+from esque.cli.commands.ctx import ctx
 from esque.config import Config
 from tests.conftest import LOAD_INTEGRATION_TEST_CONFIG, config_loader
 

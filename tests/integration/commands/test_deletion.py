@@ -2,7 +2,8 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import delete_topic, delete_topics
+from esque.cli.commands.delete.topic import delete_topic
+from esque.cli.commands.delete.topics import delete_topics
 from esque.errors import NoConfirmationPossibleException
 
 

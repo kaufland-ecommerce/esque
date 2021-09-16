@@ -4,7 +4,7 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from esque.cli.commands import apply
+from esque.cli.commands.apply import apply
 from esque.controller.topic_controller import TopicController
 from esque.errors import InvalidReplicationFactorException, ValidationException
 from esque.resources.topic import Topic
