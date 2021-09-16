@@ -75,7 +75,7 @@ def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
 @pytest.mark.integration
 @parameterized_output_formats
 def test_get_brokers_with_output_format(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
-    result = non_interactive_cli_runner.invoke(get_brokers, ["-o", output_format])
+    result = non_interactive_cli_runner.invoke(get_brokers, ["-o", output_format], catch_exceptions=False)
     assert result.exit_code == 0
     loader(result.output)
 
@@ -108,7 +108,9 @@ def test_get_timestamps_with_output_format(
             )
     producer.flush()
 
-    result = non_interactive_cli_runner.invoke(get_timestamp, [topic_name, offset, "-o", output_format])
+    result = non_interactive_cli_runner.invoke(
+        get_timestamp, [topic_name, offset, "-o", output_format], catch_exceptions=False
+    )
     result_data = loader(result.output)
     assert len(result_data) == partitions
 
@@ -157,7 +159,9 @@ def test_get_offset_with_output_format(
             producer.produce(topic_name, value=b"", timestamp=1 + 10 * msg_offset, partition=target_partition)
     producer.flush()
 
-    result = non_interactive_cli_runner.invoke(get_offset, [topic_name, str(timestamp), "-o", output_format])
+    result = non_interactive_cli_runner.invoke(
+        get_offset, [topic_name, str(timestamp), "-o", output_format], catch_exceptions=False
+    )
     result_data = loader(result.output)
     assert len(result_data) == partitions
 
