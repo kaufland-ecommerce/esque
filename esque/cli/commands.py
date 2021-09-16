@@ -9,10 +9,11 @@ from operator import itemgetter
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple, cast
 
 import click
 import kafka
+import kafka.consumer.fetcher
 import pendulum
 import yaml
 from click import MissingParameter, version_option
@@ -39,11 +40,7 @@ from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
-from esque.io.handlers import KafkaHandler
-from esque.io.handlers.kafka import KafkaHandlerConfig
-from esque.io.messages import BinaryMessage
 from esque.io.pipeline import PipelineBuilder
-from esque.io.stream_events import StreamEvent, TemporaryEndOfPartition
 from esque.resources.broker import Broker
 from esque.resources.consumergroup import ConsumerGroup
 from esque.resources.topic import Topic, copy_to_local
@@ -803,51 +800,58 @@ def get_timestamp(state: State, topic_name: str, offset: str, output_format: str
     Gets the timestamp for the message(s) at OFFSET in topic TOPIC_NAME.
     If the topic as multiple partitions, the OFFSET wil be used for every partition.
     If there is no message at OFFSET, the next available offset will be used.
-    If there is no message after OFFSET, both offset and timestamp will be `none` in the output.
+    If there is no message at all after OFFSET, offset will be `-1` and timestamp will be `None` in the output for the
+    corresponding partition.
+    In the Kafka world, -1 corresponds to the position after the last known message i.e. the end of the topic partition
+    _not including_ the last message in the partition.
 
-    OFFSET may additionally be "first" or "last" in order to read the first or last message from the partitions.
+    OFFSET must be a positive integer or `first`/`last` in order to read the first or last message from the partition(s).
     """
-    handler = KafkaHandler(KafkaHandlerConfig(host=state.config.current_context, path=topic_name, scheme="kafka"))
+    consumer = kafka.KafkaConsumer(**state.config.create_kafka_python_config())
+    topic_partitions = [
+        kafka.TopicPartition(topic=topic_name, partition=partition)
+        for partition in consumer.partitions_for_topic(topic_name)
+    ]
+    highwaters: Dict[kafka.TopicPartition, int] = consumer.end_offsets(topic_partitions)
 
     if offset.lower() == "first":
-        handler.seek(KafkaHandler.OFFSET_AT_FIRST_MESSAGE)
-    elif offset.lower() == "last":
-        handler.seek(KafkaHandler.OFFSET_AT_LAST_MESSAGE)
+        offset = 0
+
+    if offset.lower() == "last":
+        assignments = [(tp, highwaters[tp] - 1) for tp in topic_partitions if highwaters[tp] > 0]
+    elif offset.isdigit():
+        assignments = [(tp, offset) for tp in topic_partitions if highwaters[tp] > offset]
     else:
-        handler.seek(int(offset))
+        raise ValidationException('Offset must be a positive integer, "first" or "last"')
 
-    messages_received: Dict[int, Optional[BinaryMessage]] = {}
+    consumer.assign([tp for tp, _ in assignments])
+    for tp, offset in assignments:
+        consumer.seek(tp, offset)
 
-    for message in handler.message_stream():
-        if isinstance(message, StreamEvent):
-            if isinstance(message, TemporaryEndOfPartition) and message.partition_id not in messages_received:
-                # we reached the end of the partition and we haven't received any message for that partition
-                # so there is none
-                messages_received[message.partition_id] = None
-        else:
-            if message.partition in messages_received:
-                # we already found a message for this partition
-                continue
+    messages_received: Dict[int, Optional[kafka.consumer.fetcher.ConsumerRecord]] = {
+        tp.partition: None for tp in topic_partitions if tp not in consumer.assignment()
+    }
+
+    for message in cast(Iterable[kafka.consumer.fetcher.ConsumerRecord], consumer):
+        if message.partition not in messages_received:
             messages_received[message.partition] = message
-
-        if len(messages_received) == handler.partition_count:
+        if len(messages_received) == len(topic_partitions):
             # we have one record for every partition, so we're done.
             break
 
     data: List[Dict] = []
-    sorted_messages: List[Tuple[int, Optional[BinaryMessage]]] = sorted(messages_received.items(), key=lambda x: x[0])
-    for partition_id, msg in sorted_messages:
+    for partition_id, msg in messages_received.items():
         record = {"partition": partition_id}
         if msg is None:
-            record["offset"] = None
+            record["offset"] = -1
             record["timestamp_str"] = None
             record["timestamp_ms"] = None
         else:
             record["offset"] = msg.offset
-            record["timestamp_str"] = msg.timestamp.isoformat()
-            record["timestamp_ms"] = int(msg.timestamp.timestamp() * 1000)
+            record["timestamp_str"] = pendulum.from_timestamp(msg.timestamp / 1000).isoformat()
+            record["timestamp_ms"] = msg.timestamp
         data.append(record)
-
+    data.sort(key=itemgetter("partition"))
     click.echo(format_output(data, output_format))
 
 
