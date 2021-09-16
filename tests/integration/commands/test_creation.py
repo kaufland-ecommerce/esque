@@ -2,7 +2,7 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands import create_consumer_group, create_topic
+from esque.cli.commands import esque
 from esque.cli.options import State
 from esque.errors import NoConfirmationPossibleException
 from esque.resources.topic import Topic
@@ -12,7 +12,7 @@ from esque.resources.topic import Topic
 def test_create_without_confirmation_does_not_create_topic(
     interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic_id: str
 ):
-    result = interactive_cli_runner.invoke(create_topic, [topic_id], catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["create", "topic", topic_id], catch_exceptions=False)
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -24,7 +24,7 @@ def test_create_topic_without_topic_name_fails(
     non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
 ):
     n_topics_before = len(confluent_admin_client.list_topics(timeout=5).topics)
-    result = non_interactive_cli_runner.invoke(create_topic)
+    result = non_interactive_cli_runner.invoke(esque, args=["create", "topic"])
     n_topics_after = len(confluent_admin_client.list_topics(timeout=5).topics)
     assert result.exit_code != 0
     assert n_topics_before == n_topics_after
@@ -38,7 +38,9 @@ def test_create_topic_as_argument_with_verification_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
-    result = interactive_cli_runner.invoke(create_topic, args=topic_id, input="Y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(
+        esque, args=["create", "topic", topic_id], input="Y\n", catch_exceptions=False
+    )
     assert result.exit_code == 0
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
@@ -53,7 +55,7 @@ def test_create_topic_with_stdin_works(
     assert topic_id not in topics
 
     result = non_interactive_cli_runner.invoke(
-        create_topic, args="--no-verify", input=topic_id, catch_exceptions=False
+        esque, args=["create", "topic", "--no-verify"], input=topic_id, catch_exceptions=False
     )
     assert result.exit_code == 0
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -67,7 +69,7 @@ def test_topic_creation_stops_in_non_interactive_mode_without_no_verify(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id not in topics
 
-    result = non_interactive_cli_runner.invoke(create_topic, input=topic_id)
+    result = non_interactive_cli_runner.invoke(esque, args=["create", "topic"], input=topic_id)
     assert result.exit_code != 0
     assert isinstance(result.exception, NoConfirmationPossibleException)
 
@@ -99,7 +101,7 @@ def test_topic_creation_with_template_works(
         [Topic(topic_1, replication_factor=replication_factor, num_partitions=num_partitions, config=config)]
     )
     result = non_interactive_cli_runner.invoke(
-        create_topic, ["--no-verify", "-l", topic_1, topic_2], catch_exceptions=False
+        esque, args=["create", "topic", "--no-verify", "-l", topic_1, topic_2], catch_exceptions=False
     )
     assert result.exit_code == 0
     config_from_template = state.cluster.topic_controller.get_cluster_topic(topic_2)
@@ -118,35 +120,35 @@ def test_consumer_group_correct_creation(
     first_topic = f"{topic}"
     first_cg = consumer_group + "1"
     result1 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[first_cg, first_topic], input="Y\n", catch_exceptions=False
+        esque, args=["create", "consumergroup", first_cg, first_topic], input="Y\n", catch_exceptions=False
     )
     assert result1.exit_code == 0
 
     second_topic = f"{topic}[0]"
     second_cg = consumer_group + "2"
     result2 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[second_cg, second_topic], input="Y\n", catch_exceptions=False
+        esque, args=["create", "consumergroup", second_cg, second_topic], input="Y\n", catch_exceptions=False
     )
     assert result2.exit_code == 0
 
     third_topic = f"{topic}[0]=3"
     third_cg = consumer_group + "3"
     result3 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[third_cg, third_topic], input="Y\n", catch_exceptions=False
+        esque, args=["create", "consumergroup", third_cg, third_topic], input="Y\n", catch_exceptions=False
     )
     assert result3.exit_code == 0
 
     fourth_topic = f"{topic}[]"
     fourth_cg = consumer_group + "4"
     result4 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[fourth_cg, fourth_topic], input="Y\n", catch_exceptions=False
+        esque, args=["create", "consumergroup", fourth_cg, fourth_topic], input="Y\n", catch_exceptions=False
     )
     assert result4.exit_code == 0
 
     fifth_topic = f"{topic}[]="
     fifth_cg = consumer_group + "5"
     result5 = interactive_cli_runner.invoke(
-        create_consumer_group, args=[fifth_cg, fifth_topic], input="Y\n", catch_exceptions=False
+        esque, args=["create", "consumergroup", fifth_cg, fifth_topic], input="Y\n", catch_exceptions=False
     )
     assert result5.exit_code == 0
 

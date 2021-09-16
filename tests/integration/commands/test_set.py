@@ -2,7 +2,7 @@ import pendulum
 import pytest
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands import set_offsets
+from esque.cli.commands import esque
 from esque.clients.consumer import ConsumerFactory
 
 
@@ -38,8 +38,8 @@ def test_set_offsets_offset_to_absolute_value(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets,
-        args=[consumer_group, "--topic-name", topic, "--offset-to-value", "1"],
+        esque,
+        args=["set", "offsets", consumer_group, "--topic-name", topic, "--offset-to-value", "1"],
         input="y\n",
         catch_exceptions=False,
     )
@@ -82,8 +82,8 @@ def test_set_offsets_offset_to_delta(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets,
-        args=[consumer_group, "--topic-name", topic, "--offset-by-delta", "-2"],
+        esque,
+        args=["set", "offsets", consumer_group, "--topic-name", topic, "--offset-by-delta", "-2"],
         input="y\n",
         catch_exceptions=False,
     )
@@ -126,7 +126,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
+        esque, args=["set", "offsets", consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
     )
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
@@ -168,7 +168,7 @@ def test_set_offsets_offset_from_group(
     )
 
     interactive_cli_runner.invoke(
-        set_offsets, args=[consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
+        esque, args=["set", "offsets", consumer_group, "--offset-by-delta", "-2"], input="y\n", catch_exceptions=False
     )
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
@@ -192,8 +192,8 @@ def test_set_offsets_offset_from_group(
     del vanilla_target_consumer
 
     interactive_cli_runner.invoke(
-        set_offsets,
-        args=[target_consumer_group, "--offset-from-group", consumer_group],
+        esque,
+        args=["set", "offsets", target_consumer_group, "--offset-from-group", consumer_group],
         input="y\n",
         catch_exceptions=False,
     )
@@ -244,8 +244,16 @@ def test_set_offsets_offset_to_timestamp_value(
     dt = pendulum.from_timestamp(round(timestamp[1] / 1000) - 1)
 
     interactive_cli_runner.invoke(
-        set_offsets,
-        args=[consumer_group, "--topic-name", topic, "--offset-to-timestamp", dt.format("YYYY-MM-DDTHH:mm:ss")],
+        esque,
+        args=[
+            "set",
+            "offsets",
+            consumer_group,
+            "--topic-name",
+            topic,
+            "--offset-to-timestamp",
+            dt.format("YYYY-MM-DDTHH:mm:ss"),
+        ],
         input="y\n",
         catch_exceptions=False,
     )
