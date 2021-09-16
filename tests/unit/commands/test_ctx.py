@@ -1,7 +1,7 @@
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands.ctx import ctx
+from esque.cli.commands import esque
 from esque.config import Config
 from tests.conftest import LOAD_INTEGRATION_TEST_CONFIG, config_loader
 
@@ -23,7 +23,7 @@ def test_ctx_switch(non_interactive_cli_runner: CliRunner, load_config: config_l
     contexts = esque_config.available_contexts
 
     # Check the current context actually exists
-    result = non_interactive_cli_runner.invoke(ctx, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["ctx"], catch_exceptions=False)
 
     found_contexts = parse_context_output(result.output)
 
@@ -32,8 +32,8 @@ def test_ctx_switch(non_interactive_cli_runner: CliRunner, load_config: config_l
 
     # Switch once to all contexts
     for i, context in enumerate(contexts):
-        non_interactive_cli_runner.invoke(ctx, contexts[i], catch_exceptions=False)
-        result = non_interactive_cli_runner.invoke(ctx, catch_exceptions=False)
+        non_interactive_cli_runner.invoke(esque, args=["ctx", contexts[i]], catch_exceptions=False)
+        result = non_interactive_cli_runner.invoke(esque, args=["ctx"], catch_exceptions=False)
 
         assert esque_config.current_context == context
         assert result.exit_code == 0
