@@ -99,7 +99,7 @@ def test_get_timestamps_with_output_format(
     for target_partition in range(partitions):
         for msg_offset in range(10):
             # make sure we don't have any message after offset 'partition_center' for the 10th partition
-            # so we can test the case where the offset is after the last available message
+            # so we can test the case where one partition's offset is after the last available message
             if target_partition == 9 and msg_offset >= partition_center:
                 continue
 
@@ -115,7 +115,7 @@ def test_get_timestamps_with_output_format(
     for target_partition in range(partitions):
         if target_partition == 9 and offset == "5":
             assert result_data[target_partition]["timestamp_ms"] is None
-            assert result_data[target_partition]["offset"] is None
+            assert result_data[target_partition]["offset"] == OFFSET_END
         else:
             offset_found = result_data[target_partition]["offset"]
             assert result_data[target_partition]["timestamp_ms"] == 1 + target_partition * 10 + offset_found
