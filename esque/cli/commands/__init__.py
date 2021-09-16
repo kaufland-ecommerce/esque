@@ -4,6 +4,7 @@ from click import version_option
 from esque import __version__
 from esque.cli import environment
 from esque.cli.commands.apply import apply
+from esque.cli.commands.config import config
 from esque.cli.commands.consume import consume
 from esque.cli.commands.create import create
 from esque.cli.commands.ctx import ctx
@@ -45,6 +46,7 @@ def esque(state: State):
 
 
 esque.add_command(apply)
+esque.add_command(config)
 esque.add_command(consume)
 esque.add_command(create)
 esque.add_command(ctx)
