@@ -2,8 +2,7 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 
-from esque.cli.commands.delete.topic import delete_topic
-from esque.cli.commands.delete.topics import delete_topics
+from esque.cli.commands import esque
 from esque.errors import NoConfirmationPossibleException
 
 
@@ -14,7 +13,7 @@ def test_topic_deletion_singular_without_verification_does_not_work(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topic, topic, catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["delete", "topic", topic], catch_exceptions=False)
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -28,7 +27,7 @@ def test_topic_deletion_plural_without_verification_does_not_work(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topics, [topic], catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, ["delete", "topics", topic], catch_exceptions=False)
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -40,7 +39,7 @@ def test_delete_topic_singular_without_topic_name_is_handled(
     interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
 ):
     n_topics_before = len(confluent_admin_client.list_topics(timeout=5).topics)
-    result = interactive_cli_runner.invoke(delete_topic)
+    result = interactive_cli_runner.invoke(esque, args=["delete", "topic"])
     n_topics_after = len(confluent_admin_client.list_topics(timeout=5).topics)
     assert result.exit_code == 0
     assert n_topics_before == n_topics_after
@@ -52,7 +51,7 @@ def test_delete_topic_plural_without_topic_name_is_handled(
     interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
 ):
     n_topics_before = len(confluent_admin_client.list_topics(timeout=5).topics)
-    result = interactive_cli_runner.invoke(delete_topics)
+    result = interactive_cli_runner.invoke(esque, args=["delete", "topics"])
     n_topics_after = len(confluent_admin_client.list_topics(timeout=5).topics)
     assert result.exit_code == 0
     assert n_topics_before == n_topics_after
@@ -66,7 +65,7 @@ def test_topic_deletion_as_argument_singular_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topic, topic, input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["delete", "topic", topic], input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -80,7 +79,9 @@ def test_topic_deletion_as_argument_plural_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topics, topic, input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(
+        esque, args=["delete", "topics", topic], input="y\n", catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -94,7 +95,9 @@ def test_topic_deletion_as_stdin_works(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = non_interactive_cli_runner.invoke(delete_topics, "--no-verify", input=topic, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["delete", "topics", "--no-verify"], input=topic, catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
@@ -108,7 +111,7 @@ def test_topic_deletion_stops_in_non_interactive_mode_without_no_verify(
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic in topics
 
-    result = non_interactive_cli_runner.invoke(delete_topics, input=topic)
+    result = non_interactive_cli_runner.invoke(esque, args=["delete", "topics"], input=topic)
     assert result.exit_code != 0
     assert isinstance(result.exception, NoConfirmationPossibleException)
 
@@ -126,7 +129,9 @@ def test_keep_dash_delete_dot(
     assert basic_topic in topics
     assert duplicate_topic in topics
 
-    result = interactive_cli_runner.invoke(delete_topics, [duplicate_topic], input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(
+        esque, args=["delete", "topics", duplicate_topic], input="y\n", catch_exceptions=False
+    )
     assert result.exit_code == 0
 
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()

@@ -4,7 +4,7 @@ from _pytest.tmpdir import TempdirFactory
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
 
-from esque.cli.commands.produce import produce
+from esque.cli.commands import esque
 from esque.clients.consumer import ConsumerFactory
 from esque.errors import TopicDoesNotExistException
 from tests.integration.test_clients import get_consumed_messages, produce_test_messages
@@ -29,7 +29,7 @@ def test_plain_text_consume_and_produce_newly_created_topic(
     file_consumer.consume(10)
 
     result = interactive_cli_runner.invoke(
-        produce, args=["-d", output_directory, target_topic_id], input="y\n", catch_exceptions=False
+        esque, args=["produce", "-d", output_directory, target_topic_id], input="y\n", catch_exceptions=False
     )
     assert result.exit_code == 0
 
@@ -48,7 +48,9 @@ def test_plain_text_consume_and_produce_newly_created_topic(
 @pytest.mark.integration
 def test_binary_and_avro_fails(non_interactive_cli_runner: CliRunner):
     with pytest.raises(ValueError):
-        non_interactive_cli_runner.invoke(produce, args=["--binary", "--avro", "thetopic"], catch_exceptions=False)
+        non_interactive_cli_runner.invoke(
+            esque, args=["produce", "--binary", "--avro", "thetopic"], catch_exceptions=False
+        )
 
 
 @pytest.mark.integration
@@ -57,7 +59,7 @@ def test_produce_to_non_existent_topic_fails(
 ):
     target_topic_id = topic_id
 
-    result = interactive_cli_runner.invoke(produce, args=["--stdin", target_topic_id], input="n\n")
+    result = interactive_cli_runner.invoke(esque, args=["produce", "--stdin", target_topic_id], input="n\n")
     assert isinstance(result.exception, TopicDoesNotExistException)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert target_topic_id not in topics

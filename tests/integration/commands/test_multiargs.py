@@ -8,10 +8,7 @@ from click.testing import CliRunner
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.cimpl import NewTopic, TopicPartition
 
-from esque.cli.commands.delete.consumergroup import delete_consumergroup
-from esque.cli.commands.delete.topics import delete_topics
-from esque.cli.commands.get.consumergroups import get_consumergroups
-from esque.cli.commands.get.topics import get_topics
+from esque.cli.commands import esque
 from esque.config import Config
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.resources.consumergroup import ConsumerGroup
@@ -58,7 +55,10 @@ def test_topic_deletions_multiple_cli(
     assert "not_in_the_list_of_topics" not in topics_pre_deletion
 
     result = interactive_cli_runner.invoke(
-        delete_topics, topics_to_delete + ["not_in_the_list_of_topics"], input="Y\n", catch_exceptions=False
+        esque,
+        args=["delete", "topics"] + topics_to_delete + ["not_in_the_list_of_topics"],
+        input="Y\n",
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
 
@@ -80,8 +80,8 @@ def test_topic_deletions_piped(
     assert "not_in_the_list_of_topics" not in topics_pre_deletion
 
     result = non_interactive_cli_runner.invoke(
-        delete_topics,
-        "--no-verify",
+        esque,
+        args=["delete", "topics", "--no-verify"],
         input="\n".join(topics_to_delete + ["not_in_the_list_of_topics"]),
         catch_exceptions=False,
     )
@@ -107,8 +107,8 @@ def test_consumer_group_deletions_multiple_cli(
     assert "not_in_the_list_of_consumers" not in consumer_groups_pre_deletion
 
     result = interactive_cli_runner.invoke(
-        delete_consumergroup,
-        consumer_groups_to_delete + ["not_in_the_list_of_consumers"],
+        esque,
+        args=["delete", "consumergroup"] + consumer_groups_to_delete + ["not_in_the_list_of_consumers"],
         input="Y\n",
         catch_exceptions=False,
     )
@@ -135,8 +135,8 @@ def test_consumer_group_deletions_piped(
     assert "not_in_the_list_of_consumers" not in consumer_groups_pre_deletion
 
     result = non_interactive_cli_runner.invoke(
-        delete_consumergroup,
-        "--no-verify",
+        esque,
+        args=["delete", "consumergroup", "--no-verify"],
         input="\n".join(consumer_groups_to_delete + ["not_in_the_list_of_consumers"]),
         catch_exceptions=False,
     )
@@ -152,9 +152,11 @@ def test_consumer_group_deletions_piped(
 def test_topic_list_output_compatibility_for_piping(
     non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
 ):
-    all_topics = non_interactive_cli_runner.invoke(get_topics, args="--hide-internal").stdout
+    all_topics = non_interactive_cli_runner.invoke(esque, args=["get", "topics", "--hide-internal"]).stdout
     assert topic in all_topics
-    result = non_interactive_cli_runner.invoke(delete_topics, "--no-verify", input=all_topics, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["delete", "topics", "--no-verify"], input=all_topics, catch_exceptions=False
+    )
     assert result.exit_code == 0
     all_topics = sorted(list(confluent_admin_client.list_topics(timeout=5).topics.keys()))
     assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]
@@ -166,11 +168,13 @@ def test_consumergroup_list_output_compatibility_for_piping(
     confluent_admin_client: confluent_kafka.admin.AdminClient,
     consumergroup_instance: ConsumerGroup,
 ):
-    all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout
+    all_consumergroups = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"]).stdout
     assert consumergroup_instance.id in all_consumergroups
     result = non_interactive_cli_runner.invoke(
-        delete_consumergroup, "--no-verify", input=all_consumergroups, catch_exceptions=False
+        esque, args=["delete", "consumergroup", "--no-verify"], input=all_consumergroups, catch_exceptions=False
     )
     assert result.exit_code == 0
-    all_consumergroups = non_interactive_cli_runner.invoke(get_consumergroups).stdout.replace("\n", "")
+    all_consumergroups = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"]).stdout.replace(
+        "\n", ""
+    )
     assert all_consumergroups == "[]"

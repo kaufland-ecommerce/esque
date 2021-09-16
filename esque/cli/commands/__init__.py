@@ -9,6 +9,7 @@ from esque.cli.commands.create import create
 from esque.cli.commands.ctx import ctx
 from esque.cli.commands.delete import delete
 from esque.cli.commands.describe import describe
+from esque.cli.commands.edit import edit
 from esque.cli.commands.get import get
 from esque.cli.commands.io import io
 from esque.cli.commands.ping import ping
@@ -47,6 +48,7 @@ esque.add_command(create)
 esque.add_command(ctx)
 esque.add_command(delete)
 esque.add_command(describe)
+esque.add_command(edit)
 esque.add_command(get)
 esque.add_command(set_)
 esque.add_command(apply)

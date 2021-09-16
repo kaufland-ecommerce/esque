@@ -4,9 +4,7 @@ import pytest
 from click.testing import CliRunner
 
 from esque import config
-from esque.cli.commands.describe.broker import describe_broker
-from esque.cli.commands.describe.consumergroup import describe_consumergroup
-from esque.cli.commands.describe.topic import describe_topic
+from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.topic import Topic
@@ -27,7 +25,7 @@ VARIOUS_IMPORTANT_BROKER_OPTIONS = [
 
 @pytest.mark.integration
 def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: str):
-    result = non_interactive_cli_runner.invoke(describe_topic, topic, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["describe", "topic", topic], catch_exceptions=False)
     assert result.exit_code == 0
     output = result.output
     check_described_topic(output)
@@ -42,7 +40,9 @@ def test_describe_topic_last_timestamp_does_not_commit(
     producer,
 ):
     produced_messages_same_partition(topic_name=topic, producer=producer)
-    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "--last-timestamp"], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["describe", "topic", topic, "--last-timestamp"], catch_exceptions=False
+    )
     assert result.exit_code == 0
     output = result.output
     check_described_topic(output)
@@ -61,7 +61,9 @@ def test_describe_topic_last_timestamp_does_not_commit(
 def test_describe_topic_formatted_output(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, [topic, "-o", output_format], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["describe", "topic", topic, "-o", output_format], catch_exceptions=False
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_topic(output_dict)
@@ -72,7 +74,9 @@ def test_describe_topic_formatted_output(
 def test_describe_topic_from_stdin(
     non_interactive_cli_runner: CliRunner, topic: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_topic, ["-o", output_format], topic, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["describe", "topic", "-o", output_format], input=topic, catch_exceptions=False
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_topic(output_dict)
@@ -80,13 +84,13 @@ def test_describe_topic_from_stdin(
 
 @pytest.mark.integration
 def test_describe_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(describe_topic)
+    result = non_interactive_cli_runner.invoke(esque, args=["describe", "topic"])
     assert result.exit_code != 0
 
 
 @pytest.mark.integration
 def test_describe_broker_no_flag(non_interactive_cli_runner: CliRunner, broker_id: str):
-    result = non_interactive_cli_runner.invoke(describe_broker, broker_id, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["describe", "broker", broker_id], catch_exceptions=False)
     assert result.exit_code == 0
     output = result.output
     check_described_broker(output)
@@ -98,7 +102,7 @@ def test_describe_broker_formatted_output(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
     result = non_interactive_cli_runner.invoke(
-        describe_broker, [broker_id, "-o", output_format], catch_exceptions=False
+        esque, args=["describe", "broker", broker_id, "-o", output_format], catch_exceptions=False
     )
     assert result.exit_code == 0
     output_dict = loader(result.output)
@@ -110,7 +114,7 @@ def test_describe_broker_formatted_output(
 def test_describe_broker_formatted_output_host(
     non_interactive_cli_runner: CliRunner, broker_host: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_broker, [broker_host, "-o", output_format])
+    result = non_interactive_cli_runner.invoke(esque, args=["describe", "broker", broker_host, "-o", output_format])
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_broker(output_dict)
@@ -121,7 +125,9 @@ def test_describe_broker_formatted_output_host(
 def test_describe_broker_formatted_output_host_and_port(
     non_interactive_cli_runner: CliRunner, broker_host_and_port: str, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(describe_broker, [broker_host_and_port, "-o", output_format])
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["describe", "broker", broker_host_and_port, "-o", output_format]
+    )
     assert result.exit_code == 0
     output_dict = loader(result.output)
     check_described_broker(output_dict)
@@ -129,7 +135,7 @@ def test_describe_broker_formatted_output_host_and_port(
 
 @pytest.mark.integration
 def test_describe_broker_without_broker_id_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(describe_broker)
+    result = non_interactive_cli_runner.invoke(esque, args=["describe", "broker"])
     assert result.exit_code != 0
 
 
@@ -139,7 +145,7 @@ def test_describe_broker_from_stdin(
     non_interactive_cli_runner: CliRunner, broker_id: str, output_format: str, loader: Callable
 ):
     result = non_interactive_cli_runner.invoke(
-        describe_broker, ["-o", output_format], broker_id, catch_exceptions=False
+        esque, args=["describe", "broker", "-o", output_format], input=broker_id, catch_exceptions=False
     )
     assert result.exit_code == 0
     output_dict = loader(result.output)
@@ -175,7 +181,7 @@ def test_describe_topic_consumergroup_in_output(
     loader: Callable,
 ):
     result = non_interactive_cli_runner.invoke(
-        describe_topic, ["-o", output_format, "-c", filled_topic.name], catch_exceptions=False
+        esque, args=["describe", "topic", "-o", output_format, "-c", filled_topic.name], catch_exceptions=False
     )
     assert result.exit_code == 0
     output_dict = loader(result.output)
@@ -193,7 +199,9 @@ def test_describe_consumergroup_in_output(
     loader: Callable,
 ):
     result = non_interactive_cli_runner.invoke(
-        describe_consumergroup, ["-o", output_format, partly_read_consumer_group], catch_exceptions=False
+        esque,
+        args=["describe", "consumergroup", "-o", output_format, partly_read_consumer_group],
+        catch_exceptions=False,
     )
     assert result.exit_code == 0
     output_dict = loader(result.output)
@@ -201,8 +209,8 @@ def test_describe_consumergroup_in_output(
     assert partly_read_consumer_group in output_dict.get("group_id", None)
 
     result = non_interactive_cli_runner.invoke(
-        describe_consumergroup,
-        ["-o", output_format, "--all-partitions", partly_read_consumer_group],
+        esque,
+        args=["describe", "consumergroup", "-o", output_format, "--all-partitions", partly_read_consumer_group],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
@@ -211,8 +219,16 @@ def test_describe_consumergroup_in_output(
     assert 1 == len(output_dict.get("offsets", {}).get(filled_topic.name, {}).keys())
 
     result = non_interactive_cli_runner.invoke(
-        describe_consumergroup,
-        ["-o", output_format, "--all-partitions", "--timestamps", partly_read_consumer_group],
+        esque,
+        args=[
+            "describe",
+            "consumergroup",
+            "-o",
+            output_format,
+            "--all-partitions",
+            "--timestamps",
+            partly_read_consumer_group,
+        ],
         catch_exceptions=False,
     )
     assert result.exit_code == 0

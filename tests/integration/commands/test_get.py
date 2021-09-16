@@ -9,11 +9,7 @@ import pytest
 from click.testing import CliRunner
 from confluent_kafka import OFFSET_END, Producer
 
-from esque.cli.commands.get.brokers import get_brokers
-from esque.cli.commands.get.consumergroups import get_consumergroups
-from esque.cli.commands.get.offset import get_offset
-from esque.cli.commands.get.timestamp import get_timestamp
-from esque.cli.commands.get.topics import get_topics
+from esque.cli.commands import esque
 from esque.controller.topic_controller import TopicController
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
@@ -21,14 +17,16 @@ from tests.conftest import parameterized_output_formats
 
 @pytest.mark.integration
 def test_smoke_test_get_topics(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_topics, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["get", "topics"], catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 @parameterized_output_formats
 def test_get_topics_with_output_format(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
-    result = non_interactive_cli_runner.invoke(get_topics, ["-o", output_format], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["get", "topics", "-o", output_format], catch_exceptions=False
+    )
     assert result.exit_code == 0
     loader(result.output)
 
@@ -45,7 +43,9 @@ def test_get_topics_with_prefix(
     new_topics = [prefix_1 + topic_base, prefix_2 + topic_base, prefix_1 + prefix_2 + topic_base]
     topic_controller.create_topics([Topic(new_topic, replication_factor=1) for new_topic in new_topics])
 
-    result = non_interactive_cli_runner.invoke(get_topics, ["-p", prefix_1, "-o", "json"], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["get", "topics", "-p", prefix_1, "-o", "json"], catch_exceptions=False
+    )
 
     assert result.exit_code == 0
     retrieved_topics = json.loads(result.output)
@@ -56,7 +56,7 @@ def test_get_topics_with_prefix(
 
 @pytest.mark.integration
 def test_smoke_test_get_consumergroups(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_consumergroups, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"], catch_exceptions=False)
     assert result.exit_code == 0
 
 
@@ -65,21 +65,25 @@ def test_smoke_test_get_consumergroups(non_interactive_cli_runner: CliRunner):
 def test_get_consumergroups_with_output_format(
     non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable
 ):
-    result = non_interactive_cli_runner.invoke(get_consumergroups, ["-o", output_format], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["get", "consumergroups", "-o", output_format], catch_exceptions=False
+    )
     assert result.exit_code == 0
     loader(result.output)
 
 
 @pytest.mark.integration
 def test_smoke_test_get_brokers(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(get_brokers, catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["get", "brokers"], catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 @parameterized_output_formats
 def test_get_brokers_with_output_format(non_interactive_cli_runner: CliRunner, output_format: str, loader: Callable):
-    result = non_interactive_cli_runner.invoke(get_brokers, ["-o", output_format], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["get", "brokers", "-o", output_format], catch_exceptions=False
+    )
     assert result.exit_code == 0
     loader(result.output)
 
@@ -113,7 +117,7 @@ def test_get_timestamps_with_output_format(
     producer.flush()
 
     result = non_interactive_cli_runner.invoke(
-        get_timestamp, [topic_name, offset, "-o", output_format], catch_exceptions=False
+        esque, args=["get", "timestamp", topic_name, offset, "-o", output_format], catch_exceptions=False
     )
     result_data = loader(result.output)
     assert len(result_data) == partitions
@@ -164,7 +168,7 @@ def test_get_offset_with_output_format(
     producer.flush()
 
     result = non_interactive_cli_runner.invoke(
-        get_offset, [topic_name, str(timestamp), "-o", output_format], catch_exceptions=False
+        esque, args=["get", "offset", topic_name, str(timestamp), "-o", output_format], catch_exceptions=False
     )
     result_data = loader(result.output)
     assert len(result_data) == partitions

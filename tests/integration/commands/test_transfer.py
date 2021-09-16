@@ -6,8 +6,7 @@ from confluent_kafka.cimpl import Consumer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
 
-from esque.cli.commands.consume import consume
-from esque.cli.commands.produce import produce
+from esque.cli.commands import esque
 from esque.config import Config
 from esque.messages.message import MessageHeader
 from tests.integration.commands.conftest import (
@@ -43,10 +42,10 @@ def test_transfer_plain_text_message_using_cli_pipe(
     expected_messages = produce_text_test_messages(topic=source_topic, producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
+        esque, args=["produce", "--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
     )
 
     actual_messages = {
@@ -68,10 +67,10 @@ def test_transfer_plain_text_message_with_headers_using_cli_pipe(
     expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
+        esque, args=["produce", "--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
     )
 
     actual_messages = {
@@ -98,10 +97,10 @@ def test_transfer_binary_message_using_cli_pipe(
     expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        consume, args=["--stdout", "--binary", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "--stdout", "--binary", "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["--stdin", "--binary", target_topic[0]], input=result1.output, catch_exceptions=False
+        esque, args=["produce", "--stdin", "--binary", target_topic[0]], input=result1.output, catch_exceptions=False
     )
 
     actual_messages = {
@@ -124,10 +123,10 @@ def test_transfer_plain_text_message_using_file(
     expected_messages = produce_text_test_messages(topic=source_topic, producer=producer)
 
     non_interactive_cli_runner.invoke(
-        consume, args=["-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["-d", str(output_directory), target_topic[0]], catch_exceptions=False
+        esque, args=["produce", "-d", str(output_directory), target_topic[0]], catch_exceptions=False
     )
 
     actual_messages = {
@@ -151,10 +150,10 @@ def test_transfer_plain_text_message_with_headers_using_file(
     expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
 
     non_interactive_cli_runner.invoke(
-        consume, args=["-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["-d", str(output_directory), target_topic[0]], catch_exceptions=False
+        esque, args=["produce", "-d", str(output_directory), target_topic[0]], catch_exceptions=False
     )
 
     actual_messages = {
@@ -183,12 +182,12 @@ def test_transfer_binary_message_using_file(
     expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
 
     non_interactive_cli_runner.invoke(
-        consume,
-        args=["-d", str(output_directory), "--binary", "--number", "10", source_topic[0]],
+        esque,
+        args=["consume", "-d", str(output_directory), "--binary", "--number", "10", source_topic[0]],
         catch_exceptions=False,
     )
     non_interactive_cli_runner.invoke(
-        produce, args=["-d", str(output_directory), "--binary", target_topic[0]], catch_exceptions=False
+        esque, args=["produce", "-d", str(output_directory), "--binary", target_topic[0]], catch_exceptions=False
     )
 
     actual_messages = {
