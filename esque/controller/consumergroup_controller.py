@@ -108,7 +108,7 @@ class ConsumerGroupController:
         elif offset_by_delta is not None:
             self._set_offset_by_delta(offset_by_delta, offset_plans)
         elif offset_to_timestamp is not None:
-            self._set_offset_to_timestamp(consumer_id, offset_plans, offset_to_timestamp, topic_name)
+            self._set_offset_to_timestamp(offset_plans, offset_to_timestamp, topic_name)
         elif offset_from_group is not None:
             self._set_offset_from_group(offset_from_group, offset_plans, topic_name)
         return list(offset_plans.values())
@@ -124,13 +124,13 @@ class ConsumerGroupController:
                 value.current_offset = 0
                 offset_plans[key] = value
 
-    def _set_offset_to_timestamp(self, consumer_id, offset_plans, offset_to_timestamp, topic_name):
+    def _set_offset_to_timestamp(self, offset_plans, offset_to_timestamp, topic_name):
         timestamp_limit = pendulum.parse(offset_to_timestamp)
         proposed_offset_dict = TopicController(self.cluster).get_offsets_closest_to_timestamp(
-            group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
+            topic_name=topic_name, timestamp=timestamp_limit
         )
         for plan_element in offset_plans.values():
-            plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
+            plan_element.proposed_offset = proposed_offset_dict[plan_element.partition_id].offset
 
     def _set_offset_by_delta(self, offset_by_delta, offset_plans):
         for plan_element in offset_plans.values():

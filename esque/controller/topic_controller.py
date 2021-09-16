@@ -1,15 +1,18 @@
+import itertools
 import logging
 import re
 import time
 from contextlib import closing
 from itertools import islice
 from logging import Logger
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, List, NamedTuple, Optional, Union, cast
 
 import confluent_kafka
+import kafka
+import kafka.consumer.fetcher
 import pendulum
 from confluent_kafka.admin import ConfigResource
-from confluent_kafka.cimpl import KafkaException, NewTopic, TopicPartition
+from confluent_kafka.cimpl import OFFSET_END, KafkaException, NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
 from esque.errors import TopicDeletionException
@@ -20,6 +23,13 @@ logger: Logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from esque.cluster import Cluster
+
+
+class OffsetWithTimestamp(NamedTuple):
+    topic: str
+    partition: int
+    offset: int
+    timestamp_ms: Optional[int]
 
 
 class TopicController:
@@ -125,21 +135,116 @@ class TopicController:
     def get_local_topic(self, topic_name: str) -> Topic:
         return Topic(topic_name)
 
-    def get_offsets_closest_to_timestamp(
-        self, group_id: str, topic_name: str, timestamp_limit: pendulum
-    ) -> Dict[int, int]:
-        config = Config.get_instance().create_confluent_config()
-        config.update({"group.id": group_id})
-        with closing(confluent_kafka.Consumer(config)) as consumer:
-            topic_data = consumer.list_topics(topic=topic_name).topics[topic_name]
-            topic_partitions_with_timestamp = [
-                TopicPartition(topic=topic_name, partition=partition_id, offset=timestamp_limit.int_timestamp * 1000)
-                for partition_id in topic_data.partitions.keys()
+    def get_timestamp_of_closest_offset(
+        self, topic_name: str, offset: Union[int, str]
+    ) -> Dict[int, OffsetWithTimestamp]:
+        """
+        Gets the timestamp for the message(s) at or right after `offset` in topic `topic_name`.
+        The timestamps given in the result are the actual timestamp of the offset that was found.
+        If there is no message at or after the given `timestamp`, the resulting offset will be `-1` i.e. end of topic
+        partition _not including_ the last message.
+
+        If the topic has multiple partitions, the `offset` wil be used for every partition.
+        If there is no message at `offset`, the next available offset will be used.
+        If there is no message at all after `offset`, offset will be `-1` and timestamp will be `None` in the output for the
+        corresponding partition.
+        In the Kafka world, -1 corresponds to the position after the last known message i.e. the end of the topic partition
+        _not including_ the last message in the partition.
+
+        :param topic_name: The topic to get the offsets for.
+        :param offset: The offset to find timestamps for.
+        :return: Dict: partition id -> offset with timestamp.
+        """
+        messages_received = self._read_one_message_per_partition(topic_name, offset)
+
+        data: Dict[int, OffsetWithTimestamp] = {}
+        for partition_id, msg in messages_received.items():
+            if msg is None:
+                data[partition_id] = OffsetWithTimestamp(
+                    topic=topic_name, partition=partition_id, offset=OFFSET_END, timestamp_ms=None
+                )
+            else:
+                data[partition_id] = OffsetWithTimestamp(
+                    topic=topic_name, partition=partition_id, offset=msg.offset, timestamp_ms=msg.timestamp
+                )
+        return data
+
+    def _read_one_message_per_partition(self, topic_name: str, offset: Union[str, int]):
+        config = self.config.create_kafka_python_config()
+        with closing(kafka.KafkaConsumer(**config)) as consumer:
+            topic_partitions = [
+                kafka.TopicPartition(topic=topic_name, partition=partition)
+                for partition in consumer.partitions_for_topic(topic_name)
             ]
-            topic_partitions_with_new_offsets = consumer.offsets_for_times(topic_partitions_with_timestamp)
-        return {
-            topic_partition.partition: topic_partition.offset for topic_partition in topic_partitions_with_new_offsets
-        }
+            partition_ends: Dict[kafka.TopicPartition, int] = consumer.end_offsets(topic_partitions)
+
+            if offset == "first":
+                partition_offsets = itertools.repeat(0)
+            elif offset == "last":
+                partition_offsets = (partition_ends[tp] - 1 for tp in topic_partitions)
+            else:
+                partition_offsets = itertools.repeat(int(offset))
+
+            assignments = [
+                (tp, offset) for tp, offset in zip(topic_partitions, partition_offsets) if partition_ends[tp] > offset
+            ]
+
+            consumer.assign([tp for tp, _ in assignments])
+            for tp, offset in assignments:
+                consumer.seek(tp, offset)
+
+            unassigned_partitions = (tp for tp in topic_partitions if tp not in consumer.assignment())
+            messages_received: Dict[int, Optional[kafka.consumer.fetcher.ConsumerRecord]] = {
+                tp.partition: None for tp in unassigned_partitions
+            }
+
+            for message in cast(Iterable[kafka.consumer.fetcher.ConsumerRecord], consumer):
+                if message.partition not in messages_received:
+                    messages_received[message.partition] = message
+                if len(messages_received) == len(topic_partitions):
+                    # we have one record for every partition, so we're done.
+                    break
+        return messages_received
+
+    def get_offsets_closest_to_timestamp(
+        self, topic_name: str, timestamp: pendulum.DateTime
+    ) -> Dict[int, OffsetWithTimestamp]:
+        """
+        Gets the offsets of the message(s) in `topic_name` whose timestamps are at, or right after, the given `timestamp`.
+        The timestamps given in the result are the actual timestamp of the offset that was found.
+        If there is no message at or after the given `timestamp`, the resulting offset will be `-1` i.e. end of topic
+        partition _not including_ the last message.
+
+        :param topic_name: The topic to get the offsets for.
+        :param timestamp: The timestamp to find offsets for.
+        :return: Dict: partition id -> offset with timestamp.
+        """
+
+        config = self.config.create_kafka_python_config()
+        with closing(kafka.KafkaConsumer(**config)) as consumer:
+            topic_partitions = [
+                kafka.TopicPartition(topic=topic_name, partition=partition)
+                for partition in consumer.partitions_for_topic(topic_name)
+            ]
+            timestamp_ms = int(timestamp.timestamp() * 1000)
+            offsets: Dict[kafka.TopicPartition, kafka.structs.OffsetAndTimestamp] = consumer.offsets_for_times(
+                {tp: timestamp_ms for tp in topic_partitions}
+            )
+
+        data: Dict[int, OffsetWithTimestamp] = {}
+        for tp, offset_data in offsets.items():
+            if offset_data is None:
+                data[tp.partition] = OffsetWithTimestamp(
+                    topic=tp.topic, partition=tp.partition, offset=OFFSET_END, timestamp_ms=None
+                )
+            else:
+                data[tp.partition] = OffsetWithTimestamp(
+                    topic=tp.topic,
+                    partition=tp.partition,
+                    offset=offset_data.offset,
+                    timestamp_ms=offset_data.timestamp,
+                )
+        return data
 
     def update_from_cluster(
         self, topic: Topic, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True

@@ -9,11 +9,9 @@ from operator import itemgetter
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
-from typing import Dict, Iterable, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple
 
 import click
-import kafka
-import kafka.consumer.fetcher
 import pendulum
 import yaml
 from click import MissingParameter, version_option
@@ -39,6 +37,7 @@ from esque.clients.consumer import ConsumerFactory, consume_to_file_ordered, con
 from esque.clients.producer import PingProducer, ProducerFactory
 from esque.config import ESQUE_GROUP_ID, PING_TOPIC, Config, config_dir, config_path, migration, sample_config_path
 from esque.controller.consumergroup_controller import ConsumerGroupController
+from esque.controller.topic_controller import OffsetWithTimestamp
 from esque.errors import TopicAlreadyExistsException, TopicDoesNotExistException, ValidationException
 from esque.io.pipeline import PipelineBuilder
 from esque.resources.broker import Broker
@@ -797,8 +796,8 @@ def get_topics(state: State, prefix: str, hide_internal: bool, output_format: st
 def get_timestamp(state: State, topic_name: str, offset: str, output_format: str):
     """Get Timestamps for given offset.
 
-    Gets the timestamp for the message(s) at OFFSET in topic TOPIC_NAME.
-    If the topic as multiple partitions, the OFFSET wil be used for every partition.
+    Gets the timestamp for the message(s) at or right after OFFSET in topic TOPIC_NAME.
+    If the topic has multiple partitions, the OFFSET wil be used for every partition.
     If there is no message at OFFSET, the next available offset will be used.
     If there is no message at all after OFFSET, offset will be `-1` and timestamp will be `None` in the output for the
     corresponding partition.
@@ -807,49 +806,30 @@ def get_timestamp(state: State, topic_name: str, offset: str, output_format: str
 
     OFFSET must be a positive integer or `first`/`last` in order to read the first or last message from the partition(s).
     """
-    consumer = kafka.KafkaConsumer(**state.config.create_kafka_python_config())
-    topic_partitions = [
-        kafka.TopicPartition(topic=topic_name, partition=partition)
-        for partition in consumer.partitions_for_topic(topic_name)
-    ]
-    highwaters: Dict[kafka.TopicPartition, int] = consumer.end_offsets(topic_partitions)
-
-    if offset.lower() == "first":
-        offset = 0
-
-    if offset.lower() == "last":
-        assignments = [(tp, highwaters[tp] - 1) for tp in topic_partitions if highwaters[tp] > 0]
+    if isinstance(offset, str) and (offset.lower() in ["first", "last"]):
+        offset = offset.lower()
     elif offset.isdigit():
-        assignments = [(tp, offset) for tp in topic_partitions if highwaters[tp] > offset]
+        offset = int(offset)
     else:
         raise ValidationException('Offset must be a positive integer, "first" or "last"')
 
-    consumer.assign([tp for tp, _ in assignments])
-    for tp, offset in assignments:
-        consumer.seek(tp, offset)
+    offsets = state.cluster.topic_controller.get_timestamp_of_closest_offset(topic_name=topic_name, offset=offset)
 
-    messages_received: Dict[int, Optional[kafka.consumer.fetcher.ConsumerRecord]] = {
-        tp.partition: None for tp in topic_partitions if tp not in consumer.assignment()
-    }
+    _output_offset_data(offsets, output_format)
 
-    for message in cast(Iterable[kafka.consumer.fetcher.ConsumerRecord], consumer):
-        if message.partition not in messages_received:
-            messages_received[message.partition] = message
-        if len(messages_received) == len(topic_partitions):
-            # we have one record for every partition, so we're done.
-            break
 
+def _output_offset_data(offsets: Dict[int, OffsetWithTimestamp], output_format: str):
     data: List[Dict] = []
-    for partition_id, msg in messages_received.items():
-        record = {"partition": partition_id}
-        if msg is None:
-            record["offset"] = -1
+    for offset_data in offsets.values():
+        record = {
+            "partition": offset_data.partition,
+            "offset": offset_data.offset,
+            "timestamp_ms": offset_data.timestamp_ms,
+        }
+        if offset_data.timestamp_ms is None:
             record["timestamp_str"] = None
-            record["timestamp_ms"] = None
         else:
-            record["offset"] = msg.offset
-            record["timestamp_str"] = pendulum.from_timestamp(msg.timestamp / 1000).isoformat()
-            record["timestamp_ms"] = msg.timestamp
+            record["timestamp_str"] = pendulum.from_timestamp(offset_data.timestamp_ms / 1000).isoformat()
         data.append(record)
     data.sort(key=itemgetter("partition"))
     click.echo(format_output(data, output_format))
@@ -857,22 +837,22 @@ def get_timestamp(state: State, topic_name: str, offset: str, output_format: str
 
 @get.command("offset")
 @click.argument("topic-name", metavar="TOPIC_NAME", autocompletion=list_topics)
-@click.argument("timestamp", type=int, metavar="TIMESTAMP")
+@click.argument("timestamp-ms", type=int, metavar="TIMESTAMP_MS")
 @output_format_option
 @default_options
-def get_offset(state: State, output_format: str, topic_name: str, timestamp: int):
+def get_offset(state: State, output_format: str, topic_name: str, timestamp_ms: int):
     """Find offset for given timestamp.
 
     \b
     Gets the offsets of the message(s) in TOPIC_NAME whose timestamps are at, or right after, the given TIMESTAMP.
-    If the topic as multiple partitions, the TIMESTAMP wil be used for every partition.
-    If there is no message at TIMESTAMP, the next available one will be used.
-    If there is no message at all after TIMESTAMP, offset will be `-1` and timestamp will be `None` in the output for
+    If the topic has multiple partitions, the TIMESTAMP_MS wil be used for every partition.
+    If there is no message at TIMESTAMP_MS, the next available one will be used.
+    If there is no message at all after TIMESTAMP_MS, offset will be `-1` and timestamp will be `None` in the output for
     the corresponding partition.
     In the Kafka world, -1 corresponds to the position after the last known message i.e. the end of the topic partition
     _not including_ the last message in the partition.
 
-    TIMESTAMP must be in milliseconds since epoch (UTC).
+    TIMESTAMP_MS must be in milliseconds since epoch (UTC).
 
     \b
     EXAMPLES:
@@ -880,30 +860,11 @@ def get_offset(state: State, output_format: str, topic_name: str, timestamp: int
     # of strings for defining dates. Also things like "2 hours ago" or real timestamps like "2021-01-01T00:00:00+00:00".
     esque get offset mytopic $(date -d "yesterday 12pm" +%s000)
     """
-    consumer = kafka.KafkaConsumer(**state.config.create_kafka_python_config())
-    topic_partitions = [
-        kafka.TopicPartition(topic=topic_name, partition=partition)
-        for partition in consumer.partitions_for_topic(topic_name)
-    ]
-    offsets: Dict[kafka.TopicPartition, kafka.structs.OffsetAndTimestamp] = consumer.offsets_for_times(
-        {tp: timestamp for tp in topic_partitions}
+
+    offsets = state.cluster.topic_controller.get_offsets_closest_to_timestamp(
+        topic_name=topic_name, timestamp=pendulum.from_timestamp(timestamp_ms / 1000)
     )
-
-    data: List[Dict] = []
-    for tp, offset_data in offsets.items():
-        record = {"partition": tp.partition}
-        if offset_data is None:
-            record["offset"] = -1
-            record["timestamp_str"] = None
-            record["timestamp_ms"] = None
-        else:
-            record["offset"] = offset_data.offset
-            record["timestamp_str"] = pendulum.from_timestamp(offset_data.timestamp / 1000).isoformat()
-            record["timestamp_ms"] = offset_data.timestamp
-        data.append(record)
-
-    data.sort(key=itemgetter("partition"))
-    click.echo(format_output(data, output_format))
+    _output_offset_data(offsets, output_format)
 
 
 @esque.command("consume")
