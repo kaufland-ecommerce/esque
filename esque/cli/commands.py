@@ -5,12 +5,15 @@ import re
 import sys
 import time
 import urllib.parse
+from operator import itemgetter
 from pathlib import Path
 from shutil import copyfile
 from time import sleep
 from typing import Dict, List, Optional, Tuple
 
 import click
+import kafka
+import pendulum
 import yaml
 from click import MissingParameter, version_option
 from confluent_kafka import TopicPartition
@@ -845,6 +848,57 @@ def get_timestamp(state: State, topic_name: str, offset: str, output_format: str
             record["timestamp_ms"] = int(msg.timestamp.timestamp() * 1000)
         data.append(record)
 
+    click.echo(format_output(data, output_format))
+
+
+@get.command("offset")
+@click.argument("topic-name", metavar="TOPIC_NAME", autocompletion=list_topics)
+@click.argument("timestamp", type=int, metavar="TIMESTAMP")
+@output_format_option
+@default_options
+def get_offset(state: State, output_format: str, topic_name: str, timestamp: int):
+    """Find offset for given timestamp.
+
+    \b
+    Gets the offsets of the message(s) in TOPIC_NAME whose timestamps are at, or right after, the given TIMESTAMP.
+    If the topic as multiple partitions, the TIMESTAMP wil be used for every partition.
+    If there is no message at TIMESTAMP, the next available one will be used.
+    If there is no message at all after TIMESTAMP, offset will be `-1` and timestamp will be `None` in the output for
+    the corresponding partition.
+    In the Kafka world, -1 corresponds to the position after the last known message i.e. the end of the topic partition
+    _not including_ the last message in the partition.
+
+    TIMESTAMP must be in milliseconds since epoch (UTC).
+
+    \b
+    EXAMPLES:
+    # Check which offset(s) of topic "mytopic" correspond to yesterday noon. Hint "date" supports a wide range
+    # of strings for defining dates. Also things like "2 hours ago" or real timestamps like "2021-01-01T00:00:00+00:00".
+    esque get offset mytopic $(date -d "yesterday 12pm" +%s000)
+    """
+    consumer = kafka.KafkaConsumer(**state.config.create_kafka_python_config())
+    topic_partitions = [
+        kafka.TopicPartition(topic=topic_name, partition=partition)
+        for partition in consumer.partitions_for_topic(topic_name)
+    ]
+    offsets: Dict[kafka.TopicPartition, kafka.structs.OffsetAndTimestamp] = consumer.offsets_for_times(
+        {tp: timestamp for tp in topic_partitions}
+    )
+
+    data: List[Dict] = []
+    for tp, offset_data in offsets.items():
+        record = {"partition": tp.partition}
+        if offset_data is None:
+            record["offset"] = -1
+            record["timestamp_str"] = None
+            record["timestamp_ms"] = None
+        else:
+            record["offset"] = offset_data.offset
+            record["timestamp_str"] = pendulum.from_timestamp(offset_data.timestamp / 1000).isoformat()
+            record["timestamp_ms"] = offset_data.timestamp
+        data.append(record)
+
+    data.sort(key=itemgetter("partition"))
     click.echo(format_output(data, output_format))
 
 
