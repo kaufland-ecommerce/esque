@@ -134,7 +134,7 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
         pass  # stdin or stdout don't have to be closed
 
 
-def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> Optional[str]:
+def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> Any:
     encoding = ByteEncoding(encoding)
 
     if input_value is None:
@@ -144,7 +144,7 @@ def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> O
     elif encoding == ByteEncoding.BASE64:
         return base64.b64encode(input_value).decode(encoding="UTF-8")
     elif encoding == ByteEncoding.HEX:
-        input_value.hex()
+        return input_value.hex()
 
 
 def extract(input_value: Optional[str], encoding: Union[str, ByteEncoding]) -> Optional[bytes]:
