@@ -2,6 +2,7 @@ import enum
 import functools
 import urllib.parse
 from abc import ABC, abstractmethod
+from contextlib import closing
 from typing import Callable, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState, ExqueIOInvalidURIException
@@ -25,7 +26,11 @@ class MessageReader(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def seek(self, position: int):
+    def seek(self, position: int) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def close(self) -> None:
         raise NotImplementedError
 
 
@@ -133,6 +138,10 @@ class MessageWriter(ABC):
     def write_many_messages(self, message_stream: Iterable[Union[Message, StreamEvent]]):
         raise NotImplementedError
 
+    @abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError
+
 
 class HandlerSerializerMessageReader(MessageReader):
     _handler: BaseHandler
@@ -154,6 +163,9 @@ class HandlerSerializerMessageReader(MessageReader):
     def seek(self, position: int):
         self._handler.seek(position)
 
+    def close(self):
+        self._handler.close()
+
 
 class HandlerSerializerMessageWriter(MessageWriter):
     _handler: BaseHandler
@@ -170,6 +182,9 @@ class HandlerSerializerMessageWriter(MessageWriter):
         self._handler.write_many_messages(
             message_stream=self._message_serializer.serialize_many(messages=message_stream)
         )
+
+    def close(self):
+        self._handler.close()
 
 
 class Pipeline:
@@ -197,13 +212,18 @@ class Pipeline:
         return stream
 
     def run_pipeline(self):
-        self._output_element.write_many_messages(self.decorated_message_stream())
+        with closing(self):
+            self._output_element.write_many_messages(self.decorated_message_stream())
 
     def write_message(self, message: Message):
         self._output_element.write_message(message=message)
 
     def write_many_messages(self, message_stream: Iterable[Union[Message, StreamEvent]]):
         self._output_element.write_many_messages(message_stream=message_stream)
+
+    def close(self) -> None:
+        self._input_element.close()
+        self._output_element.close()
 
 
 class _BuilderComponentState(enum.Flag):

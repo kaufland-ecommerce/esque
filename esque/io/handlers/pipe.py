@@ -130,6 +130,9 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
     def seek(self, position: int):
         self._lbound = position
 
+    def close(self) -> None:
+        pass  # stdin or stdout don't have to be closed
+
 
 def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> Optional[str]:
     encoding = ByteEncoding(encoding)

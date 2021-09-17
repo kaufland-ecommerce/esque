@@ -76,6 +76,9 @@ class DummyHandler(BaseHandler):
     def seek(self, position: int):
         self._lbound = position
 
+    def close(self) -> None:
+        pass  # nothing to do
+
 
 @pytest.fixture
 def topic_id() -> str:
