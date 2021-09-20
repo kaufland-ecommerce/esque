@@ -56,19 +56,3 @@ def test_seek(binary_messages: List[BinaryMessage], input_handler: BaseHandler, 
 
     actual_messages.sort(key=attrgetter("timestamp"))
     assert actual_messages == [msg for msg in binary_messages if msg.offset >= seek_offset]
-
-
-@parametrize_with_cases("input_handler, output_handler")
-def test_limit(binary_messages: List[BinaryMessage], input_handler: BaseHandler, output_handler: BaseHandler):
-    seek_offset = 2
-    output_handler.write_many_messages(binary_messages)
-    output_handler.close()
-
-    input_handler.seek(seek_offset)
-    actual_messages = list(
-        skip_stream_events(stop_at_temporary_end_of_all_stream_partitions(input_handler.binary_message_stream()))
-    )
-    input_handler.close()
-
-    actual_messages.sort(key=attrgetter("timestamp"))
-    assert actual_messages == [msg for msg in binary_messages if msg.offset >= seek_offset]
