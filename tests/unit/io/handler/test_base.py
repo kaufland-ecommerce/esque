@@ -1,4 +1,4 @@
-import pytest
+from pytest_cases import parametrize
 
 from esque.io.exceptions import EsqueIOHandlerConfigException
 from esque.io.handlers.base import HandlerConfig
@@ -17,7 +17,7 @@ def test_validation_all_fields_missing():
     assert len(actual_exception.message.splitlines()) == 4
 
 
-@pytest.mark.parametrize(
+@parametrize(
     argnames="host,path,scheme",
     argvalues=[[None, "pathval", "pipe+str"], ["localhost", None, "pipe+str"], ["localhost", "pathval", None]],
     ids=["host", "path", "scheme"],

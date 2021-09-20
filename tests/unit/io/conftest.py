@@ -4,7 +4,7 @@ import random
 from string import ascii_letters
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pytest
+from pytest_cases import fixture
 
 from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, Message, MessageHeader
@@ -80,17 +80,17 @@ class DummyHandler(BaseHandler):
         pass  # nothing to do
 
 
-@pytest.fixture
+@fixture
 def topic_id() -> str:
     return "".join(random.choices(ascii_letters, k=5))
 
 
-@pytest.fixture
+@fixture
 def dummy_handler() -> DummyHandler:
     return DummyHandler.create_default()
 
 
-@pytest.fixture()
+@fixture()
 def binary_messages() -> List[BinaryMessage]:
     return [
         BinaryMessage(
@@ -98,7 +98,7 @@ def binary_messages() -> List[BinaryMessage]:
             value=b"bar1",
             partition=0,
             offset=0,
-            timestamp=datetime.datetime.fromtimestamp(1609459200, tz=datetime.timezone.utc),
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=0, tzinfo=datetime.timezone.utc),
             headers=[MessageHeader("a", "b")],
         ),
         BinaryMessage(
@@ -106,41 +106,63 @@ def binary_messages() -> List[BinaryMessage]:
             value=b"bar2",
             partition=0,
             offset=1,
-            timestamp=datetime.datetime.fromtimestamp(1609459260, tz=datetime.timezone.utc),
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=1, tzinfo=datetime.timezone.utc),
             headers=[MessageHeader("c", "d")],
         ),
         BinaryMessage(
             key=b"foo3",
             value=b"bar3",
             partition=1,
-            offset=2,
-            timestamp=datetime.datetime.fromtimestamp(1609459320, tz=datetime.timezone.utc),
+            offset=0,
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=2, tzinfo=datetime.timezone.utc),
             headers=[],
         ),
         BinaryMessage(
             key=b"foo4",
             value=b"bar4",
             partition=1,
+            offset=1,
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=3, tzinfo=datetime.timezone.utc),
+            headers=[],
+        ),
+        BinaryMessage(
+            key=b"foo5",
+            value=b"bar5",
+            partition=1,
+            offset=2,
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=4, tzinfo=datetime.timezone.utc),
+            headers=[],
+        ),
+        BinaryMessage(
+            key=b"foo6",
+            value=b"bar6",
+            partition=1,
             offset=3,
-            timestamp=datetime.datetime.fromtimestamp(1609459380, tz=datetime.timezone.utc),
+            timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=5, tzinfo=datetime.timezone.utc),
             headers=[],
         ),
     ]
 
 
-@pytest.fixture()
+@fixture()
+def partition_count(binary_messages) -> int:
+    # partitions are 0-based, so add 1 to get the actual amount of partitions
+    return max(m.partition for m in binary_messages) + 1
+
+
+@fixture()
 def string_messages(
     binary_messages: List[BinaryMessage], string_message_serializer: MessageSerializer
 ) -> List[Message]:
     return list(string_message_serializer.deserialize_many(binary_messages))
 
 
-@pytest.fixture()
+@fixture()
 def string_serializer() -> StringSerializer:
     return StringSerializer(StringSerializerConfig(scheme="str"))
 
 
-@pytest.fixture()
+@fixture()
 def string_message_serializer(string_serializer: StringSerializer) -> MessageSerializer:
     return MessageSerializer(string_serializer)
 
@@ -158,7 +180,7 @@ class DummyMessageReader(HandlerSerializerMessageReader):
         self._handler.set_messages(messages)
 
 
-@pytest.fixture
+@fixture
 def dummy_message_reader() -> DummyMessageReader:
     return DummyMessageReader()
 
@@ -176,12 +198,12 @@ class DummyMessageWriter(HandlerSerializerMessageWriter):
         return self._handler.get_messages()
 
 
-@pytest.fixture
+@fixture
 def dummy_message_writer() -> DummyMessageWriter:
     return DummyMessageWriter()
 
 
-@pytest.fixture
+@fixture
 def prepared_builder(
     dummy_message_reader: DummyMessageReader,
     dummy_message_writer: DummyMessageWriter,

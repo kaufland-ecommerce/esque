@@ -60,6 +60,7 @@ black = {version = "19.3b0", allow-prereleases = true}
 isort = {version = "^4.3", extras = ["pyproject"]}
 bandit = "^1.6.2"
 coveralls = "^1.8.2"
+pytest-cases = "^3.6.4"
 
 [tool.black]
 line-length = 119

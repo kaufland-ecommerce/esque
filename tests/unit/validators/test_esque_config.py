@@ -2,13 +2,14 @@ import typing
 
 import pytest
 import yaml
+from pytest_cases import fixture
 
 import esque.errors
 from esque.validation import validate_esque_config
 from tests.conftest import LOAD_SAMPLE_CONFIG, get_path_for_config_version
 
 
-@pytest.fixture
+@fixture
 def sample_config_data() -> typing.Dict:
     return yaml.safe_load(get_path_for_config_version(LOAD_SAMPLE_CONFIG).read_text())
 

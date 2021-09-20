@@ -4,6 +4,7 @@ from typing import Any
 from unittest import mock
 
 import pytest
+from pytest_cases import fixture
 
 from esque.io.messages import Data
 from esque.io.serializers.registry_avro import (
@@ -17,28 +18,28 @@ from esque.io.serializers.registry_avro import (
 )
 
 
-@pytest.fixture
+@fixture
 def registry_uri() -> str:
     hostname = "".join(random.choices(ascii_lowercase, k=5))
     return f"memory://{hostname}"
 
 
-@pytest.fixture
+@fixture
 def registry_avro_config(registry_uri: str) -> RegistryAvroSerializerConfig:
     return RegistryAvroSerializerConfig(scheme="registry_avro", schema_registry_uri=registry_uri)
 
 
-@pytest.fixture
+@fixture
 def schema_registry_client(registry_avro_config: RegistryAvroSerializerConfig) -> InMemorySchemaRegistryClient:
     return InMemorySchemaRegistryClient.from_config(registry_avro_config)
 
 
-@pytest.fixture
+@fixture
 def schema_id(avro_type: AvroType, schema_registry_client: SchemaRegistryClient) -> int:
     return schema_registry_client.get_or_create_id_for_avro_type(avro_type)
 
 
-@pytest.fixture
+@fixture
 def avro_type() -> AvroType:
     return AvroType(
         {
@@ -50,17 +51,17 @@ def avro_type() -> AvroType:
     )
 
 
-@pytest.fixture
+@fixture
 def deserialized_data(avro_type) -> Data:
     return Data(payload={"id": "asdf"}, data_type=avro_type)
 
 
-@pytest.fixture
+@fixture
 def avro_serialized_data(schema_id: int) -> bytes:
     return create_schema_id_prefix(schema_id) + b"\x08asdf"
 
 
-@pytest.fixture
+@fixture
 def registry_avro_serializer(registry_avro_config: RegistryAvroSerializerConfig) -> RegistryAvroSerializer:
     return RegistryAvroSerializer(registry_avro_config)
 

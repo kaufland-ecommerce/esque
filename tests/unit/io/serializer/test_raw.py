@@ -1,23 +1,24 @@
 from typing import List
 
 import pytest
+from pytest_cases import fixture
 
 from esque.io.data_types import UnknownDataType
 from esque.io.messages import Data
 from esque.io.serializers.raw import RawSerializer, RawSerializerConfig
 
 
-@pytest.fixture
+@fixture
 def serializer() -> RawSerializer:
     return RawSerializer(RawSerializerConfig(scheme="raw"))
 
 
-@pytest.fixture
+@fixture
 def many_expected_bytes() -> List[bytes]:
     return [b"lorem", b"ipsum", b"dolor", b"sit", b"amet"]
 
 
-@pytest.fixture
+@fixture
 def many_expected_data(many_expected_bytes: List[bytes]) -> List[Data]:
     unknown_dtype = UnknownDataType()
     return [Data(payload=expected_bytes, data_type=unknown_dtype) for expected_bytes in many_expected_bytes]

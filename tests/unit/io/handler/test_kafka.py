@@ -3,16 +3,16 @@ from typing import List, Optional, Type
 from unittest import mock
 from unittest.mock import Mock
 
-import pytest
 from confluent_kafka import Consumer, KafkaError, Producer
 from confluent_kafka.admin import ClusterMetadata, TopicMetadata
+from pytest_cases import fixture
 
 from esque.io.handlers.kafka import KafkaHandler, KafkaHandlerConfig
 from esque.io.messages import BinaryMessage
 from esque.io.stream_events import TemporaryEndOfPartition
 
 
-@pytest.fixture(autouse=True)
+@fixture(autouse=True)
 def consumer_cls_mock(topic_id: str, binary_messages: List[BinaryMessage]):
     with mock.patch("esque.io.handlers.kafka.Consumer", autospec=True) as mocked_cls:
         mocked_instance = mocked_cls({})
@@ -29,13 +29,13 @@ def generate_value_for_list_topics(binary_messages: List[BinaryMessage], topic_i
     return cluster_meta
 
 
-@pytest.fixture(autouse=True)
+@fixture(autouse=True)
 def producer_cls_mock():
     with mock.patch("esque.io.handlers.kafka.Producer", autospec=True) as mocked_cls:
         yield mocked_cls
 
 
-@pytest.fixture(params=[True, False], ids=["SEND_TIMESTAMP", "NO_SEND_TIMESTAMP"])
+@fixture(params=[True, False], ids=["SEND_TIMESTAMP", "NO_SEND_TIMESTAMP"])
 def kafka_handler(unittest_config, topic_id: str, request):
     return KafkaHandler(
         KafkaHandlerConfig(
@@ -60,8 +60,8 @@ def test_write_single_message(
         value=message.value,
         topic=topic_id,
         partition=message.partition,
-        timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else None,
-        headers=[(h.key, h.value) for h in message.headers],
+        timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
+        headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
     )
     producer_mock.flush.assert_called_once()
 
@@ -78,8 +78,8 @@ def test_write_many_messages(
             value=message.value,
             topic=topic_id,
             partition=message.partition,
-            timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else None,
-            headers=[(h.key, h.value) for h in message.headers],
+            timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
+            headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
         )
     producer_mock.flush.assert_called_once()
 
@@ -182,7 +182,7 @@ def binary_message_to_confluent_message(message: BinaryMessage, topic_id: str):
     if not message.headers:
         confluent_message.headers.return_value = None
     else:
-        confluent_message.headers.return_value = [(h.key, h.value) for h in message.headers]
+        confluent_message.headers.return_value = [(h.key, h.value.encode("utf-8")) for h in message.headers]
 
     confluent_message.timestamp.return_value = (0, int(message.timestamp.timestamp() * 1000))
     return confluent_message

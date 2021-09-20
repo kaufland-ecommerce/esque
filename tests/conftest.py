@@ -18,6 +18,7 @@ from confluent_kafka.cimpl import KafkaError, KafkaException
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
 from kafka.errors import NoBrokersAvailable
+from pytest_cases import fixture, parametrize
 
 import esque.config
 from esque.cli.options import State
@@ -63,7 +64,7 @@ def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
     ...
 
 
-@pytest.fixture(scope="function")
+@fixture(scope="function")
 def load_config(mocker: mock, tmp_path: Path) -> config_loader:
     """
     Loads config of the given version or key into a temporary directory and set this directory as esque config
@@ -105,14 +106,14 @@ def get_path_for_config_version(config_version: int) -> Path:
     return base_path / f"v{config_version}_sample.yaml"
 
 
-@pytest.fixture()
+@fixture()
 def broken_test_config(load_config: config_loader) -> Config:
     conffile, _ = load_config(LOAD_BROKEN_CONFIG)
     esque_config = Config.get_instance()
     return esque_config
 
 
-@pytest.fixture()
+@fixture()
 def unittest_config(request: FixtureRequest, load_config: config_loader) -> Config:
     conffile, _ = load_config(LOAD_INTEGRATION_TEST_CONFIG)
     esque_config = Config.get_instance()
@@ -121,71 +122,71 @@ def unittest_config(request: FixtureRequest, load_config: config_loader) -> Conf
     return esque_config
 
 
-@pytest.fixture()
-def topic_id(confluent_admin_client) -> str:
+@fixture()
+def topic_id() -> str:
     return "".join(random.choices(ascii_letters, k=5))
 
 
-@pytest.fixture()
+@fixture()
 def broker_id(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
     return str(brokers[0].broker_id)
 
 
-@pytest.fixture()
+@fixture()
 def broker_host(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
     return brokers[0].host
 
 
-@pytest.fixture()
+@fixture()
 def broker_host_and_port(state: State) -> str:
     brokers = Broker.get_all(state.cluster)
     return "{}:{}".format(brokers[0].host, brokers[0].port)
 
 
-@pytest.fixture()
+@fixture()
 def topic_object(cluster: Cluster, topic: str):
     yield cluster.topic_controller.get_cluster_topic(topic)
 
 
-@pytest.fixture()
+@fixture()
 def changed_topic_object(cluster: Cluster, topic: str):
     yield Topic(topic, 1, 3, {"cleanup.policy": "compact"})
 
 
-@pytest.fixture()
+@fixture()
 def topic(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     topic, _ = topic_factory(1, topic_id)
     return topic
 
 
-@pytest.fixture()
+@fixture()
 def topic_multiple_partitions(topic_factory: Callable[[int, str], Tuple[str, int]]) -> Iterable[str]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     topic, _ = topic_factory(10, topic_id)
     return topic
 
 
-@pytest.fixture()
+@fixture()
 def source_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Tuple[str, int]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     return topic_factory(num_partitions, topic_id)
 
 
-@pytest.fixture()
+@fixture()
 def target_topic(num_partitions: int, topic_factory: Callable[[int, str], Tuple[str, int]]) -> Tuple[str, int]:
     topic_id = "".join(random.choices(ascii_letters, k=5))
     return topic_factory(num_partitions, topic_id)
 
 
-@pytest.fixture(params=[1, 10], ids=["1_partition", "10_partitions"])
+@fixture(params=[1, 10], ids=["1_partition", "10_partitions"])
 def num_partitions(request) -> int:
     return request.param
 
 
-@pytest.fixture()
+@fixture()
 def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], Tuple[str, int]]:
     created_topics = []
 
@@ -219,12 +220,12 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], T
                         raise
 
 
-@pytest.fixture()
+@fixture()
 def topic_controller(cluster: Cluster):
     yield cluster.topic_controller
 
 
-@pytest.fixture()
+@fixture()
 def messages_ordered_same_partition() -> Iterable[KafkaMessage]:
     ordered_messages = [
         KafkaMessage(key="j", value="v1", partition=0),
@@ -241,7 +242,7 @@ def messages_ordered_same_partition() -> Iterable[KafkaMessage]:
     yield ordered_messages
 
 
-@pytest.fixture()
+@fixture()
 def messages_ordered_same_partition_with_headers() -> Iterable[KafkaMessage]:
     ordered_messages = [
         KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
@@ -258,7 +259,7 @@ def messages_ordered_same_partition_with_headers() -> Iterable[KafkaMessage]:
     yield ordered_messages
 
 
-@pytest.fixture()
+@fixture()
 def messages_ordered_different_partitions() -> Iterable[KafkaMessage]:
     ordered_messages = [
         KafkaMessage(key="j", value="v1", partition=0),
@@ -275,7 +276,7 @@ def messages_ordered_different_partitions() -> Iterable[KafkaMessage]:
     yield ordered_messages
 
 
-@pytest.fixture()
+@fixture()
 def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage]:
     ordered_messages = [
         KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
@@ -292,7 +293,7 @@ def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage
     yield ordered_messages
 
 
-@pytest.fixture()
+@fixture()
 def produced_messages_different_partitions(messages_ordered_different_partitions: Iterable[KafkaMessage]):
     def _produce(topic_name: str, producer: ConfluentProducer):
         for message in messages_ordered_different_partitions:
@@ -303,7 +304,7 @@ def produced_messages_different_partitions(messages_ordered_different_partitions
     return _produce
 
 
-@pytest.fixture()
+@fixture()
 def produced_messages_different_partitions_with_headers(
     messages_ordered_different_partition_with_headers: Iterable[KafkaMessage],
 ):
@@ -322,7 +323,7 @@ def produced_messages_different_partitions_with_headers(
     return _produce
 
 
-@pytest.fixture()
+@fixture()
 def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
     def _produce(topic_name: str, producer: ConfluentProducer, sleep_time: float = 0.5):
         for message in messages_ordered_same_partition:
@@ -333,7 +334,7 @@ def produced_messages_same_partition(messages_ordered_same_partition: Iterable[K
     return _produce
 
 
-@pytest.fixture()
+@fixture()
 def produced_messages_same_partition_with_headers(
     messages_ordered_same_partition_with_headers: Iterable[KafkaMessage],
 ):
@@ -352,7 +353,7 @@ def produced_messages_same_partition_with_headers(
     return _produce
 
 
-@pytest.fixture()
+@fixture()
 def produced_avro_messages_with_headers(messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]):
     def _produce(topic_name: str, producer: AvroProducer):
         for message in messages_ordered_same_partition_with_headers:
@@ -369,45 +370,45 @@ def produced_avro_messages_with_headers(messages_ordered_same_partition_with_hea
     return _produce
 
 
-@pytest.fixture()
+@fixture()
 def confluent_admin_client(unittest_config) -> AdminClient:
     admin = AdminClient({"topic.metadata.refresh.interval.ms": "250", **unittest_config.create_confluent_config()})
     return admin
 
 
-@pytest.fixture()
+@fixture()
 def producer(unittest_config) -> ConfluentProducer:
     producer_config = unittest_config.create_confluent_config()
     yield ConfluentProducer(producer_config)
 
 
-@pytest.fixture()
+@fixture()
 def avro_producer(unittest_config) -> AvroProducer:
     producer_config = unittest_config.create_confluent_config(include_schema_registry=True)
     yield AvroProducer(producer_config)
 
 
-@pytest.fixture()
+@fixture()
 def consumergroup_controller(cluster: Cluster):
     yield ConsumerGroupController(cluster)
 
 
-@pytest.fixture()
+@fixture()
 def consumergroup_instance(partly_read_consumer_group: str, consumergroup_controller: ConsumerGroupController):
     yield consumergroup_controller.get_consumer_group(partly_read_consumer_group)
 
 
-@pytest.fixture()
+@fixture()
 def consumer_group():
     yield "".join(random.choices(ascii_letters, k=5))
 
 
-@pytest.fixture()
+@fixture()
 def target_consumer_group():
     yield "".join(random.choices(ascii_letters, k=5))
 
 
-@pytest.fixture()
+@fixture()
 def consumer(topic_object: Topic, consumer_group: str, unittest_config: Config):
     _config = unittest_config.create_confluent_config()
     _config.update(
@@ -428,7 +429,7 @@ def consumer(topic_object: Topic, consumer_group: str, unittest_config: Config):
     yield _consumer
 
 
-@pytest.fixture()
+@fixture()
 def filled_topic(producer, topic_object):
     for _ in range(10):
         random_value = "".join(random.choices(ascii_letters, k=5)).encode("utf-8")
@@ -437,7 +438,7 @@ def filled_topic(producer, topic_object):
     yield topic_object
 
 
-@pytest.fixture()
+@fixture()
 def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic, consumer_group):
     for _ in range(5):
         msg = consumer.consume(timeout=10)[0]
@@ -445,7 +446,7 @@ def partly_read_consumer_group(consumer: confluent_kafka.Consumer, filled_topic,
     yield consumer_group
 
 
-@pytest.fixture()
+@fixture()
 def cluster(unittest_config) -> Iterable[Cluster]:
     try:
         cluster = Cluster()
@@ -456,7 +457,7 @@ def cluster(unittest_config) -> Iterable[Cluster]:
     yield cluster
 
 
-@pytest.fixture()
+@fixture()
 def state(unittest_config) -> State:
     return State()
 
@@ -469,6 +470,6 @@ def check_and_load_yaml(output: str) -> Dict:
 
 FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
 
-parameterized_output_formats = pytest.mark.parametrize(
-    "output_format,loader", FORMATS_AND_LOADERS, ids=["yaml_output", "json_output"]
+parameterized_output_formats = parametrize(
+    "output_format, loader", FORMATS_AND_LOADERS, ids=["yaml_output", "json_output"]
 )

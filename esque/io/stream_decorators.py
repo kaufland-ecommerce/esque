@@ -18,7 +18,7 @@ def stop_at_temporary_end_of_stream(iterable: MessageStream) -> MessageStream:
     """
     Enables an iterator to be consumed until an end of stream is reached. Meant to be used with :meth:`BaseHandler.message_stream()`.
     Check the docstring for :meth:`BaseHandler.message_stream()` for a more thorough definition of a temporary end of stream.
-    Since the permanent end of stream cannot be followed by a temporary end, this function also stops at the permanent end of stream.
+    Since the temporary end cannot follow a permanent end of stream , this function also stops at the permanent end of stream.
     The :class:`EndOfStream` object will still be yielded as final element of the iterable.
 
     :param iterable: The iterable to be decorated
@@ -27,6 +27,23 @@ def stop_at_temporary_end_of_stream(iterable: MessageStream) -> MessageStream:
     for elem in iterable:
         yield elem
         if isinstance(elem, EndOfStream):
+            break
+
+
+def stop_at_temporary_end_of_all_stream_partitions(iterable: MessageStream) -> MessageStream:
+    """
+    Enables an iterator to be consumed until the end of all the stream's partitions is reached.
+    Meant to be used with :meth:`BaseHandler.message_stream()`.
+    Check the docstring for :meth:`BaseHandler.message_stream()` for a more thorough definition of a temporary end of stream.
+    Since the temporary end cannot follow a permanent end of stream , this function also stops at the permanent end of stream.
+    The :class:`EndOfStream` object will still be yielded as final element of the iterable.
+
+    :param iterable: The iterable to be decorated
+    :return: The iterable that stops _after_ the underlying Iterator yielded :class:`EndOfStream`
+    """
+    for elem in iterable:
+        yield elem
+        if isinstance(elem, EndOfStream) and elem.partition_id == EndOfStream.ALL_PARTITIONS:
             break
 
 

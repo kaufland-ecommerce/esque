@@ -1,7 +1,7 @@
 import datetime
 from typing import Any, List
 
-import pytest
+from pytest_cases import fixture
 
 from esque.io.messages import Data
 from esque.io.serializers.json import JsonSerializer, JsonSerializerConfig
@@ -53,7 +53,7 @@ EXPECTED_DESERIALIZED_DATA = [
 ]
 
 
-@pytest.fixture
+@fixture
 def serializer() -> JsonSerializer:
     return JsonSerializer(JsonSerializerConfig(scheme="json", indent=None))
 

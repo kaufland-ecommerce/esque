@@ -1,6 +1,5 @@
 import dataclasses
 import datetime
-import warnings
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, OFFSET_END, Consumer, KafkaError, Message, Producer, TopicPartition
@@ -47,10 +46,6 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         self._high_watermarks: Dict[int, int] = {}
         self._consumer: Optional[Consumer] = None
         self._producer: Optional[Producer] = None
-
-    @property
-    def partition_count(self) -> int:
-        return len(self._eof_reached)
 
     def _get_producer(self) -> Producer:
         if self._producer is not None:
@@ -114,13 +109,13 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             value=binary_message.value,
             key=binary_message.key,
             partition=binary_message.partition,
-            headers=[(h.key, h.value) for h in binary_message.headers],
-            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else None,
+            headers=[(h.key, h.value.encode("utf-8")) for h in binary_message.headers],
+            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else 0,
         )
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         if not self._assignment_created:
-            self.assign()
+            self._assign()
 
         consumed_message: Optional[Message] = None
         while consumed_message is None:
@@ -139,7 +134,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             if consumed_message.headers() is None:
                 headers = []
             else:
-                headers = [MessageHeader(k, v) for k, v in consumed_message.headers()]
+                headers = [MessageHeader(k, v.decode("utf-8")) for k, v in consumed_message.headers()]
 
             return BinaryMessage(
                 key=consumed_message.key(),
@@ -159,10 +154,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def seek(self, position: int) -> None:
         self._seek = position
 
-    def assign(self) -> None:
-        if self._assignment_created:
-            warnings.warn("Already assigned, some messages from the previous assignment might still be received.")
-
+    def _assign(self) -> None:
         self._assignment_created = True
         if self._seek == self.OFFSET_AT_LAST_MESSAGE:
             self._get_consumer().assign(

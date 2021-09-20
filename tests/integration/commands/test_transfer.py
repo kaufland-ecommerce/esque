@@ -5,6 +5,7 @@ from click.testing import CliRunner
 from confluent_kafka.cimpl import Consumer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
+from pytest_cases import fixture
 
 from esque.cli.commands import esque
 from esque.config import Config
@@ -16,7 +17,7 @@ from tests.integration.commands.conftest import (
 )
 
 
-@pytest.fixture
+@fixture
 def target_topic_consumer(unittest_config: Config, target_topic: Tuple[str, int]) -> Consumer:
     consumer = Consumer(
         {
