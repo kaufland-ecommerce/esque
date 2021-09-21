@@ -1,7 +1,5 @@
 import dataclasses
 import datetime
-import functools
-import warnings
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, OFFSET_END, Consumer, KafkaError, Message, Producer, TopicPartition
@@ -46,23 +44,26 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         self._assignment_created = False
         self._seek = OFFSET_BEGINNING
         self._high_watermarks: Dict[int, int] = {}
+        self._consumer: Optional[Consumer] = None
+        self._producer: Optional[Producer] = None
 
-    @property
-    def partition_count(self) -> int:
-        return len(self._eof_reached)
+    def _get_producer(self) -> Producer:
+        if self._producer is not None:
+            return self._producer
 
-    @functools.cached_property
-    def _producer(self) -> Producer:
         config_instance = esque_config.Config()
         with config_instance.temporary_context(self.config.esque_context):
-            return Producer(config_instance.create_confluent_config(include_schema_registry=False))
+            self._producer = Producer(config_instance.create_confluent_config(include_schema_registry=False))
+        return self._producer
 
-    @functools.cached_property
-    def _consumer(self) -> Consumer:
+    def _get_consumer(self) -> Consumer:
+        if self._consumer is not None:
+            return self._consumer
+
         config_instance = esque_config.Config()
         with config_instance.temporary_context(self.config.esque_context):
             group_id = self.config.consumer_group_id
-            consumer = Consumer(
+            self._consumer = Consumer(
                 {
                     "group.id": group_id,
                     "enable.partition.eof": True,
@@ -71,16 +72,19 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
                 }
             )
 
-        topic_metadata: TopicMetadata = consumer.list_topics(self.config.topic_name).topics[self.config.topic_name]
+        topic_metadata: TopicMetadata = self._consumer.list_topics(self.config.topic_name).topics[
+            self.config.topic_name
+        ]
         if topic_metadata.error is not None:
             raise EsqueIOHandlerReadException(f"Topic {self.config.topic_name!r} not found.")
 
         self._eof_reached = {partition_id: False for partition_id in topic_metadata.partitions.keys()}
         for partition_id in topic_metadata.partitions.keys():
-            self._high_watermarks[partition_id] = consumer.get_watermark_offsets(
+            self._high_watermarks[partition_id] = self._consumer.get_watermark_offsets(
                 TopicPartition(topic=self.config.topic_name, partition=partition_id)
             )[1]
-        return consumer
+
+        return self._consumer
 
     def get_serializer_configs(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         raise EsqueIOSerializerConfigNotSupported
@@ -92,30 +96,30 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         if isinstance(binary_message, StreamEvent):
             return
         self._produce_single_message(binary_message=binary_message)
-        self._producer.flush()
+        self._get_producer().flush()
 
     def write_many_messages(self, message_stream: Iterable[Union[BinaryMessage, StreamEvent]]) -> None:
         for binary_message in message_stream:
             self._produce_single_message(binary_message=binary_message)
-        self._producer.flush()
+        self._get_producer().flush()
 
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
-        self._producer.produce(
+        self._get_producer().produce(
             topic=self.config.topic_name,
             value=binary_message.value,
             key=binary_message.key,
             partition=binary_message.partition,
-            headers=[(h.key, h.value) for h in binary_message.headers],
-            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else None,
+            headers=[(h.key, h.value.encode("utf-8")) for h in binary_message.headers],
+            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else 0,
         )
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         if not self._assignment_created:
-            self.assign()
+            self._assign()
 
         consumed_message: Optional[Message] = None
         while consumed_message is None:
-            consumed_message = self._consumer.poll(timeout=0.1)
+            consumed_message = self._get_consumer().poll(timeout=0.1)
             if consumed_message is None and all(self._eof_reached.values()):
                 return TemporaryEndOfPartition(
                     "Reached end of all partitions", partition_id=EndOfStream.ALL_PARTITIONS
@@ -130,7 +134,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             if consumed_message.headers() is None:
                 headers = []
             else:
-                headers = [MessageHeader(k, v) for k, v in consumed_message.headers()]
+                headers = [MessageHeader(k, v.decode("utf-8")) for k, v in consumed_message.headers()]
 
             return BinaryMessage(
                 key=consumed_message.key(),
@@ -150,22 +154,27 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def seek(self, position: int) -> None:
         self._seek = position
 
-    def assign(self) -> None:
-        if self._assignment_created:
-            warnings.warn("Already assigned, some messages from the previous assignment might still be received.")
-
+    def _assign(self) -> None:
         self._assignment_created = True
         if self._seek == self.OFFSET_AT_LAST_MESSAGE:
-            self._consumer.assign(
+            self._get_consumer().assign(
                 [
                     TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=high_watermark - 1)
                     for partition_id, high_watermark in self._high_watermarks.items()
                 ]
             )
         else:
-            self._consumer.assign(
+            self._get_consumer().assign(
                 [
                     TopicPartition(topic=self.config.topic_name, partition=partition_id, offset=self._seek)
                     for partition_id in self._eof_reached.keys()
                 ]
             )
+
+    def close(self) -> None:
+        if self._consumer is not None:
+            self._consumer.close()
+            self._consumer = None
+        if self._producer is not None:
+            self._producer.flush()
+            self._producer = None

@@ -1,6 +1,7 @@
 from typing import List
 
 import pytest
+from pytest_cases import fixture
 
 from esque.io.exceptions import EsqueIOInvalidPipelineBuilderState
 from esque.io.messages import BinaryMessage, Message
@@ -10,12 +11,12 @@ from esque.io.stream_decorators import skip_stream_events
 from tests.unit.io.conftest import DummyHandler, DummyMessageReader, DummyMessageWriter
 
 
-@pytest.fixture
+@fixture
 def output_uri() -> str:
     return "pipe+str://stdout"
 
 
-@pytest.fixture
+@fixture
 def input_uri() -> str:
     return "pipe+str://stdin"
 

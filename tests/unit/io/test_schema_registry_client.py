@@ -1,10 +1,11 @@
 import pytest
+from pytest_cases import fixture
 
 from esque.io.exceptions import EsqueIONoSuchSchemaException
 from esque.io.serializers.registry_avro import AvroType, InMemorySchemaRegistryClient, SchemaRegistryClient
 
 
-@pytest.fixture
+@fixture
 def schema_registry_client() -> SchemaRegistryClient:
     return InMemorySchemaRegistryClient()
 

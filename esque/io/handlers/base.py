@@ -153,3 +153,10 @@ class BaseHandler(ABC, Generic[HC]):
             yield msg
             if isinstance(msg, PermanentEndOfStream):
                 break
+
+    @abstractmethod
+    def close(self) -> None:
+        """
+        Close all resources that have been opened by this handler.
+        """
+        raise NotImplementedError

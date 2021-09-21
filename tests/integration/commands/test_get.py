@@ -8,6 +8,7 @@ import confluent_kafka
 import pytest
 from click.testing import CliRunner
 from confluent_kafka import OFFSET_END, Producer
+from pytest_cases import parametrize
 
 from esque.cli.commands import esque
 from esque.controller.topic_controller import TopicController
@@ -90,9 +91,7 @@ def test_get_brokers_with_output_format(non_interactive_cli_runner: CliRunner, o
 
 @pytest.mark.integration
 @parameterized_output_formats
-@pytest.mark.parametrize(
-    argnames="offset", argvalues=["first", "5", "last"], ids=["offset_first", "offset_5", "offset_last"]
-)
+@parametrize(argnames="offset", argvalues=["first", "5", "last"], ids=["offset_first", "offset_5", "offset_last"])
 def test_get_timestamps_with_output_format(
     non_interactive_cli_runner: CliRunner,
     producer: Producer,
@@ -143,9 +142,7 @@ def test_get_timestamps_with_output_format(
 
 @pytest.mark.integration
 @parameterized_output_formats
-@pytest.mark.parametrize(
-    argnames="timestamp", argvalues=[1, 45, 105], ids=["ts_at_start", "ts_before_mid", "ts_after_end"]
-)
+@parametrize(argnames="timestamp", argvalues=[1, 45, 105], ids=["ts_at_start", "ts_before_mid", "ts_after_end"])
 def test_get_offset_with_output_format(
     non_interactive_cli_runner: CliRunner,
     producer: Producer,

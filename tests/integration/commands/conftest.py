@@ -3,22 +3,22 @@ import string
 from typing import List, Tuple
 from unittest import mock
 
-import pytest
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluentProducer
+from pytest_cases import fixture
 
 from esque.config import Config
 from esque.messages.message import KafkaMessage, MessageHeader
 
 
-@pytest.fixture()
+@fixture()
 def interactive_cli_runner(mocker: mock, unittest_config: Config) -> CliRunner:
     mocker.patch("esque.cli.helpers._isatty", return_value=True)
     mocker.patch("esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1")
     return CliRunner()
 
 
-@pytest.fixture()
+@fixture()
 def non_interactive_cli_runner(mocker: mock, unittest_config: Config) -> CliRunner:
     mocker.patch("esque.cli.helpers._isatty", return_value=False)
     mocker.patch("esque.cli.environment.ESQUE_VERBOSE", new_callable=mock.PropertyMock, return_value="1")

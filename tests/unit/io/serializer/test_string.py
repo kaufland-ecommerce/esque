@@ -1,12 +1,12 @@
 from typing import List
 
-import pytest
+from pytest_cases import fixture
 
 from esque.io.messages import Data
 from esque.io.serializers.string import StringSerializer, StringSerializerConfig
 
 
-@pytest.fixture(params=["latin1", "utf-8"])
+@fixture(params=["latin1", "utf-8"])
 def serializer_config(request) -> StringSerializerConfig:
     return StringSerializerConfig("str", encoding=request.param)
 

@@ -1,12 +1,13 @@
 from typing import Dict
 
 import pytest
+from pytest_cases import fixture
 
 from esque.errors import ValidationException
 from esque.validation import validate_editable_topic_config
 
 
-@pytest.fixture
+@fixture
 def valid_config() -> Dict:
     return {
         "config": {
