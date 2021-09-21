@@ -2,6 +2,7 @@ from typing import Optional
 
 import click
 
+from esque.cli.options import State, default_options
 from esque.io.pipeline import PipelineBuilder
 
 
@@ -32,7 +33,8 @@ from esque.io.pipeline import PipelineBuilder
     default=None,
     type=int,
 )
-def io(input_uri: str, output_uri: str, limit: Optional[int], start: Optional[int]):
+@default_options
+def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], start: Optional[int]):
     """Run a message pipeline.
 
     Read all messages from the input configured by <input_uri> and write them to the output configured by <output_uri>.
