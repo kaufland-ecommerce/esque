@@ -1,10 +1,12 @@
 import functools
+import pathlib
 from io import StringIO
 from typing import Callable
 
 from pytest_cases import fixture
 
-from esque.io.handlers import PipeHandler
+from esque.io.handlers import PathHandler, PipeHandler
+from esque.io.handlers.path import PathHandlerConfig
 from esque.io.handlers.pipe import PipeHandlerConfig
 
 
@@ -22,3 +24,12 @@ def pipe_handler_factory(pipe_handler_stream: StringIO) -> Callable[[], PipeHand
         return handler
 
     return _pipe_handler_factory
+
+
+@fixture
+def path_handler_factory(tmpdir: pathlib.Path) -> Callable[[], PathHandler]:
+    def _path_handler_factory() -> PathHandler:
+        handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(tmpdir)))
+        return handler
+
+    return _path_handler_factory

@@ -1,11 +1,9 @@
-import pathlib
 from typing import Callable, NamedTuple, Tuple
 
 import pytest
 
 from esque.io.handlers import BaseHandler
 from esque.io.handlers.kafka import KafkaHandler, KafkaHandlerConfig
-from esque.io.handlers.path import PathHandler, PathHandlerConfig
 
 
 class HandlerPair(NamedTuple):
@@ -18,9 +16,8 @@ class HandlerPair(NamedTuple):
     output_handler: BaseHandler
 
 
-def case_path_handler(tmpdir: pathlib.Path):
-    config = PathHandlerConfig(scheme="path", host="", path=str(tmpdir))
-    return HandlerPair(PathHandler(config), PathHandler(config))
+def case_path_handler(path_handler_factory):
+    return HandlerPair(path_handler_factory(), path_handler_factory())
 
 
 def case_pipe_handler(pipe_handler_factory):
