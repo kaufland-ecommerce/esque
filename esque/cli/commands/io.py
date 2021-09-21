@@ -41,7 +41,7 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
 
     \b
     URI Format:
-    <handler scheme>+<key serializer scheme>[+<value serializer scheme>]://<host>/<path>[?<param 1>(&<param 2>)]
+    <handler scheme>+<key serializer scheme>[+<value serializer scheme>]://[<host>][/<path>][?<param 1>(&<param 2>)]
 
     \b
     <handler scheme>    - Scheme that defines which handler should be used.
@@ -57,11 +57,11 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
                             v__  forward to value serializer
                             kv__ forward to both key and value serializer
                             h__  forward to handler
-                          E.g. `k__indent=1` will pass the parameter `indent` with a value of `1` to the key serializer.
-                          Use the kv__ prefix if you want to supply the same setting for both serializers in order to
-                          avoid typing it twice. It's equivalent to having the same parameter and value once with k__
-                          and once with v__ as prefix.
-                          Use `esque urlencode some&string:with;special_characters` to make values that would interfere
+                          E.g. "k__indent=1" will pass the parameter "indent" with a value of "1" to the key serializer.
+                          Use the "kv__" prefix if you want to supply the same setting for both serializers in order to
+                          avoid typing it twice. It's equivalent to having the same parameter and value once with "k__"
+                          and once with "v__" as prefix.
+                          Use "esque urlencode some&string:with;special_characters" to make values that would interfere
                           with uri parsing safe to use as query parameters.
                           (For supported parameters, see "Available Handlers" and "Available Serializers" below)
 
@@ -90,12 +90,24 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
           pipe. Valid values are "base64", "utf-8" and "hex". Use "utf-8" if you know the values are strings and don't
           mess up the output. Otherwise "base64" is a safer choice. (Default is "utf-8")
         * value_encoding
-          Same as `key_encoding` but for the values. (Default is "utf-8")
+          Same as "key_encoding" but for the values. (Default is "utf-8")
         * skip_marker
           Use any value (preferably 1) if you don't want any marker lines to be written between json objects.
           The marker line "__esque_msg_marker__\\n" is required for esque to be able to **read** from a pipe.
           Therefore, you can skip the markers in the output when you're not intending to read the piped data back in.
-          You'll even **need** to skip the marker if you want to further process the messages with tools like `jq`.
+          You'll even **need** to skip the marker if you want to further process the messages with tools like "jq".
+    \b
+    - path
+      <host> -> No meaning, should stay empty.
+      <path> -> The path where to read messages from or write them to.
+                Has to be a directory, will be created if it doesn't exist.
+                Will raise en exception if it exists and already contains data.
+                Take into account that path starts after the first "/" after the empty host part of the uri.
+                Therefore "path+raw://" is invalid, "path+raw:///foo/bar" will result in "foo/bar" (relative) and
+                "path+raw:////foo/bar" will result in "/foo/bar" (absolute).
+                So the URI will need three subsequent slashes for a relative path and four for an absolute path.
+      Supported Parameters:
+        none
 
     \b
     Available Serializers:
@@ -135,7 +147,7 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
       Supported Parameters:
         * schema_registry_uri (required)
           The url of the schema registry. E.g. https://schema-registry.example.com
-          You can use `esque urlencode https://schema-registry.example.com` to get a representation of that url that's
+          You can use "esque urlencode https://schema-registry.example.com" to get a representation of that url that's
           you safe to pass in as query param in the input or output uri.
         * schema_subject (required only for writing, not for reading)
           The subject to register new schemas for.
