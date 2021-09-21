@@ -132,6 +132,6 @@ def _silence_exception(e: Exception):
     elif isinstance(e, (KeyError, ValueError)):
         click.echo(f"{type(e).__name__}: {str(e)}")
     else:
-        click.echo(f"Exception of type {type(e).__name__} occurred.")
+        click.echo(f"Exception of type {type(e).__name__} occurred: {e}")
     click.echo("Run with `--verbose` for complete error.")
     sys.exit(1)
