@@ -41,6 +41,13 @@ class PathHandler(BaseHandler[PathHandlerConfig]):
         elif self._io_mode == "i":
             raise EsqueIOHandlerWriteException("Handler is already in input Mode, cannot use it for writing!")
 
+        if self._data_file.exists():
+            raise EsqueIOHandlerWriteException(
+                "Directory already contains a data file. "
+                "Please delete the directory and its content first or use a different one to avoid mixing "
+                "existing and new data."
+            )
+
         self._create_directory_if_necessary()
         self._io_stream = self._data_file.open("ab")
         self._io_mode = "o"
