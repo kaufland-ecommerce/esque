@@ -1,16 +1,27 @@
-import sys
-import time
+import datetime
 from pathlib import Path
+from typing import Optional
 
 import click
 
 from esque.cli.autocomplete import list_consumergroups, list_contexts, list_topics
-from esque.cli.helpers import attrgetter
 from esque.cli.options import State, default_options
 from esque.cli.output import blue_bold, bold
-from esque.clients.consumer import consume_to_file_ordered, consume_to_files
+from esque.cluster import Cluster
 from esque.config import ESQUE_GROUP_ID
-from esque.errors import TopicDoesNotExistException
+from esque.io.handlers import KafkaHandler, PathHandler
+from esque.io.handlers.kafka import KafkaHandlerConfig
+from esque.io.handlers.path import PathHandlerConfig
+from esque.io.handlers.pipe import PipeHandler, PipeHandlerConfig
+from esque.io.pipeline import PipelineBuilder
+from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer
+from esque.io.serializers.base import MessageSerializer
+from esque.io.serializers.json import JsonSerializerConfig
+from esque.io.serializers.raw import RawSerializerConfig
+from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
+from esque.io.serializers.string import StringSerializerConfig
+from esque.io.stream_decorators import MessageStream, yield_messages_sorted_by_timestamp, yield_only_matching_messages
+from esque.io.stream_events import StreamEvent
 
 
 @click.command("consume")
@@ -29,7 +40,7 @@ from esque.errors import TopicDoesNotExistException
     required=False,
 )
 @click.option(
-    "-n", "--number", metavar="<n>", help="Number of messages.", type=click.INT, default=sys.maxsize, required=False
+    "-n", "--number", metavar="<n>", help="Number of messages.", type=click.INT, default=None, required=False
 )
 @click.option(
     "-m",
@@ -39,7 +50,13 @@ from esque.errors import TopicDoesNotExistException
     type=click.STRING,
     required=False,
 )
-@click.option("--last/--first", help="Start consuming from the earliest or latest offset in the topic.", default=False)
+@click.option(
+    "--last/--first",
+    help="Start consuming from the earliest or latest offset in the topic."
+    "Latest means at the end of the topic _not including_ the last message(s),"
+    "so if no new data is coming in nothing will be consumed.",
+    default=False,
+)
 @click.option(
     "-a",
     "--avro",
@@ -67,7 +84,9 @@ from esque.errors import TopicDoesNotExistException
 )
 @click.option(
     "--preserve-order",
-    help="Preserve the order of messages, regardless of their partition.",
+    help="Preserve the order of messages, regardless of their partition. "
+    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
@@ -77,7 +96,7 @@ def consume(
     state: State,
     topic: str,
     from_context: str,
-    number: int,
+    number: Optional[int],
     match: str,
     last: bool,
     avro: bool,
@@ -105,63 +124,54 @@ def consume(
     # Copy source_topic in first context to destination_topic in second-context.
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
-    current_timestamp_milliseconds = int(round(time.time() * 1000))
-
-    if binary and avro:
-        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
-
-    if directory and write_to_stdout:
-        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
-
     if not from_context:
         from_context = state.config.current_context
     state.config.context_switch(from_context)
 
-    if topic not in map(attrgetter("name"), state.cluster.topic_controller.list_topics(get_topic_objects=False)):
-        raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
+    builder = PipelineBuilder()
 
-    if not consumergroup:
-        consumergroup = ESQUE_GROUP_ID
-    if not directory:
-        directory = Path() / "messages" / topic / str(current_timestamp_milliseconds)
-    output_directory = Path(directory)
+    input_message_serializer = create_input_serializer(avro, binary, state)
+    builder.with_input_message_serializer(input_message_serializer)
 
-    if not write_to_stdout:
-        click.echo(f"Creating directory {blue_bold(str(output_directory))} if it does not exist.")
-        output_directory.mkdir(parents=True, exist_ok=True)
-        click.echo(f"Start consuming from topic {blue_bold(topic)} in source context {blue_bold(from_context)}.")
-    if preserve_order:
-        partitions = [
-            partition.partition_id for partition in state.cluster.topic_controller.get_cluster_topic(topic).partitions
-        ]
-        total_number_of_consumed_messages = consume_to_file_ordered(
-            output_directory=output_directory,
-            topic=topic,
-            group_id=consumergroup,
-            partitions=partitions,
-            desired_message_count=number,
-            avro=avro,
-            match=match,
-            last=last,
-            write_to_stdout=write_to_stdout,
-            binary=binary,
-        )
+    input_handler = create_input_handler(consumergroup, from_context, topic)
+    builder.with_input_handler(input_handler)
+
+    output_handler = create_output_handler(directory, topic, write_to_stdout)
+    builder.with_output_handler(output_handler)
+
+    output_message_serializer = create_output_message_serializer(write_to_stdout)
+    builder.with_output_message_serializer(output_message_serializer)
+
+    if last:
+        start = KafkaHandler.OFFSET_AFTER_LAST_MESSAGE
     else:
-        total_number_of_consumed_messages = consume_to_files(
-            output_directory=output_directory,
-            topic=topic,
-            group_id=consumergroup,
-            desired_message_count=number,
-            avro=avro,
-            match=match,
-            last=last,
-            write_to_stdout=write_to_stdout,
-            binary=binary,
-        )
+        start = KafkaHandler.OFFSET_AT_FIRST_MESSAGE
+
+    builder.with_range(start=start, limit=number)
+
+    total_number_of_consumed_messages = 0
+
+    if preserve_order:
+        topic_data = Cluster().topic_controller.get_cluster_topic(topic, retrieve_partition_watermarks=False)
+        builder.with_stream_decorator(yield_messages_sorted_by_timestamp(len(topic_data.partitions)))
+
+    if match:
+        builder.with_stream_decorator(yield_only_matching_messages(match))
+
+    def counter_decorator(message_stream: MessageStream) -> MessageStream:
+        nonlocal total_number_of_consumed_messages
+        for msg in message_stream:
+            if not isinstance(msg, StreamEvent):
+                total_number_of_consumed_messages += 1
+            yield msg
+
+    builder.with_stream_decorator(counter_decorator)
+
+    pipeline = builder.build()
+    pipeline.run_pipeline()
 
     if not write_to_stdout:
-        click.echo(f"Output generated to {blue_bold(str(output_directory))}")
-        if total_number_of_consumed_messages == number or number == sys.maxsize:
+        if total_number_of_consumed_messages == number:
             click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
         else:
             click.echo(
@@ -171,3 +181,46 @@ def consume(
                 + blue_bold(str(number))
                 + " required."
             )
+
+
+def create_input_handler(consumergroup, from_context, topic):
+    if not consumergroup:
+        consumergroup = ESQUE_GROUP_ID
+    input_handler = KafkaHandler(
+        KafkaHandlerConfig(scheme="kafka", host=from_context, path=topic, consumer_group_id=consumergroup)
+    )
+    return input_handler
+
+
+def create_input_serializer(avro, binary, state):
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+    elif binary:
+        input_serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
+    elif avro:
+        input_serializer = RegistryAvroSerializer(
+            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
+        )
+    else:
+        input_serializer = StringSerializer(StringSerializerConfig(scheme="str"))
+    input_message_serializer = MessageSerializer(key_serializer=input_serializer, value_serializer=input_serializer)
+    return input_message_serializer
+
+
+def create_output_handler(directory, topic, write_to_stdout):
+    if directory and write_to_stdout:
+        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
+    elif write_to_stdout:
+        output_handler = PipeHandler(PipeHandlerConfig(scheme="pipe", host="stdout", path="", skip_marker="1"))
+    else:
+        if not directory:
+            directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        output_handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
+        click.echo(f"Writing data to to {blue_bold(str(directory))}.")
+    return output_handler
+
+
+def create_output_message_serializer(write_to_stdout: bool) -> MessageSerializer:
+    indent = "2" if write_to_stdout else None
+    json_serializer = JsonSerializer(JsonSerializerConfig(scheme="json", indent=indent))
+    return MessageSerializer(key_serializer=json_serializer, value_serializer=json_serializer)
