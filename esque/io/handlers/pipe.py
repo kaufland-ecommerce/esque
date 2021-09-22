@@ -28,7 +28,7 @@ class ByteEncoding(Enum):
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
-    skip_marker: bool = False
+    skip_marker: str = False
 
     def _validate_fields(self) -> List[str]:
         problems = super()._validate_fields()
