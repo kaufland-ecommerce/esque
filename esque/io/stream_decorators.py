@@ -43,7 +43,7 @@ def stop_at_temporary_end_of_all_stream_partitions(iterable: MessageStream) -> M
     """
     for elem in iterable:
         yield elem
-        if isinstance(elem, EndOfStream) and elem.partition_id == EndOfStream.ALL_PARTITIONS:
+        if isinstance(elem, EndOfStream) and elem.partition == EndOfStream.ALL_PARTITIONS:
             break
 
 
