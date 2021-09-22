@@ -1,11 +1,15 @@
 from typing import List
 
+from pytest_cases import parametrize_with_cases
+
 from esque.io.messages import BinaryMessage
 from esque.io.stream_decorators import (
+    MessageStream,
     skip_messages_with_offset_below,
     skip_stream_events,
     stop_after_nth_message,
     stop_at_temporary_end_of_stream,
+    yield_messages_sorted_by_timestamp,
 )
 from tests.unit.io.conftest import DummyHandler
 
@@ -40,3 +44,12 @@ def test_skip_messages_with_offset_below(binary_messages: List[BinaryMessage], d
     assert list(skip_stream_events(stream_with_skipped_messages)) == [
         msg for msg in binary_messages if msg.offset >= 2
     ]
+
+
+@parametrize_with_cases("partition_count, input_stream, expected_output", cases=".message_sort_cases")
+def test_yield_messages_sorted_by_timestamp(
+    partition_count: int, input_stream: MessageStream, expected_output: MessageStream
+):
+    actual_output = yield_messages_sorted_by_timestamp(partition_count)(input_stream)
+
+    assert list(actual_output) == list(expected_output)

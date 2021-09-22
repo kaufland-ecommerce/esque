@@ -1,4 +1,7 @@
-from typing import Callable, Iterable, TypeVar, Union
+from operator import attrgetter
+from typing import Callable, Dict, Iterable, Iterator, TypeVar, Union
+
+import more_itertools
 
 from esque.io.messages import BinaryMessage, Message
 from esque.io.stream_events import EndOfStream, NthMessageRead, StreamEvent
@@ -85,6 +88,60 @@ def skip_messages_with_offset_below(lbound: int) -> Callable[[MessageStream], Me
                 yield elem
 
     return _skip_messages_with_offset_below
+
+
+def yield_messages_sorted_by_timestamp(partition_count: int) -> Callable[[MessageStream], MessageStream]:
+    def _yield_messages_sorted_by_timestamp(stream: MessageStream) -> MessageStream:
+        partition_buffers, global_event_buffer = create_partition_buffers(stream)
+        yield from sorted_message_stream(partition_buffers)
+
+        # Only check the non-specific stream events at the end. Otherwise we might end up consuming the whole
+        # topic until the bucketing mechanism finds one.
+        yield from global_event_buffer
+
+    def create_partition_buffers(stream):
+        bucketed_stream = more_itertools.bucket(stream, key=attrgetter("partition"))
+        partition_buffers: Dict[int, Iterator[StreamEvent]] = {
+            p: more_itertools.peekable(iter(bucketed_stream[p])) for p in range(partition_count)
+        }
+        global_event_buffer = bucketed_stream[StreamEvent.ALL_PARTITIONS]
+        return partition_buffers, global_event_buffer
+
+    def sorted_message_stream(partition_buffers):
+        while True:
+            next_partition = _select_next_partition(partition_buffers)
+            if next_partition is None:
+                break
+            next_msg = next(partition_buffers[next_partition])
+
+            # Make sure we don't attempt to read more messages from a partition where we've reached the end.
+            # This would cause the bucketing mechanism to consume the whole topic at once while trying to get
+            # the next message for this bucket which will never come.
+            if isinstance(next_msg, EndOfStream):
+                del partition_buffers[next_partition]
+
+            yield next_msg
+
+    def _select_next_partition(partition_buffers: Dict[int, Iterator[StreamEvent]]):
+        next_partition = None
+        min_ts = None
+        for partition, buffer in list(partition_buffers.items()):
+            next_message = buffer.peek(None)
+            if next_message is None:
+                del partition_buffers[partition]
+                continue
+
+            if isinstance(next_message, StreamEvent):
+                # stream events take precedence
+                return partition
+
+            if min_ts is None or next_message.timestamp < min_ts:
+                min_ts = next_message.timestamp
+                next_partition = partition
+
+        return next_partition
+
+    return _yield_messages_sorted_by_timestamp
 
 
 # def stop_at_message_timeout(iterable: EventStream, message_timeout: int) -> EventStream:

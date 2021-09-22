@@ -15,6 +15,11 @@ class StreamEvent:
     def __repr__(self) -> str:
         return f"{type(self).__name__}(msg={self._msg!r}, partition={self.partition})"
 
+    def __eq__(self, other):
+        if not isinstance(other, StreamEvent):
+            return NotImplemented
+        return type(self) == type(other) and self._msg == other._msg and self.partition == other.partition
+
 
 class NthMessageRead(StreamEvent):
     """
@@ -26,9 +31,6 @@ class EndOfStream(StreamEvent):
     """
     Stream Event indicating that the handler reached a (possibly temporary) end of its message source.
     """
-
-    def __init__(self, msg: str):
-        super().__init__(msg)
 
 
 class PermanentEndOfStream(EndOfStream):
