@@ -59,7 +59,7 @@ class TopicController:
 
         if get_topic_objects:
             topics = [
-                self.get_cluster_topic(topic_name, retrieve_partition_data=get_partitions)
+                self.get_cluster_topic(topic_name, retrieve_partition_watermarks=get_partitions)
                 for topic_name in topic_names
             ]
         else:
@@ -123,13 +123,13 @@ class TopicController:
         return True
 
     def get_cluster_topic(
-        self, topic_name: str, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True
+        self, topic_name: str, *, retrieve_last_timestamp: bool = False, retrieve_partition_watermarks: bool = True
     ) -> Topic:
         """Convenience function getting an existing topic based on topic_name"""
         return self.update_from_cluster(
             Topic(topic_name),
             retrieve_last_timestamp=retrieve_last_timestamp,
-            retrieve_partition_data=retrieve_partition_data,
+            retrieve_partition_watermarks=retrieve_partition_watermarks,
         )
 
     def get_local_topic(self, topic_name: str) -> Topic:
@@ -247,12 +247,12 @@ class TopicController:
         return data
 
     def update_from_cluster(
-        self, topic: Topic, *, retrieve_last_timestamp: bool = False, retrieve_partition_data: bool = True
+        self, topic: Topic, *, retrieve_last_timestamp: bool = False, retrieve_partition_watermarks: bool = True
     ) -> Topic:
         """Takes a topic and, based on its name, updates all attributes from the cluster"""
 
         topic.partition_data = self._get_partitions(
-            topic, retrieve_last_timestamp, get_partition_data=retrieve_partition_data
+            topic, retrieve_last_timestamp, get_partition_watermarks=retrieve_partition_watermarks
         )
         topic.config = self.cluster.retrieve_config(ConfigResource.Type.TOPIC, topic.name)
 
@@ -261,18 +261,18 @@ class TopicController:
         return topic
 
     def _get_partitions(
-        self, topic: Topic, retrieve_last_timestamp: bool, get_partition_data: bool = True
+        self, topic: Topic, retrieve_last_timestamp: bool, get_partition_watermarks: bool = True
     ) -> List[Partition]:
         assert not (
-            retrieve_last_timestamp and not get_partition_data
-        ), "Can not retrieve timestamp without partition data"
+            retrieve_last_timestamp and not get_partition_watermarks
+        ), "Can not retrieve timestamp without partition watermarks"
 
         config = Config.get_instance().create_confluent_config()
         config.update({"group.id": ESQUE_GROUP_ID, "topic.metadata.refresh.interval.ms": "250"})
         with closing(confluent_kafka.Consumer(config)) as consumer:
             confluent_topic = consumer.list_topics(topic=topic.name).topics[topic.name]
             partitions: List[Partition] = []
-            if not get_partition_data:
+            if not get_partition_watermarks:
                 return [
                     Partition(partition_id, -1, -1, meta.isrs, meta.leader, meta.replicas, None)
                     for partition_id, meta in confluent_topic.partitions.items()
@@ -309,7 +309,7 @@ class TopicController:
     def diff_with_cluster(self, local_topic: Topic) -> TopicDiff:
         assert local_topic.is_only_local, "Can only diff local topics with remote"
 
-        cluster_topic = self.get_cluster_topic(local_topic.name, retrieve_partition_data=False)
+        cluster_topic = self.get_cluster_topic(local_topic.name, retrieve_partition_watermarks=False)
         diffs = TopicDiff()
         diffs.set_diff("num_partitions", cluster_topic.num_partitions, local_topic.num_partitions)
         diffs.set_diff("replication_factor", cluster_topic.replication_factor, local_topic.replication_factor)
