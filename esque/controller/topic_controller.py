@@ -1,4 +1,3 @@
-import itertools
 import logging
 import re
 import time
@@ -177,13 +176,14 @@ class TopicController:
                 for partition in consumer.partitions_for_topic(topic_name)
             ]
             partition_ends: Dict[kafka.TopicPartition, int] = consumer.end_offsets(topic_partitions)
+            partition_starts: Dict[kafka.TopicPartition, int] = consumer.beginning_offsets(topic_partitions)
 
             if offset == "first":
-                partition_offsets = itertools.repeat(0)
+                partition_offsets = (partition_starts[tp] for tp in topic_partitions)
             elif offset == "last":
                 partition_offsets = (partition_ends[tp] - 1 for tp in topic_partitions)
             else:
-                partition_offsets = itertools.repeat(int(offset))
+                partition_offsets = (max(offset, partition_starts[tp]) for tp in topic_partitions)
 
             assignments = [
                 (tp, offset) for tp, offset in zip(topic_partitions, partition_offsets) if partition_ends[tp] > offset
@@ -193,7 +193,7 @@ class TopicController:
             for tp, offset in assignments:
                 consumer.seek(tp, offset)
 
-            unassigned_partitions = (tp for tp in topic_partitions if tp not in consumer.assignment())
+            unassigned_partitions = [tp for tp in topic_partitions if tp not in consumer.assignment()]
             messages_received: Dict[int, Optional[kafka.consumer.fetcher.ConsumerRecord]] = {
                 tp.partition: None for tp in unassigned_partitions
             }
@@ -201,6 +201,7 @@ class TopicController:
             for message in cast(Iterable[kafka.consumer.fetcher.ConsumerRecord], consumer):
                 if message.partition not in messages_received:
                     messages_received[message.partition] = message
+                    consumer.pause(kafka.TopicPartition(message.topic, message.partition))
                 if len(messages_received) == len(topic_partitions):
                     # we have one record for every partition, so we're done.
                     break
