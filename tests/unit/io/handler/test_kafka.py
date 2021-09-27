@@ -61,7 +61,9 @@ def test_write_single_message(
         topic=topic_id,
         partition=message.partition,
         timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
-        headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
+        headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
+        if message.headers
+        else None,
     )
     producer_mock.flush.assert_called_once()
 
@@ -79,7 +81,9 @@ def test_write_many_messages(
             topic=topic_id,
             partition=message.partition,
             timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
-            headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
+            headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
+            if message.headers
+            else None,
         )
     producer_mock.flush.assert_called_once()
 
@@ -182,7 +186,9 @@ def binary_message_to_confluent_message(message: BinaryMessage, topic_id: str):
     if not message.headers:
         confluent_message.headers.return_value = None
     else:
-        confluent_message.headers.return_value = [(h.key, h.value.encode("utf-8")) for h in message.headers]
+        confluent_message.headers.return_value = [
+            (h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers
+        ]
 
     confluent_message.timestamp.return_value = (0, int(message.timestamp.timestamp() * 1000))
     return confluent_message

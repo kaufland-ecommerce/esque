@@ -1,6 +1,6 @@
 import dataclasses
 import datetime
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, OFFSET_END, Consumer, KafkaError, Message, Producer, TopicPartition
 from confluent_kafka.admin import TopicMetadata
@@ -109,9 +109,26 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             value=binary_message.value,
             key=binary_message.key,
             partition=binary_message.partition,
-            headers=[(h.key, h.value.encode("utf-8")) for h in binary_message.headers],
-            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else 0,
+            headers=self._io_to_confluent_headers(binary_message.headers),
+            timestamp=self._io_to_confluent_timestamp(binary_message.timestamp),
         )
+
+    def _io_to_confluent_timestamp(self, message_ts: datetime.datetime):
+        return int(message_ts.timestamp() * 1000) if self.config.send_timestamp else 0
+
+    @staticmethod
+    def _io_to_confluent_headers(headers: List[MessageHeader]) -> Optional[List[Tuple[str, Optional[bytes]]]]:
+        if not headers:
+            return None
+        confluent_headers: List[Tuple[str, Optional[bytes]]] = []
+        for header in headers:
+            key = header.key
+            if header.value is not None:
+                value = header.value.encode("utf-8")
+            else:
+                value = None
+            confluent_headers.append((key, value))
+        return confluent_headers
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         if not self._assignment_created:
@@ -129,21 +146,41 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         else:
             self._eof_reached[consumed_message.partition()] = False
 
-            if consumed_message.headers() is None:
-                headers = []
-            else:
-                headers = [MessageHeader(k, v.decode("utf-8")) for k, v in consumed_message.headers()]
+            binary_message = self._confluent_to_binary_message(consumed_message)
 
-            return BinaryMessage(
-                key=consumed_message.key(),
-                value=consumed_message.value(),
-                partition=consumed_message.partition(),
-                offset=consumed_message.offset(),
-                timestamp=datetime.datetime.fromtimestamp(
-                    consumed_message.timestamp()[1] / 1000, tz=datetime.timezone.utc
-                ),
-                headers=headers,
-            )
+            return binary_message
+
+    def _confluent_to_binary_message(self, consumed_message: Message) -> BinaryMessage:
+        binary_message = BinaryMessage(
+            key=consumed_message.key(),
+            value=consumed_message.value(),
+            partition=consumed_message.partition(),
+            offset=consumed_message.offset(),
+            timestamp=self._confluent_to_io_timestamp(consumed_message),
+            headers=self._confluent_to_io_headers(consumed_message.headers()),
+        )
+        return binary_message
+
+    @staticmethod
+    def _confluent_to_io_timestamp(consumed_message: Message) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(consumed_message.timestamp()[1] / 1000, tz=datetime.timezone.utc)
+
+    @staticmethod
+    def _confluent_to_io_headers(
+        confluent_headers: Optional[List[Tuple[str, Optional[bytes]]]]
+    ) -> List[MessageHeader]:
+        io_headers: List[MessageHeader] = []
+
+        if confluent_headers is None:
+            return io_headers
+
+        for confluent_header in confluent_headers:
+            key, value = confluent_header
+            if value is not None:
+                value = value.decode("utf-8")
+            io_headers.append(MessageHeader(key, value))
+
+        return io_headers
 
     def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         while True:
