@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 from pathlib import Path
 from typing import Optional
 
@@ -128,6 +129,12 @@ def consume(
         from_context = state.config.current_context
     state.config.context_switch(from_context)
 
+    if not write_to_stdout and not directory:
+        directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+
     builder = PipelineBuilder()
 
     input_message_serializer = create_input_serializer(avro, binary, state)
@@ -136,10 +143,10 @@ def consume(
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, topic, write_to_stdout)
+    output_handler = create_output_handler(directory, write_to_stdout, binary)
     builder.with_output_handler(output_handler)
 
-    output_message_serializer = create_output_message_serializer(write_to_stdout)
+    output_message_serializer = create_output_message_serializer(write_to_stdout, directory, avro, binary)
     builder.with_output_message_serializer(output_message_serializer)
 
     if last:
@@ -193,9 +200,7 @@ def create_input_handler(consumergroup, from_context, topic):
 
 
 def create_input_serializer(avro, binary, state):
-    if binary and avro:
-        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
-    elif binary:
+    if binary:
         input_serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
     elif avro:
         input_serializer = RegistryAvroSerializer(
@@ -207,20 +212,33 @@ def create_input_serializer(avro, binary, state):
     return input_message_serializer
 
 
-def create_output_handler(directory, topic, write_to_stdout):
+def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
-        output_handler = PipeHandler(PipeHandlerConfig(scheme="pipe", host="stdout", path="", skip_marker="1"))
+        if binary:
+            encoding = "base64"
+        else:
+            encoding = "utf-8"
+        output_handler = PipeHandler(
+            PipeHandlerConfig(scheme="pipe", host="stdout", path="", key_encoding=encoding, value_encoding=encoding)
+        )
     else:
-        if not directory:
-            directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         output_handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
-        click.echo(f"Writing data to to {blue_bold(str(directory))}.")
+        click.echo(f"Writing data to {blue_bold(str(directory))}.")
     return output_handler
 
 
-def create_output_message_serializer(write_to_stdout: bool) -> MessageSerializer:
-    indent = "2" if write_to_stdout else None
-    json_serializer = JsonSerializer(JsonSerializerConfig(scheme="json", indent=indent))
-    return MessageSerializer(key_serializer=json_serializer, value_serializer=json_serializer)
+def create_output_message_serializer(
+    write_to_stdout: bool, directory: pathlib.Path, avro: bool, binary: bool
+) -> MessageSerializer:
+    if not write_to_stdout and avro:
+        serializer = RegistryAvroSerializer(
+            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
+        )
+    elif binary:
+        serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
+    else:
+        indent = "2" if write_to_stdout else None
+        serializer = JsonSerializer(JsonSerializerConfig(scheme="json", indent=indent))
+    return MessageSerializer(key_serializer=serializer, value_serializer=serializer)
