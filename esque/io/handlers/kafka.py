@@ -93,8 +93,6 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         raise EsqueIOSerializerConfigNotSupported
 
     def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
-        if isinstance(binary_message, StreamEvent):
-            return
         self._produce_single_message(binary_message=binary_message)
         self._get_producer().flush()
 
@@ -104,6 +102,8 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         self._get_producer().flush()
 
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
+        if isinstance(binary_message, StreamEvent):
+            return
         self._get_producer().produce(
             topic=self.config.topic_name,
             value=binary_message.value,
