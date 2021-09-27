@@ -6,6 +6,7 @@ from esque.cli.helpers import attrgetter
 from esque.io.handlers import BaseHandler
 from esque.io.messages import BinaryMessage
 from esque.io.stream_decorators import skip_stream_events, stop_at_temporary_end_of_all_stream_partitions
+from esque.io.stream_events import StreamEvent, TemporaryEndOfPartition
 
 
 @parametrize_with_cases("input_handler, output_handler")
@@ -40,6 +41,16 @@ def test_write_read_many_messages(
     actual_messages.sort(key=attrgetter("timestamp"))
     input_handler.close()
     assert binary_messages == actual_messages
+
+
+@parametrize_with_cases("_, output_handler")
+def test_write_single_stream_event(binary_messages: List[BinaryMessage], output_handler: BaseHandler, _):
+    output_handler.write_message(TemporaryEndOfPartition("test", StreamEvent.ALL_PARTITIONS))
+
+
+@parametrize_with_cases("_, output_handler")
+def test_write_many_stream_events(binary_messages: List[BinaryMessage], output_handler: BaseHandler, _):
+    output_handler.write_many_messages([TemporaryEndOfPartition("test", StreamEvent.ALL_PARTITIONS)])
 
 
 @parametrize_with_cases("input_handler, output_handler")
