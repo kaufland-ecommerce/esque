@@ -107,7 +107,7 @@ def binary_messages() -> List[BinaryMessage]:
             partition=0,
             offset=1,
             timestamp=datetime.datetime(year=2021, month=1, day=1, hour=0, minute=1, tzinfo=datetime.timezone.utc),
-            headers=[MessageHeader("c", "d")],
+            headers=[MessageHeader("c", None)],
         ),
         BinaryMessage(
             key=b"foo3",
