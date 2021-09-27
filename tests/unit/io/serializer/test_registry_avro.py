@@ -1,16 +1,17 @@
+import pathlib
 import random
 from string import ascii_lowercase
 from typing import Any
 from unittest import mock
 
 import pytest
-from pytest_cases import fixture
+from pytest_cases import fixture, parametrize_with_cases
 
+from esque.config import Config
 from esque.io.messages import Data
 from esque.io.serializers.registry_avro import (
     SCHEMA_REGISTRY_CLIENT_SCHEME_MAP,
     AvroType,
-    InMemorySchemaRegistryClient,
     RegistryAvroSerializer,
     RegistryAvroSerializerConfig,
     SchemaRegistryClient,
@@ -24,14 +25,31 @@ def registry_uri() -> str:
     return f"memory://{hostname}"
 
 
-@fixture
-def registry_avro_config(registry_uri: str) -> RegistryAvroSerializerConfig:
-    return RegistryAvroSerializerConfig(scheme="registry_avro", schema_registry_uri=registry_uri)
+def case_in_memory_registry_config() -> RegistryAvroSerializerConfig:
+    memory_key = "".join(random.choices(ascii_lowercase, k=5))
+    return RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"memory://{memory_key}")
+
+
+def case_path_registry_config(tmpdir: pathlib.Path) -> RegistryAvroSerializerConfig:
+    return RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{tmpdir}")
+
+
+@pytest.mark.integration
+def case_confluent_registry_config(topic_id: str, unittest_config: Config) -> RegistryAvroSerializerConfig:
+    return RegistryAvroSerializerConfig(
+        scheme="reg-avro", schema_registry_uri=unittest_config.schema_registry
+    ).with_key_subject_for_topic(topic_id)
 
 
 @fixture
-def schema_registry_client(registry_avro_config: RegistryAvroSerializerConfig) -> InMemorySchemaRegistryClient:
-    return InMemorySchemaRegistryClient.from_config(registry_avro_config)
+@parametrize_with_cases("config", cases=".")
+def registry_avro_config(config: RegistryAvroSerializerConfig) -> RegistryAvroSerializerConfig:
+    return config
+
+
+@fixture
+def schema_registry_client(registry_avro_config: RegistryAvroSerializerConfig) -> SchemaRegistryClient:
+    return SchemaRegistryClient.from_config(registry_avro_config)
 
 
 @fixture
@@ -64,6 +82,23 @@ def avro_serialized_data(schema_id: int) -> bytes:
 @fixture
 def registry_avro_serializer(registry_avro_config: RegistryAvroSerializerConfig) -> RegistryAvroSerializer:
     return RegistryAvroSerializer(registry_avro_config)
+
+
+def test_registry_client_same_schema_same_id(registry_avro_config: RegistryAvroSerializerConfig, avro_type: Data):
+    client1 = SchemaRegistryClient.from_config(registry_avro_config)
+    schema_id1 = client1.get_or_create_id_for_avro_type(avro_type)
+
+    client2 = SchemaRegistryClient.from_config(registry_avro_config)
+    schema_id2 = client2.get_or_create_id_for_avro_type(avro_type)
+
+    assert schema_id1 == schema_id2
+
+
+def test_registry_client_schema_retrieval(schema_registry_client: SchemaRegistryClient, avro_type: Data):
+    schema_id = schema_registry_client.get_or_create_id_for_avro_type(avro_type)
+    actual_type = schema_registry_client.get_avro_type_by_id(schema_id)
+
+    assert avro_type == actual_type
 
 
 def test_avro_deserialize(
