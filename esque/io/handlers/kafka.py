@@ -7,7 +7,11 @@ from confluent_kafka.admin import TopicMetadata
 
 from esque import config as esque_config
 from esque.config import ESQUE_GROUP_ID
-from esque.io.exceptions import EsqueIOHandlerReadException, EsqueIOSerializerConfigNotSupported
+from esque.io.exceptions import (
+    EsqueIOHandlerReadException,
+    EsqueIOHandlerWriteException,
+    EsqueIOSerializerConfigNotSupported,
+)
 from esque.io.handlers import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfPartition
@@ -46,6 +50,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         self._high_watermarks: Dict[int, int] = {}
         self._consumer: Optional[Consumer] = None
         self._producer: Optional[Producer] = None
+        self._errors: List[KafkaError] = []
 
     def _get_producer(self) -> Producer:
         if self._producer is not None:
@@ -94,12 +99,12 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
 
     def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
         self._produce_single_message(binary_message=binary_message)
-        self._get_producer().flush()
+        self._flush()
 
     def write_many_messages(self, message_stream: Iterable[Union[BinaryMessage, StreamEvent]]) -> None:
         for binary_message in message_stream:
             self._produce_single_message(binary_message=binary_message)
-        self._get_producer().flush()
+        self._flush()
 
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
         if isinstance(binary_message, StreamEvent):
@@ -111,7 +116,22 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             partition=binary_message.partition,
             headers=self._io_to_confluent_headers(binary_message.headers),
             timestamp=self._io_to_confluent_timestamp(binary_message.timestamp),
+            on_delivery=self._delivery_callback,
         )
+
+    def _delivery_callback(self, err: Optional[KafkaError], msg: str):
+        if err is None:
+            return
+        self._errors.append(err)
+
+    def _flush(self):
+        self._get_producer().flush()
+        if self._errors:
+            exception = EsqueIOHandlerWriteException(
+                "The following exception(s) occurred while writing to Kafka:\n  " + "\n  ".join(map(str, self._errors))
+            )
+            self._errors.clear()
+            raise exception
 
     def _io_to_confluent_timestamp(self, message_ts: datetime.datetime):
         return int(message_ts.timestamp() * 1000) if self.config.send_timestamp else 0

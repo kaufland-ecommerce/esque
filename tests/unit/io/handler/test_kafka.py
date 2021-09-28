@@ -64,6 +64,7 @@ def test_write_single_message(
         headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
         if message.headers
         else None,
+        on_delivery=kafka_handler._delivery_callback,
     )
     producer_mock.flush.assert_called_once()
 
@@ -84,6 +85,7 @@ def test_write_many_messages(
             headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
             if message.headers
             else None,
+            on_delivery=kafka_handler._delivery_callback,
         )
     producer_mock.flush.assert_called_once()
 
