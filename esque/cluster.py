@@ -1,4 +1,5 @@
 import operator
+from functools import cached_property
 
 import kafka
 from confluent_kafka.admin import AdminClient, ConfigResource
@@ -11,11 +12,15 @@ from esque.helpers import ensure_kafka_future_done, unpack_confluent_config
 class Cluster:
     def __init__(self):
         self._config = Config.get_instance()
-        self.confluent_client = AdminClient(
-            {"topic.metadata.refresh.interval.ms": "250", **self._config.create_confluent_config()}
-        )
-        self.kafka_python_client = kafka.KafkaAdminClient(**self._config.create_kafka_python_config())
         self.__topic_controller = None
+
+    @cached_property
+    def kafka_python_client(self) -> kafka.KafkaAdminClient:
+        return kafka.KafkaAdminClient(**self._config.create_kafka_python_config())
+
+    @cached_property
+    def confluent_client(self) -> AdminClient:
+        return AdminClient({"topic.metadata.refresh.interval.ms": "250", **self._config.create_confluent_config()})
 
     @property
     def topic_controller(self) -> TopicController:
