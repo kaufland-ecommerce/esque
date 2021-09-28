@@ -92,6 +92,13 @@ from esque.io.stream_events import StreamEvent
     is_flag=True,
 )
 @click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
+@click.option(
+    "-s",
+    "--skip-marker",
+    help="Do not write the marker line that separates JSON objects in the output.",
+    default=False,
+    is_flag=True,
+)
 @default_options
 def consume(
     state: State,
@@ -106,6 +113,7 @@ def consume(
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
+    skip_marker: bool,
 ):
     """Consume messages from a topic.
 
@@ -143,7 +151,7 @@ def consume(
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, write_to_stdout, binary)
+    output_handler = create_output_handler(directory, write_to_stdout, binary, skip_marker)
     builder.with_output_handler(output_handler)
 
     output_message_serializer = create_output_message_serializer(write_to_stdout, directory, avro, binary)
@@ -212,16 +220,21 @@ def create_input_serializer(avro, binary, state):
     return input_message_serializer
 
 
-def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool):
+def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, skip_marker: bool):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
-        if binary:
-            encoding = "base64"
-        else:
-            encoding = "utf-8"
+        encoding = "base64" if binary else "utf-8"
+        skip_marker = "1" if skip_marker else ""
         output_handler = PipeHandler(
-            PipeHandlerConfig(scheme="pipe", host="stdout", path="", key_encoding=encoding, value_encoding=encoding)
+            PipeHandlerConfig(
+                scheme="pipe",
+                host="stdout",
+                path="",
+                key_encoding=encoding,
+                value_encoding=encoding,
+                skip_marker=skip_marker,
+            )
         )
     else:
         output_handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))

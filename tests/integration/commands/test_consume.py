@@ -23,7 +23,9 @@ def test_avro_consume_to_stdout(
     produce_test_messages_with_avro(avro_producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", "--avro", source_topic_id], catch_exceptions=False
+        esque,
+        args=["consume", "--stdout", "--number", "10", "--avro", "--skip-marker", source_topic_id],
+        catch_exceptions=False,
     )
     # Check assertions:
     separate_messages = message_text.output.split("\n")
@@ -63,7 +65,9 @@ def test_binary_consume_to_stdout(
     expected_messages = produce_binary_test_messages(producer, source_topic)
 
     message_text = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", "--binary", source_topic_id], catch_exceptions=False
+        esque,
+        args=["consume", "--stdout", "--number", "10", "--binary", "--skip-marker", source_topic_id],
+        catch_exceptions=False,
     )
     # Check assertions:
     actual_messages = {
