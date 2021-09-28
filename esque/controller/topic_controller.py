@@ -14,7 +14,7 @@ from confluent_kafka.admin import ConfigResource
 from confluent_kafka.cimpl import OFFSET_END, KafkaException, NewTopic, TopicPartition
 
 from esque.config import ESQUE_GROUP_ID, Config
-from esque.errors import TopicDeletionException
+from esque.errors import TopicDeletionException, TopicDoesNotExistException
 from esque.helpers import ensure_kafka_future_done
 from esque.resources.topic import Partition, Topic, TopicDiff
 
@@ -119,6 +119,13 @@ class TopicController:
                 errors.append(f"[{topic_name}]: {e.args[0].str()}")
         if errors:
             raise TopicDeletionException("The following exceptions occurred:\n " + "\n ".join(sorted(errors)))
+        return True
+
+    def topic_exists(self, topic_name: str) -> bool:
+        try:
+            self.get_cluster_topic(topic_name, retrieve_last_timestamp=False, retrieve_partition_watermarks=False)
+        except TopicDoesNotExistException:
+            return False
         return True
 
     def get_cluster_topic(
