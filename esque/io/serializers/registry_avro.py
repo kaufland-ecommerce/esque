@@ -111,7 +111,7 @@ class RestSchemaRegistryClient(SchemaRegistryClient):
             raise EsqueIOSerializerConfigException(
                 "Need to provide a key or value schema subject! I.e. topic suffixed with '-key' or '-value'."
             )
-        elif not self._subject.endswith("key") or self._subject.endswith("value"):
+        elif not (self._subject.endswith("key") or self._subject.endswith("value")):
             raise EsqueIOSerializerConfigException("Need to provide a specific key or value subject.")
 
     def _try_get_existing_schema_id_from_subject(self, avro_type: "AvroType") -> Optional[int]:

@@ -1,7 +1,9 @@
+import time
 from typing import Tuple
 
 import pytest
 from click.testing import CliRunner
+from confluent_kafka.avro import AvroConsumer, AvroProducer
 from confluent_kafka.cimpl import Consumer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
@@ -11,6 +13,7 @@ from esque.cli.commands import esque
 from esque.config import Config
 from esque.messages.message import MessageHeader
 from tests.integration.commands.conftest import (
+    produce_avro_test_messages,
     produce_binary_test_messages,
     produce_text_test_messages,
     produce_text_test_messages_with_headers,
@@ -25,6 +28,21 @@ def target_topic_consumer(unittest_config: Config, target_topic: Tuple[str, int]
             "enable.auto.commit": False,
             "enable.partition.eof": False,
             **unittest_config.create_confluent_config(),
+        }
+    )
+    consumer.assign([TopicPartition(topic=target_topic[0], partition=i, offset=0) for i in range(target_topic[1])])
+    yield consumer
+    consumer.close()
+
+
+@fixture
+def target_topic_avro_consumer(unittest_config: Config, target_topic: Tuple[str, int]) -> AvroConsumer:
+    consumer = AvroConsumer(
+        {
+            "group.id": "asdf",
+            "enable.auto.commit": False,
+            "enable.partition.eof": False,
+            **unittest_config.create_confluent_config(include_schema_registry=True),
         }
     )
     consumer.assign([TopicPartition(topic=target_topic[0], partition=i, offset=0) for i in range(target_topic[1])])
@@ -195,4 +213,39 @@ def test_transfer_binary_message_using_file(
         (msg.key(), msg.value(), msg.partition()) for msg in target_topic_consumer.consume(10, timeout=20)
     }
     expected_messages = {(msg.key, msg.value, msg.partition) for msg in expected_messages}
+    assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_transfer_avro_message_using_file(
+    avro_producer: AvroProducer,
+    target_topic_avro_consumer: AvroConsumer,
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+    tmpdir_factory,
+):
+    output_directory = tmpdir_factory.mktemp("output_directory")
+    expected_messages = produce_avro_test_messages(topic=source_topic, avro_producer=avro_producer)
+
+    non_interactive_cli_runner.invoke(
+        esque,
+        args=["consume", "-d", str(output_directory), "--avro", "--number", "10", source_topic[0]],
+        catch_exceptions=False,
+    )
+    non_interactive_cli_runner.invoke(
+        esque, args=["produce", "-d", str(output_directory), "--avro", target_topic[0]], catch_exceptions=False
+    )
+
+    actual_messages = set()
+    start = time.monotonic()
+    while len(actual_messages) < 10:
+        msg = target_topic_avro_consumer.poll(timeout=2)
+        if msg is None:
+            continue
+        actual_messages.add((msg.key()["key"], msg.value()["value"], msg.partition()))
+        if time.monotonic() - start >= 20:
+            raise TimeoutError("Timeout reading data from topic")
+
+    expected_messages = {(msg.key["key"], msg.value["value"], msg.partition) for msg in expected_messages}
     assert expected_messages == actual_messages
