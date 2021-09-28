@@ -241,10 +241,9 @@ def test_transfer_avro_message_using_file(
     start = time.monotonic()
     while len(actual_messages) < 10:
         msg = target_topic_avro_consumer.poll(timeout=2)
-        if msg is None:
-            continue
-        actual_messages.add((msg.key()["key"], msg.value()["value"], msg.partition()))
-        if time.monotonic() - start >= 20:
+        if msg is not None:
+            actual_messages.add((msg.key()["key"], msg.value()["value"], msg.partition()))
+        elif time.monotonic() - start >= 20:
             raise TimeoutError("Timeout reading data from topic")
 
     expected_messages = {(msg.key["key"], msg.value["value"], msg.partition) for msg in expected_messages}
