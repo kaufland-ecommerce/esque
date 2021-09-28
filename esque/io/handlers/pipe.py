@@ -55,7 +55,7 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
     def __init__(self, config: PipeHandlerConfig):
         super().__init__(config)
         self._stream = self._get_stream()
-        self._lbound = 0
+        self._lbound = -1
 
     def _get_stream(self) -> TextIO:
         # pipe://stdout
