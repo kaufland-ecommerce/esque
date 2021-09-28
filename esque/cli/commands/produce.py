@@ -3,8 +3,10 @@ import pathlib
 import click
 
 from esque.cli.autocomplete import list_contexts, list_topics
+from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, default_options
 from esque.cli.output import blue_bold, green_bold
+from esque.cluster import Cluster
 from esque.io.handlers import BaseHandler, KafkaHandler, PathHandler, PipeHandler
 from esque.io.handlers.kafka import KafkaHandlerConfig
 from esque.io.handlers.path import PathHandlerConfig
@@ -18,6 +20,7 @@ from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
 from esque.io.serializers.string import StringSerializerConfig
 from esque.io.stream_decorators import MessageStream, yield_only_matching_messages
 from esque.io.stream_events import StreamEvent
+from esque.resources.topic import Topic
 
 
 @click.command("produce")
@@ -120,18 +123,26 @@ def produce(
     if binary and avro:
         raise ValueError("Cannot set data to be interpreted as binary AND avro.")
 
+    topic_controller = Cluster().topic_controller
+    if not topic_controller.topic_exists(topic):
+        if ensure_approval(f"Topic {topic!r} does not exist, do you want to create it?", no_verify=state.no_verify):
+            topic_controller.create_topics([Topic(topic)])
+        else:
+            click.echo(click.style("Aborted!", bg="red"))
+            return
+
     builder = PipelineBuilder()
 
-    input_handler = create_input_handler_(directory, read_from_stdin)
+    input_handler = create_input_handler(directory, read_from_stdin)
     builder.with_input_handler(input_handler)
 
-    input_message_serializer = create_input_message_serializer_(directory, avro, binary)
+    input_message_serializer = create_input_message_serializer(directory, avro, binary)
     builder.with_input_message_serializer(input_message_serializer)
 
-    output_message_serializer = create_output_serializer_(avro, binary, topic, state)
+    output_message_serializer = create_output_serializer(avro, binary, topic, state)
     builder.with_output_message_serializer(output_message_serializer)
 
-    output_handler = create_output_handler_(to_context, topic)
+    output_handler = create_output_handler(to_context, topic)
     builder.with_output_handler(output_handler)
 
     total_number_of_messages_produced = 0
@@ -161,12 +172,12 @@ def produce(
     )
 
 
-def create_output_handler_(to_context: str, topic: str):
+def create_output_handler(to_context: str, topic: str):
     output_handler = KafkaHandler(KafkaHandlerConfig(scheme="kafka", host=to_context, path=topic))
     return output_handler
 
 
-def create_output_serializer_(avro: bool, binary: bool, topic: str, state: State) -> MessageSerializer:
+def create_output_serializer(avro: bool, binary: bool, topic: str, state: State) -> MessageSerializer:
     if binary and avro:
         raise ValueError("Cannot set data to be interpreted as binary AND avro.")
 
@@ -186,7 +197,7 @@ def create_output_serializer_(avro: bool, binary: bool, topic: str, state: State
     return message_serializer
 
 
-def create_input_handler_(directory: pathlib.Path, read_from_stdin: bool) -> BaseHandler:
+def create_input_handler(directory: pathlib.Path, read_from_stdin: bool) -> BaseHandler:
     if read_from_stdin:
         handler = PipeHandler(PipeHandlerConfig(scheme="pipe", host="stdin", path=""))
     else:
@@ -197,7 +208,7 @@ def create_input_handler_(directory: pathlib.Path, read_from_stdin: bool) -> Bas
     return handler
 
 
-def create_input_message_serializer_(directory: pathlib.Path, avro: bool, binary: bool) -> MessageSerializer:
+def create_input_message_serializer(directory: pathlib.Path, avro: bool, binary: bool) -> MessageSerializer:
     if avro:
         serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
