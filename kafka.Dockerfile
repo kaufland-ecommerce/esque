@@ -9,7 +9,7 @@ RUN apt-get update -q       \
 RUN wget --no-verbose        \
          --show-progress     \
          --progress=dot:mega \
-         http://packages.confluent.io/archive/5.2/confluent-community-5.2.1-2.12.tar.gz -O confluent-community.tgz \
+         http://packages.confluent.io/archive/5.2/confluent-community-5.2.6-2.12.tar.gz -O confluent-community.tgz \
  && mkdir -p                        \
           confluent-community       \
  && tar xzf confluent-community.tgz \
