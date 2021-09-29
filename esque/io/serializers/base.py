@@ -2,6 +2,7 @@ import dataclasses
 from abc import ABC, abstractmethod
 from typing import ClassVar, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
+from esque.io.data_types import NoData
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Data, Message
 from esque.io.stream_events import StreamEvent
@@ -33,6 +34,7 @@ class SerializerConfig:
 
 
 class DataSerializer(ABC, Generic[SC]):
+    NO_DATA = Data(None, NoData())
     config_cls: ClassVar[Type[SC]] = SerializerConfig
     config: SC
 
@@ -40,17 +42,17 @@ class DataSerializer(ABC, Generic[SC]):
         self.config = config
 
     @abstractmethod
-    def serialize(self, data: Data) -> bytes:
+    def serialize(self, data: Data) -> Optional[bytes]:
         raise NotImplementedError
 
-    def serialize_many(self, data_list: Iterable[Data]) -> Iterable[bytes]:
+    def serialize_many(self, data_list: Iterable[Data]) -> Iterable[Optional[bytes]]:
         return (self.serialize(message) for message in data_list)
 
     @abstractmethod
-    def deserialize(self, raw_data: bytes) -> Data:
+    def deserialize(self, raw_data: Optional[bytes]) -> Data:
         raise NotImplementedError
 
-    def deserialize_many(self, raw_data_stream: Iterable[bytes]) -> Iterable[Data]:
+    def deserialize_many(self, raw_data_stream: Iterable[Optional[bytes]]) -> Iterable[Data]:
         return (self.deserialize(raw_data) for raw_data in raw_data_stream)
 
 

@@ -58,6 +58,11 @@ class Field:
 
 
 @dataclasses.dataclass
+class NoData(EsqueDataType):
+    pass
+
+
+@dataclasses.dataclass
 class Struct(EsqueDataType):
     schema: List[Field]
 

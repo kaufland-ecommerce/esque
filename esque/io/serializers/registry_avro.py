@@ -13,7 +13,7 @@ from urllib.parse import ParseResult
 import fastavro
 import requests
 
-from esque.io.data_types import CustomDataType, DataType, UnknownDataType
+from esque.io.data_types import CustomDataType, DataType, NoData, UnknownDataType
 from esque.io.exceptions import EsqueIONoSuchSchemaException, EsqueIOSerializerConfigException
 from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
@@ -241,17 +241,18 @@ class RegistryAvroSerializer(DataSerializer):
         super().__init__(config)
         self._registry_client = SchemaRegistryClient.from_config(config)
 
-    def serialize(self, data: Data) -> bytes:
+    def serialize(self, data: Data) -> Optional[bytes]:
+        if isinstance(data.data_type, NoData):
+            return None
         avro_type = ensure_avro_type(data.data_type)
         schema_id = self._registry_client.get_or_create_id_for_avro_type(avro_type)
         buffer = io.BytesIO()
         fastavro.schemaless_writer(buffer, avro_type.fastavro_schema, data.payload)
         return create_schema_id_prefix(schema_id) + buffer.getvalue()
 
-    def deserialize(self, raw_data: bytes) -> Data:
-
+    def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return Data(payload=None, data_type=self.unknown_data_type)
+            return self.NO_DATA
 
         with io.BytesIO(raw_data) as fake_stream:
             schema_id = get_schema_id_from_prefix(fake_stream.read(5))

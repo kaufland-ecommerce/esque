@@ -6,8 +6,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pytest_cases import fixture
 
+from esque.io.data_types import NoData
 from esque.io.handlers.base import BaseHandler, HandlerConfig
-from esque.io.messages import BinaryMessage, Message, MessageHeader
+from esque.io.messages import BinaryMessage, Data, Message, MessageHeader
 from esque.io.pipeline import HandlerSerializerMessageReader, HandlerSerializerMessageWriter, PipelineBuilder
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.string import StringSerializer, StringSerializerConfig
@@ -142,6 +143,11 @@ def binary_messages() -> List[BinaryMessage]:
             headers=[],
         ),
     ]
+
+
+@fixture(scope="session")
+def no_data() -> Data:
+    return Data(None, NoData())
 
 
 @fixture()

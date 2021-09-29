@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, List
+from typing import List
 
 from pytest_cases import fixture
 
@@ -64,7 +64,7 @@ def test_json_serializer(serializer):
     actual_serialized_data: bytes = serializer.serialize(EXPECTED_DESERIALIZED_DATA[0])
     assert actual_serialized_data == EXPECTED_SERIALIZED_DATA[0]
 
-    actual_deserialized_data: Any = serializer.deserialize(EXPECTED_SERIALIZED_DATA[0])
+    actual_deserialized_data: Data = serializer.deserialize(EXPECTED_SERIALIZED_DATA[0])
     assert actual_deserialized_data == EXPECTED_DESERIALIZED_DATA[0]
 
 
@@ -72,5 +72,5 @@ def test_json_serializer_many(serializer):
     actual_serialized_data: List[bytes] = list(serializer.serialize_many(ORIGINAL_TEST_DATA))
     assert actual_serialized_data == EXPECTED_SERIALIZED_DATA
 
-    actual_deserialized_data: Any = list(serializer.deserialize_many(EXPECTED_SERIALIZED_DATA))
+    actual_deserialized_data: List[Data] = list(serializer.deserialize_many(EXPECTED_SERIALIZED_DATA))
     assert actual_deserialized_data == EXPECTED_DESERIALIZED_DATA
