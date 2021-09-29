@@ -5,6 +5,7 @@ import click
 from esque.cli.autocomplete import list_topics
 from esque.cli.helpers import ensure_approval, fallback_to_stdin
 from esque.cli.options import State, default_options
+from esque.cli.output import blue_bold
 from esque.resources.topic import Topic
 
 
@@ -40,10 +41,6 @@ def create_topic(
     If both <template_topic> and any of the <partitions> or <replication-factor> options are given, then <partitions>
     or <replication-factor> takes precedence over corresponding attributes of <template_topic>.
     """
-    if not ensure_approval("Are you sure?", no_verify=state.no_verify):
-        click.echo(click.style("Aborted!", bg="red"))
-        return
-
     topic_controller = state.cluster.topic_controller
 
     if like:
@@ -59,6 +56,17 @@ def create_topic(
         config = None
 
     topic = Topic(topic_name, num_partitions=partitions, replication_factor=replication_factor, config=config)
+
+    if not ensure_approval(
+        f"Create topic {blue_bold(topic.name)} "
+        + f"with replication factor {blue_bold(str(topic.replication_factor))} "
+        + f"and {blue_bold(str(topic.num_partitions))} partition"
+        + ("s" if partitions != 1 else "")
+        + f" in context {blue_bold(state.config.current_context)}?",
+        no_verify=state.no_verify,
+    ):
+        click.echo(click.style("Aborted!", bg="red"))
+        return
 
     topic_controller.create_topics([topic])
     click.echo(click.style(f"Topic with '{topic.name}' successfully created.", fg="green"))
