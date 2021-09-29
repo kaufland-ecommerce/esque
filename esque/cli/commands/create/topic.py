@@ -1,3 +1,5 @@
+from typing import Optional
+
 import click
 
 from esque.cli.autocomplete import list_topics
@@ -8,32 +10,55 @@ from esque.resources.topic import Topic
 
 @click.command("topic")
 @click.argument("topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, required=False)
+@click.option("-l", "--like", metavar="<template_topic>", help="Topic to use as template.", autocompletion=list_topics)
 @click.option(
-    "-l",
-    "--like",
-    metavar="<template_topic>",
-    help="Topic to use as template.",
-    autocompletion=list_topics,
-    required=False,
+    "-p",
+    "--partitions",
+    metavar="<partitions>",
+    help="Amount of partitions the new topic should get. If not given, tries to find value by checking the "
+    "following places in the given order: 1. esque config, 2. cluster, 3. fixed default of min(3, broker-count).",
+    default=None,
+    type=int,
+)
+@click.option(
+    "-r",
+    "--replication-factor",
+    metavar="<replication-factor>",
+    help="Amount of replicas topic's partitions should get. If not given, tries to find value by checking the "
+    "following places in the given order: 1. esque config, 2. cluster, 3. fixed default of 1.",
+    default=None,
+    type=int,
 )
 @default_options
-def create_topic(state: State, topic_name: str, like: str):
+def create_topic(
+    state: State, topic_name: str, like: str, partitions: Optional[int], replication_factor: Optional[int]
+):
     """Create a topic.
 
     Create a topic called TOPIC_NAME with the option of providing a template topic, <template_topic>,
     from which all the configuration options will be copied.
+    If both <template_topic> and any of the <partitions> or <replication-factor> options are given, then <partitions>
+    or <replication-factor> takes precedence over corresponding attributes of <template_topic>.
     """
     if not ensure_approval("Are you sure?", no_verify=state.no_verify):
         click.echo(click.style("Aborted!", bg="red"))
         return
 
     topic_controller = state.cluster.topic_controller
+
     if like:
         template_config = topic_controller.get_cluster_topic(like)
-        topic = Topic(
-            topic_name, template_config.num_partitions, template_config.replication_factor, template_config.config
-        )
+        partitions = template_config.num_partitions if partitions is None else partitions
+        replication_factor = template_config.replication_factor if replication_factor is None else replication_factor
+        config = template_config.config
     else:
-        topic = Topic(topic_name)
+        if partitions is None:
+            partitions = state.config.default_num_partitions
+        if replication_factor is None:
+            replication_factor = state.config.default_replication_factor
+        config = None
+
+    topic = Topic(topic_name, num_partitions=partitions, replication_factor=replication_factor, config=config)
+
     topic_controller.create_topics([topic])
-    click.echo(click.style(f"Topic with name '{topic.name}' successfully created.", fg="green"))
+    click.echo(click.style(f"Topic with '{topic.name}' successfully created.", fg="green"))
