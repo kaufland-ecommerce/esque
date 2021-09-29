@@ -6,6 +6,7 @@ from esque.cli.autocomplete import list_topics
 from esque.cli.helpers import ensure_approval, fallback_to_stdin
 from esque.cli.options import State, default_options
 from esque.cli.output import blue_bold
+from esque.errors import ValidationException
 from esque.resources.topic import Topic
 
 
@@ -42,6 +43,8 @@ def create_topic(
     or <replication-factor> takes precedence over corresponding attributes of <template_topic>.
     """
     topic_controller = state.cluster.topic_controller
+    if topic_controller.topic_exists(topic_name):
+        raise ValidationException(f"Topic {topic_name!r} already exists.")
 
     if like:
         template_config = topic_controller.get_cluster_topic(like)

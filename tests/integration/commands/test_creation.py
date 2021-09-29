@@ -4,7 +4,7 @@ from click.testing import CliRunner
 
 from esque.cli.commands import esque
 from esque.cli.options import State
-from esque.errors import NoConfirmationPossibleException
+from esque.errors import NoConfirmationPossibleException, ValidationException
 from esque.resources.topic import Topic
 
 
@@ -44,6 +44,23 @@ def test_create_topic_as_argument_with_verification_works(
     assert result.exit_code == 0
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
     assert topic_id in topics
+
+
+@pytest.mark.integration
+def test_create_existing_topic_fails(
+    non_interactive_cli_runner: CliRunner,
+    confluent_admin_client: confluent_kafka.admin.AdminClient,
+    topic_id: str,
+    state: State,
+):
+    state.cluster.topic_controller.create_topics([Topic(topic_id, replication_factor=1, num_partitions=1)])
+
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["create", "topic", "--no-verify", topic_id], catch_exceptions=True
+    )
+    assert isinstance(result.exception, ValidationException)
+    assert topic_id in result.exception.message
+    assert "exists" in result.exception.message.lower()
 
 
 @pytest.mark.integration
