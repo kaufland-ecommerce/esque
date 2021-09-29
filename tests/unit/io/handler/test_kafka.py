@@ -61,7 +61,10 @@ def test_write_single_message(
         topic=topic_id,
         partition=message.partition,
         timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
-        headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
+        headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
+        if message.headers
+        else None,
+        on_delivery=kafka_handler._delivery_callback,
     )
     producer_mock.flush.assert_called_once()
 
@@ -79,7 +82,10 @@ def test_write_many_messages(
             topic=topic_id,
             partition=message.partition,
             timestamp=int(message.timestamp.timestamp() * 1000) if kafka_handler.config.send_timestamp else 0,
-            headers=[(h.key, h.value.encode("utf-8")) for h in message.headers],
+            headers=[(h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers]
+            if message.headers
+            else None,
+            on_delivery=kafka_handler._delivery_callback,
         )
     producer_mock.flush.assert_called_once()
 
@@ -123,11 +129,11 @@ def test_temporary_end_of_stream_events_non_streaming(
     for partition_id in partitions:
         stream_event = kafka_handler.read_message()
         assert isinstance(stream_event, TemporaryEndOfPartition)
-        assert stream_event.partition_id == partition_id
+        assert stream_event.partition == partition_id
 
     stream_event = kafka_handler.read_message()
     assert isinstance(stream_event, TemporaryEndOfPartition)
-    assert stream_event.partition_id == TemporaryEndOfPartition.ALL_PARTITIONS
+    assert stream_event.partition == TemporaryEndOfPartition.ALL_PARTITIONS
 
 
 def test_temporary_end_of_stream_events_streaming(
@@ -147,11 +153,11 @@ def test_temporary_end_of_stream_events_streaming(
     for partition_id in partitions:
         stream_event = next(stream_iterator)
         assert isinstance(stream_event, TemporaryEndOfPartition)
-        assert stream_event.partition_id == partition_id
+        assert stream_event.partition == partition_id
 
     stream_event = next(stream_iterator)
     assert isinstance(stream_event, TemporaryEndOfPartition)
-    assert stream_event.partition_id == TemporaryEndOfPartition.ALL_PARTITIONS
+    assert stream_event.partition == TemporaryEndOfPartition.ALL_PARTITIONS
 
 
 def confluent_eof_message(topic_id: str, partition: int, offset: int):
@@ -182,7 +188,9 @@ def binary_message_to_confluent_message(message: BinaryMessage, topic_id: str):
     if not message.headers:
         confluent_message.headers.return_value = None
     else:
-        confluent_message.headers.return_value = [(h.key, h.value.encode("utf-8")) for h in message.headers]
+        confluent_message.headers.return_value = [
+            (h.key, h.value.encode("utf-8") if h.value is not None else None) for h in message.headers
+        ]
 
     confluent_message.timestamp.return_value = (0, int(message.timestamp.timestamp() * 1000))
     return confluent_message

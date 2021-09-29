@@ -1,9 +1,12 @@
+import json
 import random
 import string
 from typing import List, Tuple
 from unittest import mock
 
 from click.testing import CliRunner
+from confluent_kafka.avro import AvroProducer
+from confluent_kafka.avro import loads as load_schema
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from pytest_cases import fixture
 
@@ -79,3 +82,40 @@ def produce_text_test_messages_with_headers(
         producer.produce(topic=topic_name, key=key, value=value, partition=partition, headers=headers)
     producer.flush()
     return messages
+
+
+def produce_avro_test_messages(
+    avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 10
+) -> List[KafkaMessage]:
+    key_schema = mk_avro_schema("key", "string")
+    value_schema = mk_avro_schema("value", "string")
+    topic_name, num_partitions = topic
+    messages = []
+    for i in range(amount):
+        partition = random.randrange(0, num_partitions)
+        key = {"key": random_str()}
+        value = {"value": random_str()}
+        messages.append(KafkaMessage(key, value, partition))
+        avro_producer.produce(
+            topic=topic_name,
+            key=key,
+            value=value,
+            partition=partition,
+            key_schema=key_schema,
+            value_schema=value_schema,
+        )
+    avro_producer.flush()
+    return messages
+
+
+def mk_avro_schema(field_name: str, field_type: str):
+    return load_schema(
+        json.dumps(
+            {
+                "type": "record",
+                "namespace": "com.example",
+                "name": f"MySchema_{field_name}",
+                "fields": [{"name": field_name, "type": field_type}],
+            }
+        )
+    )

@@ -11,11 +11,10 @@ from confluent_kafka.cimpl import NewTopic, TopicPartition
 from esque.cli.commands import esque
 from esque.config import Config
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from esque.resources.consumergroup import ConsumerGroup
 
 
-def randomly_generated_consumer_groups(filled_topic, unittest_config: Config) -> str:
-    randomly_generated_consumer_group = "".join(random.choices(ascii_letters, k=8))
+def randomly_generated_consumer_groups(filled_topic, unittest_config: Config, prefix="") -> str:
+    randomly_generated_consumer_group = prefix + "".join(random.choices(ascii_letters, k=8))
     _config = unittest_config.create_confluent_config()
     _config.update(
         {
@@ -32,8 +31,8 @@ def randomly_generated_consumer_groups(filled_topic, unittest_config: Config) ->
     return randomly_generated_consumer_group
 
 
-def randomly_generated_topics(confluent_admin_client: AdminClient) -> str:
-    topic_id = "".join(random.choices(ascii_letters, k=5))
+def randomly_generated_topics(confluent_admin_client: AdminClient, prefix="") -> str:
+    topic_id = prefix + "".join(random.choices(ascii_letters, k=5))
     future: Future = confluent_admin_client.create_topics(
         [NewTopic(topic_id, num_partitions=1, replication_factor=1)]
     )[topic_id]
@@ -150,31 +149,41 @@ def test_consumer_group_deletions_piped(
 
 @pytest.mark.integration
 def test_topic_list_output_compatibility_for_piping(
-    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient, topic: str
+    non_interactive_cli_runner: CliRunner, confluent_admin_client: confluent_kafka.admin.AdminClient
 ):
-    all_topics = non_interactive_cli_runner.invoke(esque, args=["get", "topics", "--hide-internal"]).stdout
-    assert topic in all_topics
+    prefix = "foo_"
+    topics_to_delete = [randomly_generated_topics(confluent_admin_client, prefix=prefix) for _ in range(3)]
+    existing_topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert all(t in existing_topics for t in topics_to_delete)
+
+    all_topics = non_interactive_cli_runner.invoke(esque, args=["get", "topics", "--prefix", prefix]).stdout
     result = non_interactive_cli_runner.invoke(
         esque, args=["delete", "topics", "--no-verify"], input=all_topics, catch_exceptions=False
     )
     assert result.exit_code == 0
-    all_topics = sorted(list(confluent_admin_client.list_topics(timeout=5).topics.keys()))
-    assert all_topics == ["__confluent.support.metrics", "__consumer_offsets"]
+
+    existing_topics = confluent_admin_client.list_topics(timeout=5).topics.keys()
+    assert not any(t in existing_topics for t in topics_to_delete)
 
 
 @pytest.mark.integration
 def test_consumergroup_list_output_compatibility_for_piping(
     non_interactive_cli_runner: CliRunner,
     confluent_admin_client: confluent_kafka.admin.AdminClient,
-    consumergroup_instance: ConsumerGroup,
+    filled_topic,
+    unittest_config: Config,
 ):
-    all_consumergroups = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"]).stdout
-    assert consumergroup_instance.id in all_consumergroups
+    prefix = "bar_"
+    groups_to_delete = [
+        randomly_generated_consumer_groups(filled_topic, unittest_config, prefix=prefix) for _ in range(3)
+    ]
+    all_consumergroups = non_interactive_cli_runner.invoke(
+        esque, args=["get", "consumergroups", "--prefix", prefix]
+    ).stdout
+    assert all(g in all_consumergroups for g in groups_to_delete)
     result = non_interactive_cli_runner.invoke(
         esque, args=["delete", "consumergroup", "--no-verify"], input=all_consumergroups, catch_exceptions=False
     )
     assert result.exit_code == 0
-    all_consumergroups = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"]).stdout.replace(
-        "\n", ""
-    )
-    assert all_consumergroups == "[]"
+    all_consumergroups = non_interactive_cli_runner.invoke(esque, args=["get", "consumergroups"]).stdout
+    assert not any(g in all_consumergroups for g in groups_to_delete)

@@ -95,12 +95,14 @@ def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
 
 
 def fallback_to_stdin(ctx, args, value):
+    if value:
+        return value
+
     stdin = click.get_text_stream("stdin")
-    if not value and not isatty(stdin):
-        stdin_arg = stdin.readline().strip()
-    else:
-        stdin_arg = value
-    if not stdin_arg:
+    if not isatty(stdin):
+        value = stdin.readline().strip()
+
+    if not value:
         raise MissingParameter("No value specified!")
 
-    return stdin_arg
+    return value

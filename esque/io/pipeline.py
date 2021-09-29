@@ -267,6 +267,8 @@ class PipelineBuilder:
         """
         self._stream_decorators = []
         self._errors = []
+        self._start: Optional[int] = None
+        self._limit: Optional[int] = None
 
     def with_input_handler(self, handler: BaseHandler) -> "PipelineBuilder":
         if handler is not None:
@@ -328,7 +330,7 @@ class PipelineBuilder:
     def _pipeline(self) -> Pipeline:
         message_reader = self._build_message_reader()
         message_writer = self._build_message_writer()
-
+        self._add_limit_decorator()
         if self._errors:
             raise EsqueIOInvalidPipelineBuilderState(
                 "Errors while building pipeline object:\n" + "\n".join(self._errors)
@@ -454,10 +456,12 @@ class PipelineBuilder:
     _create_default_output_serializer = _create_default_input_serializer
 
     def with_range(self, start: Optional[int] = None, limit: Optional[int] = None):
-        if limit:
-            self.with_stream_decorator(stop_after_nth_message(limit))
-        if start:
-            self._start = start
+        self._start = start
+        self._limit = limit
+
+    def _add_limit_decorator(self):
+        if self._limit is not None:
+            self.with_stream_decorator(stop_after_nth_message(self._limit))
 
     def build(self) -> Pipeline:
         return self._pipeline

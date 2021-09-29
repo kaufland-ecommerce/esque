@@ -1,13 +1,17 @@
 import dataclasses
 import datetime
-from typing import Any, Dict, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from confluent_kafka import OFFSET_BEGINNING, OFFSET_END, Consumer, KafkaError, Message, Producer, TopicPartition
 from confluent_kafka.admin import TopicMetadata
 
 from esque import config as esque_config
 from esque.config import ESQUE_GROUP_ID
-from esque.io.exceptions import EsqueIOHandlerReadException, EsqueIOSerializerConfigNotSupported
+from esque.io.exceptions import (
+    EsqueIOHandlerReadException,
+    EsqueIOHandlerWriteException,
+    EsqueIOSerializerConfigNotSupported,
+)
 from esque.io.handlers import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfPartition
@@ -46,6 +50,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         self._high_watermarks: Dict[int, int] = {}
         self._consumer: Optional[Consumer] = None
         self._producer: Optional[Producer] = None
+        self._errors: List[KafkaError] = []
 
     def _get_producer(self) -> Producer:
         if self._producer is not None:
@@ -93,25 +98,57 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         raise EsqueIOSerializerConfigNotSupported
 
     def write_message(self, binary_message: Union[BinaryMessage, StreamEvent]) -> None:
-        if isinstance(binary_message, StreamEvent):
-            return
         self._produce_single_message(binary_message=binary_message)
-        self._get_producer().flush()
+        self._flush()
 
     def write_many_messages(self, message_stream: Iterable[Union[BinaryMessage, StreamEvent]]) -> None:
         for binary_message in message_stream:
             self._produce_single_message(binary_message=binary_message)
-        self._get_producer().flush()
+        self._flush()
 
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
+        if isinstance(binary_message, StreamEvent):
+            return
         self._get_producer().produce(
             topic=self.config.topic_name,
             value=binary_message.value,
             key=binary_message.key,
             partition=binary_message.partition,
-            headers=[(h.key, h.value.encode("utf-8")) for h in binary_message.headers],
-            timestamp=int(binary_message.timestamp.timestamp() * 1000) if self.config.send_timestamp else 0,
+            headers=self._io_to_confluent_headers(binary_message.headers),
+            timestamp=self._io_to_confluent_timestamp(binary_message.timestamp),
+            on_delivery=self._delivery_callback,
         )
+
+    def _delivery_callback(self, err: Optional[KafkaError], msg: str):
+        if err is None:
+            return
+        self._errors.append(err)
+
+    def _flush(self):
+        self._get_producer().flush()
+        if self._errors:
+            exception = EsqueIOHandlerWriteException(
+                "The following exception(s) occurred while writing to Kafka:\n  " + "\n  ".join(map(str, self._errors))
+            )
+            self._errors.clear()
+            raise exception
+
+    def _io_to_confluent_timestamp(self, message_ts: datetime.datetime):
+        return int(message_ts.timestamp() * 1000) if self.config.send_timestamp else 0
+
+    @staticmethod
+    def _io_to_confluent_headers(headers: List[MessageHeader]) -> Optional[List[Tuple[str, Optional[bytes]]]]:
+        if not headers:
+            return None
+        confluent_headers: List[Tuple[str, Optional[bytes]]] = []
+        for header in headers:
+            key = header.key
+            if header.value is not None:
+                value = header.value.encode("utf-8")
+            else:
+                value = None
+            confluent_headers.append((key, value))
+        return confluent_headers
 
     def read_message(self) -> Union[BinaryMessage, StreamEvent]:
         if not self._assignment_created:
@@ -121,31 +158,49 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
         while consumed_message is None:
             consumed_message = self._get_consumer().poll(timeout=0.1)
             if consumed_message is None and all(self._eof_reached.values()):
-                return TemporaryEndOfPartition(
-                    "Reached end of all partitions", partition_id=EndOfStream.ALL_PARTITIONS
-                )
+                return TemporaryEndOfPartition("Reached end of all partitions", partition=EndOfStream.ALL_PARTITIONS)
         # TODO: process other error cases (connection issues etc.)
         if consumed_message.error() is not None and consumed_message.error().code() == KafkaError._PARTITION_EOF:
             self._eof_reached[consumed_message.partition()] = True
-            return TemporaryEndOfPartition("Reached end of partition", partition_id=consumed_message.partition())
+            return TemporaryEndOfPartition("Reached end of partition", partition=consumed_message.partition())
         else:
             self._eof_reached[consumed_message.partition()] = False
 
-            if consumed_message.headers() is None:
-                headers = []
-            else:
-                headers = [MessageHeader(k, v.decode("utf-8")) for k, v in consumed_message.headers()]
+            binary_message = self._confluent_to_binary_message(consumed_message)
 
-            return BinaryMessage(
-                key=consumed_message.key(),
-                value=consumed_message.value(),
-                partition=consumed_message.partition(),
-                offset=consumed_message.offset(),
-                timestamp=datetime.datetime.fromtimestamp(
-                    consumed_message.timestamp()[1] / 1000, tz=datetime.timezone.utc
-                ),
-                headers=headers,
-            )
+            return binary_message
+
+    def _confluent_to_binary_message(self, consumed_message: Message) -> BinaryMessage:
+        binary_message = BinaryMessage(
+            key=consumed_message.key(),
+            value=consumed_message.value(),
+            partition=consumed_message.partition(),
+            offset=consumed_message.offset(),
+            timestamp=self._confluent_to_io_timestamp(consumed_message),
+            headers=self._confluent_to_io_headers(consumed_message.headers()),
+        )
+        return binary_message
+
+    @staticmethod
+    def _confluent_to_io_timestamp(consumed_message: Message) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(consumed_message.timestamp()[1] / 1000, tz=datetime.timezone.utc)
+
+    @staticmethod
+    def _confluent_to_io_headers(
+        confluent_headers: Optional[List[Tuple[str, Optional[bytes]]]]
+    ) -> List[MessageHeader]:
+        io_headers: List[MessageHeader] = []
+
+        if confluent_headers is None:
+            return io_headers
+
+        for confluent_header in confluent_headers:
+            key, value = confluent_header
+            if value is not None:
+                value = value.decode("utf-8")
+            io_headers.append(MessageHeader(key, value))
+
+        return io_headers
 
     def message_stream(self) -> Iterable[Union[BinaryMessage, StreamEvent]]:
         while True:

@@ -1,9 +1,24 @@
 class StreamEvent:
-    def __init__(self, msg: str):
+    """
+    An event that happened on a stream.
+    Check :attr:`StreamEvent.partition` to see which partition this event occurred on.
+    If the value is equal to :attr:`StreamEvent.ALL_PARTITIONS` then this is a global event that refers to all
+    partitions or it is an event that is not applicable to any specific partition.
+    """
+
+    ALL_PARTITIONS: int = -1
+
+    def __init__(self, msg: str, partition: int = ALL_PARTITIONS):
         self._msg = msg
+        self.partition = partition
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self._msg!r})"
+        return f"{type(self).__name__}(msg={self._msg!r}, partition={self.partition})"
+
+    def __eq__(self, other):
+        if not isinstance(other, StreamEvent):
+            return NotImplemented
+        return type(self) == type(other) and self._msg == other._msg and self.partition == other.partition
 
 
 class NthMessageRead(StreamEvent):
@@ -15,16 +30,7 @@ class NthMessageRead(StreamEvent):
 class EndOfStream(StreamEvent):
     """
     Stream Event indicating that the handler reached a (possibly temporary) end of its message source.
-    It contains an additional attribute that shows the ID of the partition that generated the event,
-    or the value of :attr:`EndOfStream.ALL_PARTITIONS`, if the event occurred for all partitions
-    (or no partition ID is applicable for a specific message source).
     """
-
-    ALL_PARTITIONS: int = -1
-
-    def __init__(self, msg: str, partition_id: int = ALL_PARTITIONS):
-        super().__init__(msg)
-        self.partition_id = partition_id
 
 
 class PermanentEndOfStream(EndOfStream):

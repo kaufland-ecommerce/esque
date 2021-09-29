@@ -45,8 +45,12 @@ class ConsumerGroupController:
         self.commit_offsets(consumer_id, offsets)
         return ConsumerGroup(consumer_id, self.cluster)
 
-    def list_consumer_groups(self) -> List[str]:
-        return [group for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()]
+    def list_consumer_groups(self, prefix: str = "") -> List[str]:
+        return [
+            group
+            for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()
+            if group.startswith(prefix)
+        ]
 
     def delete_consumer_groups(self, consumer_ids: List[str]):
         self.cluster.kafka_python_client.delete_consumer_groups(group_ids=consumer_ids)

@@ -1,8 +1,10 @@
 import dataclasses
 import functools
+import hashlib
 import io
 import itertools
 import json
+import pathlib
 import urllib.parse
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Dict, Iterator, Optional, Type
@@ -11,7 +13,7 @@ from urllib.parse import ParseResult
 import fastavro
 import requests
 
-from esque.io.data_types import CustomDataType, DataType, UnknownDataType
+from esque.io.data_types import CustomDataType, DataType, NoData, UnknownDataType
 from esque.io.exceptions import EsqueIONoSuchSchemaException, EsqueIOSerializerConfigException
 from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
@@ -109,7 +111,7 @@ class RestSchemaRegistryClient(SchemaRegistryClient):
             raise EsqueIOSerializerConfigException(
                 "Need to provide a key or value schema subject! I.e. topic suffixed with '-key' or '-value'."
             )
-        elif not self._subject.endswith("key") or self._subject.endswith("value"):
+        elif not (self._subject.endswith("key") or self._subject.endswith("value")):
             raise EsqueIOSerializerConfigException("Need to provide a specific key or value subject.")
 
     def _try_get_existing_schema_id_from_subject(self, avro_type: "AvroType") -> Optional[int]:
@@ -133,6 +135,70 @@ class RestSchemaRegistryClient(SchemaRegistryClient):
 
 SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["http"] = RestSchemaRegistryClient
 SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["https"] = RestSchemaRegistryClient
+
+
+# hash to schema id
+IndexData = Dict[str, int]
+
+
+class PathSchemaRegistryClient(SchemaRegistryClient):
+    def __init__(self, schema_registry_uri: str):
+        # skip the leading slash to allow for relative paths
+        path = urllib.parse.urlparse(schema_registry_uri).path[1:]
+        self._base_path = pathlib.Path(path)
+
+    @functools.lru_cache
+    def get_avro_type_by_id(self, schema_id: int) -> "AvroType":
+        path = self._path_for_id(schema_id)
+        if not path.exists():
+            raise EsqueIONoSuchSchemaException(f"Unknown schema ID {schema_id}")
+        with path.open("r") as o:
+            data = json.load(o)
+        return AvroType(data)
+
+    def _path_for_id(self, schema_id: int) -> pathlib.Path:
+        return self._base_path / f"schema_{schema_id:03}.avsc"
+
+    def get_or_create_id_for_avro_type(self, avro_type: "AvroType") -> int:
+        # JSON doesn't support int keys, so we need to make them strings here
+        type_hash = str(hash(avro_type))
+        if type_hash in self._index_data:
+            return self._index_data[type_hash]
+
+        schema_id = max(self._index_data.values(), default=-1) + 1
+        self._write_schema_file(avro_type, schema_id)
+
+        self._index_data[type_hash] = schema_id
+        self._update_index_file()
+        return schema_id
+
+    def _write_schema_file(self, avro_type: "AvroType", schema_id: int):
+        schema_file = self._path_for_id(schema_id)
+        schema_file.parent.mkdir(exist_ok=True)
+        with schema_file.open("w") as o:
+            json.dump(avro_type.avro_schema, o)
+
+    def _get_index_path(self) -> pathlib.Path:
+        return self._base_path / "schema_index.json"
+
+    @functools.cached_property
+    def _index_data(self) -> IndexData:
+        index_path = self._get_index_path()
+        if not index_path.exists():
+            return {}
+        with index_path.open("r") as o:
+            return json.load(o)
+
+    def _update_index_file(self):
+        with self._get_index_path().open("w") as o:
+            json.dump(self._index_data, o)
+
+    @classmethod
+    def from_config(cls, config: "RegistryAvroSerializerConfig") -> "PathSchemaRegistryClient":
+        return cls(config.schema_registry_uri)
+
+
+SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["path"] = PathSchemaRegistryClient
 
 
 @dataclasses.dataclass(frozen=True)
@@ -175,17 +241,18 @@ class RegistryAvroSerializer(DataSerializer):
         super().__init__(config)
         self._registry_client = SchemaRegistryClient.from_config(config)
 
-    def serialize(self, data: Data) -> bytes:
+    def serialize(self, data: Data) -> Optional[bytes]:
+        if isinstance(data.data_type, NoData):
+            return None
         avro_type = ensure_avro_type(data.data_type)
         schema_id = self._registry_client.get_or_create_id_for_avro_type(avro_type)
         buffer = io.BytesIO()
         fastavro.schemaless_writer(buffer, avro_type.fastavro_schema, data.payload)
         return create_schema_id_prefix(schema_id) + buffer.getvalue()
 
-    def deserialize(self, raw_data: bytes) -> Data:
-
+    def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return Data(payload=None, data_type=self.unknown_data_type)
+            return self.NO_DATA
 
         with io.BytesIO(raw_data) as fake_stream:
             schema_id = get_schema_id_from_prefix(fake_stream.read(5))
@@ -198,8 +265,10 @@ class RegistryAvroSerializer(DataSerializer):
 class AvroType(CustomDataType):
     avro_schema: Dict
 
-    def __hash__(self):
-        return hash(json.dumps(self.avro_schema, sort_keys=True))
+    def __hash__(self) -> int:
+        data_bytes: bytes = json.dumps(self.avro_schema, sort_keys=True).encode(encoding="utf-8")
+        digest: bytes = hashlib.md5(data_bytes).digest()
+        return int.from_bytes(digest, byteorder="big")
 
     @functools.cached_property
     def fastavro_schema(self) -> Any:

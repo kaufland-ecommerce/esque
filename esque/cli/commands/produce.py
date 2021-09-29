@@ -1,13 +1,24 @@
-from pathlib import Path
+import pathlib
 
 import click
 
 from esque.cli.autocomplete import list_contexts, list_topics
-from esque.cli.helpers import attrgetter, ensure_approval, isatty
+from esque.cli.helpers import ensure_approval
 from esque.cli.options import State, default_options
 from esque.cli.output import blue_bold, green_bold
-from esque.clients.producer import ProducerFactory
-from esque.errors import TopicDoesNotExistException
+from esque.cluster import Cluster
+from esque.io.handlers import BaseHandler, KafkaHandler, PathHandler, PipeHandler
+from esque.io.handlers.kafka import KafkaHandlerConfig
+from esque.io.handlers.path import PathHandlerConfig
+from esque.io.handlers.pipe import PipeHandlerConfig
+from esque.io.pipeline import PipelineBuilder
+from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer
+from esque.io.serializers.base import MessageSerializer
+from esque.io.serializers.json import JsonSerializerConfig
+from esque.io.serializers.raw import RawSerializerConfig
+from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
+from esque.io.serializers.string import StringSerializerConfig
+from esque.io.stream_decorators import event_counter, yield_only_matching_messages
 from esque.resources.topic import Topic
 
 
@@ -96,60 +107,106 @@ def produce(
     # Copy source_topic to destination_topic.
     esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
     """
-    if binary and avro:
-        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
-
-    if directory is None and not read_from_stdin:
-        raise ValueError("You have to provide a directory or use the --stdin flag.")
-
-    if directory is not None:
-        input_directory = Path(directory)
-        if not input_directory.exists():
-            raise ValueError(f"Directory {directory} does not exist!")
-
     if not to_context:
         to_context = state.config.current_context
     state.config.context_switch(to_context)
 
-    topic_controller = state.cluster.topic_controller
-    if topic not in map(attrgetter("name"), topic_controller.list_topics(get_topic_objects=False)):
-        click.echo(f"Topic {blue_bold(topic)} does not exist in context {blue_bold(to_context)}.")
-        if ensure_approval("Would you like to create it now?"):
+    if not read_from_stdin:
+        if not directory:
+            raise ValueError("Need to provide directory if not reading from stdin.")
+        else:
+            directory = pathlib.Path(directory)
+    elif avro:
+        raise ValueError("Cannot read avro data from stdin. Use a directory instead.")
+
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+
+    topic_controller = Cluster().topic_controller
+    if not topic_controller.topic_exists(topic):
+        if ensure_approval(f"Topic {topic!r} does not exist, do you want to create it?", no_verify=state.no_verify):
             topic_controller.create_topics([Topic(topic)])
         else:
-            raise TopicDoesNotExistException(f"Topic {topic} does not exist!", -1)
+            click.echo(click.style("Aborted!", bg="red"))
+            return
 
-    stdin = click.get_text_stream("stdin")
-    if read_from_stdin and isatty(stdin):
-        click.echo(
-            "Type the messages to produce, "
-            + ("in JSON format, " if not ignore_stdin_errors else "")
-            + blue_bold("one per line")
-            + ". End with "
-            + blue_bold("CTRL+D")
-            + "."
-        )
-    elif read_from_stdin and not isatty(stdin):
-        click.echo(f"Reading messages from an external source, {blue_bold('one per line')}).")
-    else:
-        click.echo(
-            f"Producing from directory {blue_bold(str(directory))} to topic {blue_bold(topic)}"
-            f" in target context {blue_bold(to_context)}"
-        )
-    producer = ProducerFactory().create_producer(
-        topic_name=topic,
-        input_directory=input_directory if not read_from_stdin else None,
-        avro=avro,
-        match=match,
-        ignore_stdin_errors=ignore_stdin_errors,
-        binary=binary,
-    )
-    total_number_of_messages_produced = producer.produce()
+    builder = PipelineBuilder()
+
+    input_handler = create_input_handler(directory, read_from_stdin)
+    builder.with_input_handler(input_handler)
+
+    input_message_serializer = create_input_message_serializer(directory, avro, binary)
+    builder.with_input_message_serializer(input_message_serializer)
+
+    output_message_serializer = create_output_serializer(avro, binary, topic, state)
+    builder.with_output_message_serializer(output_message_serializer)
+
+    output_handler = create_output_handler(to_context, topic)
+    builder.with_output_handler(output_handler)
+
+    if match:
+        builder.with_stream_decorator(yield_only_matching_messages(match))
+
+    counter, counter_decorator = event_counter()
+
+    builder.with_stream_decorator(counter_decorator)
+
+    pipeline = builder.build()
+    pipeline.run_pipeline()
+
     click.echo(
-        green_bold(str(total_number_of_messages_produced))
+        green_bold(str(counter.message_count))
         + " messages successfully produced to topic "
         + blue_bold(topic)
         + " in context "
         + blue_bold(to_context)
         + "."
     )
+
+
+def create_output_handler(to_context: str, topic: str):
+    output_handler = KafkaHandler(KafkaHandlerConfig(scheme="kafka", host=to_context, path=topic))
+    return output_handler
+
+
+def create_output_serializer(avro: bool, binary: bool, topic: str, state: State) -> MessageSerializer:
+    if binary and avro:
+        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
+
+    elif binary:
+        key_serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
+        value_serializer = key_serializer
+
+    elif avro:
+        config = RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
+        key_serializer = RegistryAvroSerializer(config.with_key_subject_for_topic(topic))
+        value_serializer = RegistryAvroSerializer(config.with_value_subject_for_topic(topic))
+    else:
+        key_serializer = StringSerializer(StringSerializerConfig(scheme="str"))
+        value_serializer = key_serializer
+
+    message_serializer = MessageSerializer(key_serializer=key_serializer, value_serializer=value_serializer)
+    return message_serializer
+
+
+def create_input_handler(directory: pathlib.Path, read_from_stdin: bool) -> BaseHandler:
+    if read_from_stdin:
+        handler = PipeHandler(PipeHandlerConfig(scheme="pipe", host="stdin", path=""))
+    else:
+        if not directory:
+            raise ValueError("Need to provide a directory to read from!")
+        handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
+        click.echo(f"Reading data from {blue_bold(str(directory))}.")
+    return handler
+
+
+def create_input_message_serializer(directory: pathlib.Path, avro: bool, binary: bool) -> MessageSerializer:
+    if avro:
+        serializer = RegistryAvroSerializer(
+            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
+        )
+    elif binary:
+        serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
+    else:
+        serializer = JsonSerializer(JsonSerializerConfig(scheme="json"))
+    return MessageSerializer(key_serializer=serializer, value_serializer=serializer)

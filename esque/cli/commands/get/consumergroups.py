@@ -8,7 +8,8 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 @click.command("consumergroups")
 @output_format_option
 @default_options
-def get_consumergroups(state: State, output_format: str):
+@click.option("-p", "--prefix", help="Only list groups starting with this prefix.", default="")
+def get_consumergroups(state: State, output_format: str, prefix: str):
     """List all consumer groups."""
-    groups = ConsumerGroupController(state.cluster).list_consumer_groups()
+    groups = ConsumerGroupController(state.cluster).list_consumer_groups(prefix=prefix)
     click.echo(format_output(groups, output_format))
