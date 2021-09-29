@@ -1,5 +1,5 @@
 from operator import attrgetter
-from typing import Callable, Dict, Iterable, Iterator, TypeVar, Union
+from typing import Callable, Dict, Iterable, Iterator, Tuple, TypeVar, Union
 
 import more_itertools
 
@@ -161,6 +161,27 @@ def yield_only_matching_messages(
                 yield msg
 
     return _yield_only_matching_messages
+
+
+class EventCounter:
+    def __init__(self):
+        self.message_count: int = 0
+        self.stream_event_count: int = 0
+
+
+def event_counter() -> Tuple[EventCounter, Callable[[MessageStream], MessageStream]]:
+    counter = EventCounter()
+
+    def event_counter_(message_stream: MessageStream) -> MessageStream:
+        nonlocal counter
+        for msg in message_stream:
+            if isinstance(msg, StreamEvent):
+                counter.stream_event_count += 1
+            else:
+                counter.message_count += 1
+            yield msg
+
+    return counter, event_counter_
 
 
 # def stop_at_message_timeout(iterable: EventStream, message_timeout: int) -> EventStream:

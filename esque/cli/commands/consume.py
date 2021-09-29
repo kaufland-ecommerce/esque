@@ -21,8 +21,7 @@ from esque.io.serializers.json import JsonSerializerConfig
 from esque.io.serializers.raw import RawSerializerConfig
 from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
 from esque.io.serializers.string import StringSerializerConfig
-from esque.io.stream_decorators import MessageStream, yield_messages_sorted_by_timestamp, yield_only_matching_messages
-from esque.io.stream_events import StreamEvent
+from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_timestamp, yield_only_matching_messages
 
 
 @click.command("consume")
@@ -164,8 +163,6 @@ def consume(
 
     builder.with_range(start=start, limit=number)
 
-    total_number_of_consumed_messages = 0
-
     if preserve_order:
         topic_data = Cluster().topic_controller.get_cluster_topic(topic, retrieve_partition_watermarks=False)
         builder.with_stream_decorator(yield_messages_sorted_by_timestamp(len(topic_data.partitions)))
@@ -173,12 +170,7 @@ def consume(
     if match:
         builder.with_stream_decorator(yield_only_matching_messages(match))
 
-    def counter_decorator(message_stream: MessageStream) -> MessageStream:
-        nonlocal total_number_of_consumed_messages
-        for msg in message_stream:
-            if not isinstance(msg, StreamEvent):
-                total_number_of_consumed_messages += 1
-            yield msg
+    counter, counter_decorator = event_counter()
 
     builder.with_stream_decorator(counter_decorator)
 
@@ -186,12 +178,12 @@ def consume(
     pipeline.run_pipeline()
 
     if not write_to_stdout:
-        if total_number_of_consumed_messages == number:
-            click.echo(blue_bold(str(total_number_of_consumed_messages)) + " messages consumed.")
+        if counter.message_count == number:
+            click.echo(blue_bold(str(counter.message_count)) + " messages consumed.")
         else:
             click.echo(
                 "Only found "
-                + bold(str(total_number_of_consumed_messages))
+                + bold(str(counter.message_count))
                 + " messages in topic, out of "
                 + blue_bold(str(number))
                 + " required."

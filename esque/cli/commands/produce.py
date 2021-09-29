@@ -18,8 +18,7 @@ from esque.io.serializers.json import JsonSerializerConfig
 from esque.io.serializers.raw import RawSerializerConfig
 from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
 from esque.io.serializers.string import StringSerializerConfig
-from esque.io.stream_decorators import MessageStream, yield_only_matching_messages
-from esque.io.stream_events import StreamEvent
+from esque.io.stream_decorators import event_counter, yield_only_matching_messages
 from esque.resources.topic import Topic
 
 
@@ -145,17 +144,10 @@ def produce(
     output_handler = create_output_handler(to_context, topic)
     builder.with_output_handler(output_handler)
 
-    total_number_of_messages_produced = 0
-
     if match:
         builder.with_stream_decorator(yield_only_matching_messages(match))
 
-    def counter_decorator(message_stream: MessageStream) -> MessageStream:
-        nonlocal total_number_of_messages_produced
-        for msg in message_stream:
-            if not isinstance(msg, StreamEvent):
-                total_number_of_messages_produced += 1
-            yield msg
+    counter, counter_decorator = event_counter()
 
     builder.with_stream_decorator(counter_decorator)
 
@@ -163,7 +155,7 @@ def produce(
     pipeline.run_pipeline()
 
     click.echo(
-        green_bold(str(total_number_of_messages_produced))
+        green_bold(str(counter.message_count))
         + " messages successfully produced to topic "
         + blue_bold(topic)
         + " in context "
