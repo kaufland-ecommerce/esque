@@ -248,3 +248,98 @@ def test_transfer_avro_message_using_file(
 
     expected_messages = {(msg.key["key"], msg.value["value"], msg.partition) for msg in expected_messages}
     assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_transfer_avro_with_single_command(
+    avro_producer: AvroProducer,
+    target_topic_avro_consumer: AvroConsumer,
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+):
+    expected_messages = produce_avro_test_messages(topic=source_topic, avro_producer=avro_producer)
+    non_interactive_cli_runner.invoke(
+        esque,
+        args=[
+            "transfer",
+            "--from-topic",
+            source_topic[0],
+            "--to-topic",
+            target_topic[0],
+            "--avro",
+            "--number",
+            "10",
+            "--first",
+        ],
+        catch_exceptions=False,
+    )
+
+    actual_messages = set()
+    start = time.monotonic()
+    while len(actual_messages) < 10:
+        msg = target_topic_avro_consumer.poll(timeout=2)
+        if msg is not None:
+            actual_messages.add((msg.key()["key"], msg.value()["value"], msg.partition()))
+        elif time.monotonic() - start >= 20:
+            raise TimeoutError("Timeout reading data from topic")
+
+    expected_messages = {(msg.key["key"], msg.value["value"], msg.partition) for msg in expected_messages}
+    assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_transfer_binary_with_single_command(
+    producer: ConfluentProducer,
+    target_topic_consumer: Consumer,
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+):
+    expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
+
+    non_interactive_cli_runner.invoke(
+        esque,
+        args=[
+            "transfer",
+            "--from-topic",
+            source_topic[0],
+            "--to-topic",
+            target_topic[0],
+            "--binary",
+            "--number",
+            "10",
+            "--first",
+        ],
+        catch_exceptions=False,
+    )
+
+    actual_messages = {
+        (msg.key(), msg.value(), msg.partition()) for msg in target_topic_consumer.consume(10, timeout=20)
+    }
+    expected_messages = {(msg.key, msg.value, msg.partition) for msg in expected_messages}
+    assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_transfer_plain_with_single_command(
+    producer: ConfluentProducer,
+    target_topic_consumer: Consumer,
+    source_topic: Tuple[str, int],
+    target_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+):
+    expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
+
+    non_interactive_cli_runner.invoke(
+        esque,
+        args=["transfer", "--from-topic", source_topic[0], "--to-topic", target_topic[0], "--number", "10", "--first"],
+        catch_exceptions=False,
+    )
+
+    actual_messages = {
+        (msg.key().decode(), msg.value().decode(), msg.partition())
+        for msg in target_topic_consumer.consume(10, timeout=20)
+    }
+    expected_messages = {(msg.key, msg.value, msg.partition) for msg in expected_messages}
+    assert expected_messages == actual_messages
