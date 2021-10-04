@@ -9,13 +9,13 @@ from esque.errors import ConsumerGroupDoesNotExistException
 
 @pytest.mark.integration
 def test_smoke_test_ping(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(esque, args=["ping"], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["ping", "--no-verify"], catch_exceptions=False)
     assert result.exit_code == 0
 
 
 @pytest.mark.integration
 def test_correct_amount_of_messages(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(esque, args=["ping"], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["ping", "--no-verify"], catch_exceptions=False)
     assert result.exit_code == 0
 
     # make sure we sent/received 10 messages
@@ -27,7 +27,7 @@ def test_correct_amount_of_messages(non_interactive_cli_runner: CliRunner):
 def test_offset_not_committed(
     non_interactive_cli_runner: CliRunner, consumergroup_controller: ConsumerGroupController
 ):
-    result = non_interactive_cli_runner.invoke(esque, args=["ping"], catch_exceptions=False)
+    result = non_interactive_cli_runner.invoke(esque, args=["ping", "--no-verify"], catch_exceptions=False)
     assert result.exit_code == 0
 
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets

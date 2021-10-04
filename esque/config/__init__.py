@@ -1,7 +1,5 @@
 import contextlib
 import logging
-import random
-import string
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -21,8 +19,7 @@ from esque.errors import (
 )
 from esque.helpers import SingletonMeta
 
-RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
-PING_TOPIC = f"ping-{RANDOM}"
+PING_TOPIC = "esque-ping"
 ESQUE_GROUP_ID = "esque-client"
 SLEEP_INTERVAL = 2
 SUPPORTED_SASL_MECHANISMS = ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512")
