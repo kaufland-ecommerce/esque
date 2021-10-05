@@ -17,7 +17,7 @@ class RawSerializer(DataSerializer):
 
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return self.NO_DATA
+            return Data.NO_DATA
         return Data(payload=raw_data, data_type=self.unknown_data_type)
 
     def serialize(self, data: Data) -> Optional[bytes]:

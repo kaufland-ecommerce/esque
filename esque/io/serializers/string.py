@@ -21,5 +21,5 @@ class StringSerializer(DataSerializer[StringSerializerConfig]):
 
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return self.NO_DATA
+            return Data.NO_DATA
         return Data(raw_data.decode(encoding=self.config.encoding), self.data_type)
