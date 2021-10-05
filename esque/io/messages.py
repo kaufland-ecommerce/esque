@@ -10,7 +10,8 @@ class MessageHeader(NamedTuple):
     value: Optional[str]
 
 
-class Data(NamedTuple):
+@dataclasses.dataclass
+class Data:
     payload: Any
     data_type: DataType
 
