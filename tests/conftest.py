@@ -27,9 +27,9 @@ from esque.config import Config
 from esque.config.migration import CURRENT_VERSION
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.helpers import log_error
-from esque.messages.message import KafkaMessage, MessageHeader
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
+from tests.integration.commands.conftest import KafkaTestMessage
 
 # constants that indicate which config version to load
 # see function get_path_for_config_version
@@ -226,145 +226,29 @@ def topic_controller(cluster: Cluster):
 
 
 @fixture()
-def messages_ordered_same_partition() -> Iterable[KafkaMessage]:
+def messages_ordered_same_partition() -> Iterable[KafkaTestMessage]:
     ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0),
-        KafkaMessage(key="i", value="v2", partition=0),
-        KafkaMessage(key="h", value="v3", partition=0),
-        KafkaMessage(key="g", value="v4", partition=0),
-        KafkaMessage(key="f", value="v5", partition=0),
-        KafkaMessage(key="e", value="v6", partition=0),
-        KafkaMessage(key="d", value="v7", partition=0),
-        KafkaMessage(key="c", value="v8", partition=0),
-        KafkaMessage(key="b", value="v9", partition=0),
-        KafkaMessage(key="a", value="v10", partition=0),
+        KafkaTestMessage(key="j", value="v01", partition=0, timestamp=10_000),
+        KafkaTestMessage(key="i", value="v02", partition=0, timestamp=20_000),
+        KafkaTestMessage(key="h", value="v03", partition=0, timestamp=30_000),
+        KafkaTestMessage(key="g", value="v04", partition=0, timestamp=40_000),
+        KafkaTestMessage(key="f", value="v05", partition=0, timestamp=50_000),
+        KafkaTestMessage(key="e", value="v06", partition=0, timestamp=60_000),
+        KafkaTestMessage(key="d", value="v07", partition=0, timestamp=70_000),
+        KafkaTestMessage(key="c", value="v08", partition=0, timestamp=80_000),
+        KafkaTestMessage(key="b", value="v09", partition=0, timestamp=90_000),
+        KafkaTestMessage(key="a", value="v10", partition=0, timestamp=100_000),
     ]
     yield ordered_messages
 
 
 @fixture()
-def messages_ordered_same_partition_with_headers() -> Iterable[KafkaMessage]:
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
-        KafkaMessage(key="i", value="v2", partition=0, headers=[MessageHeader(key="hk2", value=None)]),
-        KafkaMessage(key="h", value="v3", partition=0, headers=[MessageHeader(key="hk3", value="hv3")]),
-        KafkaMessage(key="g", value="v4", partition=0, headers=[MessageHeader(key="hk4", value=None)]),
-        KafkaMessage(key="f", value="v5", partition=0, headers=[MessageHeader(key="hk5", value="hv5")]),
-        KafkaMessage(key="e", value="v6", partition=0, headers=[MessageHeader(key="hk6", value="hv6")]),
-        KafkaMessage(key="d", value="v7", partition=0, headers=[MessageHeader(key="hk7", value="hv7")]),
-        KafkaMessage(key="c", value="v8", partition=0, headers=[MessageHeader(key="hk8", value="hv8")]),
-        KafkaMessage(key="b", value="v9", partition=0, headers=[MessageHeader(key="hk9", value="hv9")]),
-        KafkaMessage(key="a", value="v10", partition=0, headers=[MessageHeader(key="hk10", value="hv10")]),
-    ]
-    yield ordered_messages
-
-
-@fixture()
-def messages_ordered_different_partitions() -> Iterable[KafkaMessage]:
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0),
-        KafkaMessage(key="i", value="v2", partition=1),
-        KafkaMessage(key="h", value="v3", partition=2),
-        KafkaMessage(key="g", value="v4", partition=3),
-        KafkaMessage(key="f", value="v5", partition=2),
-        KafkaMessage(key="e", value="v6", partition=1),
-        KafkaMessage(key="d", value="v7", partition=0),
-        KafkaMessage(key="c", value="v8", partition=2),
-        KafkaMessage(key="b", value="v9", partition=3),
-        KafkaMessage(key="a", value="v10", partition=1),
-    ]
-    yield ordered_messages
-
-
-@fixture()
-def messages_ordered_different_partition_with_headers() -> Iterable[KafkaMessage]:
-    ordered_messages = [
-        KafkaMessage(key="j", value="v1", partition=0, headers=[MessageHeader(key="hk1", value="hv1")]),
-        KafkaMessage(key="i", value="v2", partition=1, headers=[MessageHeader(key="hk2", value=None)]),
-        KafkaMessage(key="h", value="v3", partition=2, headers=[MessageHeader(key="hk3", value="hv3")]),
-        KafkaMessage(key="g", value="v4", partition=3, headers=[MessageHeader(key="hk4", value=None)]),
-        KafkaMessage(key="f", value="v5", partition=2, headers=[MessageHeader(key="hk5", value="hv5")]),
-        KafkaMessage(key="e", value="v6", partition=1, headers=[MessageHeader(key="hk6", value="hv6")]),
-        KafkaMessage(key="d", value="v7", partition=0, headers=[MessageHeader(key="hk7", value="hv7")]),
-        KafkaMessage(key="c", value="v8", partition=2, headers=[MessageHeader(key="hk8", value="hv8")]),
-        KafkaMessage(key="b", value="v9", partition=3, headers=[MessageHeader(key="hk9", value="hv9")]),
-        KafkaMessage(key="a", value="v10", partition=1, headers=[MessageHeader(key="hk10", value="hv10")]),
-    ]
-    yield ordered_messages
-
-
-@fixture()
-def produced_messages_different_partitions(messages_ordered_different_partitions: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: ConfluentProducer):
-        for message in messages_ordered_different_partitions:
-            producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
-            time.sleep(0.5)
-            producer.flush()
-
-    return _produce
-
-
-@fixture()
-def produced_messages_different_partitions_with_headers(
-    messages_ordered_different_partition_with_headers: Iterable[KafkaMessage],
-):
-    def _produce(topic_name: str, producer: ConfluentProducer):
-        for message in messages_ordered_different_partition_with_headers:
-            producer.produce(
-                topic=topic_name,
-                key=message.key,
-                value=message.value,
-                partition=message.partition,
-                headers=message.headers,
-            )
-            time.sleep(0.5)
-            producer.flush()
-
-    return _produce
-
-
-@fixture()
-def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaMessage]):
+def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaTestMessage]):
     def _produce(topic_name: str, producer: ConfluentProducer, sleep_time: float = 0.5):
         for message in messages_ordered_same_partition:
-            producer.produce(topic=topic_name, key=message.key, value=message.value, partition=message.partition)
+            message.topic = topic_name
+            producer.produce(**message.producer_args())
             time.sleep(sleep_time)
-            producer.flush()
-
-    return _produce
-
-
-@fixture()
-def produced_messages_same_partition_with_headers(
-    messages_ordered_same_partition_with_headers: Iterable[KafkaMessage],
-):
-    def _produce(topic_name: str, producer: ConfluentProducer):
-        for message in messages_ordered_same_partition_with_headers:
-            producer.produce(
-                topic=topic_name,
-                key=message.key,
-                value=message.value,
-                partition=message.partition,
-                headers=message.headers,
-            )
-            time.sleep(0.5)
-            producer.flush()
-
-    return _produce
-
-
-@fixture()
-def produced_avro_messages_with_headers(messages_ordered_same_partition_with_headers: Iterable[KafkaMessage]):
-    def _produce(topic_name: str, producer: AvroProducer):
-        for message in messages_ordered_same_partition_with_headers:
-            producer.produce(
-                topic=topic_name,
-                key=message.key,
-                value=message.value,
-                partition=message.partition,
-                headers=message.headers,
-            )
-            time.sleep(0.5)
             producer.flush()
 
     return _produce

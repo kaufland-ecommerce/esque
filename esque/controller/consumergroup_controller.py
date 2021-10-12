@@ -3,10 +3,10 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import pendulum
-from confluent_kafka.cimpl import TopicPartition
+from confluent_kafka.cimpl import Consumer, TopicPartition
 
-from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
+from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.resources.consumergroup import ConsumerGroup
 
@@ -56,17 +56,10 @@ class ConsumerGroupController:
         self.cluster.kafka_python_client.delete_consumer_groups(group_ids=consumer_ids)
 
     def commit_offsets(self, consumer_id: str, offsets: List[TopicPartition]):
-        consumer = ConsumerFactory().create_consumer(
-            group_id=consumer_id,
-            topic_name=None,
-            output_directory=None,
-            last=False,
-            avro=False,
-            initialize_default_output_directory=False,
-            match=None,
-            enable_auto_commit=False,
-        )
-        consumer.commit(offsets=offsets)
+        config = Config.get_instance()
+        consumer = Consumer({"group.id": consumer_id, **config.create_confluent_config()})
+        consumer.commit(offsets=offsets, asynchronous=False)
+        consumer.close()
 
     def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
         """

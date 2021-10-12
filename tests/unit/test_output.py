@@ -1,9 +1,6 @@
-import json
-from datetime import date, datetime
-from typing import Any, Callable, Dict
+from typing import Callable
 
 from esque.cli.output import format_output, pretty_duration
-from esque.messages.avromessage import StdOutAvroWriter
 from tests.conftest import parameterized_output_formats
 
 TUPLE_BYTES_DICT = {"list": [1, 2, "3"], "string": "string", "int": 4, "tuple": ("a", "b"), "bytes": str(4).encode()}
@@ -43,19 +40,3 @@ def test_duration_unlimited():
 
 def test_duration_valid():
     assert pretty_duration(9223372036854775) == "292471 years 10 weeks 6 days 4 hours 54 seconds"
-
-
-def test_converting_unserializable_values_to_strings():
-    message: Dict[str, Any] = {
-        "simple": "some string",
-        "date": date(2020, 10, 5),
-        "datetime": datetime(2020, 10, 5, 11, 15, 20),
-        "binary": b"Some other string",
-    }
-    reloaded_json = json.loads(json.dumps(message, default=StdOutAvroWriter.deserializer))
-    assert reloaded_json == {
-        "simple": "some string",
-        "date": "2020-10-05",
-        "datetime": "2020-10-05T11:15:20",
-        "binary": "U29tZSBvdGhlciBzdHJpbmc=",
-    }

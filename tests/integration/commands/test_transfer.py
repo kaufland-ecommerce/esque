@@ -11,7 +11,6 @@ from pytest_cases import fixture
 
 from esque.cli.commands import esque
 from esque.config import Config
-from esque.messages.message import MessageHeader
 from tests.integration.commands.conftest import (
     produce_avro_test_messages,
     produce_binary_test_messages,
@@ -93,12 +92,7 @@ def test_transfer_plain_text_message_with_headers_using_cli_pipe(
     )
 
     actual_messages = {
-        (
-            msg.key().decode(),
-            msg.value().decode(),
-            msg.partition(),
-            tuple(MessageHeader(k, (v.decode() if v is not None else None)) for k, v in (msg.headers() or [])),
-        )
+        (msg.key().decode(), msg.value().decode(), msg.partition(), tuple(msg.headers() or []))
         for msg in target_topic_consumer.consume(10, timeout=20)
     }
     expected_messages = {(msg.key, msg.value, msg.partition, tuple(msg.headers)) for msg in expected_messages}
@@ -176,12 +170,7 @@ def test_transfer_plain_text_message_with_headers_using_file(
     )
 
     actual_messages = {
-        (
-            msg.key().decode(),
-            msg.value().decode(),
-            msg.partition(),
-            tuple(MessageHeader(k, (v.decode() if v is not None else None)) for k, v in (msg.headers() or [])),
-        )
+        (msg.key().decode(), msg.value().decode(), msg.partition(), tuple((msg.headers() or [])))
         for msg in target_topic_consumer.consume(10, timeout=20)
     }
     expected_messages = {(msg.key, msg.value, msg.partition, tuple(msg.headers)) for msg in expected_messages}

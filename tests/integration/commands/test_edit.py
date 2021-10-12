@@ -7,9 +7,10 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.cli.commands import esque
-from esque.clients.consumer import ConsumerFactory
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
 
@@ -102,26 +103,12 @@ def test_edit_offsets(
     topic: str,
     produced_messages_same_partition,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
     produced_messages_same_partition(topic, producer)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True

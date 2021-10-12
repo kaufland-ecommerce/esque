@@ -1,9 +1,13 @@
+from typing import List
+
 import pendulum
 import pytest
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+from confluent_kafka.cimpl import TopicPartition
 
 from esque.cli.commands import esque
-from esque.clients.consumer import ConsumerFactory
+from esque.controller.consumergroup_controller import ConsumerGroupController
+from tests.integration.commands.conftest import KafkaTestMessage
 
 
 @pytest.mark.integration
@@ -12,26 +16,12 @@ def test_set_offsets_offset_to_absolute_value(
     produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
     produced_messages_same_partition(topic, producer)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
@@ -57,25 +47,12 @@ def test_set_offsets_offset_to_delta(
     produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
     produced_messages_same_partition(topic, producer)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
@@ -101,25 +78,12 @@ def test_set_offsets_offset_to_delta_all_topics(
     produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
     produced_messages_same_partition(topic, producer)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
@@ -142,26 +106,13 @@ def test_set_offsets_offset_from_group(
     produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
-    consumer_group,
-    target_consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    target_consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
     produced_messages_same_partition(topic, producer)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
@@ -175,21 +126,9 @@ def test_set_offsets_offset_from_group(
     )
 
     # create a new consumer in a separate group and consume just one message
-    vanilla_target_consumer = ConsumerFactory().create_consumer(
-        group_id=target_consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
+    consumergroup_controller.commit_offsets(
+        target_consumer_group, [TopicPartition(topic=topic, partition=0, offset=1)]
     )
-
-    vanilla_target_consumer.subscribe([topic])
-    vanilla_target_consumer.consume(1)
-    vanilla_target_consumer.close()
-    del vanilla_target_consumer
 
     interactive_cli_runner.invoke(
         esque,
@@ -212,36 +151,21 @@ def test_set_offsets_offset_to_timestamp_value(
     produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
+    messages_ordered_same_partition: List[KafkaTestMessage],
 ):
     produced_messages_same_partition(topic, producer, 1.5)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-
-    vanilla_consumer.subscribe([topic])
-    messages = []
-    for _ in range(0, 10):
-        messages.append(vanilla_consumer.consume_single_message())
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
         partitions=True
     )
 
-    fifth_message = messages[4]
-    timestamp = fifth_message.timestamp()
-    dt = pendulum.from_timestamp(round(timestamp[1] / 1000) - 1)
+    fifth_message = messages_ordered_same_partition[4]
+    timestamp = fifth_message.timestamp
+    dt = pendulum.from_timestamp(round(timestamp / 1000) - 1)
 
     interactive_cli_runner.invoke(
         esque,

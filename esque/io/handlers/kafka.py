@@ -109,14 +109,18 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
         if isinstance(binary_message, StreamEvent):
             return
+        partition_arg = {}
+        partition = self._io_to_confluent_partition(binary_message.partition)
+        if partition is not None:
+            partition_arg["partition"] = partition
         self._get_producer().produce(
             topic=self.config.topic_name,
             value=binary_message.value,
             key=binary_message.key,
-            partition=self._io_to_confluent_partition(binary_message.partition),
             headers=self._io_to_confluent_headers(binary_message.headers),
             timestamp=self._io_to_confluent_timestamp(binary_message.timestamp),
             on_delivery=self._delivery_callback,
+            **partition_arg,
         )
 
     def _delivery_callback(self, err: Optional[KafkaError], msg: str):
