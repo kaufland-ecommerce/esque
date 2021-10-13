@@ -20,7 +20,7 @@ def test_avro_consume_to_stdout(
     avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
-    expected_messages = produce_avro_test_messages(avro_producer, source_topic, amount=10)
+    expected_messages = produce_avro_test_messages(avro_producer, topic_name=source_topic_id, amount=10)
 
     message_text = non_interactive_cli_runner.invoke(
         esque,
@@ -43,7 +43,7 @@ def test_offset_not_committed(
     consumergroup_controller: ConsumerGroupController,
 ):
     source_topic_id, _ = source_topic
-    produce_avro_test_messages(avro_producer, source_topic)
+    produce_avro_test_messages(avro_producer, topic_name=source_topic_id)
 
     non_interactive_cli_runner.invoke(
         esque, args=["consume", "--stdout", "--numbers", "10", "--avro", source_topic_id], catch_exceptions=False
@@ -63,7 +63,7 @@ def test_binary_consume_to_stdout(
     producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
-    expected_messages = produce_binary_test_messages(producer, source_topic)
+    expected_messages = produce_binary_test_messages(producer, topic_name=source_topic_id)
 
     message_text = non_interactive_cli_runner.invoke(
         esque,

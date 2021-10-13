@@ -137,49 +137,40 @@ def random_bytes(length: int = 16) -> bytes:
 
 
 def produce_text_test_messages(
-    producer: ConfluentProducer, topic: Tuple[str, int], amount: int = 10
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List["KafkaTestMessage"]:
-    topic_name, _ = topic
     messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=False)
-    for msg in messages:
-        producer.produce(**msg.producer_args())
-    producer.flush()
+    produce_all(producer, messages)
     return messages
 
 
-def produce_text_test_messages_with_headers(
-    producer: ConfluentProducer, topic: Tuple[str, int], amount: int = 10
-) -> List["KafkaTestMessage"]:
-    topic_name, _ = topic
-    messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=True)
+def produce_all(producer: ConfluentProducer, messages: List[KafkaTestMessage]) -> None:
     for msg in messages:
         producer.produce(**msg.producer_args())
     producer.flush()
+
+
+def produce_text_test_messages_with_headers(
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
+) -> List["KafkaTestMessage"]:
+    messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=True)
+    produce_all(producer, messages)
     return messages
 
 
 def produce_avro_test_messages(
-    avro_producer: AvroProducer, topic: Tuple[str, int], amount: int = 10
+    avro_producer: AvroProducer, topic_name: str, amount: int = 10
 ) -> List[AvroKafkaTestMessage]:
-
-    topic_name, _ = topic
     messages: List[AvroKafkaTestMessage] = AvroKafkaTestMessage.random_values(topic_name, n=amount)
-
-    for msg in messages:
-        avro_producer.produce(**msg.producer_args())
-
-    avro_producer.flush()
+    produce_all(avro_producer, messages)
     return messages
 
 
 def produce_binary_test_messages(
-    producer: ConfluentProducer, topic: Tuple[str, int], amount: int = 10
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List[BinaryKafkaTestMessage]:
-    topic_name, _ = topic
     messages: List[BinaryKafkaTestMessage] = BinaryKafkaTestMessage.random_values(
         topic_name=topic_name, n=amount, generate_headers=False
     )
-    for msg in messages:
-        producer.produce(**msg.producer_args())
-    producer.flush()
+    produce_all(producer, messages)
     return messages

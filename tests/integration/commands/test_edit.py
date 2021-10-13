@@ -106,7 +106,7 @@ def test_edit_offsets(
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 

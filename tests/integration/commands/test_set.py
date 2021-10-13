@@ -16,7 +16,7 @@ def test_set_offsets_offset_to_absolute_value(
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -46,7 +46,7 @@ def test_set_offsets_offset_to_delta(
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -76,7 +76,7 @@ def test_set_offsets_offset_to_delta_all_topics(
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -104,7 +104,7 @@ def test_set_offsets_offset_from_group(
     target_consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -147,7 +147,7 @@ def test_set_offsets_offset_to_timestamp_value(
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    messages = produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    messages = produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 

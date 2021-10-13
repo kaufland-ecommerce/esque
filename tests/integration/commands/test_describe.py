@@ -36,7 +36,7 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
 def test_describe_topic_last_timestamp_does_not_commit(
     non_interactive_cli_runner: CliRunner, topic: str, consumergroup_controller: ConsumerGroupController, producer
 ):
-    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
     result = non_interactive_cli_runner.invoke(
         esque, args=["describe", "topic", topic, "--last-timestamp"], catch_exceptions=False
     )
