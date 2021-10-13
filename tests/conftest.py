@@ -29,7 +29,6 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.helpers import log_error
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
-from tests.integration.commands.conftest import KafkaTestMessage
 
 # constants that indicate which config version to load
 # see function get_path_for_config_version
@@ -223,35 +222,6 @@ def topic_factory(confluent_admin_client: AdminClient) -> Callable[[int, str], T
 @fixture()
 def topic_controller(cluster: Cluster):
     yield cluster.topic_controller
-
-
-@fixture()
-def messages_ordered_same_partition() -> Iterable[KafkaTestMessage]:
-    ordered_messages = [
-        KafkaTestMessage(key="j", value="v01", partition=0, timestamp=10_000),
-        KafkaTestMessage(key="i", value="v02", partition=0, timestamp=20_000),
-        KafkaTestMessage(key="h", value="v03", partition=0, timestamp=30_000),
-        KafkaTestMessage(key="g", value="v04", partition=0, timestamp=40_000),
-        KafkaTestMessage(key="f", value="v05", partition=0, timestamp=50_000),
-        KafkaTestMessage(key="e", value="v06", partition=0, timestamp=60_000),
-        KafkaTestMessage(key="d", value="v07", partition=0, timestamp=70_000),
-        KafkaTestMessage(key="c", value="v08", partition=0, timestamp=80_000),
-        KafkaTestMessage(key="b", value="v09", partition=0, timestamp=90_000),
-        KafkaTestMessage(key="a", value="v10", partition=0, timestamp=100_000),
-    ]
-    yield ordered_messages
-
-
-@fixture()
-def produced_messages_same_partition(messages_ordered_same_partition: Iterable[KafkaTestMessage]):
-    def _produce(topic_name: str, producer: ConfluentProducer, sleep_time: float = 0.5):
-        for message in messages_ordered_same_partition:
-            message.topic = topic_name
-            producer.produce(**message.producer_args())
-            time.sleep(sleep_time)
-            producer.flush()
-
-    return _produce
 
 
 @fixture()

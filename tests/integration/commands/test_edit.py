@@ -13,6 +13,7 @@ from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
+from tests.utils import produce_text_test_messages
 
 
 @pytest.mark.integration
@@ -101,12 +102,11 @@ def test_edit_offsets(
     monkeypatch: MonkeyPatch,
     interactive_cli_runner,
     topic: str,
-    produced_messages_same_partition,
     producer: ConfluenceProducer,
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 

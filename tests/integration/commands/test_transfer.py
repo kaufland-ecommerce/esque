@@ -11,7 +11,7 @@ from pytest_cases import fixture
 
 from esque.cli.commands import esque
 from esque.config import Config
-from tests.integration.commands.conftest import (
+from tests.utils import (
     produce_avro_test_messages,
     produce_binary_test_messages,
     produce_text_test_messages,

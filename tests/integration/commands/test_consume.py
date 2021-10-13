@@ -12,7 +12,7 @@ from esque import config
 from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
-from tests.integration.commands.conftest import produce_avro_test_messages, produce_binary_test_messages
+from tests.utils import produce_avro_test_messages, produce_binary_test_messages
 
 
 @pytest.mark.integration

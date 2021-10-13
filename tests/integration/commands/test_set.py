@@ -1,5 +1,3 @@
-from typing import List
-
 import pendulum
 import pytest
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
@@ -7,19 +5,18 @@ from confluent_kafka.cimpl import TopicPartition
 
 from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
-from tests.integration.commands.conftest import KafkaTestMessage
+from tests.utils import produce_text_test_messages
 
 
 @pytest.mark.integration
 def test_set_offsets_offset_to_absolute_value(
     topic: str,
-    produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -44,13 +41,12 @@ def test_set_offsets_offset_to_absolute_value(
 @pytest.mark.integration
 def test_set_offsets_offset_to_delta(
     topic: str,
-    produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -75,13 +71,12 @@ def test_set_offsets_offset_to_delta(
 @pytest.mark.integration
 def test_set_offsets_offset_to_delta_all_topics(
     topic: str,
-    produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -103,14 +98,13 @@ def test_set_offsets_offset_to_delta_all_topics(
 @pytest.mark.integration
 def test_set_offsets_offset_from_group(
     topic: str,
-    produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
     consumer_group: str,
     target_consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -148,14 +142,12 @@ def test_set_offsets_offset_from_group(
 @pytest.mark.integration
 def test_set_offsets_offset_to_timestamp_value(
     topic: str,
-    produced_messages_same_partition,
     interactive_cli_runner,
     producer: ConfluenceProducer,
     consumer_group: str,
     consumergroup_controller: ConsumerGroupController,
-    messages_ordered_same_partition: List[KafkaTestMessage],
 ):
-    produced_messages_same_partition(topic, producer, 1.5)
+    messages = produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
 
     consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
@@ -163,7 +155,7 @@ def test_set_offsets_offset_to_timestamp_value(
         partitions=True
     )
 
-    fifth_message = messages_ordered_same_partition[4]
+    fifth_message = messages[4]
     timestamp = fifth_message.timestamp
     dt = pendulum.from_timestamp(round(timestamp / 1000) - 1)
 

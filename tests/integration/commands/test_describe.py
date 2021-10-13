@@ -9,6 +9,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
 from esque.resources.topic import Topic
 from tests.conftest import parameterized_output_formats
+from tests.utils import produce_text_test_messages
 
 VARIOUS_IMPORTANT_BROKER_OPTIONS = [
     "advertised.host.name",
@@ -33,13 +34,9 @@ def test_describe_topic_no_flag(non_interactive_cli_runner: CliRunner, topic: st
 
 @pytest.mark.integration
 def test_describe_topic_last_timestamp_does_not_commit(
-    non_interactive_cli_runner: CliRunner,
-    topic: str,
-    consumergroup_controller: ConsumerGroupController,
-    produced_messages_same_partition,
-    producer,
+    non_interactive_cli_runner: CliRunner, topic: str, consumergroup_controller: ConsumerGroupController, producer
 ):
-    produced_messages_same_partition(topic_name=topic, producer=producer)
+    produce_text_test_messages(producer=producer, topic=(topic, 1), amount=10)
     result = non_interactive_cli_runner.invoke(
         esque, args=["describe", "topic", topic, "--last-timestamp"], catch_exceptions=False
     )
