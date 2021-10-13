@@ -1,8 +1,8 @@
+from operator import attrgetter
 from typing import List
 
 from pytest_cases import parametrize_with_cases
 
-from esque.cli.helpers import attrgetter
 from esque.io.handlers import BaseHandler
 from esque.io.messages import BinaryMessage
 from esque.io.stream_decorators import skip_stream_events, stop_at_temporary_end_of_all_stream_partitions

@@ -33,7 +33,7 @@ class JsonSerializer(DataSerializer[JsonSerializerConfig]):
 
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return self.NO_DATA
+            return Data.NO_DATA
         return Data(payload=json.loads(raw_data.decode(self.config.encoding)), data_type=self.unknown_data_type)
 
     def field_serializer(self, data: Any) -> str:

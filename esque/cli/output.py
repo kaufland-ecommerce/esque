@@ -2,7 +2,7 @@ import json
 from collections import OrderedDict
 from functools import partial
 from itertools import groupby
-from operator import itemgetter
+from operator import attrgetter, itemgetter
 from typing import Any, Dict, List, MutableMapping, Tuple
 
 import click
@@ -11,7 +11,6 @@ import yaml
 from yaml import SafeDumper, ScalarNode, SequenceNode
 from yaml.representer import SafeRepresenter
 
-from esque.cli.helpers import attrgetter
 from esque.controller.consumergroup_controller import ConsumerGroupOffsetPlan
 from esque.controller.topic_controller import OffsetWithTimestamp
 from esque.resources.topic import Topic, TopicDiff, Watermark

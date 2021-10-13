@@ -252,7 +252,7 @@ class RegistryAvroSerializer(DataSerializer):
 
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
-            return self.NO_DATA
+            return Data.NO_DATA
 
         with io.BytesIO(raw_data) as fake_stream:
             schema_id = get_schema_id_from_prefix(fake_stream.read(5))

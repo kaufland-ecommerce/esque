@@ -109,14 +109,18 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
     def _produce_single_message(self, binary_message: BinaryMessage) -> None:
         if isinstance(binary_message, StreamEvent):
             return
+        partition_arg = {}
+        partition = self._io_to_confluent_partition(binary_message.partition)
+        if partition is not None:
+            partition_arg["partition"] = partition
         self._get_producer().produce(
             topic=self.config.topic_name,
             value=binary_message.value,
             key=binary_message.key,
-            partition=binary_message.partition,
             headers=self._io_to_confluent_headers(binary_message.headers),
             timestamp=self._io_to_confluent_timestamp(binary_message.timestamp),
             on_delivery=self._delivery_callback,
+            **partition_arg,
         )
 
     def _delivery_callback(self, err: Optional[KafkaError], msg: str):
@@ -132,6 +136,15 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
             )
             self._errors.clear()
             raise exception
+
+    @staticmethod
+    def _io_to_confluent_partition(partition: int) -> Optional[int]:
+        # TODO: introduce something like the config.send_timestamp flag to make it possible to always return None here.
+        #  This would allow for moving messages between topics with different amounts of partitions without making them
+        #  unbalanced.
+        if partition < 0:
+            return None
+        return partition
 
     def _io_to_confluent_timestamp(self, message_ts: datetime.datetime):
         return int(message_ts.timestamp() * 1000) if self.config.send_timestamp else 0

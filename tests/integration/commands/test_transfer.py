@@ -11,8 +11,7 @@ from pytest_cases import fixture
 
 from esque.cli.commands import esque
 from esque.config import Config
-from esque.messages.message import MessageHeader
-from tests.integration.commands.conftest import (
+from tests.utils import (
     produce_avro_test_messages,
     produce_binary_test_messages,
     produce_text_test_messages,
@@ -58,7 +57,7 @@ def test_transfer_plain_text_message_using_cli_pipe(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner: CliRunner,
 ):
-    expected_messages = produce_text_test_messages(topic=source_topic, producer=producer)
+    expected_messages = produce_text_test_messages(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
         esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
@@ -83,7 +82,7 @@ def test_transfer_plain_text_message_with_headers_using_cli_pipe(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner: CliRunner,
 ):
-    expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
+    expected_messages = produce_text_test_messages_with_headers(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
         esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
@@ -93,12 +92,7 @@ def test_transfer_plain_text_message_with_headers_using_cli_pipe(
     )
 
     actual_messages = {
-        (
-            msg.key().decode(),
-            msg.value().decode(),
-            msg.partition(),
-            tuple(MessageHeader(k, (v.decode() if v is not None else None)) for k, v in (msg.headers() or [])),
-        )
+        (msg.key().decode(), msg.value().decode(), msg.partition(), tuple(msg.headers() or []))
         for msg in target_topic_consumer.consume(10, timeout=20)
     }
     expected_messages = {(msg.key, msg.value, msg.partition, tuple(msg.headers)) for msg in expected_messages}
@@ -113,7 +107,7 @@ def test_transfer_binary_message_using_cli_pipe(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner,
 ):
-    expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
+    expected_messages = produce_binary_test_messages(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
         esque, args=["consume", "--stdout", "--binary", "--number", "10", source_topic[0]], catch_exceptions=False
@@ -139,7 +133,7 @@ def test_transfer_plain_text_message_using_file(
     tmpdir_factory,
 ):
     output_directory = tmpdir_factory.mktemp("output_directory")
-    expected_messages = produce_text_test_messages(topic=source_topic, producer=producer)
+    expected_messages = produce_text_test_messages(topic_name=source_topic[0], producer=producer)
 
     non_interactive_cli_runner.invoke(
         esque, args=["consume", "-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
@@ -166,7 +160,7 @@ def test_transfer_plain_text_message_with_headers_using_file(
     tmpdir_factory,
 ):
     output_directory = tmpdir_factory.mktemp("output_directory")
-    expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
+    expected_messages = produce_text_test_messages_with_headers(topic_name=source_topic[0], producer=producer)
 
     non_interactive_cli_runner.invoke(
         esque, args=["consume", "-d", str(output_directory), "--number", "10", source_topic[0]], catch_exceptions=False
@@ -176,12 +170,7 @@ def test_transfer_plain_text_message_with_headers_using_file(
     )
 
     actual_messages = {
-        (
-            msg.key().decode(),
-            msg.value().decode(),
-            msg.partition(),
-            tuple(MessageHeader(k, (v.decode() if v is not None else None)) for k, v in (msg.headers() or [])),
-        )
+        (msg.key().decode(), msg.value().decode(), msg.partition(), tuple((msg.headers() or [])))
         for msg in target_topic_consumer.consume(10, timeout=20)
     }
     expected_messages = {(msg.key, msg.value, msg.partition, tuple(msg.headers)) for msg in expected_messages}
@@ -198,7 +187,7 @@ def test_transfer_binary_message_using_file(
     tmpdir_factory,
 ):
     output_directory = tmpdir_factory.mktemp("output_directory")
-    expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
+    expected_messages = produce_binary_test_messages(topic_name=source_topic[0], producer=producer)
 
     non_interactive_cli_runner.invoke(
         esque,
@@ -226,7 +215,7 @@ def test_transfer_avro_message_using_file(
     tmpdir_factory,
 ):
     output_directory = tmpdir_factory.mktemp("output_directory")
-    expected_messages = produce_avro_test_messages(topic=source_topic, avro_producer=avro_producer)
+    expected_messages = produce_avro_test_messages(topic_name=source_topic[0], avro_producer=avro_producer)
 
     non_interactive_cli_runner.invoke(
         esque,
@@ -258,7 +247,7 @@ def test_transfer_avro_with_single_command(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner: CliRunner,
 ):
-    expected_messages = produce_avro_test_messages(topic=source_topic, avro_producer=avro_producer)
+    expected_messages = produce_avro_test_messages(topic_name=source_topic[0], avro_producer=avro_producer)
     non_interactive_cli_runner.invoke(
         esque,
         args=[
@@ -296,7 +285,7 @@ def test_transfer_binary_with_single_command(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner: CliRunner,
 ):
-    expected_messages = produce_binary_test_messages(topic=source_topic, producer=producer)
+    expected_messages = produce_binary_test_messages(topic_name=source_topic[0], producer=producer)
 
     non_interactive_cli_runner.invoke(
         esque,
@@ -329,7 +318,7 @@ def test_transfer_plain_with_single_command(
     target_topic: Tuple[str, int],
     non_interactive_cli_runner: CliRunner,
 ):
-    expected_messages = produce_text_test_messages_with_headers(topic=source_topic, producer=producer)
+    expected_messages = produce_text_test_messages_with_headers(topic_name=source_topic[0], producer=producer)
 
     non_interactive_cli_runner.invoke(
         esque,

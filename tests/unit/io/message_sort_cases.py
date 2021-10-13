@@ -1,7 +1,7 @@
 import datetime
+from operator import attrgetter
 from typing import Iterable, Tuple
 
-from esque.cli.helpers import attrgetter
 from esque.io.messages import BinaryMessage
 from esque.io.stream_events import TemporaryEndOfPartition
 
