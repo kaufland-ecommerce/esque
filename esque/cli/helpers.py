@@ -37,20 +37,6 @@ def ensure_approval(question: str, *, no_verify: bool = False, default_answer=Fa
     return click.confirm(question, default=default_answer)
 
 
-def attrgetter(*attrs):
-    if len(attrs) == 1:
-
-        def getter(obj):
-            return getattr(obj, attrs[0])
-
-    else:
-
-        def getter(obj):
-            return tuple(getattr(obj, attr) for attr in attrs)
-
-    return getter
-
-
 class HandleFileOnFinished:
     def __init__(self, dir_: pathlib.Path, keep_file: bool):
         self.keep_file = keep_file

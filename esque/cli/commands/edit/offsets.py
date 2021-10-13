@@ -1,9 +1,10 @@
 import logging
+from operator import attrgetter
 
 import click
 
 from esque import validation
-from esque.cli.helpers import attrgetter, edit_yaml, ensure_approval, fallback_to_stdin
+from esque.cli.helpers import edit_yaml, ensure_approval, fallback_to_stdin
 from esque.cli.options import State, default_options
 from esque.cli.output import green_bold, pretty_offset_plan
 from esque.controller.consumergroup_controller import ConsumerGroupController
