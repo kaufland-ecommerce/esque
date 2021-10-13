@@ -2,7 +2,6 @@ import dataclasses
 from abc import ABC, abstractmethod
 from typing import ClassVar, Generic, Iterable, List, Optional, Type, TypeVar, Union
 
-from esque.io.data_types import NoData
 from esque.io.exceptions import EsqueIOSerializerConfigException
 from esque.io.messages import BinaryMessage, Data, Message
 from esque.io.stream_events import StreamEvent
@@ -34,7 +33,6 @@ class SerializerConfig:
 
 
 class DataSerializer(ABC, Generic[SC]):
-    NO_DATA = Data(None, NoData())
     config_cls: ClassVar[Type[SC]] = SerializerConfig
     config: SC
 
