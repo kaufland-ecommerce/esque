@@ -13,7 +13,7 @@ from esque.io.pipeline import PipelineBuilder
     "--output-uri",
     help="Output URI",
     metavar="<output_uri>",
-    default="pipe+json://stdout?kv__indent=2&h__skip_marker=1",
+    default="pipe+json://stdout?kv__indent=2&h__single_line=1",
 )
 @click.option(
     "-l",
@@ -163,7 +163,7 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
 
     \b
     # Extract and format message value using jq
-    esque io -i "kafka+json:///mytopic" -o "pipe+json://stdout?skip_marker=1" | jq '.value | fromjson'
+    esque io -i "kafka+json:///mytopic" -o "pipe+json://stdout?single_line=1" | jq '.value | fromjson'
 
     \b
     # Dump messages from a kafka topic into a file
