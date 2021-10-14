@@ -129,8 +129,12 @@ def consume(
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
-    # Copy source_topic in first context to destination_topic in second-context.
-    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    # Extract json objects from keys
+    esque consume --stdout TOPIC | jq '.key | fromjson'
+
+    \b
+    # Extract binary data from keys (depending on the data this could mess up your console)
+    esque consume --stdout --binary TOPIC | jq '.key | fromjson | @base64d'
     """
     if not from_context:
         from_context = state.config.current_context
