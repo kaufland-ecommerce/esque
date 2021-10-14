@@ -3,19 +3,15 @@
 * Restructured the `cli.commands` module into sub packages/modules for better overview
 * Removed old client/consumer logic
 * Lazily instantiate admin clients to improve responsiveness of some commands
-* Reintroduced the `transfer` command to transfer data from one topic to another
-* Added the `io` command for more advanced use cases that are not covered by the options provided with the `consume`, 
-  `produce` and `transfer` commands.
+* Reintroduced the `esque transfer` command to transfer data from one topic to another
+* Added the `esque io` command for more advanced use cases that are not covered by the options provided with the 
+  `esque consume`, `esque produce` and `esquetransfer` commands.
 
 #### Breaking changes
-`consume --stdout` now pretty prints json objects into multiple lines and adds a marker line so that a subsequent 
-`produce` can separate the json objects from one another even if they're not single line.
-Both marker and multiline output can be disabled at the same time with `--compact`. 
-The same command now uses json encoded keys and values within the json output.
-I.e. strings are quoted twice and objects from JSON serialized keys or values will not be directly accessible on the 
-root structure.
+`esque consume --avro --stdout` now json serializes the avro data into the message key and value objects which in turn 
+are always strings. Therefore, attributes of key or value objects will not be directly accessible on the root structure.
 However, as a workaround, you could for example pipe the data through `jq '.key | fromjson'` to decode the json objects 
-again (don't forget to add `--compact` in that case).
+again.
 
 `esque ping` now does not create a new topic all the time but uses a topic called `esque-ping` with random message 
 key to distinguish ping messages from different users.
