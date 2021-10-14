@@ -46,7 +46,7 @@ def test_produce_can_create_topic(
     topic_id: str,
     tmpdir_factory: TempdirFactory,
 ):
-    data = "".join([json.dumps(dict(key='"key1"', value='"value1"')) + "\n"])
+    data = json.dumps(dict(key="key1", value="value1")) + "\n"
     result = non_interactive_cli_runner.invoke(
         esque, args=["produce", "--no-verify", "--stdin", topic_id], input=data, catch_exceptions=False
     )
