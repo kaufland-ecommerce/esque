@@ -78,7 +78,8 @@ jobs:
         run: |
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
           git fetch origin master:master
-          BUILD=$(git rev-list --count HEAD...master)
+          git fetch origin release-prep:release-prep
+          BUILD=$(git rev-list --count origin/release-prep...origin/master)
           sed -i -E "s/^version = .*/version = \"${VERSION}.dev${BUILD}\"/" pyproject.toml
           poetry build
           poetry publish --repository testpypi
