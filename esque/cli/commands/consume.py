@@ -94,8 +94,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "-p",
     "--pretty-print",
-    help="Use multiple lines to represent each message kafka message instead of "
-    "putting every JSON object into a single line. Only has an effect when consuming to stdout.",
+    help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
+    "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
