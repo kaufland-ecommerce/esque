@@ -6,6 +6,8 @@
 * Reintroduced the `esque transfer` command to transfer data from one topic to another
 * Added the `esque io` command for more advanced use cases that are not covered by the options provided with the 
   `esque consume`, `esque produce` and `esquetransfer` commands.
+* Added more information to `esque create topic` to show you what will be created before you approve it.
+* Added more information to `esque ping` to also show timings from client to server and from server to client.
 
 #### Breaking changes
 `esque consume --avro --stdout` now json serializes the avro data into the message key and value objects which in turn 
@@ -15,6 +17,9 @@ again.
 
 `esque ping` now does not create a new topic all the time but uses a topic called `esque-ping` with random message 
 key to distinguish ping messages from different users.
+
+The files and file structure in the directories that were created by `esque consume` and required by `esque produce` 
+has changed. Directories that were previously created with `esque consume` won't work with `esque produce` anymore.
 
 ### Version 0.3.1
 * Added the `delete topics` command that enables deleting more than one topic
