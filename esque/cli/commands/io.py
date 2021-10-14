@@ -89,7 +89,7 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
           Same as "key_encoding" but for the values. (Default is "utf-8")
         * pretty_print
           Use any value (preferably 1) if you want the json objects to be pretty printed into multiple lines.
-          Do not use this mode if you want to further process the messages `esque produce` or with tools like "jq".
+          Do not use this mode if you want to further process the messages with "esque produce" or tools like "jq".
     \b
     - path
       <host> -> No meaning, should stay empty.
