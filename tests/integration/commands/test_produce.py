@@ -12,7 +12,6 @@ from pytest_cases import fixture
 from esque.cli.commands import esque
 from esque.config import Config
 from esque.errors import NoConfirmationPossibleException
-from esque.io.handlers.pipe import MARKER
 
 
 @fixture
@@ -47,7 +46,7 @@ def test_produce_can_create_topic(
     topic_id: str,
     tmpdir_factory: TempdirFactory,
 ):
-    data = "".join([json.dumps(dict(key='"key1"', value='"value1"')) + "\n", MARKER])
+    data = "".join([json.dumps(dict(key='"key1"', value='"value1"')) + "\n"])
     result = non_interactive_cli_runner.invoke(
         esque, args=["produce", "--no-verify", "--stdin", topic_id], input=data, catch_exceptions=False
     )
@@ -79,7 +78,7 @@ def test_produce_to_non_existent_topic_fails(
     confluent_admin_client: confluent_kafka.admin.AdminClient, non_interactive_cli_runner: CliRunner, topic_id: str
 ):
     target_topic_id = topic_id
-    data = "".join([json.dumps(dict(key='"key1"', value='"value1"')) + "\n", MARKER])
+    data = "".join([json.dumps(dict(key='"key1"', value='"value1"')) + "\n"])
     result = non_interactive_cli_runner.invoke(esque, args=["produce", "--stdin", target_topic_id], input=data)
     assert isinstance(result.exception, NoConfirmationPossibleException)
     topics = confluent_admin_client.list_topics(timeout=5).topics.keys()

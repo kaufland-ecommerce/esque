@@ -15,8 +15,6 @@ from esque.io.handlers.base import BaseHandler, HandlerConfig
 from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent
 
-MARKER = "__esque_msg_marker__\n"
-
 
 class ByteEncoding(Enum):
     BASE64 = "base64"
@@ -28,7 +26,7 @@ class ByteEncoding(Enum):
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
-    skip_marker: str = False
+    pretty_print: str = ""
 
     def _validate_fields(self) -> List[str]:
         problems = super()._validate_fields()
@@ -89,10 +87,9 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 "valueenc": str(self.config.value_encoding),
             },
             self._stream,
+            indent=2 if self.config.pretty_print else None,
         )
         self._stream.write("\n")
-        if not self.config.skip_marker:
-            self._stream.write(MARKER)
         self._stream.flush()
 
     def read_message(self) -> Union[StreamEvent, BinaryMessage]:
@@ -102,18 +99,20 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 return msg
 
     def _next_message(self) -> Union[StreamEvent, BinaryMessage]:
-        lines = []
-        while True:
+        line = ""
+        while not line.strip():
             line = self._stream.readline()
-            if not line:
-                if lines:
-                    raise EsqueIOHandlerReadException("Premature end of stream, last message incomplete")
-                else:
-                    return PermanentEndOfStream("End of pipe reached")
-            if line == MARKER:
-                break
-            lines.append(line)
-        deserialized_object: Dict[str, Any] = json.loads("".join(lines))
+            if line == "":
+                return PermanentEndOfStream("End of pipe reached")
+
+        try:
+            deserialized_object: Dict[str, Any] = json.loads(line)
+        except ValueError as e:
+            raise EsqueIOHandlerReadException(
+                "Error parsing JSON object from input. "
+                f"Make sure json objects are single-line and not pretty printed. Original Error: {e}"
+            )
+
         key_encoding = deserialized_object.get("keyenc", ByteEncoding.UTF_8)
         value_encoding = deserialized_object.get("valueenc", ByteEncoding.UTF_8)
         return BinaryMessage(

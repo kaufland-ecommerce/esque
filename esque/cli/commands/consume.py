@@ -92,9 +92,10 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 )
 @click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
 @click.option(
-    "-s",
-    "--skip-marker",
-    help="Do not write the marker line that separates JSON objects in the output.",
+    "-p",
+    "--pretty-print",
+    help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
+    "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
@@ -112,7 +113,7 @@ def consume(
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
-    skip_marker: bool,
+    pretty_print: bool,
 ):
     """Consume messages from a topic.
 
@@ -122,15 +123,19 @@ def consume(
     \b
     EXAMPLES:
     # Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
-    esque consume --first -n 10 --preserve-order --stdout TOPIC
+    esque consume --first -n 10 --preserve-order --pretty-print --stdout TOPIC
 
     \b
     # Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
     esque consume --match "message.offset > 9" -n <n> TOPIC -f <source_ctx>
 
     \b
-    # Copy source_topic in first context to destination_topic in second-context.
-    esque consume -f first-context --stdout source_topic | esque produce -t second-context --stdin destination_topic
+    # Extract json objects from keys
+    esque consume --stdout TOPIC | jq '.key | fromjson'
+
+    \b
+    # Extract binary data from keys (depending on the data this could mess up your console)
+    esque consume --stdout --binary TOPIC | jq '.key | fromjson | @base64d'
     """
     if not from_context:
         from_context = state.config.current_context
@@ -150,7 +155,7 @@ def consume(
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, write_to_stdout, binary, skip_marker)
+    output_handler = create_output_handler(directory, write_to_stdout, binary, pretty_print)
     builder.with_output_handler(output_handler)
 
     output_message_serializer = create_output_message_serializer(write_to_stdout, directory, avro, binary)
@@ -212,12 +217,12 @@ def create_input_serializer(avro, binary, state):
     return input_message_serializer
 
 
-def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, skip_marker: bool):
+def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, pretty_print: bool):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
         encoding = "base64" if binary else "utf-8"
-        skip_marker = "1" if skip_marker else ""
+        pretty_print = "1" if pretty_print else ""
         output_handler = PipeHandler(
             PipeHandlerConfig(
                 scheme="pipe",
@@ -225,7 +230,7 @@ def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary
                 path="",
                 key_encoding=encoding,
                 value_encoding=encoding,
-                skip_marker=skip_marker,
+                pretty_print=pretty_print,
             )
         )
     else:
