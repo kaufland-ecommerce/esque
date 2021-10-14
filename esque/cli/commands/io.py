@@ -9,11 +9,7 @@ from esque.io.pipeline import PipelineBuilder
 @click.command("io")
 @click.option("-i", "--input-uri", help="Input URI", metavar="<input_uri>", required=True)
 @click.option(
-    "-o",
-    "--output-uri",
-    help="Output URI",
-    metavar="<output_uri>",
-    default="pipe+json://stdout?kv__indent=2&h__single_line=1",
+    "-o", "--output-uri", help="Output URI", metavar="<output_uri>", default="pipe+json://stdout?kv__indent=2"
 )
 @click.option(
     "-l",
@@ -91,13 +87,9 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
           mess up the output. Otherwise "base64" is a safer choice. (Default is "utf-8")
         * value_encoding
           Same as "key_encoding" but for the values. (Default is "utf-8")
-        * single_line
-          Use any value (preferably 1) if you don't want the json objects to be pretty printed and separated with a
-          marker lines.
-          The marker line "__esque_msg_marker__\\n" is required for esque to be able to **read** from a pipe.
-          Therefore, you can enable single-line output when you're not intending to read the piped data back in with
-          `esque produce`.
-          The single-line mode is also required if you want to further process the messages with tools like "jq".
+        * pretty_print
+          Use any value (preferably 1) if you want the json objects to be pretty printed into multiple lines.
+          Do not use this mode if you want to further process the messages `esque produce` or with tools like "jq".
     \b
     - path
       <host> -> No meaning, should stay empty.
@@ -163,7 +155,7 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
 
     \b
     # Extract and format message value using jq
-    esque io -i "kafka+json:///mytopic" -o "pipe+json://stdout?single_line=1" | jq '.value | fromjson'
+    esque io -i "kafka+json:///mytopic" -o "pipe+json://stdout" | jq '.value | fromjson'
 
     \b
     # Dump messages from a kafka topic into a file
