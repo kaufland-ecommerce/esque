@@ -7,13 +7,18 @@
 * Added the `io` command for more advanced use cases that are not covered by the options provided with the `consume`, 
   `produce` and `transfer` commands.
 
-#### Breaking change
-`consume --stdout` prints a marker line so that a subsequent `produce` can separate the json objects from one another 
-even if they're not single line. Can be disabled with `--skip-marker`. 
+#### Breaking changes
+`consume --stdout` now pretty prints json objects into multiple lines and adds a marker line so that a subsequent 
+`produce` can separate the json objects from one another even if they're not single line.
+Both marker and multiline output can be disabled at the same time with `--compact`. 
 The same command now uses json encoded keys and values within the json output.
-I.e. strings and base64 encoded data maybe be quoted twice and objects will be not directly be accessible on the root 
-structure.
-use for example `jq '.key | fromjson'` to decode the json objects again.
+I.e. strings are quoted twice and objects from JSON serialized keys or values will not be directly accessible on the 
+root structure.
+However, as a workaround, you could for example pipe the data through `jq '.key | fromjson'` to decode the json objects 
+again (don't forget to add `--compact` in that case).
+
+`esque ping` now does not create a new topic all the time but uses a topic called `esque-ping` with random message 
+key to distinguish ping messages from different users.
 
 ### Version 0.3.1
 * Added the `delete topics` command that enables deleting more than one topic
