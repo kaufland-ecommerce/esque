@@ -5,7 +5,7 @@
 * Lazily instantiate admin clients to improve responsiveness of some commands
 * Reintroduced the `esque transfer` command to transfer data from one topic to another
 * Added the `esque io` command for more advanced use cases that are not covered by the options provided with the 
-  `esque consume`, `esque produce` and `esquetransfer` commands.
+  `esque consume`, `esque produce` and `esque transfer` commands.
 * Added more information to `esque create topic` to show you what will be created before you approve it.
 * Added more information to `esque ping` to also show timings from client to server and from server to client.
 
