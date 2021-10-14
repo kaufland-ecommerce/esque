@@ -120,6 +120,12 @@ def consume(
     Read messages from a given topic in a given context. These messages can either be written
     to files in an automatically generated directory (default behavior), or to STDOUT.
 
+    If writing to STDOUT, then data will be represented as a JSON object with the message key and the message value
+    always being a string.
+    With the --avro option, those strings are JSON serialized objects.
+    With the --binary option those strings contain the base64 encoded binary data.
+    Without any of the two options, the data in the messages is treated utf-8 encoded strings and will be used as-is.
+
     \b
     EXAMPLES:
     # Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
@@ -131,11 +137,11 @@ def consume(
 
     \b
     # Extract json objects from keys
-    esque consume --stdout TOPIC | jq '.key | fromjson'
+    esque consume --stdout --avro TOPIC | jq '.key | fromjson'
 
     \b
     # Extract binary data from keys (depending on the data this could mess up your console)
-    esque consume --stdout --binary TOPIC | jq '.key | fromjson | @base64d'
+    esque consume --stdout --binary TOPIC | jq '.key | @base64d'
     """
     if not from_context:
         from_context = state.config.current_context
@@ -242,13 +248,14 @@ def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary
 def create_output_message_serializer(
     write_to_stdout: bool, directory: pathlib.Path, avro: bool, binary: bool
 ) -> MessageSerializer:
-    if not write_to_stdout and avro:
+    if avro and write_to_stdout:
+        serializer = JsonSerializer(JsonSerializerConfig(scheme="json"))
+    elif avro and not write_to_stdout:
         serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )
     elif binary:
         serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
     else:
-        indent = "2" if write_to_stdout else None
-        serializer = JsonSerializer(JsonSerializerConfig(scheme="json", indent=indent))
+        serializer = StringSerializer(StringSerializerConfig(scheme="str"))
     return MessageSerializer(key_serializer=serializer, value_serializer=serializer)

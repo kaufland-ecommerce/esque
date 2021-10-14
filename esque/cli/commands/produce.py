@@ -12,9 +12,8 @@ from esque.io.handlers.kafka import KafkaHandlerConfig
 from esque.io.handlers.path import PathHandlerConfig
 from esque.io.handlers.pipe import PipeHandlerConfig
 from esque.io.pipeline import PipelineBuilder
-from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer
+from esque.io.serializers import RawSerializer, RegistryAvroSerializer, StringSerializer
 from esque.io.serializers.base import MessageSerializer
-from esque.io.serializers.json import JsonSerializerConfig
 from esque.io.serializers.raw import RawSerializerConfig
 from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
 from esque.io.serializers.string import StringSerializerConfig
@@ -92,7 +91,21 @@ def produce(
     """Produce messages to a topic.
 
     Write messages to a given topic in a given context. These messages can come from either a directory <directory>
-    containing files corresponding to the different partitions or from STDIN.
+    that was previously written to with "esque consume" or from JSON objects coming in via STDIN.
+
+    If reading from STDIN, then data will be expected as single-line JSON objects with the message key and the
+    message value always being a string.
+    The --avro option is currently not supported when reading from STDIN.
+    With the --binary option those strings are expected to contain the base64 encoded binary data.
+    By default, the data in the messages is treated utf-8 encoded strings and will be used as-is.
+    In addition to "key" and "value" one can also define headers as list of objects with a "key" and a "value" attribute
+    with the former being a string and the latter being a string, "null" or simply not defined.
+
+    \b
+    So valid json objects for reading from stdin would be:
+    {"key": "foo", "value": "bar", "headers":[{"key":"h1", "value":"v1"},{"key":"h2"}]}
+    {"key": "foo", "value": null, "partition": 1}
+    {"key": "foo"}
 
     \b
     EXAMPLES:
@@ -170,13 +183,9 @@ def create_output_handler(to_context: str, topic: str):
 
 
 def create_output_serializer(avro: bool, binary: bool, topic: str, state: State) -> MessageSerializer:
-    if binary and avro:
-        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
-
-    elif binary:
+    if binary:
         key_serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
         value_serializer = key_serializer
-
     elif avro:
         config = RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
         key_serializer = RegistryAvroSerializer(config.with_key_subject_for_topic(topic))
@@ -208,5 +217,5 @@ def create_input_message_serializer(directory: pathlib.Path, avro: bool, binary:
     elif binary:
         serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
     else:
-        serializer = JsonSerializer(JsonSerializerConfig(scheme="json"))
+        serializer = StringSerializer(StringSerializerConfig(scheme="str"))
     return MessageSerializer(key_serializer=serializer, value_serializer=serializer)

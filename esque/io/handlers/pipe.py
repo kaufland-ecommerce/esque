@@ -113,8 +113,8 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 f"Make sure json objects are single-line and not pretty printed. Original Error: {e}"
             )
 
-        key_encoding = deserialized_object.get("keyenc", ByteEncoding.UTF_8)
-        value_encoding = deserialized_object.get("valueenc", ByteEncoding.UTF_8)
+        key_encoding = deserialized_object.get("keyenc", self.config.key_encoding)
+        value_encoding = deserialized_object.get("valueenc", self.config.value_encoding)
         return BinaryMessage(
             key=extract(deserialized_object.get("key"), key_encoding),
             value=extract(deserialized_object.get("value"), value_encoding),
@@ -123,7 +123,7 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
             timestamp=datetime.datetime.fromtimestamp(
                 deserialized_object.get("timestamp", 0), tz=datetime.timezone.utc
             ),
-            headers=[MessageHeader(h["key"], h["value"]) for h in deserialized_object.get("headers", [])],
+            headers=[MessageHeader(h["key"], h.get("value")) for h in deserialized_object.get("headers", [])],
         )
 
     def seek(self, position: int):
