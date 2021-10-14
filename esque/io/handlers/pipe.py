@@ -28,7 +28,7 @@ class ByteEncoding(Enum):
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
-    skip_marker: str = False
+    single_line: str = False
 
     def _validate_fields(self) -> List[str]:
         problems = super()._validate_fields()
@@ -89,9 +89,10 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
                 "valueenc": str(self.config.value_encoding),
             },
             self._stream,
+            indent=None if self.config.single_line else 2,
         )
         self._stream.write("\n")
-        if not self.config.skip_marker:
+        if not self.config.single_line:
             self._stream.write(MARKER)
         self._stream.flush()
 

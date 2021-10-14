@@ -93,8 +93,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
 @click.option(
     "-s",
-    "--skip-marker",
-    help="Do not write the marker line that separates JSON objects in the output.",
+    "--single-line",
+    help="Do not pretty print the data and write a marker line that separates JSON objects in the output.",
     default=False,
     is_flag=True,
 )
@@ -112,7 +112,7 @@ def consume(
     consumergroup: str,
     preserve_order: bool,
     write_to_stdout: bool,
-    skip_marker: bool,
+    single_line: bool,
 ):
     """Consume messages from a topic.
 
@@ -130,11 +130,11 @@ def consume(
 
     \b
     # Extract json objects from keys
-    esque consume --stdout TOPIC | jq '.key | fromjson'
+    esque consume --stdout --single-line TOPIC | jq '.key | fromjson'
 
     \b
     # Extract binary data from keys (depending on the data this could mess up your console)
-    esque consume --stdout --binary TOPIC | jq '.key | fromjson | @base64d'
+    esque consume --stdout --single-line --binary TOPIC | jq '.key | fromjson | @base64d'
     """
     if not from_context:
         from_context = state.config.current_context
@@ -154,7 +154,7 @@ def consume(
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, write_to_stdout, binary, skip_marker)
+    output_handler = create_output_handler(directory, write_to_stdout, binary, single_line)
     builder.with_output_handler(output_handler)
 
     output_message_serializer = create_output_message_serializer(write_to_stdout, directory, avro, binary)
@@ -216,12 +216,12 @@ def create_input_serializer(avro, binary, state):
     return input_message_serializer
 
 
-def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, skip_marker: bool):
+def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, single_line: bool):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
         encoding = "base64" if binary else "utf-8"
-        skip_marker = "1" if skip_marker else ""
+        single_line = "1" if single_line else ""
         output_handler = PipeHandler(
             PipeHandlerConfig(
                 scheme="pipe",
@@ -229,7 +229,7 @@ def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary
                 path="",
                 key_encoding=encoding,
                 value_encoding=encoding,
-                skip_marker=skip_marker,
+                single_line=single_line,
             )
         )
     else:

@@ -91,11 +91,13 @@ def io(state: State, input_uri: str, output_uri: str, limit: Optional[int], star
           mess up the output. Otherwise "base64" is a safer choice. (Default is "utf-8")
         * value_encoding
           Same as "key_encoding" but for the values. (Default is "utf-8")
-        * skip_marker
-          Use any value (preferably 1) if you don't want any marker lines to be written between json objects.
+        * single_line
+          Use any value (preferably 1) if you don't want the json objects to be pretty printed and separated with a
+          marker lines.
           The marker line "__esque_msg_marker__\\n" is required for esque to be able to **read** from a pipe.
-          Therefore, you can skip the markers in the output when you're not intending to read the piped data back in.
-          You'll even **need** to skip the marker if you want to further process the messages with tools like "jq".
+          Therefore, you can enable single-line output when you're not intending to read the piped data back in with
+          `esque produce`.
+          The single-line mode is also required if you want to further process the messages with tools like "jq".
     \b
     - path
       <host> -> No meaning, should stay empty.

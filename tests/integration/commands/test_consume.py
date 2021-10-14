@@ -24,7 +24,7 @@ def test_avro_consume_to_stdout(
 
     message_text = non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "--stdout", "--number", "10", "--avro", "--skip-marker", source_topic_id],
+        args=["consume", "--stdout", "--number", "10", "--avro", "--single-line", source_topic_id],
         catch_exceptions=False,
     )
     # Check assertions:
@@ -67,7 +67,7 @@ def test_binary_consume_to_stdout(
 
     message_text = non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "--stdout", "--number", "10", "--binary", "--skip-marker", source_topic_id],
+        args=["consume", "--stdout", "--number", "10", "--binary", "--single-line", source_topic_id],
         catch_exceptions=False,
     )
     # Check assertions:
