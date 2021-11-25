@@ -1,3 +1,7 @@
+### Version 0.4.1
+* Extended the timeout when fetching cluster metadata to 20 seconds
+* Extended the timeout when creating the python-kafka client to 30 seconds
+
 ### Version 0.4.0
 * Introduced new `io` module to replace old consumer logic
 * Restructured the `cli.commands` module into sub packages/modules for better overview
