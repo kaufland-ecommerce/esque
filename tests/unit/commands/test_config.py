@@ -5,7 +5,7 @@ import click
 import yaml
 from click.testing import CliRunner
 
-from esque.cli.commands import config_edit, config_fix, config_migrate
+from esque.cli.commands import esque
 from esque.config import Config, migration
 from esque.config.migration import CURRENT_VERSION, get_config_version, migrate
 from tests.conftest import LOAD_BROKEN_CONFIG, config_loader
@@ -26,7 +26,7 @@ def test_migrate_config(mocker: mock, interactive_cli_runner: CliRunner, load_co
 
     mocker.patch.object(migration, "migrate", wraps=migration_wrapper)
 
-    result = interactive_cli_runner.invoke(config_migrate, catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["config", "migrate"], catch_exceptions=False)
 
     assert result.exit_code == 0
     assert get_config_version(new_conf_path) == CURRENT_VERSION
@@ -39,7 +39,7 @@ def test_edit_config(mocker: mock, interactive_cli_runner: CliRunner, load_confi
     data["contexts"]["dupe"] = data["contexts"]["context_1"]
     mocker.patch.object(click, "edit", return_value=yaml.dump(data))
 
-    result = interactive_cli_runner.invoke(config_edit, catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["config", "edit"], catch_exceptions=False)
     assert result.exit_code == 0
     config = Config()
     assert "dupe" in config.available_contexts
@@ -51,7 +51,7 @@ def test_fix_missing_context_config(interactive_cli_runner: CliRunner, load_conf
     _cfg = Config(disable_validation=True)
     assert _cfg.current_context not in _cfg.available_contexts
 
-    interactive_cli_runner.invoke(config_fix, catch_exceptions=False)
+    interactive_cli_runner.invoke(esque, args=["config", "fix"], catch_exceptions=False)
 
     _cfg = Config.get_instance()
 

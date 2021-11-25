@@ -3,10 +3,10 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 import pendulum
-from confluent_kafka.cimpl import TopicPartition
+from confluent_kafka.cimpl import Consumer, TopicPartition
 
-from esque.clients.consumer import ConsumerFactory
 from esque.cluster import Cluster
+from esque.config import Config
 from esque.controller.topic_controller import TopicController
 from esque.resources.consumergroup import ConsumerGroup
 
@@ -41,11 +41,25 @@ class ConsumerGroupController:
     def get_consumer_group(self, consumer_id: str) -> ConsumerGroup:
         return ConsumerGroup(consumer_id, self.cluster)
 
-    def list_consumer_groups(self) -> List[str]:
-        return [group for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()]
+    def create_consumer_group(self, consumer_id: str, offsets: List[TopicPartition]) -> ConsumerGroup:
+        self.commit_offsets(consumer_id, offsets)
+        return ConsumerGroup(consumer_id, self.cluster)
+
+    def list_consumer_groups(self, prefix: str = "") -> List[str]:
+        return [
+            group
+            for group, _protocol in self.cluster.kafka_python_client.list_consumer_groups()
+            if group.startswith(prefix)
+        ]
 
     def delete_consumer_groups(self, consumer_ids: List[str]):
         self.cluster.kafka_python_client.delete_consumer_groups(group_ids=consumer_ids)
+
+    def commit_offsets(self, consumer_id: str, offsets: List[TopicPartition]):
+        config = Config.get_instance()
+        consumer = Consumer({"group.id": consumer_id, **config.create_confluent_config()})
+        consumer.commit(offsets=offsets, asynchronous=False)
+        consumer.close()
 
     def edit_consumer_group_offsets(self, consumer_id: str, offset_plan: List[ConsumerGroupOffsetPlan]):
         """
@@ -54,16 +68,6 @@ class ConsumerGroupController:
         :param offset_plan: List of ConsumerGroupOffsetPlan objects denoting the offsets for each partition in different topics
         :return:
         """
-        consumer = ConsumerFactory().create_consumer(
-            group_id=consumer_id,
-            topic_name=None,
-            output_directory=None,
-            last=False,
-            avro=False,
-            initialize_default_output_directory=False,
-            match=None,
-            enable_auto_commit=False,
-        )
 
         offsets = [
             TopicPartition(
@@ -72,7 +76,7 @@ class ConsumerGroupController:
             for plan_element in offset_plan
             if not plan_element.offset_equal
         ]
-        consumer.commit(offsets=offsets)
+        self.commit_offsets(consumer_id, offsets)
 
     def create_consumer_group_offset_change_plan(
         self,
@@ -88,20 +92,20 @@ class ConsumerGroupController:
             consumer_id=consumer_id, topic_name_expression=topic_name
         )
         if consumer_group_state == "Dead":
-            self._logger.error("The consumer group {consumer_id} does not exist.")
+            self._logger.error(f"The consumer group {consumer_id} does not exist.")
             return None
         if consumer_group_state != "Empty":
             self._logger.error(
-                f"Consumergroup {consumer_id} is not empty. Setting offsets is only allowed for empty consumer groups."
+                f"Consumergroup {consumer_id} has active consumers. Please turn off all consumers in this group and try again."
             )
-            return list(offset_plans.values())
+            return None
 
         if offset_to_value is not None:
             self._set_offset_to_value(offset_plans, offset_to_value)
         elif offset_by_delta is not None:
             self._set_offset_by_delta(offset_by_delta, offset_plans)
         elif offset_to_timestamp is not None:
-            self._set_offset_to_timestamp(consumer_id, offset_plans, offset_to_timestamp, topic_name)
+            self._set_offset_to_timestamp(offset_plans, offset_to_timestamp, topic_name)
         elif offset_from_group is not None:
             self._set_offset_from_group(offset_from_group, offset_plans, topic_name)
         return list(offset_plans.values())
@@ -117,13 +121,13 @@ class ConsumerGroupController:
                 value.current_offset = 0
                 offset_plans[key] = value
 
-    def _set_offset_to_timestamp(self, consumer_id, offset_plans, offset_to_timestamp, topic_name):
+    def _set_offset_to_timestamp(self, offset_plans, offset_to_timestamp, topic_name):
         timestamp_limit = pendulum.parse(offset_to_timestamp)
         proposed_offset_dict = TopicController(self.cluster).get_offsets_closest_to_timestamp(
-            group_id=consumer_id, topic_name=topic_name, timestamp_limit=timestamp_limit
+            topic_name=topic_name, timestamp=timestamp_limit
         )
         for plan_element in offset_plans.values():
-            plan_element.proposed_offset = proposed_offset_dict.get(plan_element.partition_id, 0)
+            plan_element.proposed_offset = proposed_offset_dict[plan_element.partition_id].offset
 
     def _set_offset_by_delta(self, offset_by_delta, offset_plans):
         for plan_element in offset_plans.values():
@@ -179,7 +183,7 @@ class ConsumerGroupController:
         topic_name_pattern = re.compile(topic_name_expression, re.IGNORECASE)
         try:
             consumer_group = self.get_consumer_group(consumer_id)
-            consumer_group_desc = consumer_group.describe(verbose=True)
+            consumer_group_desc = consumer_group.describe(partitions=True)
             consumer_group_state = consumer_group_desc["meta"]["state"]
             for subscribed_topic_name in consumer_group_desc["offsets"]:
                 decoded_topic_name = subscribed_topic_name

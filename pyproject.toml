@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "0.3.1"
+version = "0.4.0"
 description="esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -26,9 +26,9 @@ classifiers = [
   "Topic :: System :: Systems Administration",
   "Topic :: Software Development",
   "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3.6",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8"
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10"
   ]
 # esque entrypoint
 [tool.poetry.scripts]
@@ -36,7 +36,7 @@ esque = "esque.cli.commands:esque"
 
 # Dependencies
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.8"
 
 avro-python3 = "^1.9"
 click = "^7.0"
@@ -46,8 +46,9 @@ pendulum = "^2.0"
 kafka-python = "^2.0.2"
 pyyaml = "^5.1"
 requests = "^2.22"
-yamale = "^2.0"
+yamale = ">=2,<4"
 toml = "^0.10.0"
+more-itertools = "^8.10.0"
 
 # Dev Dependencies
 [tool.poetry.dev-dependencies]
@@ -60,6 +61,7 @@ black = {version = "19.3b0", allow-prereleases = true}
 isort = {version = "^4.3", extras = ["pyproject"]}
 bandit = "^1.6.2"
 coveralls = "^1.8.2"
+pytest-cases = "^3.6.4"
 
 [tool.black]
 line-length = 119
@@ -67,7 +69,7 @@ target_version = ['py36']
 include = '\.pyi?$'
 
 [tool.isort]
-line_Length = 119
+line_length = 119
 multi_line_output = 3
 include_trailing_comma = true
 default_section = "THIRDPARTY"

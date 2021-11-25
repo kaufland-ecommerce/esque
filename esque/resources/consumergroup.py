@@ -1,12 +1,12 @@
 import logging
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Dict, Tuple, Union
 
 from esque.cluster import Cluster
 from esque.errors import ConsumerGroupDoesNotExistException, ExceptionWithMessage
+from esque.resources.topic import Topic
 
-# TODO: Refactor this shit hole
-
+N = Union[int, float]  # N for number
 log = logging.getLogger(__name__)
 
 
@@ -27,7 +27,7 @@ class ConsumerGroup:
             consumer_offsets[tp.topic][tp.partition] = offset.offset
         return consumer_offsets
 
-    def describe(self, *, verbose=False):
+    def describe(self, *, partitions=False, timestamps=False):
         coordinator_id = self.cluster.kafka_python_client._find_coordinator_ids(group_ids=[self.id])[self.id]
         description = self.cluster.kafka_python_client.describe_consumer_groups(
             group_ids=[self.id], group_coordinator_id=coordinator_id
@@ -35,7 +35,7 @@ class ConsumerGroup:
         if description.state == "Dead":
             raise ConsumerGroupDoesNotExistException(self.id)
 
-        consumer_offsets = self._get_consumer_offsets(verbose=verbose)
+        consumer_offsets = self._get_consumer_offsets(partitions=partitions, timestamps=timestamps)
         for broker in self.cluster.brokers:
             if broker["id"] == coordinator_id:
                 coordinator_host = broker["host"]
@@ -67,55 +67,74 @@ class ConsumerGroup:
             },
         }
 
-    def _get_consumer_offsets(self, verbose: bool):
-        consumer_offsets: Dict[str, Dict[int, Dict[str, Any]]] = {}
+    def _update_minmax(self, minmax: Tuple[N, N], value: N) -> Tuple[N, N]:
+        prev_min, prev_max = minmax
+        return (min(prev_min, value), max(prev_max, value))
 
-        if verbose:
-            for topic, partition_data in self.get_offsets().items():
-                consumer_offsets[topic] = {}
-                for partition_id, consumer_offset in partition_data.items():
-                    topic_watermarks = self.topic_controller.get_cluster_topic(topic).watermarks
-                    # TODO somehow include this in the returned dictionary
-                    if partition_id not in topic_watermarks:
-                        log.warning(f"Found invalid offset! Partition {partition_id} does not exist for topic {topic}")
-                    consumer_offsets[topic][partition_id] = {
-                        "consumer_offset": consumer_offset,
-                        "topic_low_watermark": topic_watermarks[partition_id].low,
-                        "topic_high_watermark": topic_watermarks[partition_id].high,
-                        "consumer_lag": topic_watermarks[partition_id].high - consumer_offset,
-                    }
-            return consumer_offsets
+    def _prepare_offsets(self, topic: Topic, partition_data: Dict[int, int], timestamps: bool = False):
+        extended_partition_data = topic.partition_data
+        topic_watermarks = topic.watermarks
+        new_consumer_offsets = {
+            "consumer_offset": (float("inf"), float("-inf")),
+            "topic_low_watermark": (float("inf"), float("-inf")),
+            "topic_high_watermark": (float("inf"), float("-inf")),
+            "consumer_lag": (float("inf"), float("-inf")),
+        }
+        for partition_id, consumer_offset in partition_data.items():
+            current_offset = consumer_offset
+            new_consumer_offsets["consumer_offset"] = self._update_minmax(
+                new_consumer_offsets["consumer_offset"], current_offset
+            )
+            new_consumer_offsets["topic_low_watermark"] = self._update_minmax(
+                new_consumer_offsets["topic_low_watermark"], topic_watermarks[partition_id].low
+            )
+            new_consumer_offsets["topic_high_watermark"] = self._update_minmax(
+                new_consumer_offsets["topic_high_watermark"], topic_watermarks[partition_id].high
+            )
+            new_consumer_offsets["consumer_lag"] = self._update_minmax(
+                new_consumer_offsets["consumer_lag"], topic_watermarks[partition_id].high - current_offset
+            )
 
-        for topic, partition_data in self.get_offsets().items():
-            consumer_offsets[topic] = {}
-            topic_watermarks = self.topic_controller.get_cluster_topic(topic).watermarks
-            new_consumer_offsets = {
-                "consumer_offset": (float("inf"), float("-inf")),
-                "topic_low_watermark": (float("inf"), float("-inf")),
-                "topic_high_watermark": (float("inf"), float("-inf")),
-                "consumer_lag": (float("inf"), float("-inf")),
+            if timestamps:
+                extended_partition_data = topic.get_partition_data(partition_id)
+                if extended_partition_data and extended_partition_data.latest_message_timestamp:
+                    if "latest_timestamp" in new_consumer_offsets:
+                        new_consumer_offsets["latest_timestamp"] = self._update_minmax(
+                            new_consumer_offsets["latest_timestamp"], extended_partition_data.latest_message_timestamp
+                        )
+                    else:
+                        new_consumer_offsets["latest_timestamp"] = (
+                            extended_partition_data.latest_message_timestamp,
+                            extended_partition_data.latest_message_timestamp,
+                        )
+        return new_consumer_offsets
+
+    def _prepare_partition_offsets(self, topic: Topic, partition_data: Dict[int, int], timestamps: bool = False):
+        topic_watermarks = topic.watermarks
+        offsets = {}
+        for partition_id, consumer_offset in partition_data.items():
+            # TODO somehow include this in the returned dictionary
+            if partition_id not in topic_watermarks:
+                log.warning(f"Found invalid offset! Partition {partition_id} does not exist for topic {topic.name}")
+            offsets[partition_id] = {
+                "consumer_offset": consumer_offset,
+                "topic_low_watermark": topic_watermarks[partition_id].low,
+                "topic_high_watermark": topic_watermarks[partition_id].high,
+                "consumer_lag": topic_watermarks[partition_id].high - consumer_offset,
             }
-            for partition_id, consumer_offset in partition_data.items():
-                current_offset = consumer_offset
-                old_min, old_max = new_consumer_offsets["consumer_offset"]
-                new_consumer_offsets["consumer_offset"] = (min(old_min, current_offset), max(old_max, current_offset))
+            if timestamps:
+                extended_partition_data = topic.get_partition_data(partition_id)
+                if extended_partition_data and extended_partition_data.latest_message_timestamp:
+                    offsets[partition_id]["latest_timestamp"] = extended_partition_data.latest_message_timestamp
+        return offsets
 
-                old_min, old_max = new_consumer_offsets["topic_low_watermark"]
-                new_consumer_offsets["topic_low_watermark"] = (
-                    min(old_min, topic_watermarks[partition_id].low),
-                    max(old_max, topic_watermarks[partition_id].low),
-                )
+    def _get_consumer_offsets(self, partitions: bool, timestamps: bool):
+        consumer_offsets = {}
+        handler = self._prepare_offsets
+        if partitions:
+            handler = self._prepare_partition_offsets
 
-                old_min, old_max = new_consumer_offsets["topic_high_watermark"]
-                new_consumer_offsets["topic_high_watermark"] = (
-                    min(old_min, topic_watermarks[partition_id].high),
-                    max(old_max, topic_watermarks[partition_id].high),
-                )
-
-                old_min, old_max = new_consumer_offsets["consumer_lag"]
-                new_consumer_offsets["consumer_lag"] = (
-                    min(old_min, topic_watermarks[partition_id].high - current_offset),
-                    max(old_max, topic_watermarks[partition_id].high - current_offset),
-                )
-            consumer_offsets[topic] = new_consumer_offsets
+        for topic_id, partition_data in self.get_offsets().items():
+            topic = self.topic_controller.get_cluster_topic(topic_id, retrieve_last_timestamp=timestamps)
+            consumer_offsets[topic_id] = handler(topic, partition_data, timestamps)
         return consumer_offsets

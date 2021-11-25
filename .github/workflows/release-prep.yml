@@ -14,7 +14,7 @@ jobs:
       - name: Setup python and install packages
         uses: actions/setup-python@v2
         with:
-          python-version: '3.6'
+          python-version: '3.8'
           architecture: x64
       - name: Check version change
         run: |
@@ -36,7 +36,7 @@ jobs:
       - name: Setup python and install packages
         uses: actions/setup-python@v2
         with:
-          python-version: '3.6'
+          python-version: '3.8'
           architecture: x64
       - name: Prepare environment for test publish
         if: success()
@@ -77,8 +77,8 @@ jobs:
         if: success()
         run: |
           VERSION=$(sed -n -E "s/^version = \"(.+)\"/\1/p" pyproject.toml)
-          git fetch origin master:master
-          BUILD=$(git rev-list --count HEAD...master)
+          # turn the hash into a 3-digit decimal number
+          BUILD=$(( $(git log -1 --format='16#%h') % 1000))
           sed -i -E "s/^version = .*/version = \"${VERSION}.dev${BUILD}\"/" pyproject.toml
           poetry build
           poetry publish --repository testpypi

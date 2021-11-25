@@ -2,6 +2,7 @@ import json
 from collections import OrderedDict
 from functools import partial
 from itertools import groupby
+from operator import attrgetter, itemgetter
 from typing import Any, Dict, List, MutableMapping, Tuple
 
 import click
@@ -10,8 +11,8 @@ import yaml
 from yaml import SafeDumper, ScalarNode, SequenceNode
 from yaml.representer import SafeRepresenter
 
-from esque.cli.helpers import attrgetter
 from esque.controller.consumergroup_controller import ConsumerGroupOffsetPlan
+from esque.controller.topic_controller import OffsetWithTimestamp
 from esque.resources.topic import Topic, TopicDiff, Watermark
 
 C_MAX_INT = 2 ** 31 - 1
@@ -286,3 +287,20 @@ def format_output(output: Any, output_format: str) -> str:
         return pretty_list(output, break_lists=True, broken_list_separator="")
     else:
         return pretty(output, break_lists=True)
+
+
+def output_offset_data(offsets: Dict[int, OffsetWithTimestamp], output_format: str):
+    data: List[Dict] = []
+    for offset_data in offsets.values():
+        record = {
+            "partition": offset_data.partition,
+            "offset": offset_data.offset,
+            "timestamp_ms": offset_data.timestamp_ms,
+        }
+        if offset_data.timestamp_ms is None:
+            record["timestamp_str"] = None
+        else:
+            record["timestamp_str"] = pendulum.from_timestamp(offset_data.timestamp_ms / 1000).isoformat()
+        data.append(record)
+    data.sort(key=itemgetter("partition"))
+    click.echo(format_output(data, output_format))

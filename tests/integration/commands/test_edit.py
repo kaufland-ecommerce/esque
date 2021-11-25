@@ -7,11 +7,13 @@ import yaml
 from _pytest.monkeypatch import MonkeyPatch
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Producer as ConfluenceProducer
+from confluent_kafka.cimpl import TopicPartition
 
-from esque.cli.commands import edit_offsets, edit_topic
-from esque.clients.consumer import ConsumerFactory
+from esque.cli.commands import esque
+from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.controller.topic_controller import TopicController
 from esque.errors import EditCanceled
+from tests.utils import produce_text_test_messages
 
 
 @pytest.mark.integration
@@ -60,7 +62,7 @@ def test_edit_topic_works(
         return yaml.dump(config_dict, default_flow_style=False)
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
-    result = interactive_cli_runner.invoke(edit_topic, topic, input="y\n", catch_exceptions=False)
+    result = interactive_cli_runner.invoke(esque, args=["edit", "topic", topic], input="y\n", catch_exceptions=False)
     assert result.exit_code == 0
 
     topic_config_dict = topic_controller.get_cluster_topic(topic).as_dict(only_editable=True)
@@ -70,7 +72,7 @@ def test_edit_topic_works(
 
 @pytest.mark.integration
 def test_edit_topic_without_topic_name_fails(non_interactive_cli_runner: CliRunner):
-    result = non_interactive_cli_runner.invoke(edit_topic)
+    result = non_interactive_cli_runner.invoke(esque, args=["edit", "topic"])
     assert result.exit_code != 0
 
 
@@ -89,7 +91,7 @@ def test_edit_topic_calls_validator(mocker: mock, topic, interactive_cli_runner,
     }
 
     mocker.patch.object(click, "edit", return_value=yaml.dump(config_dict, default_flow_style=False))
-    interactive_cli_runner.invoke(edit_topic, topic, input="y\n")
+    interactive_cli_runner.invoke(esque, args=["edit", "topic", topic], input="y\n")
 
     (validated_config_dict,) = validator_mock.call_args[0]
     assert validated_config_dict == config_dict
@@ -100,31 +102,16 @@ def test_edit_offsets(
     monkeypatch: MonkeyPatch,
     interactive_cli_runner,
     topic: str,
-    produced_messages_same_partition,
     producer: ConfluenceProducer,
-    consumer_group,
-    consumergroup_controller,
+    consumer_group: str,
+    consumergroup_controller: ConsumerGroupController,
 ):
-    produced_messages_same_partition(topic, producer)
+    produce_text_test_messages(producer=producer, topic_name=topic, amount=10)
 
-    vanilla_consumer = ConsumerFactory().create_consumer(
-        group_id=consumer_group,
-        topic_name=None,
-        output_directory=None,
-        last=False,
-        avro=False,
-        initialize_default_output_directory=False,
-        match=None,
-        enable_auto_commit=True,
-    )
-
-    vanilla_consumer.subscribe([topic])
-    vanilla_consumer.consume(10)
-    vanilla_consumer.close()
-    del vanilla_consumer
+    consumergroup_controller.commit_offsets(consumer_group, [TopicPartition(topic=topic, partition=0, offset=10)])
 
     consumergroup_desc_before = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
 
     offset_config = {"offsets": [{"topic": topic, "partition": 0, "offset": 1}]}
@@ -134,13 +121,13 @@ def test_edit_offsets(
 
     monkeypatch.setattr(click, "edit", mock_edit_function)
     result = interactive_cli_runner.invoke(
-        edit_offsets, [consumer_group, "-t", topic], input="y\n", catch_exceptions=False
+        esque, args=["edit", "offsets", consumer_group, "-t", topic], input="y\n", catch_exceptions=False
     )
     assert result.exit_code == 0
 
     # Check assertions:
     consumergroup_desc_after = consumergroup_controller.get_consumer_group(consumer_id=consumer_group).describe(
-        verbose=True
+        partitions=True
     )
     assert consumergroup_desc_before["offsets"][topic][0]["consumer_offset"] == 10
     assert consumergroup_desc_after["offsets"][topic][0]["consumer_offset"] == 1

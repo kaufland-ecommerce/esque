@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 import yaml
+from pytest_cases import fixture
 from yaml.scanner import ScannerError
 
 from esque.config import Config
@@ -12,12 +13,12 @@ from esque.validation import validate_esque_config
 from tests.conftest import config_loader
 
 
-@pytest.fixture(params=[pytest.param(version, id=f"v{version}") for version in range(0, CURRENT_VERSION + 1)])
+@fixture(params=[pytest.param(version, id=f"v{version}") for version in range(0, CURRENT_VERSION + 1)])
 def config_version(request) -> int:
     return request.param
 
 
-@pytest.fixture
+@fixture
 def config(config_version: int, load_config: config_loader):
     old_conf, _ = load_config(config_version)
     new_path, _ = migrate(Path(old_conf))

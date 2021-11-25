@@ -1,6 +1,5 @@
+import contextlib
 import logging
-import random
-import string
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -20,8 +19,7 @@ from esque.errors import (
 )
 from esque.helpers import SingletonMeta
 
-RANDOM = "".join(random.choices(string.ascii_lowercase, k=8))
-PING_TOPIC = f"ping-{RANDOM}"
+PING_TOPIC = "esque-ping"
 ESQUE_GROUP_ID = "esque-client"
 SLEEP_INTERVAL = 2
 SUPPORTED_SASL_MECHANISMS = ("PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512")
@@ -95,7 +93,7 @@ class Config(metaclass=SingletonMeta):
         if "num_partitions" in self.default_values:
             return self.default_values["num_partitions"]
 
-        from esque.cli.output import bold, blue_bold
+        from esque.cli.output import blue_bold, bold
 
         try:
             log.warning("Fetching default number of partitions from broker.")
@@ -122,7 +120,7 @@ class Config(metaclass=SingletonMeta):
         if "replication_factor" in self.default_values:
             return self.default_values["replication_factor"]
 
-        from esque.cli.output import bold, blue_bold
+        from esque.cli.output import blue_bold, bold
 
         try:
             log.warning("Fetching default replication factor from broker.")
@@ -171,6 +169,13 @@ class Config(metaclass=SingletonMeta):
             )
             raise ConfigException(msg)
         return protocol
+
+    @contextlib.contextmanager
+    def temporary_context(self, context: str):
+        old_context = self.current_context
+        self.context_switch(context=context)
+        yield
+        self.context_switch(context=old_context)
 
     def context_switch(self, context: str):
         if context not in self.available_contexts:

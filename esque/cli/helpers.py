@@ -5,6 +5,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import click
 import yaml
+from click import MissingParameter
 from yaml.scanner import ScannerError
 
 from esque.errors import EditCanceled, NoConfirmationPossibleException, ValidationException
@@ -34,20 +35,6 @@ def ensure_approval(question: str, *, no_verify: bool = False, default_answer=Fa
         raise NoConfirmationPossibleException()
 
     return click.confirm(question, default=default_answer)
-
-
-def attrgetter(*attrs):
-    if len(attrs) == 1:
-
-        def getter(obj):
-            return getattr(obj, attrs[0])
-
-    else:
-
-        def getter(obj):
-            return tuple(getattr(obj, attr) for attr in attrs)
-
-    return getter
 
 
 class HandleFileOnFinished:
@@ -91,3 +78,17 @@ def _handle_edit_exception(e: Union[ScannerError, ValidationException]) -> None:
     click.echo(str(e))
     if not ensure_approval("Continue Editing?", default_answer=True):
         raise EditCanceled()
+
+
+def fallback_to_stdin(ctx, args, value):
+    if value:
+        return value
+
+    stdin = click.get_text_stream("stdin")
+    if not isatty(stdin):
+        value = stdin.readline().strip()
+
+    if not value:
+        raise MissingParameter("No value specified!")
+
+    return value
