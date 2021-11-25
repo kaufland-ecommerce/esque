@@ -16,7 +16,7 @@ class Cluster:
 
     @cached_property
     def kafka_python_client(self) -> kafka.KafkaAdminClient:
-        return kafka.KafkaAdminClient(**self._config.create_kafka_python_config())
+        return kafka.KafkaAdminClient(**self._config.create_kafka_python_config(), api_version_auto_timeout_ms=30000)
 
     @cached_property
     def confluent_client(self) -> AdminClient:
@@ -33,11 +33,11 @@ class Cluster:
         return self._config.bootstrap_servers
 
     def get_metadata(self):
-        return self.confluent_client.list_topics(timeout=1)
+        return self.confluent_client.list_topics(timeout=20)
 
     @property
     def brokers(self):
-        metadata = self.confluent_client.list_topics(timeout=1)
+        metadata = self.confluent_client.list_topics(timeout=20)
         return sorted(
             [{"id": broker.id, "host": broker.host, "port": broker.port} for broker in metadata.brokers.values()],
             key=operator.itemgetter("id"),
