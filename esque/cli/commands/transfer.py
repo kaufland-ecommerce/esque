@@ -185,7 +185,7 @@ def transfer(
         + " messages consumed from topic "
         + blue_bold(from_topic)
         + " in context "
-        + blue_bold(to_context)
+        + blue_bold(from_context)
         + " and produced to topic "
         + blue_bold(to_topic)
         + " in context "
