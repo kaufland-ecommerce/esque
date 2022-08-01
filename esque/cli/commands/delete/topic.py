@@ -7,7 +7,7 @@ from esque.resources.topic import Topic
 
 
 @click.command("topic")
-@click.argument("topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, autocompletion=list_topics)
+@click.argument("topic-name", metavar="TOPIC_NAME", required=False, type=click.STRING, shell_complete=list_topics)
 @default_options
 def delete_topic(state: State, topic_name: str):
     """Delete a single topic

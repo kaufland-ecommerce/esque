@@ -14,7 +14,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
     callback=fallback_to_stdin,
     required=False,
     type=click.STRING,
-    autocompletion=list_topics,
+    shell_complete=list_topics,
 )
 @click.option(
     "--consumers",

@@ -22,7 +22,7 @@ from esque.resources.topic import Topic
 
 
 @click.command("produce")
-@click.argument("topic", autocompletion=list_topics)
+@click.argument("topic", shell_complete=list_topics)
 @click.option(
     "-d",
     "--directory",
@@ -38,7 +38,7 @@ from esque.resources.topic import Topic
     metavar="<destination_ctx>",
     help="Destination context.",
     type=click.STRING,
-    autocompletion=list_contexts,
+    shell_complete=list_contexts,
     required=False,
 )
 @click.option(
