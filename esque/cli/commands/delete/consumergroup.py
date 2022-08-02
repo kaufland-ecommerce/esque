@@ -9,7 +9,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 
 
 @click.command("consumergroup")
-@click.argument("consumergroup-id", required=False, type=click.STRING, autocompletion=list_consumergroups, nargs=-1)
+@click.argument("consumergroup-id", required=False, type=click.STRING, shell_complete=list_consumergroups, nargs=-1)
 @default_options
 def delete_consumergroup(state: State, consumergroup_id: Tuple[str]):
     """Delete consumer groups"""

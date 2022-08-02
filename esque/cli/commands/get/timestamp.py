@@ -9,7 +9,7 @@ from esque.errors import ValidationException
 
 @click.command("timestamp")
 @click.argument(
-    "topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, type=click.STRING, autocompletion=list_topics
+    "topic-name", metavar="TOPIC_NAME", callback=fallback_to_stdin, type=click.STRING, shell_complete=list_topics
 )
 @click.argument("offset", metavar="OFFSET")
 @output_format_option

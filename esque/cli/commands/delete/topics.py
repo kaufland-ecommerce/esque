@@ -9,7 +9,7 @@ from esque.resources.topic import Topic
 
 
 @click.command("topics")
-@click.argument("topic-list", metavar="TOPIC_LIST", required=False, autocompletion=list_topics, nargs=-1)
+@click.argument("topic-list", metavar="TOPIC_LIST", required=False, shell_complete=list_topics, nargs=-1)
 @default_options
 def delete_topics(state: State, topic_list: Tuple[str]):
     """Delete multiple topics

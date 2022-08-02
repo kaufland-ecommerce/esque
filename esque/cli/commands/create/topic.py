@@ -19,7 +19,7 @@ from esque.resources.topic import Topic
     "template_topic",
     metavar="<template_topic>",
     help="Topic to use as template.",
-    autocompletion=list_topics,
+    shell_complete=list_topics,
 )
 @click.option(
     "-p",
