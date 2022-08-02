@@ -15,7 +15,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupOffsetPlan
 from esque.controller.topic_controller import OffsetWithTimestamp
 from esque.resources.topic import Topic, TopicDiff, Watermark
 
-C_MAX_INT = 2 ** 31 - 1
+C_MAX_INT = 2**31 - 1
 MILLISECONDS_PER_YEAR = 1000 * 3600 * 24 * 365
 
 
@@ -196,13 +196,13 @@ def pretty_size(value: Any) -> str:
     if type(value) != int:
         value = int(value)
     units = [
-        ("Eib", 1024 ** 6),
-        ("Pib", 1024 ** 5),
-        ("Tib", 1024 ** 4),
-        ("Gib", 1024 ** 3),
-        ("Mib", 1024 ** 2),
-        ("kib", 1024 ** 1),
-        ("b", 1024 ** 0),
+        ("Eib", 1024**6),
+        ("Pib", 1024**5),
+        ("Tib", 1024**4),
+        ("Gib", 1024**3),
+        ("Mib", 1024**2),
+        ("kib", 1024**1),
+        ("b", 1024**0),
     ]
     for sign, size in units:
         if value >= size:

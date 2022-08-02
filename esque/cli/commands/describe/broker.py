@@ -9,7 +9,7 @@ from esque.resources.broker import Broker
 
 
 @click.command("broker", short_help="Describe a broker.")
-@click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, autocompletion=list_brokers, required=False)
+@click.argument("broker", metavar="BROKER", callback=fallback_to_stdin, shell_complete=list_brokers, required=False)
 @output_format_option
 @default_options
 def describe_broker(state: State, broker: str, output_format: str):

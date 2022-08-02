@@ -25,7 +25,7 @@ from esque.resources.topic import Topic
     "from_context",
     metavar="<source_ctx>",
     help="Source context. If not provided, the current context will be used.",
-    autocompletion=list_contexts,
+    shell_complete=list_contexts,
     type=click.STRING,
     required=False,
 )
@@ -34,7 +34,7 @@ from esque.resources.topic import Topic
     "from_topic",
     metavar="<source_topic>",
     help="Source topic.",
-    autocompletion=list_topics,
+    shell_complete=list_topics,
     type=click.STRING,
     required=True,
 )
@@ -45,7 +45,7 @@ from esque.resources.topic import Topic
     metavar="<destination_ctx>",
     help="Destination context. If not provided, the source context will be used.",
     type=click.STRING,
-    autocompletion=list_contexts,
+    shell_complete=list_contexts,
     required=False,
 )
 @click.option(
@@ -53,7 +53,7 @@ from esque.resources.topic import Topic
     "to_topic",
     metavar="<destination_topic>",
     help="Destination topic.",
-    autocompletion=list_topics,
+    shell_complete=list_topics,
     type=click.STRING,
     required=True,
 )
@@ -96,7 +96,7 @@ from esque.resources.topic import Topic
     metavar="<consumer_group>",
     help="Consumer group to store the offset in.",
     type=click.STRING,
-    autocompletion=list_consumergroups,
+    shell_complete=list_consumergroups,
     default=None,
     required=False,
 )

@@ -6,7 +6,7 @@ from esque.cli.output import format_output
 
 
 @click.command("topics")
-@click.option("-p", "--prefix", type=click.STRING, autocompletion=list_topics)
+@click.option("-p", "--prefix", type=click.STRING, shell_complete=list_topics)
 @click.option(
     "--hide-internal",
     type=click.BOOL,

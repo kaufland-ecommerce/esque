@@ -7,7 +7,7 @@ from esque.cli.output import format_output
 
 @click.command("watermarks", short_help="Return watermarks by topic.")
 @click.option(
-    "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, autocompletion=list_topics
+    "-t", "--topic-name", metavar="<topic_name>", required=False, type=click.STRING, shell_complete=list_topics
 )
 @output_format_option
 @default_options

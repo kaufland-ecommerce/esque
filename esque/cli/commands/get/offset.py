@@ -7,7 +7,7 @@ from esque.cli.output import output_offset_data
 
 
 @click.command("offset")
-@click.argument("topic-name", metavar="TOPIC_NAME", autocompletion=list_topics)
+@click.argument("topic-name", metavar="TOPIC_NAME", shell_complete=list_topics)
 @click.argument("timestamp-ms", type=int, metavar="TIMESTAMP_MS")
 @output_format_option
 @default_options

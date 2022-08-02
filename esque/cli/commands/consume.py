@@ -25,7 +25,7 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 
 
 @click.command("consume")
-@click.argument("topic", autocompletion=list_topics)
+@click.argument("topic", shell_complete=list_topics)
 @click.option(
     "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
 )
@@ -35,7 +35,7 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     "from_context",
     metavar="<source_ctx>",
     help="Source context. If not provided, the current context will be used.",
-    autocompletion=list_contexts,
+    shell_complete=list_contexts,
     type=click.STRING,
     required=False,
 )
@@ -78,7 +78,7 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     metavar="<consumer_group>",
     help="Consumer group to store the offset in.",
     type=click.STRING,
-    autocompletion=list_consumergroups,
+    shell_complete=list_consumergroups,
     default=None,
     required=False,
 )
