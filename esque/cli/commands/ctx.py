@@ -6,7 +6,7 @@ from esque.cli.output import bold
 
 
 @click.command("ctx")
-@click.argument("context", required=False, default=None, autocompletion=list_contexts)
+@click.argument("context", required=False, default=None, shell_complete=list_contexts)
 @default_options
 def ctx(state: State, context: str):
     """List contexts and switch between them.

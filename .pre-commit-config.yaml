@@ -6,7 +6,7 @@ repos:
     additional_dependencies:
       - "toml>=0.10"
 - repo: https://github.com/python/black
-  rev: 19.3b0
+  rev: 22.6.0
   hooks:
   - id: black
 - repo: https://github.com/pre-commit/pre-commit-hooks

@@ -8,7 +8,7 @@ from esque.controller.consumergroup_controller import ConsumerGroupController
 
 
 @click.command("consumergroup", short_help="Describe a consumer group.")
-@click.argument("consumergroup-id", callback=fallback_to_stdin, autocompletion=list_consumergroups, required=True)
+@click.argument("consumergroup-id", callback=fallback_to_stdin, shell_complete=list_consumergroups, required=True)
 @click.option(
     "--all-partitions",
     help="List status for all topic partitions instead of just summarizing each topic.",

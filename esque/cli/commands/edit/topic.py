@@ -9,7 +9,7 @@ from esque.resources.topic import copy_to_local
 
 
 @click.command("topic")
-@click.argument("topic-name", required=True, autocompletion=list_topics)
+@click.argument("topic-name", required=True, shell_complete=list_topics)
 @default_options
 def edit_topic(state: State, topic_name: str):
     """Edit a topic.
