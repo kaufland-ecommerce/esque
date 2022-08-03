@@ -179,7 +179,6 @@ def transfer(
 
     pipeline = builder.build()
     pipeline.run_pipeline()
-    # trigger pipeline (TODO remove)
     click.echo(
         green_bold(str(counter.message_count))
         + " messages consumed from topic "
