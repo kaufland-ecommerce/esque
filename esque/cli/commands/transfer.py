@@ -179,13 +179,12 @@ def transfer(
 
     pipeline = builder.build()
     pipeline.run_pipeline()
-
     click.echo(
         green_bold(str(counter.message_count))
         + " messages consumed from topic "
         + blue_bold(from_topic)
         + " in context "
-        + blue_bold(to_context)
+        + blue_bold(from_context)
         + " and produced to topic "
         + blue_bold(to_topic)
         + " in context "
