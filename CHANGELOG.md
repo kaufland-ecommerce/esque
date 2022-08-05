@@ -1,3 +1,36 @@
+### Version 0.5.1
+
+Simple bug fix in stdout, where `from_context` was used instead of `to_context`
+
+### Version 0.5.0
+Dependency upgrades:
+* attrs 1.4.0 -> 1.4.1
+* avro-python3 1.10.0 -> 1.10.2
+* bandit 1.7.0 -> 1.7.4
+* Black 19.3b0 -> 22.6.0 (update needed to be compatible with click >=8.0.0)
+* certifi 2021.5.30 -> 2022.6.15
+* charset-normalizer 2.0.4 -> 2.1.0
+* click 7.1.2 -> 8.1.3 (autocompletion parameter changed to shell_complete)
+* colorama 0.4.4 -> 0.4.5
+* confluent-kafka 1.7.0 -> 1.9.0
+* decopath 1.4.8 -> 1.4.10
+* fastavro 1.4.4 -> 1.5.4
+* gitdb 4.0.7 -> 4.0.9
+* gitpython 3.1.20 -> 3.1.27
+* idea 3.2 -> 3.3
+* makefun 1.11.3 -> 1.14.0
+* more-itertools 8.10.0 -> 8.13.0
+* packaging 21.0 -> 21.3
+* pbr 5.6.0 -> 5.9.0
+* py 1.10.0 -> 1.11.0
+* pyparsing 2.4.7 -> 3.0.9
+* pytest-cases 3.6.4 -> 3.6.13
+* requests 2.26.0 -> 2.28.1
+* smmap 4.0.0 -> 5.0.0
+* stevedore 3.3.0 -> 4.0.0
+* typing-extensions 3.10.0.0 -> 4.3.0
+* urllib3 1.26.6 -> 1.26.11
+
 ### Version 0.4.1
 * Extended the timeout when fetching cluster metadata to 20 seconds
 * Extended the timeout when creating the python-kafka client to 30 seconds
