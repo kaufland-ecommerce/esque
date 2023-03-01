@@ -171,7 +171,7 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run
+To setup your development environment, make sure you have at least Python 3.8 & [poetry](https://github.com/sdispater/poetry) installed, then run
 
 ```bash
 poetry install
