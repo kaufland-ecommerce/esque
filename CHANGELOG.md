@@ -1,3 +1,9 @@
+### Version 0.5.2
+
+* Add installation instructions for apple silicon devices
+* Update Python version constraints in pyproject.toml
+* Update Python version in README to match pyproject.toml
+
 ### Version 0.5.1
 
 Simple bug fix in stdout, where `from_context` was used instead of `to_context`
