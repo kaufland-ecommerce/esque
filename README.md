@@ -81,7 +81,9 @@ Commands:
 
 ### Installation
 
-`esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. `esque` requires Python 3.6+ to run.
+`esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. 
+
+`esque` requires Python 3.8+ to run (Python 3.11 is not yet supported).
 
 #### Installation on Alpine Linux
 
@@ -90,6 +92,19 @@ There are no wheels for Alpine Linux, so `esque` requires a few extra dependenci
 ```bash
 apk add python3-dev py3-pip librdkafka librdkafka-dev g++
 ```
+
+#### Installation on Apple Silicon
+
+The installation for Kafka is slightly different for Apple Silicon devices, so simply running `pip install esque` may 
+result in errors. 
+
+The fix for this is to first install the librdkafka library with `brew install librdkafka` (make note of which version is installed).
+Then, add the following to the `.zshrc` file with the correct version of librdkafka:
+```bash
+export C_INCLUDE_PATH=/opt/homebrew/Cellar/librdkafka/X.X.X/include/
+export LIBRARY_PATH=/opt/homebrew/Cellar/librdkafka/X.X.X/lib/
+```
+After starting a new shell (or `source ~/.zshrc`), you will be able to install `esque` normally with pip.
 
 ### Autocompletion
 
@@ -156,7 +171,7 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.6 & [poetry](https://github.com/sdispater/poetry) installed, then run
+To setup your development environment, make sure you have at least Python 3.8 & [poetry](https://github.com/sdispater/poetry) installed, then run
 
 ```bash
 poetry install
