@@ -48,8 +48,8 @@ class AttributeDiff:
     def __init__(self, remote, local):
         self.remote = remote
         self.local = local
-        assert isinstance(
-            remote, local
+        assert type(remote) is type(
+            local
         ), f"Attributes should be given as the same type, not {type(remote)} and {type(local)}"
 
     @property
