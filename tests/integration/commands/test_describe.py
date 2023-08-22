@@ -151,7 +151,7 @@ def test_describe_broker_from_stdin(
 
 def check_described_topic(described_topic: Union[str, dict]):
     topic_description_keys = ["topic", "partitions", "config"]
-    if type(described_topic) == str:
+    if type(described_topic) is str:
         for option in topic_description_keys:
             assert option in described_topic
     else:
@@ -159,7 +159,7 @@ def check_described_topic(described_topic: Union[str, dict]):
 
 
 def check_described_broker(described_broker: Union[str, dict]):
-    if type(described_broker) == str:
+    if type(described_broker) is str:
         for option in VARIOUS_IMPORTANT_BROKER_OPTIONS:
             assert option in described_broker
     else:
