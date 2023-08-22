@@ -1,5 +1,10 @@
 FROM openjdk:11-jdk-stretch
 
+
+RUN sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list
+RUN sed -i 's|security.debian.org|archive.debian.org|g' /etc/apt/sources.list
+RUN sed -i '/stretch-updates/d' /etc/apt/sources.list
+
 RUN apt-get update -q       \
  && apt install             \
     -qqy -o=Dpkg::Use-Pty=0 \
