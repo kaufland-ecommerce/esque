@@ -1,3 +1,9 @@
+### Version 0.6.0
+
+* Update pyyaml to next major version to avoid breaking changes
+* Update type comparisons highlighted by linter 
+* Update pointer for debian files, since they have been archived
+
 ### Version 0.5.2
 
 * Add installation instructions for apple silicon devices
