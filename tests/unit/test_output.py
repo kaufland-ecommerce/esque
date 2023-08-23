@@ -26,9 +26,9 @@ def check_loaded_dict(original_dict: dict, loaded_dict: dict):
     for key in original_dict.keys():
         assert key in loaded_dict
         original_value = original_dict[key]
-        if type(original_value) == tuple:
+        if type(original_value) is tuple:
             assert list(original_value) == loaded_dict[key]
-        elif type(original_value) == bytes:
+        elif type(original_value) is bytes:
             assert original_value.decode("UTF-8") == loaded_dict[key]
         else:
             assert original_value == loaded_dict[key]

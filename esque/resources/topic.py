@@ -48,7 +48,7 @@ class AttributeDiff:
     def __init__(self, remote, local):
         self.remote = remote
         self.local = local
-        assert type(remote) == type(
+        assert type(remote) is type(
             local
         ), f"Attributes should be given as the same type, not {type(remote)} and {type(local)}"
 
@@ -92,7 +92,7 @@ class TopicDiff:
         if local is None:
             return self
 
-        assert type(remote) == type(
+        assert type(remote) is type(
             local
         ), f"Attributes for {name} should be given as the same type, not {type(remote)} and {type(local)}"
         self._diffs[name] = AttributeDiff(remote, local)

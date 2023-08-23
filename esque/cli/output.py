@@ -120,7 +120,7 @@ def pretty_duration(value: Any, *, multiplier: int = 1) -> str:
     if not value:
         return ""
 
-    if type(value) != int:
+    if type(value) is not int:
         value = int(value)
 
     value *= multiplier
@@ -193,7 +193,7 @@ def pretty_offset_plan(offset_plan: List[ConsumerGroupOffsetPlan]):
 
 
 def pretty_size(value: Any) -> str:
-    if type(value) != int:
+    if type(value) is not int:
         value = int(value)
     units = [
         ("Eib", 1024**6),

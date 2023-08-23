@@ -18,7 +18,7 @@ class StreamEvent:
     def __eq__(self, other):
         if not isinstance(other, StreamEvent):
             return NotImplemented
-        return type(self) == type(other) and self._msg == other._msg and self.partition == other.partition
+        return type(self) is type(other) and self._msg == other._msg and self.partition == other.partition
 
 
 class NthMessageRead(StreamEvent):

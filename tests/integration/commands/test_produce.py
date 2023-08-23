@@ -4,7 +4,7 @@ from typing import Callable, List
 
 import confluent_kafka
 import pytest
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from click.testing import CliRunner
 from confluent_kafka.cimpl import Consumer, TopicPartition
 from pytest_cases import fixture
@@ -44,7 +44,7 @@ def test_produce_can_create_topic(
     consumer_factory: Callable[[str], Consumer],
     non_interactive_cli_runner: CliRunner,
     topic_id: str,
-    tmpdir_factory: TempdirFactory,
+    tmpdir_factory: TempPathFactory,
 ):
     data = json.dumps(dict(key="key1", value="value1")) + "\n"
     result = non_interactive_cli_runner.invoke(
