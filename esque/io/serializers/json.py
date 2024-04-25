@@ -1,6 +1,7 @@
 import base64
 import dataclasses
 import datetime as dt
+import decimal
 import json
 from typing import Any, Optional
 
@@ -41,4 +42,6 @@ class JsonSerializer(DataSerializer[JsonSerializerConfig]):
             return data.isoformat()
         if isinstance(data, bytes):
             return base64.b64encode(data).decode(self.config.encoding)
+        if isinstance(data, decimal.Decimal):
+            return float(data)
         raise TypeError(f"Object of type {type(data).__name__} is not JSON serializable")
