@@ -15,12 +15,15 @@ from esque.io.handlers.kafka import KafkaHandlerConfig
 from esque.io.handlers.path import PathHandlerConfig
 from esque.io.handlers.pipe import PipeHandler, PipeHandlerConfig
 from esque.io.pipeline import PipelineBuilder
-from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer
+from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer, \
+    ProtoSerializer
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.json import JsonSerializerConfig
+from esque.io.serializers.proto import ProtoSerializerConfig
 from esque.io.serializers.raw import RawSerializerConfig
 from esque.io.serializers.registry_avro import RegistryAvroSerializerConfig
 from esque.io.serializers.string import StringSerializerConfig
+from esque.io.serializers.struct import StructSerializer, StructSerializerConfig
 from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_timestamp, yield_only_matching_messages
 
 
@@ -57,27 +60,21 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
          "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
+@click.option("--key-struct-format", help="Set this flag to set encoding for key", type=str)
+@click.option("--val-struct-format", help="Set this flag to set output encoding for value.", type=str)
 @click.option(
-    "-a",
-    "--avro",
-    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary and --proto flag",
-    default=False,
-    is_flag=True,
+    "-k",
+    "--key-serializer",
+    type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
+    help="Specify deserialization for keys",
+    default="binary",
 )
 @click.option(
-    "-b",
-    "--binary",
-    help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
-         "This flag is mutually exclusive with the --avro and --proto flag",
-    default=False,
-    is_flag=True,
-)
-@click.option(
-    "--proto",
-    help="Set this flag if the topic contains protobuf messages."
-         "This flag is mutually exclusive with the --avro and --binary flag",
-    default=False,
-    is_flag=True,
+    "-s",
+    "--val-serializer",
+    type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
+    help="Specify deserialization for values",
+    default="binary",
 )
 @click.option(
     "-c",
@@ -114,9 +111,10 @@ def consume(
         number: Optional[int],
         match: str,
         last: bool,
-        avro: bool,
-        proto: bool,
-        binary: bool,
+        key_struct_format: str,
+        val_struct_format: str,
+        key_serializer: str,
+        val_serializer: str,
         directory: str,
         consumergroup: str,
         preserve_order: bool,
@@ -158,21 +156,25 @@ def consume(
     if not write_to_stdout and not directory:
         directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    if binary and avro:
-        raise ValueError("Cannot set data to be interpreted as binary AND avro.")
-
     builder = PipelineBuilder()
 
-    input_message_serializer = create_input_serializer(avro, binary, state)
+    input_message_serializer = create_input_serializer(
+        state,
+        topic,
+        key_serializer, val_serializer,
+        key_struct_format, val_struct_format)
     builder.with_input_message_serializer(input_message_serializer)
 
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, write_to_stdout, binary, pretty_print)
+    output_handler = create_output_handler(
+        directory, write_to_stdout,
+        key_serializer, val_serializer, pretty_print)
     builder.with_output_handler(output_handler)
 
-    output_message_serializer = create_output_message_serializer(write_to_stdout, directory, avro, binary)
+    output_message_serializer = create_output_message_serializer(
+        write_to_stdout, directory, key_serializer, val_serializer)
     builder.with_output_message_serializer(output_message_serializer)
 
     if last:
@@ -218,33 +220,54 @@ def create_input_handler(consumergroup, from_context, topic):
     return input_handler
 
 
-def create_input_serializer(avro, binary, state):
-    if binary:
-        input_serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
-    elif avro:
-        input_serializer = RegistryAvroSerializer(
-            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
+def create_input_serializer(state, topic, key_serializer, val_serializer, key_struct_format, val_struct_format, ):
+    return MessageSerializer(
+        key_serializer=create_serializer(state, topic, key_serializer, key_struct_format),
+        value_serializer=create_serializer(state, topic, val_serializer, val_struct_format)
+    )
+
+
+def create_serializer(state: State, topic: str, serializer: str, struct_format: str):
+    if serializer == "str":
+        return StringSerializer(StringSerializerConfig(scheme="str"))
+    elif serializer == "avro":
+        return RegistryAvroSerializer(
+            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry))
+    elif serializer == "binary":
+        return RawSerializer(RawSerializerConfig(scheme="raw"))
+    elif serializer == "proto" not in state.config.proto:
+        raise RuntimeError(
+            "topic name was not found in proto configs. please add it to the configuration or use raw serializer"
         )
-    else:
-        input_serializer = StringSerializer(StringSerializerConfig(scheme="str"))
-    input_message_serializer = MessageSerializer(key_serializer=input_serializer, value_serializer=input_serializer)
-    return input_message_serializer
+    elif serializer == "proto" in state.config.proto:
+        proto_cfg = state.config.proto[topic]
+        return ProtoSerializer(
+            ProtoSerializerConfig(
+                scheme="proto",
+                protoc_py_path=proto_cfg.get("protoc_py_path"),
+                module_name=proto_cfg.get("module_name"),
+                class_name=proto_cfg.get("class_name"),
+            )
+        )
+    elif serializer == "struct":
+        return StructSerializer(StructSerializerConfig(scheme="struct", deserializer_struct_format=struct_format))
+    raise ValueError("serializer " + serializer + " not found")
 
 
-def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary: bool, pretty_print: bool):
+def create_output_handler(
+        directory: pathlib.Path, write_to_stdout: bool,
+        key_serializer, val_serializer: str, pretty_print: bool):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
-        encoding = "base64" if binary else "utf-8"
-        pretty_print = "1" if pretty_print else ""
-        output_handler = PipeHandler(
+        return PipeHandler(
             PipeHandlerConfig(
                 scheme="pipe",
                 host="stdout",
                 path="",
-                key_encoding=encoding,
-                value_encoding=encoding,
-                pretty_print=pretty_print,
+                key_encoding="base64" if key_serializer == "binary" else "utf-8",
+                value_encoding="base64" if val_serializer == "binary" else "utf-8",
+                pretty_print="1" if pretty_print else "",
             )
         )
     else:
@@ -254,16 +277,22 @@ def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary
 
 
 def create_output_message_serializer(
-        write_to_stdout: bool, directory: pathlib.Path, avro: bool, binary: bool
+        write_to_stdout: bool,
+        directory: pathlib.Path,
+        key_serializer, val_serializer: str
 ) -> MessageSerializer:
-    if avro and write_to_stdout:
-        serializer = JsonSerializer(JsonSerializerConfig(scheme="json"))
-    elif avro and not write_to_stdout:
-        serializer = RegistryAvroSerializer(
+    def get_serializer_for_stdout(serializer):
+        if serializer == "str":
+            return StringSerializer(StringSerializerConfig(scheme="str"))
+        if serializer == "avro" or serializer == "proto":
+            return JsonSerializer(JsonSerializerConfig(scheme="json"))
+        return RawSerializer(RawSerializerConfig(scheme="raw"))
+
+    actual_key_serializer = get_serializer_for_stdout(key_serializer)
+    actual_val_serializer = get_serializer_for_stdout(val_serializer)
+    if not write_to_stdout and (key_serializer == "avro" or val_serializer == "avro"):
+        actual_key_serializer = actual_val_serializer = serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )
-    elif binary:
-        serializer = RawSerializer(RawSerializerConfig(scheme="raw"))
-    else:
-        serializer = StringSerializer(StringSerializerConfig(scheme="str"))
-    return MessageSerializer(key_serializer=serializer, value_serializer=serializer)
+    return MessageSerializer(
+        key_serializer=actual_key_serializer, value_serializer=actual_val_serializer)

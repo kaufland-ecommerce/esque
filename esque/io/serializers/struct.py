@@ -4,11 +4,12 @@ from typing import Optional
 
 from esque.io.data_types import NoData, UnknownDataType
 from esque.io.messages import Data
+from esque.io.serializers import SerializerConfig
 from esque.io.serializers.base import DataSerializer
 
 
 @dataclasses.dataclass()
-class StructSerializerConfig:
+class StructSerializerConfig(SerializerConfig):
     deserializer_struct_format: str = None
     serializer_struct_format: str = None
 
