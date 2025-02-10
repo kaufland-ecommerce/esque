@@ -10,7 +10,7 @@ from esque.io.stream_decorators import skip_stream_events
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent
 
 
-@dataclass(frozen=True)
+@dataclass
 class PathHandlerConfig(HandlerConfig):
     def _validate_fields(self) -> List[str]:
         problems = super()._validate_fields()

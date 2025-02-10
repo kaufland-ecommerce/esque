@@ -22,7 +22,7 @@ class ByteEncoding(Enum):
     HEX = "hex"
 
 
-@dataclass(frozen=True)
+@dataclass
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value

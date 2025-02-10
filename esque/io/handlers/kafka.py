@@ -17,7 +17,7 @@ from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class KafkaHandlerConfig(HandlerConfig):
 
     consumer_group_id: str = ESQUE_GROUP_ID
