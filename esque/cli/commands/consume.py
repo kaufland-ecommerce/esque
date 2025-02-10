@@ -53,8 +53,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-    "Latest means at the end of the topic _not including_ the last message(s),"
-    "so if no new data is coming in nothing will be consumed.",
+         "Latest means at the end of the topic _not including_ the last message(s),"
+         "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
 @click.option(
@@ -68,14 +68,14 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     "-b",
     "--binary",
     help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
-    "This flag is mutually exclusive with the --avro and --proto flag",
+         "This flag is mutually exclusive with the --avro and --proto flag",
     default=False,
     is_flag=True,
 )
 @click.option(
     "--proto",
     help="Set this flag if the topic contains protobuf messages."
-    "This flag is mutually exclusive with the --avro and --binary flag",
+         "This flag is mutually exclusive with the --avro and --binary flag",
     default=False,
     is_flag=True,
 )
@@ -92,8 +92,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
@@ -102,25 +102,26 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-    "line. Only has an effect when consuming to stdout.",
+         "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-    state: State,
-    topic: str,
-    from_context: str,
-    number: Optional[int],
-    match: str,
-    last: bool,
-    avro: bool,
-    binary: bool,
-    directory: str,
-    consumergroup: str,
-    preserve_order: bool,
-    write_to_stdout: bool,
-    pretty_print: bool,
+        state: State,
+        topic: str,
+        from_context: str,
+        number: Optional[int],
+        match: str,
+        last: bool,
+        avro: bool,
+        proto: bool,
+        binary: bool,
+        directory: str,
+        consumergroup: str,
+        preserve_order: bool,
+        write_to_stdout: bool,
+        pretty_print: bool,
 ):
     """Consume messages from a topic.
 
@@ -253,7 +254,7 @@ def create_output_handler(directory: pathlib.Path, write_to_stdout: bool, binary
 
 
 def create_output_message_serializer(
-    write_to_stdout: bool, directory: pathlib.Path, avro: bool, binary: bool
+        write_to_stdout: bool, directory: pathlib.Path, avro: bool, binary: bool
 ) -> MessageSerializer:
     if avro and write_to_stdout:
         serializer = JsonSerializer(JsonSerializerConfig(scheme="json"))
