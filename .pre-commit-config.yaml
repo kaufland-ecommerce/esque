@@ -1,27 +1,30 @@
 repos:
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: v5.8.0
-  hooks:
-  - id: isort
-    additional_dependencies:
-      - "toml>=0.10"
-- repo: https://github.com/python/black
-  rev: 22.6.0
-  hooks:
-  - id: black
-- repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v2.2.1
-  hooks:
-  - id: flake8
-  - id: check-ast
-  - id: check-json
-  - id: check-merge-conflict
-  - id: check-yaml
-    exclude: esque/validation/schemas.*yaml
-  - id: check-yaml
-    alias: check-yaml-multi
-    name: "Check Yaml Schemas"
-    files: esque/validation/schemas.*yaml
-    args: ["-m"]
-  - id: trailing-whitespace
-    exclude: .*\.md$
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+  - repo: https://github.com/PyCQA/isort
+    rev: 6.0.0
+    hooks:
+      - id: isort
+        additional_dependencies:
+          - "toml>=0.10"
+  - repo: https://github.com/python/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-ast
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-yaml
+        exclude: esque/validation/schemas.*yaml
+      - id: check-yaml
+        alias: check-yaml-multi
+        name: "Check Yaml Schemas"
+        files: esque/validation/schemas.*yaml
+        args: [ "-m" ]
+      - id: trailing-whitespace
+        exclude: .*\.md$

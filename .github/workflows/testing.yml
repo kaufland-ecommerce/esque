@@ -13,8 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.8']
-        os: ['ubuntu-latest']
+        python: [ '3.9' ]
+        os: [ 'ubuntu-latest' ]
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
@@ -34,8 +34,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.8', '3.9']
-        librdkafka: ['1.7.0']
+        python: [ '3.9','3.10','3.11','3.12' ]
+        librdkafka: [ '1.7.0' ]
     steps:
       - uses: actions/checkout@v2
       - name: Fetch virtualenv cache
@@ -58,7 +58,7 @@ jobs:
           poetry install -vvv
       - name: Run kafka stack
         run: |
-          docker-compose up -d
+          docker compose up -d
           ./scripts/wait-for-it.sh localhost:9092 -t 60
           ./scripts/wait-for-it.sh localhost:2181 -t 60
           ./scripts/wait-for-it.sh localhost:8081 -t 60
@@ -67,7 +67,7 @@ jobs:
         run: |
           poetry run pytest -v --integration --local --cov=esque tests/
       - name: Update coverage
-        if: matrix.python == '3.8'
+        if: matrix.python == '3.9'
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
         run: |
@@ -76,5 +76,5 @@ jobs:
       - name: Output logs
         if: failure()
         run: |
-          docker-compose logs kafka
-          docker-compose logs zookeeper
+          docker compose logs kafka
+          docker compose logs zookeeper

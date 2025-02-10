@@ -8,6 +8,11 @@ contexts:
       - localhost:9092
     security_protocol: PLAINTEXT
     schema_registry: http://localhost:8081
+    proto:
+      topic1:
+        protoc_py_path: '/Users/ebrahim/PycharmProjects/tutclick/'
+        module_name: "api_stubs_py.spads_backend.ads_updates_pb2"
+        class_name: ProductAdvertisementEventEnvelope
     default_values:
       num_partitions: 1
       replication_factor: 1

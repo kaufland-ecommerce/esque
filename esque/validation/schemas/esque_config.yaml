@@ -6,6 +6,7 @@ context:
   bootstrap_servers: list(include('url'))
   security_protocol: s_enum('PLAINTEXT','SASL_PLAINTEXT','SSL','SASL_SSL', required=False, case_sensitive=False)
   schema_registry: include('url', required=False)
+  proto: include('proto', required=False)
   default_values: include('defaults', required=False)
   ssl_params: include('ssl_params', required=False)
   sasl_params: include('sasl_params', required=False)
@@ -26,3 +27,9 @@ ssl_params:
   certfile: str(required=False)
   keyfile: str(required=False)
   password: str(required=False)
+
+proto: map(include('proto_map'))
+proto_map:
+  protoc_py_path: str()
+  module_name: str()
+  class_name: str()
