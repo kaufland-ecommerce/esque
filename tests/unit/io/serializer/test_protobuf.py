@@ -1,6 +1,5 @@
 import base64
 import datetime
-import os
 from pathlib import Path
 
 from pytest_cases import fixture, parametrize_with_cases
@@ -14,10 +13,12 @@ CET = datetime.timezone(datetime.timedelta(seconds=3600), "CET")
 @fixture
 def serializer() -> ProtoSerializer:
     return ProtoSerializer(
-        ProtoSerializerConfig(scheme='proto',
-                              protoc_py_path=f"{Path(__file__).parent}/pb",
-                              module_name="hi_pb2",
-                              class_name="HelloWorldResponse")
+        ProtoSerializerConfig(
+            scheme="proto",
+            protoc_py_path=f"{Path(__file__).parent}/pb",
+            module_name="hi_pb2",
+            class_name="HelloWorldResponse",
+        )
     )
 
 

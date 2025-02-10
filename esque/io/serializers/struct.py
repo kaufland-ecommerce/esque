@@ -2,7 +2,7 @@ import dataclasses
 from struct import pack, unpack
 from typing import Optional, Union
 
-from esque.io.data_types import UnknownDataType, NoData
+from esque.io.data_types import NoData, UnknownDataType
 from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer
 

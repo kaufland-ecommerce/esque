@@ -1,13 +1,13 @@
 import dataclasses
 import importlib
 import sys
-from typing import Optional, Type, Union
+from typing import Optional, Type
 
-from esque.io.data_types import UnknownDataType
-from esque.io.messages import Data
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 
+from esque.io.data_types import UnknownDataType
+from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
 
 
@@ -50,7 +50,8 @@ class ProtoSerializer(DataSerializer):
         message.ParseFromString(raw_data)
 
         return Data(
-            payload=MessageToDict(message,
-                                  preserving_proto_field_name=True,
-                                  always_print_fields_with_no_presence=True),
-            data_type=self.unknown_data_type)
+            payload=MessageToDict(
+                message, preserving_proto_field_name=True, always_print_fields_with_no_presence=True
+            ),
+            data_type=self.unknown_data_type,
+        )

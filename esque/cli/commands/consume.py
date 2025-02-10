@@ -60,7 +60,7 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "-a",
     "--avro",
-    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary flag",
+    help="Set this flag if the topic contains avro data. This flag is mutually exclusive with the --binary and --proto flag",
     default=False,
     is_flag=True,
 )
@@ -68,7 +68,14 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     "-b",
     "--binary",
     help="Set this flag if the topic contains binary data. Or the data should not be (de-)serialized. "
-    "This flag is mutually exclusive with the --avro flag",
+    "This flag is mutually exclusive with the --avro and --proto flag",
+    default=False,
+    is_flag=True,
+)
+@click.option(
+    "--proto",
+    help="Set this flag if the topic contains protobuf messages."
+    "This flag is mutually exclusive with the --avro and --binary flag",
     default=False,
     is_flag=True,
 )
