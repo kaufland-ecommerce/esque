@@ -24,7 +24,7 @@ from esque.io.serializers.string import StringSerializerConfig
 from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_timestamp, yield_only_matching_messages
 
 
-@click.command("consume")
+@click.command("consume", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("topic", shell_complete=list_topics)
 @click.option(
     "-d", "--directory", metavar="<directory>", help="Sets the directory to write the messages to.", type=click.STRING
