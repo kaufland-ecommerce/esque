@@ -22,6 +22,7 @@ class ProtoSerializerConfig(SerializerConfig):
 
     def _load_message_class(self) -> Type[Message]:
         sys.path.append(self.protoc_py_path)
+        print("module", self.protoc_py_path, "added")
         module = importlib.import_module(self.module_name)
         return getattr(module, self.class_name)
 
