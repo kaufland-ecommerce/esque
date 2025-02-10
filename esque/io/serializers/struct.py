@@ -1,6 +1,6 @@
 import dataclasses
 from struct import pack, unpack
-from typing import Optional, Union
+from typing import Optional
 
 from esque.io.data_types import NoData, UnknownDataType
 from esque.io.messages import Data
