@@ -6,7 +6,7 @@ from typing import Optional, Type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.message import Message
 
-from esque.io.data_types import NoData, Dict
+from esque.io.data_types import Dict, NoData
 from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
 
@@ -51,6 +51,8 @@ class ProtoSerializer(DataSerializer):
         message.ParseFromString(raw_data)
 
         return Data(
-            payload=MessageToDict(message, preserving_proto_field_name=True, always_print_fields_with_no_presence=True),
+            payload=MessageToDict(
+                message, preserving_proto_field_name=True, always_print_fields_with_no_presence=True
+            ),
             data_type=self.dict_data_type,
         )

@@ -299,7 +299,7 @@ def create_output_message_serializer(
     actual_key_serializer = get_serializer_for_stdout(key_serializer)
     actual_val_serializer = get_serializer_for_stdout(val_serializer)
     if not write_to_stdout and (key_serializer == "avro" or val_serializer == "avro"):
-        actual_key_serializer = actual_val_serializer = serializer = RegistryAvroSerializer(
+        actual_key_serializer = actual_val_serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )
     return MessageSerializer(key_serializer=actual_key_serializer, value_serializer=actual_val_serializer)
