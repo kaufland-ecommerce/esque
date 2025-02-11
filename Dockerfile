@@ -1,4 +1,4 @@
-FROM python:3.6
+FROM python:3.9
 
 RUN git clone --branch "v1.0.0" --depth 1 https://github.com/edenhill/librdkafka.git \
  && cd librdkafka \
