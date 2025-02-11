@@ -15,8 +15,13 @@ from esque.io.handlers.kafka import KafkaHandlerConfig
 from esque.io.handlers.path import PathHandlerConfig
 from esque.io.handlers.pipe import PipeHandler, PipeHandlerConfig
 from esque.io.pipeline import PipelineBuilder
-from esque.io.serializers import JsonSerializer, RawSerializer, RegistryAvroSerializer, StringSerializer, \
-    ProtoSerializer
+from esque.io.serializers import (
+    JsonSerializer,
+    ProtoSerializer,
+    RawSerializer,
+    RegistryAvroSerializer,
+    StringSerializer,
+)
 from esque.io.serializers.base import MessageSerializer
 from esque.io.serializers.json import JsonSerializerConfig
 from esque.io.serializers.proto import ProtoSerializerConfig
@@ -56,8 +61,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-         "Latest means at the end of the topic _not including_ the last message(s),"
-         "so if no new data is coming in nothing will be consumed.",
+    "Latest means at the end of the topic _not including_ the last message(s),"
+    "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
 @click.option("--key-struct-format", help="Set this flag to set encoding for key", type=str)
@@ -89,8 +94,8 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
@@ -99,27 +104,27 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-         "line. Only has an effect when consuming to stdout.",
+    "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-        state: State,
-        topic: str,
-        from_context: str,
-        number: Optional[int],
-        match: str,
-        last: bool,
-        key_struct_format: str,
-        val_struct_format: str,
-        key_serializer: str,
-        val_serializer: str,
-        directory: str,
-        consumergroup: str,
-        preserve_order: bool,
-        write_to_stdout: bool,
-        pretty_print: bool,
+    state: State,
+    topic: str,
+    from_context: str,
+    number: Optional[int],
+    match: str,
+    last: bool,
+    key_struct_format: str,
+    val_struct_format: str,
+    key_serializer: str,
+    val_serializer: str,
+    directory: str,
+    consumergroup: str,
+    preserve_order: bool,
+    write_to_stdout: bool,
+    pretty_print: bool,
 ):
     """Consume messages from a topic.
 
@@ -159,22 +164,19 @@ def consume(
     builder = PipelineBuilder()
 
     input_message_serializer = create_input_serializer(
-        state,
-        topic,
-        key_serializer, val_serializer,
-        key_struct_format, val_struct_format)
+        state, topic, key_serializer, val_serializer, key_struct_format, val_struct_format
+    )
     builder.with_input_message_serializer(input_message_serializer)
 
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(
-        directory, write_to_stdout,
-        key_serializer, val_serializer, pretty_print)
+    output_handler = create_output_handler(directory, write_to_stdout, key_serializer, val_serializer, pretty_print)
     builder.with_output_handler(output_handler)
 
     output_message_serializer = create_output_message_serializer(
-        write_to_stdout, directory, key_serializer, val_serializer)
+        write_to_stdout, directory, key_serializer, val_serializer
+    )
     builder.with_output_message_serializer(output_message_serializer)
 
     if last:
@@ -220,10 +222,17 @@ def create_input_handler(consumergroup, from_context, topic):
     return input_handler
 
 
-def create_input_serializer(state, topic, key_serializer, val_serializer, key_struct_format, val_struct_format, ):
+def create_input_serializer(
+    state,
+    topic,
+    key_serializer,
+    val_serializer,
+    key_struct_format,
+    val_struct_format,
+):
     return MessageSerializer(
         key_serializer=create_serializer(state, topic, key_serializer, key_struct_format),
-        value_serializer=create_serializer(state, topic, val_serializer, val_struct_format)
+        value_serializer=create_serializer(state, topic, val_serializer, val_struct_format),
     )
 
 
@@ -232,14 +241,15 @@ def create_serializer(state: State, topic: str, serializer: str, struct_format: 
         return StringSerializer(StringSerializerConfig(scheme="str"))
     elif serializer == "avro":
         return RegistryAvroSerializer(
-            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry))
+            RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
+        )
     elif serializer == "binary":
         return RawSerializer(RawSerializerConfig(scheme="raw"))
-    elif serializer == "proto" not in state.config.proto:
+    elif serializer == "proto" and topic not in state.config.proto:
         raise RuntimeError(
             "topic name was not found in proto configs. please add it to the configuration or use raw serializer"
         )
-    elif serializer == "proto" in state.config.proto:
+    elif serializer == "proto" and topic in state.config.proto:
         proto_cfg = state.config.proto[topic]
         return ProtoSerializer(
             ProtoSerializerConfig(
@@ -255,8 +265,8 @@ def create_serializer(state: State, topic: str, serializer: str, struct_format: 
 
 
 def create_output_handler(
-        directory: pathlib.Path, write_to_stdout: bool,
-        key_serializer, val_serializer: str, pretty_print: bool):
+    directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
+):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
     elif write_to_stdout:
@@ -277,9 +287,7 @@ def create_output_handler(
 
 
 def create_output_message_serializer(
-        write_to_stdout: bool,
-        directory: pathlib.Path,
-        key_serializer, val_serializer: str
+    write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
         if serializer == "str":
@@ -294,5 +302,4 @@ def create_output_message_serializer(
         actual_key_serializer = actual_val_serializer = serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )
-    return MessageSerializer(
-        key_serializer=actual_key_serializer, value_serializer=actual_val_serializer)
+    return MessageSerializer(key_serializer=actual_key_serializer, value_serializer=actual_val_serializer)

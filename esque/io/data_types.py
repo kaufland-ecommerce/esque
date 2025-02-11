@@ -106,3 +106,7 @@ class DateTime(PrimitiveField):
 
 class Timestamp(PrimitiveField):
     pass
+
+
+class Dict(PrimitiveField):
+    pass

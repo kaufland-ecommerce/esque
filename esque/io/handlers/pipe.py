@@ -77,8 +77,8 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
             return
         json.dump(
             {
-                "key": embed(binary_message.key, self.config.key_encoding),
-                "value": embed(binary_message.value, self.config.value_encoding),
+                "key": try_to_dict(embed(binary_message.key, self.config.key_encoding)),
+                "value": try_to_dict(embed(binary_message.value, self.config.value_encoding)),
                 "partition": binary_message.partition,
                 "offset": binary_message.offset,
                 "timestamp": binary_message.timestamp.timestamp(),
@@ -145,6 +145,13 @@ def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> A
         return base64.b64encode(input_value).decode(encoding="UTF-8")
     elif encoding == ByteEncoding.HEX:
         return input_value.hex()
+
+
+def try_to_dict(message):
+    try:
+        return json.loads(message)  # Attempt to parse JSON
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        return message
 
 
 def extract(input_value: Optional[str], encoding: Union[str, ByteEncoding]) -> Optional[bytes]:
