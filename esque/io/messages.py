@@ -15,7 +15,7 @@ class Data:
     payload: Any
     data_type: DataType
 
-    NO_DATA: ClassVar["Data"]
+    NO_DATA: ClassVar["Data"] = None
 
 
 Data.NO_DATA = Data(payload=None, data_type=NoData())
