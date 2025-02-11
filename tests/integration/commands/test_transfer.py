@@ -7,7 +7,6 @@ from confluent_kafka.avro import AvroConsumer, AvroProducer
 from confluent_kafka.cimpl import Consumer
 from confluent_kafka.cimpl import Producer as ConfluentProducer
 from confluent_kafka.cimpl import TopicPartition
-from confluent_kafka.schema_registry.avro import AvroDeserializer
 from pytest_cases import fixture
 
 from esque.cli.commands import esque

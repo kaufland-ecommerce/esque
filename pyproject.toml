@@ -51,6 +51,7 @@ toml = "^0.10.0"
 more-itertools = "^10.6"
 protobuf = "^5.29.3"
 pre-commit = "^4.1.0"
+kafka-python-ng="2.2.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "~8"

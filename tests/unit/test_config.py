@@ -155,9 +155,9 @@ def test_default_values_not_specified(mocker: mock, config: Config):
     # if not given, broker defaults are taken
     setting_mock = mocker.patch.object(config, "_get_broker_setting", return_value="1234")
     assert config.default_replication_factor == 1234
-    assert setting_mock.called_with("default.replication.factor")
+    setting_mock.assert_called_with("default.replication.factor")
     assert config.default_num_partitions == 1234
-    assert setting_mock.called_with("num.partitions")
+    setting_mock.assert_called_with("num.partitions")
 
 
 def test_config_too_old(load_config: config_loader):

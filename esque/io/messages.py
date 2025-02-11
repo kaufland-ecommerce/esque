@@ -1,6 +1,5 @@
 import dataclasses
 import datetime
-from dataclasses import field
 from typing import Any, ClassVar, List, NamedTuple, Optional
 
 from esque.io.data_types import DataType, NoData
