@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+from dataclasses import field
 from typing import Any, ClassVar, List, NamedTuple, Optional
 
 from esque.io.data_types import DataType, NoData
@@ -10,7 +11,7 @@ class MessageHeader(NamedTuple):
     value: Optional[str]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Data:
     payload: Any
     data_type: DataType
