@@ -3,8 +3,9 @@ import importlib
 import sys
 from typing import Optional, Type
 
-from google.protobuf.json_format import MessageToDict, ParseDict
+from google.protobuf.json_format import MessageToDict, ParseDict, MessageToJson
 from google.protobuf.message import Message
+from google.protobuf.text_format import MessageToString
 
 from esque.io.data_types import Dict, NoData
 from esque.io.messages import Data

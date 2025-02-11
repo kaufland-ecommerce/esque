@@ -61,27 +61,37 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-    "Latest means at the end of the topic _not including_ the last message(s),"
-    "so if no new data is coming in nothing will be consumed.",
+         "Latest means at the end of the topic _not including_ the last message(s),"
+         "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
-@click.option("--key-struct-format", help="Set this flag to set encoding for key", type=str)
-@click.option("--val-struct-format", help="Set this flag to set output encoding for value.", type=str)
+@click.option("--key-struct-format",
+              help=" convert binary (packed) data into string. an example can be find here: https://docs.python.org/3/library/struct.html",
+              type=str)
+@click.option("--val-struct-format", help=" convert binary (packed) data into string", type=str)
 @click.option(
     "-k",
     "--key-serializer",
     type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
-    help="Specify deserialization for keys",
-    default="binary",
+    help="Specify deserialization for keys. if you choose avro or binary value will also be set the same unless you choose differently.",
+    default=None,
 )
 @click.option(
     "-s",
     "--val-serializer",
     type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
-    help="Specify deserialization for values",
-    default="binary",
+    help="Specify deserialization for keys. if you choose avro or binary key will also be set the same unless you choose differently.",
+    default=None,
 )
 @click.option(
+    "-s",
+    "--proto-key",
+    type=str, case_sensitive=False,
+    help="proto key in configuration if you want to deserialize proto by anything other than topic name."
+         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key",
+)
+@click.option(
+
     "-c",
     "--consumergroup",
     metavar="<consumer_group>",
@@ -92,39 +102,41 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
     required=False,
 )
 @click.option(
+
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
-@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=False, is_flag=True)
+@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=True, is_flag=True)
 @click.option(
+
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-    "line. Only has an effect when consuming to stdout.",
+         "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-    state: State,
-    topic: str,
-    from_context: str,
-    number: Optional[int],
-    match: str,
-    last: bool,
-    key_struct_format: str,
-    val_struct_format: str,
-    key_serializer: str,
-    val_serializer: str,
-    directory: str,
-    consumergroup: str,
-    preserve_order: bool,
-    write_to_stdout: bool,
-    pretty_print: bool,
+        state: State,
+        topic: str,
+        from_context: str,
+        number: Optional[int],
+        match: str,
+        last: bool,
+        key_struct_format: str,
+        val_struct_format: str,
+        key_serializer: str,
+        val_serializer: str,
+        directory: str,
+        consumergroup: str,
+        preserve_order: bool,
+        write_to_stdout: bool,
+        pretty_print: bool,
 ):
     """Consume messages from a topic.
 
@@ -223,12 +235,12 @@ def create_input_handler(consumergroup, from_context, topic):
 
 
 def create_input_serializer(
-    state,
-    topic,
-    key_serializer,
-    val_serializer,
-    key_struct_format,
-    val_struct_format,
+        state,
+        topic,
+        key_serializer,
+        val_serializer,
+        key_struct_format,
+        val_struct_format,
 ):
     return MessageSerializer(
         key_serializer=create_serializer(state, topic, key_serializer, key_struct_format),
@@ -265,7 +277,7 @@ def create_serializer(state: State, topic: str, serializer: str, struct_format: 
 
 
 def create_output_handler(
-    directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
+        directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
 ):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -287,7 +299,7 @@ def create_output_handler(
 
 
 def create_output_message_serializer(
-    write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
+        write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
         if serializer == "str":
