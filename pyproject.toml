@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "1.0.0"
+version = "1.0.0a1"
 description = "esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -51,7 +51,7 @@ toml = "^0.10.0"
 more-itertools = "^10.6"
 protobuf = "^5.29.3"
 pre-commit = "^4.1.0"
-kafka-python-ng="2.2.3"
+kafka-python-ng = "2.2.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "~8"
