@@ -86,9 +86,24 @@ from esque.io.stream_decorators import event_counter, yield_messages_sorted_by_t
 @click.option(
     "-s",
     "--proto-key",
-    type=str, case_sensitive=False,
+    type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
          " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key",
+)
+@click.option(
+    "--protoc-py-path",
+    type=click.STRING,
+    help="compiled protobuf message path.",
+)
+@click.option(
+    "--protoc-module-name",
+    type=click.STRING,
+    help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py",
+)
+@click.option(
+    "--protoc-class-name",
+    type=click.STRING,
+    help="class name of message.",
 )
 @click.option(
 
@@ -137,11 +152,16 @@ def consume(
         preserve_order: bool,
         write_to_stdout: bool,
         pretty_print: bool,
+        proto_key: str,
+        protoc_py_path: str,
+        protoc_module_name: str,
+        protoc_class_name: str,
+
 ):
     """Consume messages from a topic.
 
     Read messages from a given topic in a given context. These messages can either be written
-    to files in an automatically generated directory (default behavior), or to STDOUT.
+    to files in an automatically generated directory, or to STDOUT((default behavior)).
 
     If writing to STDOUT, then data will be represented as a JSON object with the message key and the message value
     always being a string.
@@ -160,11 +180,23 @@ def consume(
 
     \b
     # Extract json objects from keys
-    esque consume --stdout --avro TOPIC | jq '.key | fromjson'
+    esque consume --stdout -s avro TOPIC | jq '.key | fromjson'
 
     \b
     # Extract binary data from keys (depending on the data this could mess up your console)
-    esque consume --stdout --binary TOPIC | jq '.key | @base64d'
+    esque consume --stdout -s binary TOPIC | jq '.key | @base64d'
+
+    \b
+    # Extract protobuf data from topic
+    esque consume --stdout -s proto TOPIC | jq
+
+    \b
+    # Extract protobuf data from topic using specific proto-key
+    esque consume --stdout -s proto --proto-key=topic-api-v2 TOPIC | jq
+
+    \b
+    # Extract protobuf data from topic using specific customised protobuf config
+    esque consume --stdout -s proto --protoc_py_path=path --protoc_module_name=api.module_name --protoc_class_name=ModuleClass  TOPIC
     """
     if not from_context:
         from_context = state.config.current_context
