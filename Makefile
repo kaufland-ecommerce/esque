@@ -16,7 +16,8 @@ clean:
 	@find . -type f -name "*.py[co]" -exec rm -rf {} +
 
 format: clean
-	@poetry run black poetry/ tests/
+	@poetry run black esque/ tests/
+	@poetry run pre-commit run --all-files
 
 # test your application (tests in the tests/ directory)
 test-suite:

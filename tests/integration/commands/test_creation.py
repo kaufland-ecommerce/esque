@@ -169,7 +169,7 @@ def test_consumer_group_correct_creation(
     )
     assert result5.exit_code == 0
 
-    cg_list = [gm.id for gm in confluent_admin_client.list_groups(timeout=5)]
+    cg_list = [gm.id for gm in confluent_admin_client.list_groups()]
     assert first_cg in cg_list
     assert second_cg in cg_list
     assert third_cg in cg_list

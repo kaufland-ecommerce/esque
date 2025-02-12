@@ -11,7 +11,7 @@ from esque.io.serializers import SerializerConfig
 from esque.io.serializers.base import DataSerializer
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class JsonSerializerConfig(SerializerConfig):
     indent: Optional[str] = None
     encoding: str = "UTF-8"

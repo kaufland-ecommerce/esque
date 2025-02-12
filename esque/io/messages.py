@@ -10,12 +10,12 @@ class MessageHeader(NamedTuple):
     value: Optional[str]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Data:
     payload: Any
     data_type: DataType
 
-    NO_DATA: ClassVar["Data"]
+    NO_DATA: ClassVar["Data"] = None
 
 
 Data.NO_DATA = Data(payload=None, data_type=NoData())

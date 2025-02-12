@@ -8,6 +8,15 @@ contexts:
       - localhost:9092
     security_protocol: PLAINTEXT
     schema_registry: http://localhost:8081
+    proto:
+      topic1:
+        protoc_py_path: 'path to compiled files using protoc'
+        module_name: "api_stubs_py.api.hello_pb2"
+        class_name: HelloMessage
+      any_key:
+        protoc_py_path: 'path to compiled files using protoc'
+        module_name: "api_stubs_py.api.bye_pb2"
+        class_name: ByeMessage
     default_values:
       num_partitions: 1
       replication_factor: 1

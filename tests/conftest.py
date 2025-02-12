@@ -60,7 +60,7 @@ def pytest_collection_modifyitems(config, items):
 
 # use for typing only
 def config_loader(config_version: int = CURRENT_VERSION) -> Tuple[Path, str]:
-    ...
+    pass
 
 
 @fixture(scope="function")

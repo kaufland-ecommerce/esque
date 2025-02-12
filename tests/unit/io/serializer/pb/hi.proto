@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+service Hi {
+    rpc Get (HelloWorldRequest) returns (HelloWorldResponse);
+}
+
+message HelloWorldRequest {
+    string name = 1;
+}
+
+message HelloWorldResponse {
+    string type_string = 1;
+    optional string optional_string = 2;
+    EnumType type_enum = 3;
+    int32 type_int32 = 4;
+    int64 type_int64 = 5;
+    optional int64 optional_int64 = 6;
+    float type_float = 7;
+}
+enum EnumType {
+    ENUM_TYPE_UNSPECIFIED = 0;
+}

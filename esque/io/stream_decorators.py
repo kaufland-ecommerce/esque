@@ -146,7 +146,7 @@ def yield_messages_sorted_by_timestamp(partition_count: int) -> Callable[[Messag
 
 
 def yield_only_matching_messages(
-    match_expr_or_rule_tree: Union[str, RuleTree]
+    match_expr_or_rule_tree: Union[str, RuleTree],
 ) -> Callable[[MessageStream], MessageStream]:
     if not isinstance(match_expr_or_rule_tree, RuleTree):
         tree = RuleTree(match_expr_or_rule_tree)

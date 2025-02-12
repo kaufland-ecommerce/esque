@@ -17,7 +17,7 @@ from esque.io.messages import BinaryMessage, MessageHeader
 from esque.io.stream_events import EndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class KafkaHandlerConfig(HandlerConfig):
 
     consumer_group_id: str = ESQUE_GROUP_ID
@@ -200,7 +200,7 @@ class KafkaHandler(BaseHandler[KafkaHandlerConfig]):
 
     @staticmethod
     def _confluent_to_io_headers(
-        confluent_headers: Optional[List[Tuple[str, Optional[bytes]]]]
+        confluent_headers: Optional[List[Tuple[str, Optional[bytes]]]],
     ) -> List[MessageHeader]:
         io_headers: List[MessageHeader] = []
 
