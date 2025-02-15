@@ -219,11 +219,3 @@ If you only want the unit tests, just run:
 ```bash
 make test
 ```
-
-## Alternatives
-
-- [LinkedIn KafkaTools](https://github.com/linkedin/kafka-tools)
-- [PyKafka Tools](https://github.com/Parsely/pykafka/blob/master/pykafka/cli/kafka_tools.py)
-- [Official Kafka Scripts](https://github.com/apache/kafka/tree/trunk/bin)
-- [kafkacat](https://github.com/edenhill/kafkacat)
-- [kaf](https://github.com/birdayz/kaf)
