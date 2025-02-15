@@ -62,7 +62,7 @@ flake8 = "7.1.1"
 black = { version = "25.1.0", allow-prereleases = true }
 isort = { version = "^6.0.0", extras = ["pyproject"] }
 bandit = "1.8.2"
-coveralls = "4.0.1"
+#coveralls = "4.0.1"
 pytest-cases = "3.8.6"
 
 [tool.black]
