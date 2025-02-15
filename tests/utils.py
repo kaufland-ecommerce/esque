@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import itertools
 import json
@@ -145,7 +146,12 @@ class ProtobufKafkaTestMessage(KafkaTestMessage):
     @staticmethod
     def random_value() -> Any:
         return {
-            'type_str': random_str(random.randint(1, 10))
+            "type_string": random_str(random.randint(1, 10)),
+            "optional_string": random.choice([None, random_str(random.randint(1, 10))]),
+            "type_int32": random.randint(1, 100),
+            "type_int64": random.randint(1, 100),
+            "optional_int64": random.choice([None, random.randint(1, 100)]),
+            "type_float": round(random.uniform(-5, 5), 2),
         }
 
 
@@ -154,7 +160,7 @@ def random_bytes(length: int = 16) -> bytes:
 
 
 def produce_text_test_messages(
-        producer: ConfluentProducer, topic_name: str, amount: int = 10
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List["KafkaTestMessage"]:
     messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=False)
     produce_all(producer, messages)
@@ -168,7 +174,7 @@ def produce_all(producer: ConfluentProducer, messages: List[KafkaTestMessage]) -
 
 
 def produce_text_test_messages_with_headers(
-        producer: ConfluentProducer, topic_name: str, amount: int = 10
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List["KafkaTestMessage"]:
     messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=True)
     produce_all(producer, messages)
@@ -176,7 +182,7 @@ def produce_text_test_messages_with_headers(
 
 
 def produce_avro_test_messages(
-        avro_producer: AvroProducer, topic_name: str, amount: int = 10
+    avro_producer: AvroProducer, topic_name: str, amount: int = 10
 ) -> List[AvroKafkaTestMessage]:
     messages: List[AvroKafkaTestMessage] = AvroKafkaTestMessage.random_values(topic_name, n=amount)
     produce_all(avro_producer, messages)
@@ -184,7 +190,7 @@ def produce_avro_test_messages(
 
 
 def produce_binary_test_messages(
-        producer: ConfluentProducer, topic_name: str, amount: int = 10
+    producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List[BinaryKafkaTestMessage]:
     messages: List[BinaryKafkaTestMessage] = BinaryKafkaTestMessage.random_values(
         topic_name=topic_name, n=amount, generate_headers=False
@@ -194,14 +200,15 @@ def produce_binary_test_messages(
 
 
 def produce_proto_test_messages(
-        proto_serializer: ProtoSerializer, producer: ConfluentProducer, topic_name: str, amount: int = 10
-) -> List[BinaryKafkaTestMessage]:
+    proto_serializer: ProtoSerializer, producer: ConfluentProducer, topic_name: str, amount: int = 10
+) -> List[ProtobufKafkaTestMessage]:
     messages: List[ProtobufKafkaTestMessage] = ProtobufKafkaTestMessage.random_values(
-        topic_name=topic_name, n=amount,
-        generate_headers=False)
+        topic_name=topic_name, n=amount, generate_headers=False
+    )
+    copy_of_messages = copy.deepcopy(messages)
     proto_serialised_messages = []
     for msg in messages:
         msg.value = proto_serializer.serialize(Data(msg.value, ProtoSerializer.dict_data_type))
-        proto_serialised_messages += msg
-    produce_all(producer, messages)
-    return proto_serialised_messages
+        proto_serialised_messages.append(msg)
+    produce_all(producer, proto_serialised_messages)
+    return copy_of_messages

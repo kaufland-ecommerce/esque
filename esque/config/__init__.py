@@ -87,7 +87,7 @@ class Config(metaclass=SingletonMeta):
     @property
     def proto(self) -> dict:
         config_dict = self.current_context_dict
-        return config_dict["proto"]
+        return config_dict.get("proto", {})
 
     @property
     def bootstrap_servers(self) -> List[str]:
