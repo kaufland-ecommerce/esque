@@ -30,6 +30,9 @@ integration-test:
 test:
 	@poetry run pytest --integration --local tests/
 
+unit-test:
+	@poetry run pytest
+
 release: build linux_release
 
 build:

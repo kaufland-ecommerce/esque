@@ -28,12 +28,12 @@ class StructSerializer(DataSerializer):
         if raw_data is None:
             return Data.NO_DATA
 
-        deserializer_format = _validate_format("deserializer", self.config.deserializer_struct_format)
+        deserializer_format = _validate_format("deserializer", self.config.deserializer_format)
         return Data(payload=unpack(deserializer_format, raw_data)[0], data_type=UnknownDataType())
 
     def serialize(self, data: Data) -> Optional[bytes]:
         if isinstance(data.data_type, NoData):
             return None
 
-        serializer_format = _validate_format("serializer", self.config.serializer_struct_format)
+        serializer_format = _validate_format("serializer", self.config.serializer_format)
         return pack(serializer_format, data.payload)

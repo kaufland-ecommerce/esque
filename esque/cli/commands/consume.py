@@ -72,8 +72,8 @@ class SerializationConfig:
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-         "Latest means at the end of the topic _not including_ the last message(s),"
-         "so if no new data is coming in nothing will be consumed.",
+    "Latest means at the end of the topic _not including_ the last message(s),"
+    "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
 @click.option(
@@ -100,8 +100,8 @@ class SerializationConfig:
     "--key-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-         "this is used for key part of the message",
+    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+    "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-py-path",
@@ -112,7 +112,7 @@ class SerializationConfig:
     "--key-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-         "this is used for key part of the message",
+    "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-class-name",
@@ -123,8 +123,8 @@ class SerializationConfig:
     "--val-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-         "this is used for value part of the message",
+    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+    "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-py-path",
@@ -135,7 +135,7 @@ class SerializationConfig:
     "--val-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-         "this is used for value part of the message",
+    "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-class-name",
@@ -155,8 +155,8 @@ class SerializationConfig:
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
@@ -164,34 +164,34 @@ class SerializationConfig:
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-         "line. Only has an effect when consuming to stdout.",
+    "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-        state: State,
-        topic: str,
-        from_context: str,
-        number: Optional[int],
-        match: str,
-        last: bool,
-        key_struct_format: str,
-        val_struct_format: str,
-        key_serializer: str,
-        val_serializer: str,
-        directory: str,
-        consumergroup: str,
-        preserve_order: bool,
-        pretty_print: bool,
-        key_proto_key: str,
-        key_protoc_py_path: str,
-        key_protoc_module_name: str,
-        key_protoc_class_name: str,
-        val_proto_key: str,
-        val_protoc_py_path: str,
-        val_protoc_module_name: str,
-        val_protoc_class_name: str,
+    state: State,
+    topic: str,
+    from_context: str,
+    number: Optional[int],
+    match: str,
+    last: bool,
+    key_struct_format: str,
+    val_struct_format: str,
+    key_serializer: str,
+    val_serializer: str,
+    directory: str,
+    consumergroup: str,
+    preserve_order: bool,
+    pretty_print: bool,
+    key_proto_key: str,
+    key_protoc_py_path: str,
+    key_protoc_module_name: str,
+    key_protoc_class_name: str,
+    val_proto_key: str,
+    val_protoc_py_path: str,
+    val_protoc_module_name: str,
+    val_protoc_class_name: str,
 ):
     """Consume messages from a topic.
 
@@ -237,7 +237,7 @@ def consume(
         from_context = state.config.current_context
     state.config.context_switch(from_context)
 
-    if directory is ".":
+    if directory == ".":
         directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     builder = PipelineBuilder()
@@ -268,8 +268,7 @@ def consume(
     output_handler = create_output_handler(directory, key_serializer, val_serializer, pretty_print)
     builder.with_output_handler(output_handler)
 
-    output_message_serializer = create_output_message_serializer(directory, key_serializer, val_serializer
-                                                                 )
+    output_message_serializer = create_output_message_serializer(directory, key_serializer, val_serializer)
     builder.with_output_message_serializer(output_message_serializer)
 
     if last:
@@ -355,9 +354,7 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
     raise ValueError("serializer " + config.serializer + " not found")
 
 
-def create_output_handler(
-        directory: Optional[pathlib.Path], key_serializer, val_serializer: str, pretty_print: bool
-):
+def create_output_handler(directory: Optional[pathlib.Path], key_serializer, val_serializer: str, pretty_print: bool):
     if directory:
         click.echo(f"Writing data to {blue_bold(str(directory))}.")
         return PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
@@ -374,7 +371,7 @@ def create_output_handler(
 
 
 def create_output_message_serializer(
-        directory: Optional[pathlib.Path], key_serializer, val_serializer: str
+    directory: Optional[pathlib.Path], key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
         if serializer == "str":
