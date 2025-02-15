@@ -21,11 +21,13 @@ class StructSerializer(DataSerializer):
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
             return Data.NO_DATA
+        if self.config.deserializer_struct_format is None:
+            raise ValueError(f"serialize format cannot be None")
         return unpack(self.config.deserializer_struct_format, raw_data)[0]
 
     def serialize(self, data: Data) -> Optional[bytes]:
         if isinstance(data.data_type, NoData):
             return None
-        if not isinstance(data, bytes):
-            raise TypeError(f"Data payload must be bytes or bytearray, not {type(data).__name__}!")
-        return pack(self.config.serializer_struct_format, data)
+        if self.config.serializer_struct_format is None:
+            raise ValueError(f"serialize format cannot be None")
+        return pack(self.config.serializer_struct_format, data.payload)
