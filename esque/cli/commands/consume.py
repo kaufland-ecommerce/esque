@@ -322,9 +322,7 @@ def create_input_serializer(state, topic, key_config, val_config):
 
 
 def create_serializer(state: State, topic: str, config: SerializationConfig):
-    if config.serializer == "str":
-        return StringSerializer(StringSerializerConfig(scheme="str"))
-    elif config.serializer == "avro":
+    if config.serializer == "avro":
         return RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=state.config.schema_registry)
         )
@@ -351,7 +349,7 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
         )
     elif config.serializer == "struct":
         return StructSerializer(StructSerializerConfig(scheme="struct", deserializer_format=config.struct_format))
-    raise ValueError("serializer " + config.serializer + " not found")
+    return StringSerializer(StringSerializerConfig(scheme="str"))
 
 
 def create_output_handler(directory: Optional[pathlib.Path], key_serializer, val_serializer: str, pretty_print: bool):
@@ -374,7 +372,7 @@ def create_output_message_serializer(
     directory: Optional[pathlib.Path], key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
-        if serializer == "str":
+        if serializer == "str" or serializer is None:
             return StringSerializer(StringSerializerConfig(scheme="str"))
         if serializer == "avro" or serializer == "proto":
             return JsonSerializer(JsonSerializerConfig(scheme="json"))

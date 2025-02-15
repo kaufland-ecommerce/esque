@@ -44,7 +44,7 @@ click = "^8.1"
 confluent-kafka = { version = "^2.8", extras = ["avro"] }
 fastavro = "^1.10"
 pendulum = "^3.0"
-kafka-python = "^2.0.2"
+kafka-python = "^2.0.3"
 pyyaml = "6.0.2"
 requests = "^2.32"
 yamale = "6.0.0"
