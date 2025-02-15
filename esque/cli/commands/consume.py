@@ -72,8 +72,8 @@ class SerializationConfig:
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-    "Latest means at the end of the topic _not including_ the last message(s),"
-    "so if no new data is coming in nothing will be consumed.",
+         "Latest means at the end of the topic _not including_ the last message(s),"
+         "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
 @click.option(
@@ -100,8 +100,8 @@ class SerializationConfig:
     "--key-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-    "this is used for key part of the message",
+         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+         "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-py-path",
@@ -112,7 +112,7 @@ class SerializationConfig:
     "--key-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-    "this is used for key part of the message",
+         "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-class-name",
@@ -123,8 +123,8 @@ class SerializationConfig:
     "--val-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-    "this is used for value part of the message",
+         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+         "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-py-path",
@@ -135,7 +135,7 @@ class SerializationConfig:
     "--val-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-    "this is used for value part of the message",
+         "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-class-name",
@@ -155,45 +155,43 @@ class SerializationConfig:
 @click.option(
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
-@click.option("--stdout", "write_to_stdout", help="Write messages to STDOUT.", default=True, is_flag=True)
 @click.option(
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-    "line. Only has an effect when consuming to stdout.",
+         "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-    state: State,
-    topic: str,
-    from_context: str,
-    number: Optional[int],
-    match: str,
-    last: bool,
-    key_struct_format: str,
-    val_struct_format: str,
-    key_serializer: str,
-    val_serializer: str,
-    directory: str,
-    consumergroup: str,
-    preserve_order: bool,
-    write_to_stdout: bool,
-    pretty_print: bool,
-    key_proto_key: str,
-    key_protoc_py_path: str,
-    key_protoc_module_name: str,
-    key_protoc_class_name: str,
-    val_proto_key: str,
-    val_protoc_py_path: str,
-    val_protoc_module_name: str,
-    val_protoc_class_name: str,
+        state: State,
+        topic: str,
+        from_context: str,
+        number: Optional[int],
+        match: str,
+        last: bool,
+        key_struct_format: str,
+        val_struct_format: str,
+        key_serializer: str,
+        val_serializer: str,
+        directory: str,
+        consumergroup: str,
+        preserve_order: bool,
+        pretty_print: bool,
+        key_proto_key: str,
+        key_protoc_py_path: str,
+        key_protoc_module_name: str,
+        key_protoc_class_name: str,
+        val_proto_key: str,
+        val_protoc_py_path: str,
+        val_protoc_module_name: str,
+        val_protoc_class_name: str,
 ):
     """Consume messages from a topic.
 
@@ -209,7 +207,7 @@ def consume(
     \b
     EXAMPLES:
     # Consume the first 10 messages from TOPIC in the current context and print them to STDOUT in order.
-    esque consume --first -n 10 --preserve-order --pretty-print --stdout TOPIC
+    esque consume --first -n 10 --preserve-order --pretty-print TOPIC
 
     \b
     # Consume <n> messages, starting from the 10th, from TOPIC in the <source_ctx> context and write them to files.
@@ -217,29 +215,29 @@ def consume(
 
     \b
     # Extract json objects from keys
-    esque consume --stdout -s avro TOPIC | jq '.key | fromjson'
+    esque consume -s avro TOPIC | jq '.key | fromjson'
 
     \b
     # Extract binary data from keys (depending on the data this could mess up your console)
-    esque consume --stdout -s binary TOPIC | jq '.key | @base64d'
+    esque consume -s binary TOPIC | jq '.key | @base64d'
 
     \b
     # Extract protobuf data from topic
-    esque consume --stdout -s proto TOPIC | jq
+    esque consume -s proto TOPIC | jq
 
     \b
     # Extract protobuf data from topic using specific proto-key
-    esque consume --stdout -s proto --proto-key=topic-api-v2 TOPIC | jq
+    esque consume -s proto --proto-key=topic-api-v2 TOPIC | jq
 
     \b
     # Extract protobuf data from topic using specific customised protobuf config
-    esque consume --stdout -s proto --protoc_py_path=path --protoc_module_name=api.module_name --protoc_class_name=ModuleClass  TOPIC
+    esque consume -s proto --protoc_py_path=path --protoc_module_name=api.module_name --protoc_class_name=ModuleClass  TOPIC
     """
     if not from_context:
         from_context = state.config.current_context
     state.config.context_switch(from_context)
 
-    if not write_to_stdout and not directory:
+    if directory is ".":
         directory = Path() / "messages" / topic / datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     builder = PipelineBuilder()
@@ -267,12 +265,11 @@ def consume(
     input_handler = create_input_handler(consumergroup, from_context, topic)
     builder.with_input_handler(input_handler)
 
-    output_handler = create_output_handler(directory, write_to_stdout, key_serializer, val_serializer, pretty_print)
+    output_handler = create_output_handler(directory, key_serializer, val_serializer, pretty_print)
     builder.with_output_handler(output_handler)
 
-    output_message_serializer = create_output_message_serializer(
-        write_to_stdout, directory, key_serializer, val_serializer
-    )
+    output_message_serializer = create_output_message_serializer(directory, key_serializer, val_serializer
+                                                                 )
     builder.with_output_message_serializer(output_message_serializer)
 
     if last:
@@ -296,7 +293,7 @@ def consume(
     pipeline = builder.build()
     pipeline.run_pipeline()
 
-    if not write_to_stdout:
+    if directory:
         if counter.message_count == number:
             click.echo(blue_bold(str(counter.message_count)) + " messages consumed.")
         else:
@@ -359,29 +356,25 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
 
 
 def create_output_handler(
-    directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
+        directory: Optional[pathlib.Path], key_serializer, val_serializer: str, pretty_print: bool
 ):
-    if directory and write_to_stdout:
-        raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
-    elif write_to_stdout:
-        return PipeHandler(
-            PipeHandlerConfig(
-                scheme="pipe",
-                host="stdout",
-                path="",
-                key_encoding="base64" if key_serializer == "binary" else "utf-8",
-                value_encoding="base64" if val_serializer == "binary" else "utf-8",
-                pretty_print="1" if pretty_print else "",
-            )
-        )
-    else:
-        output_handler = PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
+    if directory:
         click.echo(f"Writing data to {blue_bold(str(directory))}.")
-    return output_handler
+        return PathHandler(PathHandlerConfig(scheme="path", host="", path=str(directory)))
+    return PipeHandler(
+        PipeHandlerConfig(
+            scheme="pipe",
+            host="stdout",
+            path="",
+            key_encoding="base64" if key_serializer == "binary" else "utf-8",
+            value_encoding="base64" if val_serializer == "binary" else "utf-8",
+            pretty_print="1" if pretty_print else "",
+        )
+    )
 
 
 def create_output_message_serializer(
-    write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
+        directory: Optional[pathlib.Path], key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
         if serializer == "str":
@@ -392,7 +385,7 @@ def create_output_message_serializer(
 
     actual_key_serializer = get_serializer_for_stdout(key_serializer)
     actual_val_serializer = get_serializer_for_stdout(val_serializer)
-    if not write_to_stdout and (key_serializer == "avro" or val_serializer == "avro"):
+    if directory and (key_serializer == "avro" or val_serializer == "avro"):
         actual_key_serializer = actual_val_serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )

@@ -17,14 +17,14 @@ from tests.utils import produce_avro_test_messages, produce_binary_test_messages
 
 @pytest.mark.integration
 def test_avro_consume_to_stdout(
-    avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
+        avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
     expected_messages = produce_avro_test_messages(avro_producer, topic_name=source_topic_id, amount=10)
 
     message_text = non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "--stdout", "--number", "10", "-s", "avro", "-k", "avro", source_topic_id],
+        args=["consume", "--number", "10", "-s", "avro", "-k", "avro", source_topic_id],
         catch_exceptions=False,
     )
     # Check assertions:
@@ -37,17 +37,17 @@ def test_avro_consume_to_stdout(
 
 @pytest.mark.integration
 def test_offset_not_committed(
-    avro_producer: AvroProducer,
-    source_topic: Tuple[str, int],
-    non_interactive_cli_runner: CliRunner,
-    consumergroup_controller: ConsumerGroupController,
+        avro_producer: AvroProducer,
+        source_topic: Tuple[str, int],
+        non_interactive_cli_runner: CliRunner,
+        consumergroup_controller: ConsumerGroupController,
 ):
     source_topic_id, _ = source_topic
     produce_avro_test_messages(avro_producer, topic_name=source_topic_id)
 
     non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "--stdout", "--numbers", "10", "-s", "avro", "-k", "avro", source_topic_id],
+        args=["consume", "--numbers", "10", "-s", "avro", "-k", "avro", source_topic_id],
         catch_exceptions=False,
     )
 
@@ -62,14 +62,14 @@ def test_offset_not_committed(
 
 @pytest.mark.integration
 def test_binary_consume_to_stdout(
-    producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
+        producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
     expected_messages = produce_binary_test_messages(producer, topic_name=source_topic_id)
 
     message_text = non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "--stdout", "--number", "10", "-s", "binary", "-k", "binary", source_topic_id],
+        args=["consume", "--number", "10", "-s", "binary", "-k", "binary", source_topic_id],
         catch_exceptions=False,
     )
     # Check assertions:
