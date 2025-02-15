@@ -1,4 +1,3 @@
-import base64
 import datetime
 import struct
 
@@ -12,22 +11,20 @@ CET = datetime.timezone(datetime.timedelta(seconds=3600), "CET")
 
 
 def test_struct_serializer_with_valid_format():
-    serializer = StructSerializer(StructSerializerConfig(
-        scheme='struct',
-        serializer_struct_format='<I',
-        deserializer_struct_format='<I'
-    ))
+    serializer = StructSerializer(
+        StructSerializerConfig(scheme="struct", serializer_format="<I", deserializer_format="<I")
+    )
     num = 123
-    expected = struct.pack('<I', num)
+    expected = struct.pack("<I", num)
     serialized_result = serializer.serialize(Data(num, UnknownDataType()))
     assert serialized_result == expected
     deserialized_result = serializer.deserialize(serialized_result)
-    assert deserialized_result == num
+    assert deserialized_result.payload == num
 
 
 def test_struct_deserializer_with_invalid_format():
-    serializer = StructSerializer(StructSerializerConfig(scheme='struct'))
-    with pytest.raises(ValueError, match="serialize format cannot be None"):
-        serializer.serialize(Data(payload=1, data_type=UnknownDataType()))
-    with pytest.raises(ValueError, match="deserialize format cannot be None"):
-        serializer.deserialize_many([])
+    serializer = StructSerializer(StructSerializerConfig(scheme="struct"))
+    with pytest.raises(ValueError, match="serializer struct format cannot be None"):
+        serializer.serialize(Data(payload=[], data_type=UnknownDataType()))
+    with pytest.raises(ValueError, match="deserializer struct format cannot be None"):
+        serializer.deserialize(b"1")

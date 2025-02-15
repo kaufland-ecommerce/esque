@@ -8,10 +8,16 @@ from esque.io.serializers import SerializerConfig
 from esque.io.serializers.base import DataSerializer
 
 
-@dataclasses.dataclass()
+@dataclasses.dataclass
 class StructSerializerConfig(SerializerConfig):
-    deserializer_struct_format: str = None
-    serializer_struct_format: str = None
+    deserializer_format: Optional[str] = None
+    serializer_format: Optional[str] = None
+
+
+def _validate_format(format_type: str, format_value: Optional[str]) -> str:
+    if format_value is None:
+        raise ValueError(f"{format_type} struct format cannot be None")
+    return format_value
 
 
 class StructSerializer(DataSerializer):
@@ -21,13 +27,13 @@ class StructSerializer(DataSerializer):
     def deserialize(self, raw_data: Optional[bytes]) -> Data:
         if raw_data is None:
             return Data.NO_DATA
-        if self.config.deserializer_struct_format is None:
-            raise ValueError(f"serialize format cannot be None")
-        return unpack(self.config.deserializer_struct_format, raw_data)[0]
+
+        deserializer_format = _validate_format("deserializer", self.config.deserializer_struct_format)
+        return Data(payload=unpack(deserializer_format, raw_data)[0], data_type=UnknownDataType())
 
     def serialize(self, data: Data) -> Optional[bytes]:
         if isinstance(data.data_type, NoData):
             return None
-        if self.config.serializer_struct_format is None:
-            raise ValueError(f"serialize format cannot be None")
-        return pack(self.config.serializer_struct_format, data.payload)
+
+        serializer_format = _validate_format("serializer", self.config.serializer_struct_format)
+        return pack(serializer_format, data.payload)

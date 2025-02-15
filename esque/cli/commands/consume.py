@@ -354,9 +354,7 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
             )
         )
     elif config.serializer == "struct":
-        return StructSerializer(
-            StructSerializerConfig(scheme="struct", deserializer_struct_format=config.struct_format)
-        )
+        return StructSerializer(StructSerializerConfig(scheme="struct", deserializer_format=config.struct_format))
     raise ValueError("serializer " + config.serializer + " not found")
 
 
