@@ -14,7 +14,7 @@ In the Kafka world nothing is easy, but `esque` (pronounced *esk*) is an attempt
 
 Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be.
 
-While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers.
+While adopting kafka at real.digital(Kaufland) we noticed the immense entry barrier it poses to newcomers.
 We can't recount how often we wrote Slack messages asking for the script to check the
 status of topics or consumer groups. This is partly (but not only) due to a
 fragmented and unclear definition of tooling and APIs for kafka.
@@ -39,7 +39,8 @@ We feel that the goal of `esque` embodies the principle: “**keep easy things e
 * Edit Topic Configurations
 * Edit Consumer Offset for Topics
 * SASL/SSL Support out of the box
-* Consume and Produce to and from Avro and Plaintext Topics (including Avro Schema Resolution from Schema Registry)
+* Consuming from Avro,Protobuf,plaintext,struct Topics (including Avro Schema Resolution from Schema Registry)
+* Producing to and from Avro and Plaintext Topics (including Avro Schema Resolution from Schema Registry)
 * Context Switch (Easily Switch between pre-defined Clusters)
 * Kafka Ping (Test roundtrip time to your kafka cluster)
 
@@ -83,7 +84,7 @@ Commands:
 
 `esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. 
 
-`esque` requires Python 3.8+ to run (Python 3.11 is not yet supported).
+`esque` requires Python 3.9+ to run.
 
 #### Installation on Alpine Linux
 
@@ -139,6 +140,15 @@ contexts:
       - localhost:9092
     security_protocol: PLAINTEXT
     schema_registry: http://localhost:8081
+    proto:
+      topic1:
+        protoc_py_path: 'path to compiled files using protoc'
+        module_name: "api_stubs_py.api.hello_pb2"
+        class_name: HelloMessage
+      any_key:
+        protoc_py_path: 'path to compiled files using protoc'
+        module_name: "api_stubs_py.api.bye_pb2"
+        class_name: ByeMessage
     default_values:
       num_partitions: 1
       replication_factor: 1
@@ -171,7 +181,7 @@ topics:
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.8 & [poetry](https://github.com/sdispater/poetry) installed, then run
+To setup your development environment, make sure you have at least Python 3.9 & [poetry](https://github.com/sdispater/poetry) installed, then run
 
 ```bash
 poetry install
