@@ -164,7 +164,7 @@ version = "2025.1.31"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.6"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "certifi-2025.1.31-py3-none-any.whl", hash = "sha256:ca78db4565a652026a4db2bcdf68f2fb589ea80d0be70e03929ed730746b84fe"},
     {file = "certifi-2025.1.31.tar.gz", hash = "sha256:3d5da6925056f6f18f119200434a4780a94263f10d1c21d032a6f6b2baa20651"},
@@ -188,7 +188,7 @@ version = "3.4.1"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
 optional = false
 python-versions = ">=3.7"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "charset_normalizer-3.4.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:91b36a978b5ae0ee86c394f5a54d6ef44db1de0815eb43de826d41d21e4af3de"},
     {file = "charset_normalizer-3.4.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7461baadb4dc00fd9e0acbe254e3d7d2112e7f92ced2adc96e54ef6501c5f176"},
@@ -458,6 +458,26 @@ tomli = {version = "*", optional = true, markers = "python_full_version <= \"3.1
 toml = ["tomli"]
 
 [[package]]
+name = "coveralls"
+version = "4.0.1"
+description = "Show coverage stats online via coveralls.io"
+optional = false
+python-versions = "<3.13,>=3.8"
+groups = ["dev"]
+files = [
+    {file = "coveralls-4.0.1-py3-none-any.whl", hash = "sha256:7a6b1fa9848332c7b2221afb20f3df90272ac0167060f41b5fe90429b30b1809"},
+    {file = "coveralls-4.0.1.tar.gz", hash = "sha256:7b2a0a2bcef94f295e3cf28dcc55ca40b71c77d1c2446b538e85f0f7bc21aa69"},
+]
+
+[package.dependencies]
+coverage = {version = ">=5.0,<6.0.dev0 || >6.1,<6.1.1 || >6.1.1,<8.0", extras = ["toml"]}
+docopt = ">=0.6.1,<0.7.0"
+requests = ">=1.0.0,<3.0.0"
+
+[package.extras]
+yaml = ["pyyaml (>=3.10,<7.0)"]
+
+[[package]]
 name = "decopatch"
 version = "1.4.10"
 description = "Create decorators easily in python."
@@ -482,6 +502,17 @@ groups = ["main"]
 files = [
     {file = "distlib-0.3.9-py2.py3-none-any.whl", hash = "sha256:47f8c22fd27c27e25a65601af709b38e4f0a45ea4fc2e710f65755fa8caaaf87"},
     {file = "distlib-0.3.9.tar.gz", hash = "sha256:a60f20dea646b8a33f3e7772f74dc0b2d0772d2837ee1342a00645c81edf9403"},
+]
+
+[[package]]
+name = "docopt"
+version = "0.6.2"
+description = "Pythonic argument parser, that will make you smile"
+optional = false
+python-versions = "*"
+groups = ["dev"]
+files = [
+    {file = "docopt-0.6.2.tar.gz", hash = "sha256:49b3a825280bd66b3aa83585ef59c4a8c82f2c8a522dbe754a8bc8d08c85c491"},
 ]
 
 [[package]]
@@ -661,7 +692,7 @@ version = "3.10"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
 python-versions = ">=3.6"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
     {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
@@ -1244,7 +1275,7 @@ version = "2.32.3"
 description = "Python HTTP for Humans."
 optional = false
 python-versions = ">=3.8"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6"},
     {file = "requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760"},
@@ -1406,7 +1437,7 @@ files = [
     {file = "typing_extensions-4.12.2-py3-none-any.whl", hash = "sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d"},
     {file = "typing_extensions-4.12.2.tar.gz", hash = "sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8"},
 ]
-markers = {main = "python_version < \"3.13\"", dev = "python_version < \"3.11\""}
+markers = {dev = "python_version < \"3.11\""}
 
 [[package]]
 name = "tzdata"
@@ -1426,7 +1457,7 @@ version = "2.3.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "dev"]
 files = [
     {file = "urllib3-2.3.0-py3-none-any.whl", hash = "sha256:1cee9ad369867bfdbbb48b7dd50374c0967a0bb7710050facf0dd6911440e3df"},
     {file = "urllib3-2.3.0.tar.gz", hash = "sha256:f8c5449b3cf0861679ce7e0503c7b44b5ec981bec0d1d3795a07f1ba96f0204d"},
@@ -1479,5 +1510,5 @@ ruamel = ["ruamel.yaml"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.9,<=3.13"
-content-hash = "4e0a00484fb4c8e75696ec58ec9feb657cdad3eaf8b51836d7bce363ae1cb657"
+python-versions = ">=3.9,<3.13"
+content-hash = "ff223443fed43cad5a0d855b9dedb89729171bbfbcb5b324f5397350d078ba9a"
