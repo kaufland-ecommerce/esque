@@ -72,13 +72,15 @@ class SerializationConfig:
 @click.option(
     "--last/--first",
     help="Start consuming from the earliest or latest offset in the topic."
-         "Latest means at the end of the topic _not including_ the last message(s),"
-         "so if no new data is coming in nothing will be consumed.",
+    "Latest means at the end of the topic _not including_ the last message(s),"
+    "so if no new data is coming in nothing will be consumed.",
     default=False,
 )
-@click.option("--key-struct-format",
-              help=" convert binary (packed) data into string. an example can be find here: https://docs.python.org/3/library/struct.html",
-              type=str)
+@click.option(
+    "--key-struct-format",
+    help=" convert binary (packed) data into string. an example can be find here: https://docs.python.org/3/library/struct.html",
+    type=str,
+)
 @click.option("--val-struct-format", help=" convert binary (packed) data into string", type=str)
 @click.option(
     "-k",
@@ -98,8 +100,8 @@ class SerializationConfig:
     "--key-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-         "this is used for key part of the message",
+    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+    "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-py-path",
@@ -110,7 +112,7 @@ class SerializationConfig:
     "--key-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-         "this is used for key part of the message",
+    "this is used for key part of the message",
 )
 @click.option(
     "--key-protoc-class-name",
@@ -121,8 +123,8 @@ class SerializationConfig:
     "--val-proto-key",
     type=click.STRING,
     help="proto key in configuration if you want to deserialize proto by anything other than topic name."
-         " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
-         "this is used for value part of the message",
+    " by default if -s is set to proto we set proto-key as topic name but this can be overwritten by this key"
+    "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-py-path",
@@ -133,7 +135,7 @@ class SerializationConfig:
     "--val-protoc-module-name",
     type=click.STRING,
     help="module name for compiled protobuf message path. for example api.hi_pb2 if package name is api and file name is hi_pb2.py"
-         "this is used for value part of the message",
+    "this is used for value part of the message",
 )
 @click.option(
     "--val-protoc-class-name",
@@ -141,7 +143,6 @@ class SerializationConfig:
     help="class name of message. this is used for key part of the message",
 )
 @click.option(
-
     "-c",
     "--consumergroup",
     metavar="<consumer_group>",
@@ -152,11 +153,10 @@ class SerializationConfig:
     required=False,
 )
 @click.option(
-
     "--preserve-order",
     help="Preserve the order of messages, regardless of their partition. "
-         "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
-         "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
+    "Order is determined by timestamp and this feature assumes message timestamps are monotonically increasing "
+    "within each partition. Will cause the consumer to stop at temporary ends which means it will ignore new messages.",
     default=False,
     is_flag=True,
 )
@@ -165,36 +165,35 @@ class SerializationConfig:
     "-p",
     "--pretty-print",
     help="Use multiple lines to represent each kafka message instead of putting every JSON object into a single "
-         "line. Only has an effect when consuming to stdout.",
+    "line. Only has an effect when consuming to stdout.",
     default=False,
     is_flag=True,
 )
 @default_options
 def consume(
-        state: State,
-        topic: str,
-        from_context: str,
-        number: Optional[int],
-        match: str,
-        last: bool,
-        key_struct_format: str,
-        val_struct_format: str,
-        key_serializer: str,
-        val_serializer: str,
-        directory: str,
-        consumergroup: str,
-        preserve_order: bool,
-        write_to_stdout: bool,
-        pretty_print: bool,
-        key_proto_key: str,
-        key_protoc_py_path: str,
-        key_protoc_module_name: str,
-        key_protoc_class_name: str,
-        val_proto_key: str,
-        val_protoc_py_path: str,
-        val_protoc_module_name: str,
-        val_protoc_class_name: str
-
+    state: State,
+    topic: str,
+    from_context: str,
+    number: Optional[int],
+    match: str,
+    last: bool,
+    key_struct_format: str,
+    val_struct_format: str,
+    key_serializer: str,
+    val_serializer: str,
+    directory: str,
+    consumergroup: str,
+    preserve_order: bool,
+    write_to_stdout: bool,
+    pretty_print: bool,
+    key_proto_key: str,
+    key_protoc_py_path: str,
+    key_protoc_module_name: str,
+    key_protoc_class_name: str,
+    val_proto_key: str,
+    val_protoc_py_path: str,
+    val_protoc_module_name: str,
+    val_protoc_class_name: str,
 ):
     """Consume messages from a topic.
 
@@ -251,7 +250,7 @@ def consume(
         proto_key=key_proto_key,
         protoc_py_path=key_protoc_py_path,
         protoc_module_name=key_protoc_module_name,
-        protoc_class_name=key_protoc_class_name
+        protoc_class_name=key_protoc_class_name,
     )
 
     val_config = SerializationConfig(
@@ -345,7 +344,7 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
             module_name = module_name or proto_cfg.get("module_name")
             class_name = class_name or proto_cfg.get("class_name")
         if protoc_py_path is None or module_name is None or class_name is None:
-            raise ValueError("protobuf configuration not found " )
+            raise ValueError("protobuf configuration not found ")
         return ProtoSerializer(
             ProtoSerializerConfig(
                 scheme="proto",
@@ -355,12 +354,14 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
             )
         )
     elif config.serializer == "struct":
-        return StructSerializer(StructSerializerConfig(scheme="struct", deserializer_struct_format=config.struct_format))
+        return StructSerializer(
+            StructSerializerConfig(scheme="struct", deserializer_struct_format=config.struct_format)
+        )
     raise ValueError("serializer " + config.serializer + " not found")
 
 
 def create_output_handler(
-        directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
+    directory: pathlib.Path, write_to_stdout: bool, key_serializer, val_serializer: str, pretty_print: bool
 ):
     if directory and write_to_stdout:
         raise ValueError("Cannot write to a directory and STDOUT, please pick one!")
@@ -382,7 +383,7 @@ def create_output_handler(
 
 
 def create_output_message_serializer(
-        write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
+    write_to_stdout: bool, directory: pathlib.Path, key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
         if serializer == "str":
