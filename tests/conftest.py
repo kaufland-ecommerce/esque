@@ -27,6 +27,8 @@ from esque.config import Config
 from esque.config.migration import CURRENT_VERSION
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.helpers import log_error
+from esque.io.serializers import ProtoSerializer
+from esque.io.serializers.proto import ProtoSerializerConfig
 from esque.resources.broker import Broker
 from esque.resources.topic import Topic
 
@@ -327,3 +329,15 @@ FORMATS_AND_LOADERS = [("yaml", check_and_load_yaml), ("json", json.loads)]
 parameterized_output_formats = parametrize(
     "output_format, loader", FORMATS_AND_LOADERS, ids=["yaml_output", "json_output"]
 )
+
+
+@fixture
+def proto_serializer() -> ProtoSerializer:
+    return ProtoSerializer(
+        ProtoSerializerConfig(
+            scheme="proto",
+            protoc_py_path=f"{Path(__file__).parent}/test_samples/pb",
+            module_name="hi_pb2",
+            class_name="HelloWorldResponse",
+        )
+    )

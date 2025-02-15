@@ -12,12 +12,13 @@ from esque import config
 from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
-from tests.utils import produce_avro_test_messages, produce_binary_test_messages
+from esque.io.serializers import ProtoSerializer
+from tests.utils import produce_avro_test_messages, produce_binary_test_messages, produce_proto_test_messages
 
 
 @pytest.mark.integration
 def test_avro_consume_to_stdout(
-    avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
+        avro_producer: AvroProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
     expected_messages = produce_avro_test_messages(avro_producer, topic_name=source_topic_id, amount=10)
@@ -37,10 +38,10 @@ def test_avro_consume_to_stdout(
 
 @pytest.mark.integration
 def test_offset_not_committed(
-    avro_producer: AvroProducer,
-    source_topic: Tuple[str, int],
-    non_interactive_cli_runner: CliRunner,
-    consumergroup_controller: ConsumerGroupController,
+        avro_producer: AvroProducer,
+        source_topic: Tuple[str, int],
+        non_interactive_cli_runner: CliRunner,
+        consumergroup_controller: ConsumerGroupController,
 ):
     source_topic_id, _ = source_topic
     produce_avro_test_messages(avro_producer, topic_name=source_topic_id)
@@ -62,7 +63,7 @@ def test_offset_not_committed(
 
 @pytest.mark.integration
 def test_binary_consume_to_stdout(
-    producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
+        producer: ConfluentProducer, source_topic: Tuple[str, int], non_interactive_cli_runner: CliRunner
 ):
     source_topic_id, _ = source_topic
     expected_messages = produce_binary_test_messages(producer, topic_name=source_topic_id)
@@ -70,6 +71,32 @@ def test_binary_consume_to_stdout(
     message_text = non_interactive_cli_runner.invoke(
         esque,
         args=["consume", "--number", "10", "-s", "binary", "-k", "binary", source_topic_id],
+        catch_exceptions=False,
+    )
+    # Check assertions:
+    actual_messages = {
+        (base64.b64decode(msg["key"].encode()), base64.b64decode(msg["value"].encode()), msg["partition"])
+        for msg in map(json.loads, message_text.output.splitlines())
+    }
+    expected_messages = {(msg.key, msg.value, msg.partition) for msg in expected_messages}
+    assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_protobuf_consume_to_stdout(
+        proto_serializer: ProtoSerializer, producer: ConfluentProducer, source_topic: Tuple[str, int],
+        non_interactive_cli_runner: CliRunner
+):
+    source_topic_id, _ = source_topic
+    expected_messages = produce_proto_test_messages(proto_serializer, producer, topic_name=source_topic_id)
+
+    message_text = non_interactive_cli_runner.invoke(
+        esque,
+        args=["consume", "--number", "10", "-s", "proto", source_topic_id,
+              "--protoc_py_path", proto_serializer.config.protoc_py_path,
+              "--protoc_module_name", proto_serializer.config.module_name,
+              "--protoc_class_name", proto_serializer.config.class_name
+              ],
         catch_exceptions=False,
     )
     # Check assertions:

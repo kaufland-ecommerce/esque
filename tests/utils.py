@@ -11,6 +11,9 @@ from confluent_kafka import cimpl
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import loads as load_schema
 
+from esque.io.messages import Data
+from esque.io.serializers import ProtoSerializer
+
 T = TypeVar("T")
 
 
@@ -132,12 +135,26 @@ class BinaryKafkaTestMessage(KafkaTestMessage):
         return random_bytes()
 
 
+@dataclasses.dataclass
+class ProtobufKafkaTestMessage(KafkaTestMessage):
+
+    @staticmethod
+    def random_key() -> Any:
+        return random_bytes()
+
+    @staticmethod
+    def random_value() -> Any:
+        return {
+            'type_str': random_str(random.randint(1, 10))
+        }
+
+
 def random_bytes(length: int = 16) -> bytes:
     return random.getrandbits(length * 8).to_bytes(length, "big")
 
 
 def produce_text_test_messages(
-    producer: ConfluentProducer, topic_name: str, amount: int = 10
+        producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List["KafkaTestMessage"]:
     messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=False)
     produce_all(producer, messages)
@@ -151,7 +168,7 @@ def produce_all(producer: ConfluentProducer, messages: List[KafkaTestMessage]) -
 
 
 def produce_text_test_messages_with_headers(
-    producer: ConfluentProducer, topic_name: str, amount: int = 10
+        producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List["KafkaTestMessage"]:
     messages = KafkaTestMessage.random_values(topic_name=topic_name, n=amount, generate_headers=True)
     produce_all(producer, messages)
@@ -159,7 +176,7 @@ def produce_text_test_messages_with_headers(
 
 
 def produce_avro_test_messages(
-    avro_producer: AvroProducer, topic_name: str, amount: int = 10
+        avro_producer: AvroProducer, topic_name: str, amount: int = 10
 ) -> List[AvroKafkaTestMessage]:
     messages: List[AvroKafkaTestMessage] = AvroKafkaTestMessage.random_values(topic_name, n=amount)
     produce_all(avro_producer, messages)
@@ -167,10 +184,24 @@ def produce_avro_test_messages(
 
 
 def produce_binary_test_messages(
-    producer: ConfluentProducer, topic_name: str, amount: int = 10
+        producer: ConfluentProducer, topic_name: str, amount: int = 10
 ) -> List[BinaryKafkaTestMessage]:
     messages: List[BinaryKafkaTestMessage] = BinaryKafkaTestMessage.random_values(
         topic_name=topic_name, n=amount, generate_headers=False
     )
     produce_all(producer, messages)
     return messages
+
+
+def produce_proto_test_messages(
+        proto_serializer: ProtoSerializer, producer: ConfluentProducer, topic_name: str, amount: int = 10
+) -> List[BinaryKafkaTestMessage]:
+    messages: List[ProtobufKafkaTestMessage] = ProtobufKafkaTestMessage.random_values(
+        topic_name=topic_name, n=amount,
+        generate_headers=False)
+    proto_serialised_messages = []
+    for msg in messages:
+        msg.value = proto_serializer.serialize(Data(msg.value, ProtoSerializer.dict_data_type))
+        proto_serialised_messages += msg
+    produce_all(producer, messages)
+    return proto_serialised_messages

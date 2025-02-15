@@ -84,7 +84,7 @@ Commands:
 
 `esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. 
 
-`esque` requires Python 3.9+ to run.
+`esque` requires Python 3.9+ to run(Python 3.13 is not yet supported)..
 
 #### Installation on Alpine Linux
 

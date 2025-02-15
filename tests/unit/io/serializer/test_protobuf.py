@@ -1,25 +1,12 @@
 import base64
 import datetime
-from pathlib import Path
 
-from pytest_cases import fixture, parametrize_with_cases
+from pytest_cases import parametrize_with_cases
 
 from esque.io.messages import Data
-from esque.io.serializers.proto import ProtoSerializer, ProtoSerializerConfig
+from esque.io.serializers.proto import ProtoSerializer
 
 CET = datetime.timezone(datetime.timedelta(seconds=3600), "CET")
-
-
-@fixture
-def serializer() -> ProtoSerializer:
-    return ProtoSerializer(
-        ProtoSerializerConfig(
-            scheme="proto",
-            protoc_py_path=f"{Path(__file__).parent}/pb",
-            module_name="hi_pb2",
-            class_name="HelloWorldResponse",
-        )
-    )
 
 
 def proto_cases_only_name_is_set():
@@ -64,12 +51,12 @@ def proto_cases_when_type_float_is_set():
 
 
 @parametrize_with_cases(argnames=("b64", "expected"), prefix="proto_cases", cases=".")
-def test_proto_deserializer(serializer, b64, expected):
-    actual_result = serializer.deserialize(base64.b64decode(b64))
+def test_proto_deserializer(proto_serializer, b64, expected):
+    actual_result = proto_serializer.deserialize(base64.b64decode(b64))
     assert actual_result.payload == expected
 
 
 @parametrize_with_cases(argnames=("b64", "input"), prefix="proto_cases", cases=".")
-def test_proto_serializer(serializer, b64, input: dict):
-    actual_result = serializer.serialize(Data(input, ProtoSerializer.dict_data_type))
+def test_proto_serializer(proto_serializer, b64, input: dict):
+    actual_result = proto_serializer.serialize(Data(input, ProtoSerializer.dict_data_type))
     assert actual_result == base64.b64decode(b64)
