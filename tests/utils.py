@@ -199,11 +199,11 @@ def produce_proto_test_messages(proto_serializer, producer: ConfluentProducer, t
 ProtoTestCase = collections.namedtuple("prot_test_messages", ["inputs", "expected_output"])
 
 
-def prot_test_messages(n: int) -> ProtoTestCase:
+def prot_test_messages(amount: int) -> ProtoTestCase:
     inputs = []
     expected_outputs = []
 
-    for _ in range(n):
+    for _ in range(amount):
         input_data = {
             "type_string": random_str(random.randint(1, 10)),
             "optional_string": random.choice([None, random_str(random.randint(1, 10))]),
