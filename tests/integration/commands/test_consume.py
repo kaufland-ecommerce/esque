@@ -91,7 +91,6 @@ def test_protobuf_consume_to_stdout(
 ):
     source_topic_id, _ = source_topic
     expected_messages = produce_proto_test_messages(proto_serializer, producer, topic_name=source_topic_id)
-
     message_text = non_interactive_cli_runner.invoke(
         esque,
         args=[
