@@ -338,7 +338,9 @@ def create_serializer(state: State, topic: str, config: SerializationConfig):
             module_name = module_name or proto_cfg.get("module_name")
             class_name = class_name or proto_cfg.get("class_name")
         if protoc_py_path is None or module_name is None or class_name is None:
-            raise ValueError("protobuf configuration not found ")
+            raise ValueError(
+                "protobuf configuration not found."
+                "you need to add proto config to the configuration file or provide 3 necessary parameter for path,module name and class name. ")
         return ProtoSerializer(
             ProtoSerializerConfig(
                 scheme="proto",
