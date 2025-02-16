@@ -181,12 +181,52 @@ topics:
 ## How to de-serialize protobuf files
 
 To de-serialize protobuf files you need to have generated files using [protoc](https://grpc.io/docs/protoc-installation/) command.
-
-After compiling protobuf files for python you need three things.
+Let's assume you have following proto file:
 ```
-  protoc_py_path: 'path to compiled files using protoc'
-  module_name: "api_stubs_py.api.hello_pb2"
-  class_name: HelloMessage
+syntax = "proto3";
+
+service Hi {
+    rpc Get (HelloWorldRequest) returns (HelloWorldResponse);
+}
+
+message HelloWorldRequest {
+    string name = 1;
+}
+
+message HelloWorldResponse {
+    string type_string = 1;
+    optional string optional_string = 2;
+    EnumType type_enum = 3;
+    int32 type_int32 = 4;
+    int64 type_int64 = 5;
+    optional int64 optional_int64 = 6;
+    float type_float = 7;
+}
+enum EnumType {
+    ENUM_TYPE_UNSPECIFIED = 0;
+}
+
+```
+first you need to compile it :
+```
+protoc --python_out . hi.proto
+```
+
+then it will create files like :
+```
+hi.proto
+hi_pb2.py
+```
+After compiling protobuf files for python you need three things.
+
+ protoc_py_path: /home/user/pb/ 'absolute path to the compiled files using protoc'
+  module_name: "hi_pb2" (without .py)
+  class_name: HelloWorldResponse
+```
+
+You can insert this parameters using consume command. example :
+```
+esque consume topic_name -s proto --val-protoc-py-path /home/user/pb/ --val-protoc-module-name hi_pb2 --val-protoc-class-name HelloWorldResponse
 ```
 
 
