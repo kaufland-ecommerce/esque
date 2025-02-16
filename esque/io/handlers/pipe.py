@@ -149,7 +149,7 @@ def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> A
 
 def try_to_dict(message):
     try:
-        return json.loads(message)  # Attempt to parse JSON
+        return json.loads(message)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return message
 
