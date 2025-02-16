@@ -236,10 +236,12 @@ if this is a topic you use everyday you can save this in configuration file like
         class_name: HelloWorldResponse
 ```
 and next you just need to run `esque consume topic_name -s proto`.
-if you have same configuration for another topic you don't need to copy the same configuration. you just need to use  `--val-proto-key`
+
+If you have same configuration for another topic you don't need to copy the same configuration. you just need to use  `--val-proto-key`
 to specify the key in configuration file. for example if your new topic is called topic2 then your command will be :
 `esque consume topic_name -s proto --val-proto-key topic_name`
-in this examples you have assumed you want to de-serialize proto messages from value of kafka topic. if you have the same thing but in key then
+
+In this examples you have assumed you want to de-serialize proto messages from value of kafka topic. if you have the same thing but in key then
 all parameters will be changed from `--val-` prefix to `--key-` prefix.
 
 ## Development
