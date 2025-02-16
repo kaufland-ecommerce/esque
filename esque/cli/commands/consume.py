@@ -222,16 +222,16 @@ def consume(
     esque consume -s binary TOPIC | jq '.key | @base64d'
 
     \b
-    # Extract protobuf data from topic
+    # Extract protobuf data from topic when you have configuration in the file.
     esque consume -s proto TOPIC | jq
 
     \b
-    # Extract protobuf data from topic using specific proto-key
+    # Extract protobuf data from topic using specific proto-key.
     esque consume -s proto --proto-key=topic-api-v2 TOPIC | jq
 
     \b
     # Extract protobuf data from topic using specific customised protobuf config
-    esque consume -s proto --protoc_py_path=path --protoc_module_name=api.module_name --protoc_class_name=ModuleClass  TOPIC
+    esque consume -s proto --val-protoc-py-path --val-protoc-module-name=api.module_name --val-protoc-class-name=ClassName TOPIC
     """
     if not from_context:
         from_context = state.config.current_context
