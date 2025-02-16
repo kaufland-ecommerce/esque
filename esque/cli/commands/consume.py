@@ -200,8 +200,8 @@ def consume(
 
     If writing to STDOUT, then data will be represented as a JSON object with the message key and the message value
     always being a string.
-    With the --avro option, those strings are JSON serialized objects.
-    With the --binary option those strings contain the base64 encoded binary data.
+    With the -s avro or -s proto option, those strings are JSON serialized objects.
+    With the -s binary option those strings contain the base64 encoded binary data.
     Without any of the two options, the data in the messages is treated utf-8 encoded strings and will be used as-is.
 
     \b
