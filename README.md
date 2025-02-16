@@ -178,6 +178,17 @@ topics:
     config:
       cleanup.policy: compact
 ```
+## How to de-serialize protobuf files
+
+To de-serialize protobuf files you need to have generated files using [protoc](https://grpc.io/docs/protoc-installation/) command.
+
+After compiling protobuf files for python you need three things.
+```
+  protoc_py_path: 'path to compiled files using protoc'
+  module_name: "api_stubs_py.api.hello_pb2"
+  class_name: HelloMessage
+```
+
 
 ## Development
 
