@@ -209,7 +209,7 @@ enum EnumType {
 ```
 first you need to compile it :
 ```
-protoc --python_out . hi.proto
+protoc --python_out /home/user/pb/ hi.proto
 ```
 
 then it will create files like :
