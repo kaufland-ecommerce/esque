@@ -142,9 +142,9 @@ contexts:
     schema_registry: http://localhost:8081
     proto:
       topic1:
-        protoc_py_path: 'path to compiled files using protoc'
-        module_name: "api_stubs_py.api.hello_pb2"
-        class_name: HelloMessage
+        protoc_py_path: /home/user/pb/
+        module_name: hi_pb2
+        class_name: HelloWorldResponse
       any_key:
         protoc_py_path: 'path to compiled files using protoc'
         module_name: "api_stubs_py.api.bye_pb2"
@@ -181,7 +181,7 @@ topics:
 ## How to de-serialize protobuf files
 
 To de-serialize protobuf files you need to have generated files using [protoc](https://grpc.io/docs/protoc-installation/) command.
-Let's assume you have following proto file:
+Let's assume you have following proto file and you have dispatched message to a kafka topic with `HelloWorldResponse`:
 ```
 syntax = "proto3";
 
@@ -227,7 +227,15 @@ You can insert this parameters using consume command. example :
 ```
 esque consume topic_name -s proto --val-protoc-py-path /home/user/pb/ --val-protoc-module-name hi_pb2 --val-protoc-class-name HelloWorldResponse
 ```
-
+if this is a topic you use everyday you can save this in configuration file like :
+```yaml
+    proto:
+      topic_name:
+        protoc_py_path: /home/user/pb/
+        module_name: hi_pb2
+        class_name: HelloWorldResponse
+```
+and next you just need to run `esque consume topic_name -s proto`.
 
 ## Development
 
