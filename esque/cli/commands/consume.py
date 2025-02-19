@@ -42,6 +42,10 @@ class SerializationConfig:
     protoc_module_name: str
     protoc_class_name: str
 
+    def __post_init__(self):
+        serializer_map = {"s": "str", "b": "binary", "a": "avro", "p": "proto"}
+        self.serializer = serializer_map.get(self.serializer, self.serializer)
+
 
 @click.command("consume", context_settings={"help_option_names": ["-h", "--help"]})
 @click.argument("topic", shell_complete=list_topics)
@@ -85,14 +89,14 @@ class SerializationConfig:
 @click.option(
     "-k",
     "--key-serializer",
-    type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
+    type=click.Choice(["s", "str", "b", "binary", "a", "avro", "p", "proto", "struct"], case_sensitive=False),
     help="Specify deserialization for keys. if you choose avro or binary value will also be set the same unless you choose differently.",
     default=None,
 )
 @click.option(
     "-s",
     "--val-serializer",
-    type=click.Choice(["str", "binary", "avro", "proto", "struct"], case_sensitive=False),
+    type=click.Choice(["s", "str", "b", "binary", "a", "avro", "p", "proto", "struct"], case_sensitive=False),
     help="Specify deserialization for keys. if you choose avro or binary key will also be set the same unless you choose differently.",
     default=None,
 )
@@ -203,6 +207,7 @@ def consume(
     With the -s avro or -s proto option, those strings are JSON serialized objects.
     With the -s binary option those strings contain the base64 encoded binary data.
     Without any of the two options, the data in the messages is treated utf-8 encoded strings and will be used as-is.
+    aliases for serializers are as following: b=binary s=str p=proto a=avro
 
     \b
     EXAMPLES:
@@ -375,15 +380,15 @@ def create_output_message_serializer(
     directory: Optional[pathlib.Path], key_serializer, val_serializer: str
 ) -> MessageSerializer:
     def get_serializer_for_stdout(serializer):
-        if serializer == "str" or serializer is None:
+        if serializer in ("s", "str", None):
             return StringSerializer(StringSerializerConfig(scheme="str"))
-        if serializer == "avro" or serializer == "proto":
+        if serializer in ("avro", "a", "proto", "p"):
             return JsonSerializer(JsonSerializerConfig(scheme="json"))
         return RawSerializer(RawSerializerConfig(scheme="raw"))
 
     actual_key_serializer = get_serializer_for_stdout(key_serializer)
     actual_val_serializer = get_serializer_for_stdout(val_serializer)
-    if directory and (key_serializer == "avro" or val_serializer == "avro"):
+    if directory and (key_serializer in ("avro", "a") or val_serializer in ("a", "avro")):
         actual_key_serializer = actual_val_serializer = RegistryAvroSerializer(
             RegistryAvroSerializerConfig(scheme="reg-avro", schema_registry_uri=f"path:///{directory}")
         )
