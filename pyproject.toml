@@ -1,17 +1,17 @@
 [tool.poetry]
 name = "esque"
-version = "0.6.0"
-description="esque - an operational kafka tool."
+version = "1.0.0a1"
+description = "esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
 readme = "README.md"
 include = [
-  "esque/config/sample_config.yaml",
-  "README.md",
-  "LICENSE",
-  "pyproject.toml",
-  "esque/validation/schemas/*.yaml"
-  ]
+    "esque/config/sample_config.yaml",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+    "esque/validation/schemas/*.yaml"
+]
 
 exclude = ["tests/**/*"]
 
@@ -20,51 +20,53 @@ repository = "https://github.com/real-digital/esque"
 keywords = ["kafka", "cli", "commandline", "administration", "operation"]
 
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: System Administrators",
-  "Intended Audience :: Developers",
-  "Topic :: System :: Systems Administration",
-  "Topic :: Software Development",
-  "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10"
-  ]
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Developers",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 # esque entrypoint
 [tool.poetry.scripts]
 esque = "esque.cli.commands:esque"
 
 # Dependencies
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
-
-avro-python3 = "^1.9"
-click = "8.1.3"
-confluent-kafka = {version = "^1.6", extras = ["avro"]}
-fastavro = "^1.0"
-pendulum = "^2.0"
-kafka-python = "^2.0.2"
-pyyaml = "6.0.1"
-requests = "^2.22"
-yamale = ">=2,<4"
+python = ">=3.9,<3.13"
+avro-python3 = "^1.10"
+click = "^8.1"
+confluent-kafka = { version = "^2.8", extras = ["avro"] }
+fastavro = "^1.10"
+pendulum = "^3.0"
+kafka-python = "^2.0.3"
+pyyaml = "6.0.2"
+requests = "^2.32"
+yamale = "6.0.0"
 toml = "^0.10.0"
-more-itertools = "^8.10.0"
+more-itertools = "^10.6"
+protobuf = "^5.29.3"
+pre-commit = "^4.1.0"
+kafka-python-ng = "2.2.3"
 
-# Dev Dependencies
-[tool.poetry.dev-dependencies]
-pytest = "^5.2"
-pytest-mock = "^1.11"
-pytest-cov = "^2.8"
-flake8 = "^3.7"
-black = {version = "22.6.0", allow-prereleases = true}
-isort = {version = "^4.3", extras = ["pyproject"]}
-bandit = "^1.6.2"
-coveralls = "^1.8.2"
-pytest-cases = "^3.6.4"
+[tool.poetry.group.dev.dependencies]
+pytest = "~8"
+pytest-mock = "^3.11"
+pytest-cov = "^6.0.0"
+flake8 = "7.1.1"
+black = { version = "25.1.0", allow-prereleases = true }
+isort = { version = "^6.0.0", extras = ["pyproject"] }
+bandit = "1.8.2"
+coveralls = "4.0.1"
+pytest-cases = "3.8.6"
 
 [tool.black]
 line-length = 119
-target_version = ['py36']
+target_version = ['py39']
 include = '\.pyi?$'
 
 [tool.isort]
@@ -74,6 +76,10 @@ include_trailing_comma = true
 default_section = "THIRDPARTY"
 known_first_party = ["esque", "tests"]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: mark a test as an integration test"
+]
 [build-system]
 requires = ["poetry>=1.0.2"]
 build-backend = "poetry.masonry.api"

@@ -201,7 +201,7 @@ class PathSchemaRegistryClient(SchemaRegistryClient):
 SCHEMA_REGISTRY_CLIENT_SCHEME_MAP["path"] = PathSchemaRegistryClient
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class RegistryAvroSerializerConfig(SerializerConfig):
     schema_registry_uri: str
     schema_subject: str = ""

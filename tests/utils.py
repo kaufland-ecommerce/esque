@@ -1,3 +1,4 @@
+import collections
 import dataclasses
 import itertools
 import json
@@ -10,6 +11,9 @@ from confluent_kafka import Producer as ConfluentProducer
 from confluent_kafka import cimpl
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import loads as load_schema
+
+from esque.io.messages import Data
+from esque.io.serializers import ProtoSerializer
 
 T = TypeVar("T")
 
@@ -174,3 +178,49 @@ def produce_binary_test_messages(
     )
     produce_all(producer, messages)
     return messages
+
+
+def produce_proto_test_messages(proto_serializer, producer: ConfluentProducer, topic_name: str, amount: int = 10):
+    test_messages = prot_test_messages(amount)
+    binary_messages: List[BinaryKafkaTestMessage] = BinaryKafkaTestMessage.random_values(
+        topic_name=topic_name, n=amount, generate_headers=False
+    )
+    messages = []
+    for i, msg in enumerate(binary_messages):
+        msg.value = proto_serializer.serialize(Data(test_messages.inputs[i], ProtoSerializer.dict_data_type))
+        messages.append(msg)
+    produce_all(producer, messages)
+
+    for i, msg in enumerate(messages):
+        msg.value = test_messages.expected_output[i]
+    return messages
+
+
+ProtoTestCase = collections.namedtuple("prot_test_messages", ["inputs", "expected_output"])
+
+
+def prot_test_messages(amount: int) -> ProtoTestCase:
+    inputs = []
+    expected_outputs = []
+
+    for _ in range(amount):
+        input_data = {
+            "type_string": random_str(random.randint(1, 10)),
+            "optional_string": random.choice([None, random_str(random.randint(1, 10))]),
+            "type_int32": random.randint(1, 100),
+            "type_int64": random.randint(1, 100),
+            "optional_int64": random.choice([None, random.randint(1, 100)]),
+            "type_float": round(random.uniform(-5, 5), 2),
+        }
+
+        expected_output = {**input_data, "type_enum": "ENUM_TYPE_UNSPECIFIED"}
+        for key in ["optional_string", "optional_int64"]:
+            if expected_output[key] is None:
+                del expected_output[key]
+        for key in ["type_int64", "optional_int64"]:
+            if key in expected_output and expected_output[key] is not None:
+                expected_output[key] = str(expected_output[key])
+
+        inputs.append(input_data)
+        expected_outputs.append(expected_output)
+    return ProtoTestCase(inputs=inputs, expected_output=expected_outputs)

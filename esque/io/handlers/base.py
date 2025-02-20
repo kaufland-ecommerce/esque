@@ -10,7 +10,7 @@ H = TypeVar("H", bound="BaseHandler")
 HC = TypeVar("HC", bound="HandlerConfig")
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class HandlerConfig:
     host: str
     path: str
