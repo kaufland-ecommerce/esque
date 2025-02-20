@@ -220,7 +220,7 @@ hi_pb2.py
 After compiling protobuf files for python you need three things.
 
 * `protoc_py_path`: absolute path to the compiled files using protoc. example :  `/home/user/pb/`
-* `module_name`: path to the file having contains your message. our example:  `hi_pb2` (without .py)
+* `module_name`: path to the file having contains your message. our example:  `hi_pb2` (without .py). usually you can find it the pb_2 file in line starts like `_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, [module_name], globals())`
 * `class_name`: message name in protobuf. our example: `HelloWorldResponse`
 
 You can insert this parameters using consume command. example :
