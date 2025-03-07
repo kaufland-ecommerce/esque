@@ -22,8 +22,8 @@ class ProtoSerializerConfig(SerializerConfig):
 
     def _load_message_class(self) -> Type[Message]:
         sys.path.append(self.protoc_py_path)
-        module = importlib.import_module(self.module_name)
-        return getattr(module, self.class_name)
+        grpc_module = importlib.import_module(self.module_name)
+        return getattr(grpc_module, self.class_name)
 
     def get_message_class(self) -> Type[Message]:
         return self._message_class
