@@ -60,7 +60,7 @@ def test_transfer_plain_text_message_using_cli_pipe(
     expected_messages = produce_text_test_messages(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
         esque, args=["produce", "--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
@@ -85,7 +85,7 @@ def test_transfer_plain_text_message_with_headers_using_cli_pipe(
     expected_messages = produce_text_test_messages_with_headers(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque, args=["consume", "--number", "10", source_topic[0]], catch_exceptions=False
     )
     non_interactive_cli_runner.invoke(
         esque, args=["produce", "--stdin", target_topic[0]], input=result1.output, catch_exceptions=False
@@ -110,7 +110,9 @@ def test_transfer_binary_message_using_cli_pipe(
     expected_messages = produce_binary_test_messages(topic_name=source_topic[0], producer=producer)
 
     result1 = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--binary", "--number", "10", source_topic[0]], catch_exceptions=False
+        esque,
+        args=["consume", "-s", "binary", "-k", "binary", "--number", "10", source_topic[0]],
+        catch_exceptions=False,
     )
     non_interactive_cli_runner.invoke(
         esque, args=["produce", "--stdin", "--binary", target_topic[0]], input=result1.output, catch_exceptions=False
@@ -191,7 +193,18 @@ def test_transfer_binary_message_using_file(
 
     non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "-d", str(output_directory), "--binary", "--number", "10", source_topic[0]],
+        args=[
+            "consume",
+            "-d",
+            str(output_directory),
+            "-s",
+            "binary",
+            "-k",
+            "binary",
+            "--number",
+            "10",
+            source_topic[0],
+        ],
         catch_exceptions=False,
     )
     non_interactive_cli_runner.invoke(
@@ -219,7 +232,7 @@ def test_transfer_avro_message_using_file(
 
     non_interactive_cli_runner.invoke(
         esque,
-        args=["consume", "-d", str(output_directory), "--avro", "--number", "10", source_topic[0]],
+        args=["consume", "-d", str(output_directory), "-s", "avro", "-k", "avro", "--number", "10", source_topic[0]],
         catch_exceptions=False,
     )
     non_interactive_cli_runner.invoke(

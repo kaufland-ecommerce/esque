@@ -6,7 +6,7 @@ from esque.io.messages import Data
 from esque.io.serializers.base import DataSerializer, SerializerConfig
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class RawSerializerConfig(SerializerConfig):
     pass
 

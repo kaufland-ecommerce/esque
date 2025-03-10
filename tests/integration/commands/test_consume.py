@@ -12,7 +12,8 @@ from esque import config
 from esque.cli.commands import esque
 from esque.controller.consumergroup_controller import ConsumerGroupController
 from esque.errors import ConsumerGroupDoesNotExistException
-from tests.utils import produce_avro_test_messages, produce_binary_test_messages
+from esque.io.serializers import ProtoSerializer
+from tests.utils import produce_avro_test_messages, produce_binary_test_messages, produce_proto_test_messages
 
 
 @pytest.mark.integration
@@ -23,14 +24,16 @@ def test_avro_consume_to_stdout(
     expected_messages = produce_avro_test_messages(avro_producer, topic_name=source_topic_id, amount=10)
 
     message_text = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", "--avro", source_topic_id], catch_exceptions=False
+        esque,
+        args=["consume", "--number", "10", "-s", "avro", "-k", "avro", source_topic_id],
+        catch_exceptions=False,
     )
     # Check assertions:
     actual_messages = sorted(map(json.loads, message_text.output.split("\n")[:10]), key=itemgetter("partition"))
     expected_messages.sort(key=attrgetter("partition"))
     for expected_message, actual_message in zip(expected_messages, actual_messages):
-        assert expected_message.key["key"] == json.loads(actual_message["key"])["key"]
-        assert expected_message.value["value"] == json.loads(actual_message["value"])["value"]
+        assert expected_message.key["key"] == actual_message["key"]["key"]
+        assert expected_message.value["value"] == actual_message["value"]["value"]
 
 
 @pytest.mark.integration
@@ -44,7 +47,9 @@ def test_offset_not_committed(
     produce_avro_test_messages(avro_producer, topic_name=source_topic_id)
 
     non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--numbers", "10", "--avro", source_topic_id], catch_exceptions=False
+        esque,
+        args=["consume", "--numbers", "10", "-s", "avro", "-k", "avro", source_topic_id],
+        catch_exceptions=False,
     )
 
     # cannot use pytest.raises(ConsumerGroupDoesNotExistException) because other tests may have committed offsets
@@ -64,7 +69,9 @@ def test_binary_consume_to_stdout(
     expected_messages = produce_binary_test_messages(producer, topic_name=source_topic_id)
 
     message_text = non_interactive_cli_runner.invoke(
-        esque, args=["consume", "--stdout", "--number", "10", "--binary", source_topic_id], catch_exceptions=False
+        esque,
+        args=["consume", "--number", "10", "-s", "binary", "-k", "binary", source_topic_id],
+        catch_exceptions=False,
     )
     # Check assertions:
     actual_messages = {
@@ -76,8 +83,47 @@ def test_binary_consume_to_stdout(
 
 
 @pytest.mark.integration
-def test_binary_and_avro_fails(non_interactive_cli_runner: CliRunner):
-    with pytest.raises(ValueError):
-        non_interactive_cli_runner.invoke(
-            esque, args=["consume", "--binary", "--avro", "thetopic"], catch_exceptions=False
-        )
+def test_protobuf_consume_to_stdout(
+    proto_serializer: ProtoSerializer,
+    producer: ConfluentProducer,
+    source_topic: Tuple[str, int],
+    non_interactive_cli_runner: CliRunner,
+):
+    source_topic_id, _ = source_topic
+    expected_messages = produce_proto_test_messages(proto_serializer, producer, topic_name=source_topic_id)
+    message_text = non_interactive_cli_runner.invoke(
+        esque,
+        args=[
+            "consume",
+            "--number",
+            "10",
+            "-s",
+            "proto",
+            source_topic_id,
+            "--val-protoc-py-path",
+            proto_serializer.config.protoc_py_path,
+            "--val-protoc-module-name",
+            proto_serializer.config.module_name,
+            "--val-protoc-class-name",
+            proto_serializer.config.class_name,
+            "-k",
+            "binary",
+        ],
+        catch_exceptions=False,
+    )
+    # Check assertions:
+    actual_messages = {
+        (msg["key"], str(msg["value"]), msg["partition"]) for msg in map(json.loads, message_text.output.splitlines())
+    }
+    expected_messages = {
+        (base64.b64encode(msg.key).decode("UTF-8"), str(msg.value), msg.partition) for msg in expected_messages
+    }
+    assert expected_messages == actual_messages
+
+
+@pytest.mark.integration
+def test_invalid_serialization_fails(non_interactive_cli_runner: CliRunner):
+    result = non_interactive_cli_runner.invoke(
+        esque, args=["consume", "-s", "none", "-k", "none", "thetopic"], catch_exceptions=False
+    )
+    assert result.exit_code == 2

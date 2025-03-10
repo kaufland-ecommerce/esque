@@ -1,4 +1,4 @@
-version: '3'
+version: '3.1'
 services:
   esque:
     build: .
@@ -9,7 +9,11 @@ services:
     depends_on:
       - kafka
       - schema_registry
-    command: >
-      -c
-        "(until (kafkacat -b kafka:9093 -X debug=all -L); do sleep 5s; done) \
-        && python3 -u -m pytest -v -x tests/ --integration"
+    command: >-
+      -c "
+        until kcat -b kafka:9093 -X debug=all -L; do
+          echo 'Waiting for Kafka...';
+          sleep 5;
+        done;
+        python3 -u -m pytest -v -x tests/ --integration
+      "

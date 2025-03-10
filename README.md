@@ -14,7 +14,7 @@ In the Kafka world nothing is easy, but `esque` (pronounced *esk*) is an attempt
 
 Some stuff is hard, and that is okay, but listing your kafka topics shouldn't be.
 
-While adopting kafka at real.digital we noticed the immense entry barrier it poses to newcomers.
+While adopting kafka at real.digital(Kaufland) we noticed the immense entry barrier it poses to newcomers.
 We can't recount how often we wrote Slack messages asking for the script to check the
 status of topics or consumer groups. This is partly (but not only) due to a
 fragmented and unclear definition of tooling and APIs for kafka.
@@ -39,7 +39,8 @@ We feel that the goal of `esque` embodies the principle: “**keep easy things e
 * Edit Topic Configurations
 * Edit Consumer Offset for Topics
 * SASL/SSL Support out of the box
-* Consume and Produce to and from Avro and Plaintext Topics (including Avro Schema Resolution from Schema Registry)
+* Consuming from Avro,Protobuf,plaintext,struct Topics (including Avro Schema Resolution from Schema Registry)
+* Producing to and from Avro and Plaintext Topics (including Avro Schema Resolution from Schema Registry)
 * Context Switch (Easily Switch between pre-defined Clusters)
 * Kafka Ping (Test roundtrip time to your kafka cluster)
 
@@ -83,7 +84,7 @@ Commands:
 
 `esque` is available at [pypi.org](https://pypi.org/project/esque/) and can be installed with `pip install esque`. 
 
-`esque` requires Python 3.8+ to run (Python 3.11 is not yet supported).
+`esque` requires Python 3.9+ to run(Python 3.13 is not yet supported)..
 
 #### Installation on Alpine Linux
 
@@ -139,6 +140,15 @@ contexts:
       - localhost:9092
     security_protocol: PLAINTEXT
     schema_registry: http://localhost:8081
+    proto:
+      topic1:
+        protoc_py_path: /home/user/pb/
+        module_name: hi_pb2
+        class_name: HelloWorldResponse
+      any_key:
+        protoc_py_path: 'path to compiled files using protoc'
+        module_name: "api_stubs_py.api.bye_pb2"
+        class_name: ByeMessage
     default_values:
       num_partitions: 1
       replication_factor: 1
@@ -168,10 +178,75 @@ topics:
     config:
       cleanup.policy: compact
 ```
+## How to de-serialize protobuf files
+
+To de-serialize protobuf files you need to have generated files using [protoc](https://grpc.io/docs/protoc-installation/) command.
+Let's assume you have following proto file and you have dispatched message to a kafka topic with `HelloWorldResponse`:
+```
+syntax = "proto3";
+
+service Hi {
+    rpc Get (HelloWorldRequest) returns (HelloWorldResponse);
+}
+
+message HelloWorldRequest {
+    string name = 1;
+}
+
+message HelloWorldResponse {
+    string type_string = 1;
+    optional string optional_string = 2;
+    EnumType type_enum = 3;
+    int32 type_int32 = 4;
+    int64 type_int64 = 5;
+    optional int64 optional_int64 = 6;
+    float type_float = 7;
+}
+enum EnumType {
+    ENUM_TYPE_UNSPECIFIED = 0;
+}
+
+```
+first you need to compile it :
+```
+protoc --python_out /home/user/pb/ hi.proto
+```
+
+then it will create files like :
+```
+hi.proto
+hi_pb2.py
+```
+After compiling protobuf files for python you need three things.
+
+* `protoc_py_path`: absolute path to the compiled files using protoc. example :  `/home/user/pb/`
+* `module_name`: path to the file having contains your message. our example:  `hi_pb2` (without .py). usually you can find it the pb_2 file in line starts like `_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, [module_name], globals())`
+* `class_name`: message name in protobuf. our example: `HelloWorldResponse`
+
+You can insert this parameters using consume command. example :
+```
+esque consume topic_name -s proto --val-protoc-py-path /home/user/pb/ --val-protoc-module-name hi_pb2 --val-protoc-class-name HelloWorldResponse
+```
+if this is a topic you use everyday you can save this in configuration file like :
+```yaml
+    proto:
+      topic_name:
+        protoc_py_path: /home/user/pb/
+        module_name: hi_pb2
+        class_name: HelloWorldResponse
+```
+and next you just need to run `esque consume topic_name -s proto`.
+
+If you have same configuration for another topic you don't need to copy the same configuration. you just need to use  `--val-proto-key`
+to specify the key in configuration file. for example if your new topic is called topic2 then your command will be :
+`esque consume topic_name -s proto --val-proto-key topic_name`
+
+In this examples you have assumed you want to de-serialize proto messages from value of kafka topic. if you have the same thing but in key then
+all parameters will be changed from `--val-` prefix to `--key-` prefix.
 
 ## Development
 
-To setup your development environment, make sure you have at least Python 3.8 & [poetry](https://github.com/sdispater/poetry) installed, then run
+To setup your development environment, make sure you have at least Python 3.9 & [poetry](https://github.com/sdispater/poetry) installed, then run
 
 ```bash
 poetry install
@@ -209,11 +284,3 @@ If you only want the unit tests, just run:
 ```bash
 make test
 ```
-
-## Alternatives
-
-- [LinkedIn KafkaTools](https://github.com/linkedin/kafka-tools)
-- [PyKafka Tools](https://github.com/Parsely/pykafka/blob/master/pykafka/cli/kafka_tools.py)
-- [Official Kafka Scripts](https://github.com/apache/kafka/tree/trunk/bin)
-- [kafkacat](https://github.com/edenhill/kafkacat)
-- [kaf](https://github.com/birdayz/kaf)

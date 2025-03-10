@@ -22,7 +22,7 @@ class ByteEncoding(Enum):
     HEX = "hex"
 
 
-@dataclass(frozen=True)
+@dataclass
 class PipeHandlerConfig(HandlerConfig):
     key_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
     value_encoding: Union[str, ByteEncoding] = ByteEncoding.UTF_8.value
@@ -77,11 +77,12 @@ class PipeHandler(BaseHandler[PipeHandlerConfig]):
             return
         json.dump(
             {
-                "key": embed(binary_message.key, self.config.key_encoding),
-                "value": embed(binary_message.value, self.config.value_encoding),
+                "key": try_to_dict(embed(binary_message.key, self.config.key_encoding)),
+                "value": try_to_dict(embed(binary_message.value, self.config.value_encoding)),
                 "partition": binary_message.partition,
                 "offset": binary_message.offset,
                 "timestamp": binary_message.timestamp.timestamp(),
+                "timestamp_iso": binary_message.timestamp.isoformat(),
                 "headers": [{"key": h.key, "value": h.value} for h in binary_message.headers],
                 "keyenc": str(self.config.key_encoding),
                 "valueenc": str(self.config.value_encoding),
@@ -144,6 +145,13 @@ def embed(input_value: Optional[bytes], encoding: Union[str, ByteEncoding]) -> A
         return base64.b64encode(input_value).decode(encoding="UTF-8")
     elif encoding == ByteEncoding.HEX:
         return input_value.hex()
+
+
+def try_to_dict(message):
+    try:
+        return json.loads(message)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return message
 
 
 def extract(input_value: Optional[str], encoding: Union[str, ByteEncoding]) -> Optional[bytes]:

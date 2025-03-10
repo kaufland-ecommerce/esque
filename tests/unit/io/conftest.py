@@ -15,7 +15,7 @@ from esque.io.serializers.string import StringSerializer, StringSerializerConfig
 from esque.io.stream_events import PermanentEndOfStream, StreamEvent, TemporaryEndOfPartition
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class DummyHandlerConfig(HandlerConfig):
     pass
 

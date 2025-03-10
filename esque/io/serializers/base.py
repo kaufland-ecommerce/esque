@@ -9,7 +9,7 @@ from esque.io.stream_events import StreamEvent
 SC = TypeVar("SC", bound="SerializerConfig")
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class SerializerConfig:
     scheme: str
 

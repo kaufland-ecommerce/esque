@@ -85,6 +85,11 @@ class Config(metaclass=SingletonMeta):
         return config_dict["schema_registry"]
 
     @property
+    def proto(self) -> dict:
+        config_dict = self.current_context_dict
+        return config_dict.get("proto", {})
+
+    @property
     def bootstrap_servers(self) -> List[str]:
         return self.current_context_dict["bootstrap_servers"]
 
