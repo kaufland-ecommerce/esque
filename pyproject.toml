@@ -9,7 +9,6 @@ include = [
     "esque/config/sample_config.yaml",
     "README.md",
     "LICENSE",
-    "pyproject.toml",
     "esque/validation/schemas/*.yaml"
 ]
 
