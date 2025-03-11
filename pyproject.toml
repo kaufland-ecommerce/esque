@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "esque"
-version = "1.0.0a1"
+version = "1.0.0a2"
 description = "esque - an operational kafka tool."
 authors = ["real.digital <opensource@real-digital.de>"]
 license = "MIT"
@@ -9,7 +9,6 @@ include = [
     "esque/config/sample_config.yaml",
     "README.md",
     "LICENSE",
-    "pyproject.toml",
     "esque/validation/schemas/*.yaml"
 ]
 
